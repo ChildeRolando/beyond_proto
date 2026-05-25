@@ -1,0 +1,1992 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>超越极限 · 战斗引擎</title>
+<style>
+:root {
+  --bg: #2b2a33;
+  --surface: #35344a;
+  --surface-raised: #3e3d54;
+  --border: #535164;
+  --text: #c4c0d0;
+  --text-dim: #7a768a;
+  --accent: #DDBB99;
+  --purple: #8b5cf6;
+  --purple-glow: rgba(139,92,246,0.25);
+  --red: #e05555;
+  --red-glow: rgba(224,85,85,0.25);
+  --amber: #d4943a;
+  --amber-glow: rgba(212,148,58,0.25);
+  --jade: #5a9e7e;
+  --font-display: 'KaiTi', 'STKaiti', '楷体', 'FangSong', '仿宋', serif;
+  --font-body: 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+}
+
+@keyframes cloud-drift {
+  0% { background-position: 0% 0%, 0% 0%; }
+  100% { background-position: 200% 0%, 0% 0%; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px var(--purple-glow); }
+  50% { box-shadow: 0 0 20px var(--purple-glow), 0 0 40px rgba(139,92,246,0.15); }
+}
+
+@keyframes fade-slide-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes check-bounce {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+
+@keyframes phase-pulse {
+  0%, 100% { border-color: #7a768a; }
+  50% { border-color: var(--accent); }
+}
+
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 0.6; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+/* --- Start screen --- */
+#start-screen { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+#start-screen h1 {
+  font-family: var(--font-display);
+  font-size: 38px;
+  color: var(--accent);
+  letter-spacing: 6px;
+}
+#start-screen .subtitle {
+  font-size: 13px;
+  color: var(--text-dim);
+  letter-spacing: 3px;
+  margin-bottom: 16px;
+}
+.mode-btn {
+  width: 260px;
+  padding: 14px 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 17px;
+  letter-spacing: 3px;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.mode-btn:hover {
+  border-color: var(--accent);
+  background: var(--surface-raised);
+  color: var(--accent);
+}
+.mode-btn.primary { border-color: var(--accent); color: var(--accent); }
+.mode-btn.primary:hover { background: rgba(221,187,153,0.08); }
+.mode-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(221,187,153,0.06) 50%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.mode-btn:hover::after { opacity: 1; }
+
+#room-setup {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 310px;
+}
+#room-setup .room-code-display {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  color: var(--accent);
+}
+#room-setup input {
+  width: 160px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 18px;
+  text-align: center;
+  letter-spacing: 4px;
+  font-family: 'Cascadia Code', monospace;
+  text-transform: uppercase;
+  transition: border-color 0.2s;
+}
+#room-setup input:focus { outline: none; border-color: var(--accent); }
+#room-setup button {
+  padding: 8px 24px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+}
+.btn-host { background: var(--red); color: white; border-color: var(--red); }
+.btn-host:hover { background: #d45a5a; }
+.btn-join { background: var(--purple); color: white; border-color: var(--purple); }
+.btn-join:hover { background: #9d6eff; }
+.btn-back { background: transparent; color: var(--text-dim); margin-top: 8px; }
+.btn-back:hover { color: var(--text); border-color: var(--text-dim); }
+
+.conn-status { font-size: 12px; color: var(--text-dim); }
+.conn-status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+.conn-status .dot.red { background: var(--red); }
+.conn-status .dot.yellow { background: var(--amber); }
+.conn-status .dot.green { background: var(--jade); }
+
+#room-error { font-size: 12px; color: var(--red); min-height: 16px; }
+
+/* --- Game screen --- */
+#app {
+  display: none;
+  grid-template-columns: 190px 680px 190px;
+  grid-template-rows: auto 1fr auto;
+  gap: 10px;
+  padding: 14px;
+}
+
+#topbar {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  flex-wrap: wrap;
+}
+#topbar h1 {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--accent);
+  letter-spacing: 3px;
+  margin-right: auto;
+}
+#topbar .info { font-size: 13px; color: var(--text-dim); letter-spacing: 1px; }
+#topbar button {
+  padding: 6px 18px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+}
+#btn-execute {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+#btn-execute:hover:not(:disabled) { background: #c9a87a; }
+#btn-execute:disabled { background: #3e3d54; border-color: #3e3d54; color: #6a6680; cursor: not-allowed; }
+#btn-reset { background: transparent; color: var(--text-dim); }
+#btn-reset:hover { color: var(--text); border-color: var(--text-dim); }
+
+#mode-badge {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+#mode-badge.local { background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); }
+#mode-badge.online { background: rgba(90,158,126,0.12); color: var(--jade); border: 1px solid var(--jade); }
+
+#phase-text {
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  font-size: 12px;
+  transition: all 0.5s;
+}
+
+#panels-left, #panels-right {
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  max-height: 640px;
+}
+#panels-left { grid-column: 1; }
+#panels-right { grid-column: 3; }
+
+.char-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+.char-panel.mage { border-left: 3px solid var(--purple); }
+.char-panel.warrior { border-left: 3px solid var(--red); }
+.char-panel.shooter { border-left: 3px solid var(--amber); }
+.char-panel.opponent-panel { opacity: 0.65; }
+
+.panel-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+.char-panel.mage .panel-title { color: var(--purple); }
+.char-panel.warrior .panel-title { color: var(--red); }
+.char-panel.shooter .panel-title { color: var(--amber); }
+
+.resources { font-size: 12px; margin-bottom: 4px; }
+.resources span { margin-right: 8px; }
+.buffs { font-size: 12px; margin-bottom: 4px; min-height: 16px; }
+.buffs .buff {
+  display: inline-block;
+  background: rgba(221,187,153,0.08);
+  border: 1px solid rgba(221,187,153,0.18);
+  padding: 1px 5px;
+  border-radius: 2px;
+  margin: 1px 2px;
+  color: var(--accent);
+}
+
+.skill-grid { display: flex; flex-direction: column; gap: 4px; flex: 1; overflow-y: auto; min-height: 0; }
+.skill-btn {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.skill-btn:hover { background: var(--surface-raised); border-color: var(--accent); }
+.skill-btn.selected {
+  background: rgba(221,187,153,0.12);
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.skill-btn.selected.mage-sel {
+  background: rgba(139,92,246,0.15);
+  color: var(--purple);
+  border-color: var(--purple);
+}
+.skill-btn.used { background: rgba(0,0,0,0.2); color: #555; border-color: #2a2a3a; cursor: not-allowed; }
+.skill-btn.opponent { cursor: not-allowed; opacity: 0.5; }
+.skill-btn.opponent:hover { background: var(--surface); border-color: var(--border); }
+.skill-btn.unaffordable { opacity: 0.42; }
+.skill-btn.unaffordable:hover { opacity: 0.6; }
+
+.skill-name { font-weight: 600; font-size: 13px; }
+.skill-desc { font-size: 10px; color: var(--text-dim); }
+.skill-btn.selected .skill-desc { color: var(--accent); }
+
+/* Pagination */
+.skill-page-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+.skill-page-btn {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+.skill-page-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.skill-page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.skill-page-indicator { font-size: 11px; color: var(--text-dim); min-width: 32px; text-align: center; }
+
+/* Ripple effect for skill buttons */
+.skill-btn .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(221,187,153,0.3);
+  pointer-events: none;
+  width: 20px;
+  height: 20px;
+  animation: ripple 0.6s ease-out forwards;
+}
+
+#canvas-wrap { grid-row: 2; grid-column: 2; display: flex; justify-content: center; align-items: center; }
+canvas {
+  border-radius: 6px;
+  background: #1e1d2a;
+  border: 1px solid var(--border);
+  cursor: crosshair;
+}
+
+#log {
+  grid-column: 1/-1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 14px;
+  height: 80px;
+  overflow-y: auto;
+  font-size: 12px;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+}
+.log-entry {
+  padding: 1px 0;
+  border-bottom: 1px solid rgba(83,81,100,0.4);
+}
+.log-rg { color: var(--red); }
+.log-sh { color: #7b9fff; }
+.log-die { color: #ff3333; }
+.log-qi { color: var(--purple); }
+.log-s { color: var(--text-dim); }
+.log-turn { color: var(--accent); font-weight: bold; }
+.log-action { color: #7bb8cf; }
+
+/* --- Overlays --- */
+#disconnect-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(20,19,26,0.88);
+  z-index: 10;
+  justify-content: center;
+  align-items: center;
+}
+#disconnect-overlay.show { display: flex; }
+
+#disconnect-overlay .box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 36px 52px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+#disconnect-overlay .box h3 { color: var(--red); font-size: 18px; font-family: var(--font-display); }
+#disconnect-overlay .box p { color: var(--text-dim); font-size: 13px; }
+#disconnect-overlay .box button {
+  padding: 8px 24px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: var(--font-display);
+  background: var(--red);
+  color: white;
+}
+
+/* --- Game-over side panel --- */
+#gameover-panel {
+  display: none;
+  grid-row: 2;
+  grid-column: 3;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 10px;
+  flex-direction: column;
+}
+#gameover-panel.show { display: flex; }
+#gameover-panel .panel-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--accent);
+  text-align: center;
+}
+#gameover-panel button:hover { opacity: 0.85; }
+
+/* --- Galaxy action bar --- */
+#galaxy-overlay { display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 15; }
+#galaxy-overlay.show { display: block; animation: fade-slide-up 0.3s ease-out; }
+#galaxy-overlay .box {
+  background: var(--surface);
+  border: 1px solid var(--purple);
+  border-radius: 6px;
+  padding: 12px 20px;
+  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: 700px;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+#galaxy-overlay .box h3 {
+  color: var(--purple);
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 3px;
+  white-space: nowrap;
+  margin: 0;
+}
+#galaxy-overlay .galaxy-hint { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+#galaxy-overlay .skill-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+#galaxy-overlay .skill-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+#galaxy-overlay .skill-btn:hover { background: var(--surface-raised); border-color: var(--purple); }
+#galaxy-overlay .skill-btn.selected { background: rgba(139,92,246,0.2); color: var(--purple); border-color: var(--purple); font-weight: 700; }
+#galaxy-overlay .skill-desc { font-size: 9px; color: var(--text-dim); }
+#galaxy-overlay .skill-btn.selected .skill-desc { color: #b49cf0; }
+
+#galaxy-overlay .btn-skip {
+  padding: 4px 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+#galaxy-overlay .btn-skip:hover { border-color: var(--text-dim); color: var(--text); }
+
+/* Rematch selects */
+select {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+select:focus { outline: none; border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- Start screen -->
+<div id="start-screen">
+  <h1>超越极限 · 战斗引擎</h1>
+  <div class="subtitle">Hex-Grid Synchronous Turn-Based Combat</div>
+  <button class="mode-btn primary" id="btn-local">本地游玩</button>
+  <button class="mode-btn" id="btn-p2p">P2P 联机</button>
+  <div id="room-setup">
+    <div id="room-host-section" style="display:none">
+      <input type="text" id="server-addr-input-host" placeholder="信令服务器地址" autocomplete="off" style="width:200px;padding:6px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:12px;text-align:center;">
+      <button class="btn-host" id="btn-create-room">创建房间</button>
+      <div class="conn-status"><span class="dot yellow"></span><span id="host-status-text">等待创建...</span></div>
+      <div class="room-code-display" id="room-code-text" style="display:none"></div>
+    </div>
+    <div id="room-join-section" style="display:none">
+      <input type="text" id="room-code-input" maxlength="4" placeholder="房间码" autocomplete="off">
+      <input type="text" id="server-addr-input" placeholder="服务器地址" value="localhost:8088" autocomplete="off" style="width:200px;padding:6px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:12px;text-align:center;">
+      <button class="btn-join" id="btn-join-room">加入房间</button>
+      <div class="conn-status"><span class="dot yellow"></span><span id="join-status-text">输入房间码和地址</span></div>
+    </div>
+    <div id="room-error"></div>
+    <button class="btn-back" id="btn-back-start">返回</button>
+  </div>
+  <div id="p2p-class-pick" style="display:none; flex-direction:column; align-items:center; gap:8px; margin-top:4px;">
+    <span class="info">选择你的职业</span>
+    <select id="p2p-class-select" style="padding:6px 12px; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:4px; font-size:14px;">
+      <option value="法师">法师</option>
+      <option value="战士">战士</option>
+      <option value="射手">射手</option>
+    </select>
+  </div>
+</div>
+
+<!-- Game screen -->
+<div id="app">
+  <div id="topbar">
+    <h1>超越极限 · 战斗引擎</h1>
+    <span id="mode-badge" class="local">本地</span>
+    <span class="info" id="conn-indicator" style="display:none"><span class="dot green"></span>已连接</span>
+    <span class="info">P1</span>
+    <select id="p1-class-select">
+      <option value="法师" selected>法师</option>
+      <option value="战士">战士</option>
+      <option value="射手">射手</option>
+    </select>
+    <span class="info">vs</span>
+    <span class="info">P2</span>
+    <select id="p2-class-select">
+      <option value="法师">法师</option>
+      <option value="战士" selected>战士</option>
+      <option value="射手">射手</option>
+    </select>
+    <button id="btn-start">开始战斗</button>
+    <span class="info">回合 <b id="turn-num">1</b></span>
+    <span class="info">阶段 <b id="phase-text">PLAN</b></span>
+    <span class="info" id="submit-status">等待双方提交...</span>
+    <button id="btn-execute" disabled>执行回合</button>
+    <button id="btn-reset">重置</button>
+  </div>
+  <div id="panels-left"></div>
+  <div id="canvas-wrap"><canvas id="board" width="680" height="640"></canvas></div>
+  <div id="panels-right"></div>
+  <div id="gameover-panel">
+    <div class="panel-title">战斗结束</div>
+    <p id="gameover-winner" style="color:var(--accent); font-size:15px; text-align:center; margin:8px 0;"></p>
+    <div style="display:flex; flex-direction:column; gap:6px; margin:4px 0;">
+      <div id="go-p1-pick">
+        <label style="color:var(--text-dim); font-size:11px; display:block; margin-bottom:2px;">玩家1职业</label>
+        <select id="rematch-class-p1" style="width:100%; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:3px 6px; font-size:12px;">
+          <option value="法师">法师</option>
+          <option value="战士">战士</option>
+          <option value="射手">射手</option>
+        </select>
+      </div>
+      <div id="go-p2-pick">
+        <label style="color:var(--text-dim); font-size:11px; display:block; margin-bottom:2px;">玩家2职业</label>
+        <select id="rematch-class-p2" style="width:100%; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:3px 6px; font-size:12px;">
+          <option value="法师">法师</option>
+          <option value="战士">战士</option>
+          <option value="射手">射手</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex; gap:6px; justify-content:center; margin-top:4px;">
+      <button id="btn-rematch" style="padding:5px 14px;border:1px solid var(--accent);border-radius:3px;background:var(--accent);color:var(--bg);cursor:pointer;font-size:13px;font-family:var(--font-display);letter-spacing:1px;">重新开始</button>
+      <button id="btn-lobby" style="padding:5px 14px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;font-family:var(--font-display);letter-spacing:1px;">返回大厅</button>
+    </div>
+  </div>
+  <div id="log"></div>
+</div>
+
+<!-- Disconnect overlay -->
+<div id="disconnect-overlay">
+  <div class="box">
+    <h3>对手已断开连接</h3>
+    <p id="disconnect-reason"></p>
+    <button onclick="returnToStart()">返回大厅</button>
+  </div>
+</div>
+
+<!-- Galaxy action overlay -->
+<div id="galaxy-overlay">
+  <div class="box">
+    <h3>银河远征</h3>
+    <span class="galaxy-hint" id="galaxy-hint"></span>
+    <div class="skill-grid" id="galaxy-skills"></div>
+    <button id="btn-galaxy-confirm" style="padding:4px 16px;border:none;border-radius:6px;background:#7b2ff7;color:white;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;" disabled>确认</button>
+    <button class="btn-skip" id="btn-galaxy-skip">跳过全部</button>
+  </div>
+</div>
+
+<script type="module">
+import { GameEngine } from './engine/GameEngine.js';
+import { NetworkManager } from './engine/NetworkManager.js';
+import { SKILLS, SKILLS_BY_CLASS } from './engine/SkillData.js';
+import { isOnBoard, hexCenter, hexCorners, pixelToHex, hexDistance, hexLine, hexSpiral } from './engine/HexMath.js';
+
+// --- Init ---
+const engine = new GameEngine();
+let networkManager = null;  // null in local mode, NetworkManager in P2P mode
+
+// Auto-detect if served through ngrok (for internet play)
+const isNgrok = window.location.hostname.includes('ngrok-free');
+const autoSignalingUrl = isNgrok
+  ? `wss://${window.location.host}`
+  : 'ws://localhost:8088';
+
+// Set initial server address values
+document.addEventListener('DOMContentLoaded', () => {
+  const hostInput = document.getElementById('server-addr-input-host');
+  const joinInput = document.getElementById('server-addr-input');
+  if (hostInput) hostInput.value = isNgrok ? window.location.host : 'localhost:8088';
+  if (joinInput) joinInput.value = isNgrok ? window.location.host : 'localhost:8088';
+});
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+
+let characterIds = [];
+let localSubmittedSet = new Set();    // chars I submitted locally
+let remoteSubmittedSet = new Set();   // chars opponent submitted (P2P only)
+let selectedSkill = null;
+let validTargets = [];
+let hoveredHex = null;
+let hoverEffectArea = [];
+let turnTimeoutId = null;
+let battleEnded = false;
+let battleActive = false; // true while a game is in progress (set in initGame, cleared on BATTLE_END)
+const skillPages = new Map(); // charId -> current page number (0-indexed)
+
+// Listen for battle end
+engine.eventBus.on('BATTLE_END', (data) => {
+  battleEnded = true;
+  battleActive = false;
+  showGameOver(data.winner);
+});
+
+// --- Galaxy sub-phase ---
+let galaxyActive = false;
+let galaxyCharId = null;
+let galaxySelectedSkill = null;
+let galaxyTargetPos = null;
+
+let galaxyActionIndex = 0;
+let galaxyActionTotal = 0;
+
+engine.eventBus.on('GALAXY_SUBPHASE_START', (data) => {
+  const myCharId = data.charIds.find(id => isMyCharacter(id));
+  if (!myCharId) return;
+  galaxyActive = true;
+  galaxyCharId = myCharId;
+  galaxySelectedSkill = null;
+});
+
+engine.eventBus.on('GALAXY_ACTION_PROMPT', (data) => {
+  if (!galaxyActive || data.charId !== galaxyCharId) return;
+  galaxyActionIndex = data.index;
+  galaxyActionTotal = data.total;
+  showGalaxyPanel();
+});
+
+engine.eventBus.on('GALAXY_SUBPHASE_END', () => {
+  galaxyActive = false;
+  galaxyCharId = null;
+  galaxySelectedSkill = null;
+  hideGalaxyPanel();
+});
+
+function showGalaxyPanel() {
+  if (!galaxyCharId) return;
+  const char = engine.registry.get(galaxyCharId);
+  if (!char) return;
+
+  document.getElementById('galaxy-hint').textContent =
+    `行动 ${galaxyActionIndex + 1}/${galaxyActionTotal}`;
+
+  const skillIds = SKILLS_BY_CLASS[char.class] || [];
+  const skills = skillIds.filter(sid => {
+    const skill = SKILLS[sid];
+    return skill && !skill.hidden;
+  }).map(sid => {
+    const skill = SKILLS[sid];
+    return `<button class="skill-btn" data-skill="${sid}" title="${skill.desc || ''}">${skill.name}</button>`;
+  }).join('');
+
+  document.getElementById('galaxy-skills').innerHTML = skills || '<span style="color:#888">无可用技能</span>';
+  document.getElementById('btn-galaxy-confirm').disabled = true;
+
+  document.querySelectorAll('#galaxy-skills .skill-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#galaxy-skills .skill-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      galaxySelectedSkill = btn.dataset.skill;
+      document.getElementById('btn-galaxy-confirm').disabled = false;
+    });
+  });
+
+  document.getElementById('galaxy-overlay').classList.add('show');
+}
+
+function hideGalaxyPanel() {
+  document.getElementById('galaxy-overlay').classList.remove('show');
+}
+
+document.getElementById('btn-galaxy-confirm').addEventListener('click', () => {
+  if (!galaxySelectedSkill) return;
+  const skill = SKILLS[galaxySelectedSkill];
+  if (!skill) return;
+
+  if (skill.targeting.shape === 'SELF' || skill.targeting.shape === 'AOE_SELF') {
+    // Self-targeting: submit immediately, panel stays hidden until next prompt
+    engine.submitGalaxyAction(galaxySelectedSkill, null);
+    if (networkManager && networkManager.mode !== 'local') {
+      networkManager.sendGalaxyAction(galaxyCharId, galaxySelectedSkill, null);
+    }
+    galaxySelectedSkill = null;
+    hideGalaxyPanel();
+  } else {
+    // Needs target: hide panel, show valid hexes on board
+    hideGalaxyPanel();
+    document.getElementById('submit-status').textContent = `银河远征: 点击棋盘选择 ${skill.name} 的目标`;
+
+    const char = engine.registry.get(galaxyCharId);
+    const range = skill.targeting.range ?? 99;
+    validTargets = [];
+    hoverEffectArea = [];
+    hoveredHex = null;
+    if (char) {
+      for (let q = -3; q <= 3; q++) {
+        for (let r = -3; r <= 3; r++) {
+          if (!isOnBoard(q, r)) continue;
+          if (q === char.position.q && r === char.position.r) continue;
+          if (hexDistance(char.position.q, char.position.r, q, r) > range) continue;
+          validTargets.push({ q, r });
+        }
+      }
+    }
+    renderAll();
+  }
+});
+
+document.getElementById('btn-galaxy-skip').addEventListener('click', () => {
+  engine.submitGalaxyAction(null, null);
+  galaxySelectedSkill = null;
+  hideGalaxyPanel();
+});
+
+// --- Start screen ---
+document.getElementById('btn-local').addEventListener('click', () => {
+  networkManager = null;
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'grid';
+  document.getElementById('mode-badge').textContent = '本地';
+  document.getElementById('mode-badge').className = 'local';
+  document.getElementById('conn-indicator').style.display = 'none';
+  document.getElementById('p1-class-select').style.display = '';
+  document.getElementById('p2-class-select').style.display = '';
+  document.getElementById('btn-start').style.display = '';
+  document.getElementById('btn-reset').style.display = '';
+  initGame(
+    document.getElementById('p1-class-select').value,
+    document.getElementById('p2-class-select').value
+  );
+});
+
+document.getElementById('btn-p2p').addEventListener('click', () => {
+  document.getElementById('room-setup').style.display = 'flex';
+  document.getElementById('room-host-section').style.display = 'block';
+  document.getElementById('room-join-section').style.display = 'block';
+  document.getElementById('room-code-text').style.display = 'none';
+  document.getElementById('room-error').textContent = '';
+  document.getElementById('p2p-class-pick').style.display = 'flex';
+});
+
+document.getElementById('btn-back-start').addEventListener('click', () => {
+  if (networkManager) { networkManager.disconnect(); networkManager = null; }
+  document.getElementById('room-setup').style.display = 'none';
+  document.getElementById('room-code-text').style.display = 'none';
+  document.getElementById('room-error').textContent = '';
+  resetConnectionUI();
+});
+
+document.getElementById('btn-create-room').addEventListener('click', async () => {
+  document.getElementById('room-error').textContent = '';
+  document.getElementById('room-code-text').style.display = 'none';
+  updateHostStatus('connecting', '连接中...');
+  const serverAddr = document.getElementById('server-addr-input-host').value.trim() || 'localhost:8088';
+  const signalingUrl = serverAddr.match(/^wss?:\/\//) ? serverAddr : (isNgrok ? `wss://${serverAddr}` : `ws://${serverAddr}`);
+  const nm = new NetworkManager({
+    onStatusChange: (s) => {
+      if (s.roomCode) {
+        document.getElementById('room-code-text').textContent = s.roomCode;
+        document.getElementById('room-code-text').style.display = 'block';
+        updateHostStatus('connecting', '等待对手加入...');
+      }
+      if (s.status === 'connected') {
+        updateHostStatus('connected', '已连接！');
+        startP2PGame(nm);
+      }
+      if (s.error) {
+        document.getElementById('room-error').textContent = s.error;
+        updateHostStatus('disconnected', '错误');
+        nm.disconnect();
+      }
+    },
+    onDisconnect: (reason) => showDisconnect(reason),
+    onRemoteSubmitted: (action) => handleRemoteAction(nm, action),
+    onReady: () => executeP2PTurn(nm),
+    onClassPick: (cls, seed) => onClassPick(nm, cls, seed),
+    onGalaxyAction: (charId, skillId, targetPos) => {
+      engine.submitGalaxyAction(skillId, targetPos);
+    },
+  }, signalingUrl);
+  networkManager = nm;
+  try {
+    await nm.createRoom();
+  } catch (e) {
+    document.getElementById('room-error').textContent = '连接服务器失败';
+    updateHostStatus('disconnected', '连接失败');
+    networkManager = null;
+  }
+});
+
+document.getElementById('btn-join-room').addEventListener('click', async () => {
+  const code = document.getElementById('room-code-input').value.toUpperCase().trim();
+  if (!code || code.length !== 4) {
+    document.getElementById('room-error').textContent = '请输入4位房间码';
+    return;
+  }
+  document.getElementById('room-error').textContent = '';
+  updateJoinStatus('connecting', '连接中...');
+  const serverAddr = document.getElementById('server-addr-input').value.trim() || 'localhost:8088';
+  const signalingUrl = serverAddr.match(/^wss?:\/\//) ? serverAddr : (isNgrok ? `wss://${serverAddr}` : `ws://${serverAddr}`);
+  const nm = new NetworkManager({
+    onStatusChange: (s) => {
+      if (s.status === 'connected') {
+        updateJoinStatus('connected', '已连接！');
+        startP2PGame(nm);
+      }
+      if (s.error) {
+        document.getElementById('room-error').textContent = s.error;
+        updateJoinStatus('disconnected', '错误');
+        nm.disconnect();
+      }
+    },
+    onDisconnect: (reason) => showDisconnect(reason),
+    onRemoteSubmitted: (action) => handleRemoteAction(nm, action),
+    onReady: () => executeP2PTurn(nm),
+    onClassPick: (cls, seed) => onClassPick(nm, cls, seed),
+    onGalaxyAction: (charId, skillId, targetPos) => {
+      engine.submitGalaxyAction(skillId, targetPos);
+    },
+  }, signalingUrl);
+  networkManager = nm;
+  try {
+    await nm.joinRoom(code);
+  } catch (e) {
+    document.getElementById('room-error').textContent = '连接服务器失败';
+    updateJoinStatus('disconnected', '连接失败');
+    networkManager = null;
+  }
+});
+
+function updateHostStatus(status, text) {
+  const dot = document.querySelector('#room-host-section .dot');
+  dot.className = 'dot ' + (status === 'connected' ? 'green' : status === 'connecting' ? 'yellow' : 'red');
+  document.getElementById('host-status-text').textContent = text;
+}
+
+function updateJoinStatus(status, text) {
+  const dot = document.querySelector('#room-join-section .dot');
+  dot.className = 'dot ' + (status === 'connected' ? 'green' : status === 'connecting' ? 'yellow' : 'red');
+  document.getElementById('join-status-text').textContent = text;
+}
+
+function resetConnectionUI() {
+  updateHostStatus('disconnected', '等待创建...');
+  updateJoinStatus('disconnected', '输入房间码和地址');
+  document.getElementById('room-code-input').value = '';
+  const defaultAddr = isNgrok ? window.location.host : 'localhost:8088';
+  document.getElementById('server-addr-input').value = defaultAddr;
+  document.getElementById('server-addr-input-host').value = defaultAddr;
+}
+
+function startP2PGame(nm) {
+  document.getElementById('gameover-panel').classList.remove('show');
+  document.getElementById('panels-right').style.display = '';
+  battleEnded = false;
+  // Reset all rematch/class-pick state for fresh connection
+  remoteClassPick = null;
+  pendingRemoteRematchClass = null;
+  opponentReadyForRematch = false;
+  pendingMyClass = null;
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'grid';
+  document.getElementById('mode-badge').textContent = '联机 ' + (nm.roomCode || '');
+  document.getElementById('mode-badge').className = 'online';
+  document.getElementById('conn-indicator').style.display = '';
+  document.getElementById('p1-class-select').style.display = 'none';
+  document.getElementById('p2-class-select').style.display = 'none';
+  document.getElementById('btn-start').style.display = 'none';
+  document.getElementById('btn-reset').style.display = 'none';
+
+  const myClass = document.getElementById('p2p-class-select').value;
+  // Host generates time-based seed for wild bullet spawn
+  if (nm.myPlayerId === 'player1' && !battleSeed) battleSeed = Date.now();
+  // Send class pick to peer — when both sides know, initGame will be called
+  nm.sendClassPick(myClass, battleSeed);
+
+  // If remote class already received (race condition), init now
+  tryInitWithClasses(nm, myClass);
+
+  document.getElementById('btn-execute').disabled = true;
+  document.getElementById('submit-status').textContent = '等待对方选择职业...';
+  document.getElementById('log').innerHTML = '';
+  localSubmittedSet.clear();
+  remoteSubmittedSet.clear();
+}
+
+let remoteClassPick = null;
+let battleSeed = 0;         // host generates from Date.now(), shared via CLASS_PICK
+let pendingMyClass = null; // for rematch: stored myClass when waiting for opponent
+let pendingRemoteRematchClass = null; // CLASS_PICK from opponent that arrived while our game still active
+let opponentReadyForRematch = false; // true when opponent already clicked rematch (shown in gameover UI)
+
+function onClassPick(nm, remoteClass, seed = 0) {
+  const gameoverShown = document.getElementById('gameover-panel').classList.contains('show');
+  // Premature rematch: our game still running, opponent's game ended first.
+  if (!gameoverShown && battleActive) {
+    pendingRemoteRematchClass = remoteClass;
+    return;
+  }
+  remoteClassPick = remoteClass;
+  if (seed) battleSeed = seed;
+  // Opponent clicked first while we're in game-over screen — show indicator
+  if (gameoverShown && !pendingMyClass) {
+    opponentReadyForRematch = true;
+    updateRematchButton();
+    return;
+  }
+  // Both sides have clicked: start the game
+  const myClass = pendingMyClass || document.getElementById('p2p-class-select').value;
+  // If we already clicked (premature sender), re-send our class so the other
+  // side gets a fresh CLASS_PICK while their game-over is showing
+  if (pendingMyClass) {
+    nm.sendClassPick(myClass, battleSeed);
+  }
+  pendingMyClass = null;
+  opponentReadyForRematch = false;
+  tryInitWithClasses(nm, myClass);
+}
+
+function tryInitWithClasses(nm, myClass) {
+  if (!remoteClassPick) return;
+  const myId = nm.myPlayerId;
+  const p1Class = myId === 'player1' ? myClass : remoteClassPick;
+  const p2Class = myId === 'player2' ? myClass : remoteClassPick;
+  remoteClassPick = null; // reset for reconnection
+  initGame(p1Class, p2Class, battleSeed);
+  battleSeed = 0; // reset for next game
+  document.getElementById('submit-status').textContent = '等待双方提交...';
+  startTurnTimeout();
+}
+
+function handleRemoteAction(nm, action) {
+  // Apply opponent's action to our local engine
+  engine.submitAction(action.charId, action.skillId, action.targetPos);
+  remoteSubmittedSet.add(action.charId);
+  updateSubmitStatus(nm);
+  renderAll();
+}
+
+async function executeP2PTurn(nm) {
+  clearTurnTimeout();
+  const result = await engine.executeTurn();
+  if (!result.success) return;
+
+  localSubmittedSet.clear();
+  remoteSubmittedSet.clear();
+  nm.clearTurn();
+
+  if (result.battleEnded) {
+    renderAll();
+    return;
+  }
+
+  animateProjectiles().then(() => {
+    renderAll();
+    startTurnTimeout();
+  });
+}
+
+function showDisconnect(reason) {
+  document.getElementById('disconnect-reason').textContent =
+    reason === 'peer_left' ? '对手离开了游戏' :
+    reason === 'timeout' ? '连接超时' :
+    reason === 'connection_lost' ? '网络连接中断' : '连接已断开';
+  document.getElementById('disconnect-overlay').classList.add('show');
+}
+
+window.returnToStart = function() {
+  clearTurnTimeout();
+  battleActive = false;
+  remoteClassPick = null;
+  pendingRemoteRematchClass = null;
+  opponentReadyForRematch = false;
+  if (networkManager) { networkManager.disconnect(); networkManager = null; }
+  document.getElementById('disconnect-overlay').classList.remove('show');
+  document.getElementById('gameover-panel').classList.remove('show');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('start-screen').style.display = 'flex';
+  document.getElementById('room-setup').style.display = 'none';
+  document.getElementById('room-code-text').style.display = 'none';
+  document.getElementById('p2p-class-pick').style.display = 'none';
+  document.getElementById('room-host-section').style.display = 'block';
+  document.getElementById('room-join-section').style.display = 'block';
+  document.getElementById('conn-indicator').style.display = 'none';
+  localSubmittedSet.clear();
+  remoteSubmittedSet.clear();
+  selectedSkill = null;
+  validTargets = [];
+  hoverEffectArea = [];
+  hoveredHex = null;
+  battleEnded = false;
+  resetConnectionUI();
+};
+
+function updateRematchButton() {
+  const btn = document.getElementById('btn-rematch');
+  if (opponentReadyForRematch) {
+    btn.textContent = '对手已准备！重新开始';
+  } else {
+    btn.textContent = '重新开始';
+  }
+}
+
+function showGameOver(winner) {
+  clearTurnTimeout();
+  document.getElementById('btn-execute').disabled = true;
+  document.getElementById('submit-status').textContent = '战斗已结束';
+  const winnerText = winner === 'player1' ? '玩家1' : winner === 'player2' ? '玩家2' : '平局';
+  document.getElementById('gameover-winner').textContent = `胜者: ${winnerText}`;
+  document.getElementById('rematch-class-p1').value = player1Class;
+  document.getElementById('rematch-class-p2').value = player2Class;
+  document.getElementById('btn-rematch').disabled = false;
+  updateRematchButton();
+
+  const isP2P = networkManager && networkManager.mode !== 'local';
+  const myId = isP2P ? networkManager.myPlayerId : null;
+
+  document.getElementById('go-p1-pick').style.display = (!isP2P || myId === 'player1') ? '' : 'none';
+  document.getElementById('go-p2-pick').style.display = (!isP2P || myId === 'player2') ? '' : 'none';
+
+  document.getElementById('panels-right').style.display = 'none';
+  document.getElementById('gameover-panel').classList.add('show');
+}
+
+// Rematch button
+document.getElementById('btn-rematch').addEventListener('click', () => {
+  const isP2P = networkManager && networkManager.mode !== 'local';
+  if (isP2P) {
+    const myId = networkManager.myPlayerId;
+    const myClass = myId === 'player1'
+      ? document.getElementById('rematch-class-p1').value
+      : document.getElementById('rematch-class-p2').value;
+    pendingMyClass = myClass;
+    if (networkManager.myPlayerId === 'player1') battleSeed = Date.now();
+    networkManager.sendClassPick(myClass, battleSeed);
+    // Hide rematch button, show waiting status (overlay stays until initGame)
+    document.getElementById('btn-rematch').disabled = true;
+    document.getElementById('btn-rematch').textContent = '等待对方...';
+    document.getElementById('btn-execute').disabled = true;
+    document.getElementById('submit-status').textContent = '等待对方选择职业...';
+    document.getElementById('log').innerHTML = '';
+    localSubmittedSet.clear();
+    remoteSubmittedSet.clear();
+    // If remote pick already arrived, init now
+    tryInitWithClasses(networkManager, myClass);
+  } else {
+    document.getElementById('gameover-panel').classList.remove('show');
+    const p1Class = document.getElementById('rematch-class-p1').value;
+    const p2Class = document.getElementById('rematch-class-p2').value;
+    battleEnded = false;
+    initGame(p1Class, p2Class);
+    document.getElementById('btn-execute').disabled = true;
+    document.getElementById('submit-status').textContent = '等待提交...';
+    document.getElementById('log').innerHTML = '';
+    clearTurnTimeout();
+    startTurnTimeout();
+  }
+});
+
+// Return to lobby button
+document.getElementById('btn-lobby').addEventListener('click', () => {
+  document.getElementById('gameover-panel').classList.remove('show');
+  returnToStart();
+});
+
+function startTurnTimeout() {
+  clearTurnTimeout();
+  turnTimeoutId = setTimeout(() => {
+    // Auto-submit pass for any unsubmitted characters I own
+    const myChars = getMyCharacterIds();
+    for (const charId of myChars) {
+      if (!localSubmittedSet.has(charId)) {
+        const forcedId = engine.getForcedSkillId(charId);
+        if (forcedId !== undefined) {
+          submitAction(charId, forcedId, null);
+        }
+        // If no forced skill, the engine will handle PASS at execute time
+      }
+    }
+  }, 60000);
+}
+
+function clearTurnTimeout() {
+  if (turnTimeoutId) { clearTimeout(turnTimeoutId); turnTimeoutId = null; }
+}
+
+function getMyCharacterIds() {
+  if (!networkManager || networkManager.mode === 'local') return characterIds;
+  const myId = networkManager.myPlayerId;
+  return engine.getCharactersByOwner(myId).map(c => c.id);
+}
+
+function isMyCharacter(charId) {
+  if (!networkManager || networkManager.mode === 'local') return true;
+  return engine.getCharacterOwner(charId) === networkManager.myPlayerId;
+}
+
+function updateSubmitStatus(nm) {
+  const allAlive = characterIds.filter(id => engine.registry.get(id)?.alive !== false);
+  if (nm && nm.mode !== 'local') {
+    const localCount = allAlive.filter(id => localSubmittedSet.has(id)).length;
+    const remoteCount = allAlive.filter(id => remoteSubmittedSet.has(id)).length;
+    document.getElementById('submit-status').textContent =
+      `你:${localCount} 对手:${remoteCount} / 共${allAlive.length}`;
+    if (localSubmittedSet.size + remoteSubmittedSet.size >= allAlive.length) {
+      // Both ready — NetworkManager.onReady will fire executeP2PTurn
+      document.getElementById('submit-status').textContent = '双方就绪，执行中...';
+    }
+  } else {
+    const submitted = allAlive.filter(id => localSubmittedSet.has(id)).length;
+    if (submitted >= allAlive.length) {
+      document.getElementById('btn-execute').disabled = false;
+      document.getElementById('submit-status').textContent = '就绪！点击执行回合';
+    } else {
+      document.getElementById('submit-status').textContent = `已提交: ${submitted}/${allAlive.length}`;
+    }
+  }
+}
+
+// --- Setup ---
+let player1Class = '法师';
+let player2Class = '战士';
+
+function initGame(p1Class, p2Class, seed = 0) {
+  player1Class = p1Class || player1Class;
+  player2Class = p2Class || player2Class;
+  document.getElementById('gameover-panel').classList.remove('show');
+  document.getElementById('panels-right').style.display = '';
+  battleEnded = false;
+  battleActive = true;
+  remoteClassPick = null;
+  pendingRemoteRematchClass = null;
+  opponentReadyForRematch = false;
+  engine.reset();
+  const battleSeed = seed || Date.now();
+  const result = engine.initBattle({ player1Class, player2Class, seed: battleSeed });
+  characterIds = [result.player1Id, result.player2Id];
+  localSubmittedSet.clear();
+  remoteSubmittedSet.clear();
+  selectedSkill = null;
+  validTargets = [];
+  hoverEffectArea = [];
+  hoveredHex = null;
+  skillPages.clear();
+  renderAll();
+}
+
+// --- Skill selection ---
+function selectSkill(charId, skillId) {
+  if (battleEnded) return;
+  if (!isMyCharacter(charId)) return;
+  if (localSubmittedSet.has(charId)) return;
+
+  const skill = SKILLS[skillId];
+  if (!skill) return;
+
+  selectedSkill = { charId, skillId };
+  validTargets = [];
+  hoverEffectArea = [];
+  hoveredHex = null;
+
+  const char = engine.registry.get(charId);
+  if (!char) { renderAll(); return; }
+
+  const shape = skill.targeting.shape;
+  const range = skill.targeting.range ?? 99;
+
+  if (shape === 'SELF' || shape === 'AOE_SELF') {
+    validTargets = [{ q: -99, r: -99, self: true }];
+  } else if (shape === 'HEX' || shape === 'DIRECTION') {
+    for (let q = -3; q <= 3; q++) {
+      for (let r = -3; r <= 3; r++) {
+        if (!isOnBoard(q, r)) continue;
+        if (q === char.position.q && r === char.position.r) continue;
+        const dist = hexDistance(char.position.q, char.position.r, q, r);
+        if (dist > range) continue;
+        validTargets.push({ q, r });
+      }
+    }
+  }
+
+  renderAll();
+}
+
+// --- Skill effect area preview (LoL-style hover indicator) ---
+function simulateDash(fromPos, targetPos, eff) {
+  const away = eff.direction === 'AWAY_FROM_TARGET';
+  const steps = eff.distance || 1;
+
+  let dirQ, dirR;
+  if (away) {
+    const line = hexLine(targetPos.q, targetPos.r, fromPos.q, fromPos.r);
+    if (line.length < 2) return { q: fromPos.q, r: fromPos.r };
+    dirQ = line[1][0] - line[0][0];
+    dirR = line[1][1] - line[0][1];
+  } else {
+    const line = hexLine(fromPos.q, fromPos.r, targetPos.q, targetPos.r);
+    if (line.length < 2) return { q: fromPos.q, r: fromPos.r };
+    dirQ = line[1][0] - line[0][0];
+    dirR = line[1][1] - line[0][1];
+  }
+
+  let curQ = fromPos.q, curR = fromPos.r;
+  for (let s = 0; s < steps; s++) {
+    const nq = curQ + dirQ, nr = curR + dirR;
+    if (!isOnBoard(nq, nr)) break;
+    curQ = nq; curR = nr;
+  }
+  return { q: curQ, r: curR };
+}
+
+function computeEffectArea(skill, charPos, hoveredTarget) {
+  const area = new Set();
+  let simPos = { q: charPos.q, r: charPos.r };
+
+  for (const eff of skill.effects) {
+    switch (eff.cmd) {
+      case 'ATTACK_PROJECTILE':
+      case 'ATTACK_AOE_PATH': {
+        const line = hexLine(simPos.q, simPos.r, hoveredTarget.q, hoveredTarget.r);
+        for (const [q, r] of line) area.add(`${q},${r}`);
+        break;
+      }
+      case 'ATTACK_MELEE': {
+        const dist = hexDistance(simPos.q, simPos.r, hoveredTarget.q, hoveredTarget.r);
+        if (dist <= (eff.range || 1)) area.add(`${hoveredTarget.q},${hoveredTarget.r}`);
+        break;
+      }
+      case 'ATTACK_AOE_SELF':
+      case 'SPAWN_STATIONARY_AOE':
+      case 'REACTIVE_ARMOR': {
+        const hexes = hexSpiral(simPos.q, simPos.r, eff.radius || 1);
+        for (const [q, r] of hexes) area.add(`${q},${r}`);
+        break;
+      }
+      case 'ATTACK_AOE_TARGET': {
+        const hexes = hexSpiral(hoveredTarget.q, hoveredTarget.r, eff.radius || 1);
+        for (const [q, r] of hexes) area.add(`${q},${r}`);
+        break;
+      }
+      case 'ATTACK_LINE': {
+        const fwdLine = hexLine(simPos.q, simPos.r, hoveredTarget.q, hoveredTarget.r);
+        // Forward: hexLine from caster to target (like 气功波), stops at target
+        for (const [q, r] of fwdLine) {
+          if (q === simPos.q && r === simPos.r) continue;
+          area.add(`${q},${r}`);
+        }
+        // Reverse: opposite direction from caster to board edge
+        if (fwdLine.length >= 2) {
+          const dq = fwdLine[1][0] - fwdLine[0][0];
+          const dr = fwdLine[1][1] - fwdLine[0][1];
+          let curQ = simPos.q, curR = simPos.r;
+          for (let i = 0; i < 10; i++) {
+            curQ -= dq; curR -= dr;
+            if (!isOnBoard(curQ, curR)) break;
+            area.add(`${curQ},${curR}`);
+          }
+        }
+        break;
+      }
+      case 'MOVE_DASH': {
+        simPos = simulateDash(simPos, hoveredTarget, eff);
+        area.add(`${simPos.q},${simPos.r}`);
+        break;
+      }
+      case 'MOVE_GRAPNEL': {
+        const path = hexLine(simPos.q, simPos.r, hoveredTarget.q, hoveredTarget.r);
+        for (const [pq, pr] of path) {
+          const nearby = hexSpiral(pq, pr, 1);
+          for (const [nq, nr] of nearby) area.add(`${nq},${nr}`);
+        }
+        simPos = { q: hoveredTarget.q, r: hoveredTarget.r };
+        break;
+      }
+      case 'MOVE_TELEPORT': {
+        if (eff.target === 'BEHIND_TARGET') {
+          const line = hexLine(simPos.q, simPos.r, hoveredTarget.q, hoveredTarget.r);
+          const behindDirQ = line.length >= 2 ? line[1][0] - line[0][0] : 0;
+          const behindDirR = line.length >= 2 ? line[1][1] - line[0][1] : 0;
+          simPos = { q: hoveredTarget.q + behindDirQ, r: hoveredTarget.r + behindDirR };
+        } else {
+          simPos = { q: hoveredTarget.q, r: hoveredTarget.r };
+        }
+        area.add(`${simPos.q},${simPos.r}`);
+        break;
+      }
+      case 'MOVE_WALK': {
+        simPos = { q: hoveredTarget.q, r: hoveredTarget.r };
+        area.add(`${simPos.q},${simPos.r}`);
+        break;
+      }
+      case 'MOVE_PULL': {
+        area.add(`${hoveredTarget.q},${hoveredTarget.r}`);
+        area.add(`${charPos.q},${charPos.r}`);
+        break;
+      }
+      case 'CREATE_GATE': {
+        area.add(`${hoveredTarget.q},${hoveredTarget.r}`);
+        break;
+      }
+      case 'CREATE_FORMATION': {
+        const hexes = hexSpiral(hoveredTarget.q, hoveredTarget.r, 1);
+        for (const [q, r] of hexes) area.add(`${q},${r}`);
+        break;
+      }
+      case 'APPLY_STATUS': {
+        if (eff.status === 'METEOR_ASCENDING') {
+          const hexes = hexSpiral(hoveredTarget.q, hoveredTarget.r, 1);
+          for (const [q, r] of hexes) area.add(`${q},${r}`);
+        }
+        break;
+      }
+    }
+  }
+
+  return [...area].map(k => { const [q, r] = k.split(',').map(Number); return { q, r }; });
+}
+
+// --- Canvas click ---
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const [hq, hr] = pixelToHex(mx, my);
+
+  if (!isOnBoard(hq, hr)) return;
+
+  // Galaxy sub-phase target selection (panel hidden, waiting for hex click)
+  if (galaxyActive && galaxySelectedSkill && !document.getElementById('galaxy-overlay').classList.contains('show')) {
+    const skill = SKILLS[galaxySelectedSkill];
+    if (skill && skill.targeting.shape !== 'SELF' && skill.targeting.shape !== 'AOE_SELF') {
+      engine.submitGalaxyAction(galaxySelectedSkill, { q: hq, r: hr });
+      if (networkManager && networkManager.mode !== 'local') {
+        networkManager.sendGalaxyAction(galaxyCharId, galaxySelectedSkill, { q: hq, r: hr });
+      }
+      galaxySelectedSkill = null;
+      validTargets = [];
+      hoverEffectArea = [];
+      hoveredHex = null;
+      document.getElementById('submit-status').textContent = '等待双方提交...';
+      return;
+    }
+  }
+
+  if (!selectedSkill) return;
+
+  const charId = selectedSkill.charId;
+  const skill = SKILLS[selectedSkill.skillId];
+
+  if (skill.targeting.shape === 'SELF') {
+    submitAction(charId, selectedSkill.skillId, null);
+    return;
+  }
+
+  submitAction(charId, selectedSkill.skillId, { q: hq, r: hr });
+});
+
+function submitAction(charId, skillId, targetPos) {
+  if (battleEnded) return;
+  if (!isMyCharacter(charId)) return;
+
+  const result = engine.submitAction(charId, skillId, targetPos);
+  if (result.success) {
+    localSubmittedSet.add(charId);
+    selectedSkill = null;
+    validTargets = [];
+    hoverEffectArea = [];
+    hoveredHex = null;
+
+    if (networkManager && networkManager.mode !== 'local') {
+      networkManager.submitMyAction(charId, skillId, targetPos);
+    }
+    updateSubmitStatus(networkManager);
+  }
+  renderAll();
+}
+
+// --- Execute turn ---
+document.getElementById('btn-execute').addEventListener('click', async () => {
+  if (networkManager && networkManager.mode !== 'local') return; // P2P: auto-execute only
+  clearTurnTimeout();
+  const result = await engine.executeTurn();
+  if (!result.success) return;
+
+  localSubmittedSet.clear();
+  document.getElementById('btn-execute').disabled = true;
+
+  if (result.battleEnded) {
+    renderAll();
+    return;
+  }
+
+  document.getElementById('submit-status').textContent = '等待提交...';
+  await animateProjectiles();
+  renderAll();
+  startTurnTimeout();
+});
+
+// --- Reset ---
+document.getElementById('btn-reset').addEventListener('click', () => {
+  const p1 = document.getElementById('p1-class-select').value;
+  const p2 = document.getElementById('p2-class-select').value;
+  initGame(p1, p2);
+  document.getElementById('btn-execute').disabled = true;
+  document.getElementById('submit-status').textContent = '等待提交...';
+  document.getElementById('log').innerHTML = '';
+  clearTurnTimeout();
+  startTurnTimeout();
+});
+
+// --- Projectile animation ---
+async function animateProjectiles() {
+  const keyframes = engine.projectileCalculator.generateKeyframes();
+  if (keyframes.length === 0) return;
+
+  const steps = keyframes.reduce((max, kf) => Math.max(max, kf.step || 0), 0);
+  for (let s = 1; s <= steps; s++) {
+    await sleep(200);
+    renderAll(s);
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// --- Rendering ---
+function renderAll(animStep = -1) {
+  renderBoard(animStep);
+  renderPanels();
+  renderLog();
+  document.getElementById('turn-num').textContent = engine.turnManager.turnNumber;
+  const phase = engine.turnManager.phase;
+  const phaseEl = document.getElementById('phase-text');
+  phaseEl.textContent = phase;
+  if (phase === 'EXECUTE') {
+    phaseEl.style.color = '#e05555';
+    phaseEl.style.animation = 'phase-pulse 0.6s ease-in-out';
+  } else {
+    phaseEl.style.color = '#DDBB99';
+    phaseEl.style.animation = 'none';
+  }
+}
+
+function renderBoard(animStep) {
+  ctx.clearRect(0, 0, 680, 640);
+
+  // Subtle grid background
+  const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 1000);
+
+  // Draw hex grid
+  for (let q = -3; q <= 3; q++) {
+    for (let r = -3; r <= 3; r++) {
+      if (!isOnBoard(q, r)) continue;
+      const [cx, cy] = hexCenter(q, r);
+      const corners = hexCorners(cx, cy);
+
+      ctx.beginPath();
+      ctx.moveTo(corners[0][0], corners[0][1]);
+      for (let i = 1; i < 6; i++) ctx.lineTo(corners[i][0], corners[i][1]);
+      ctx.closePath();
+
+      const inEffectArea = hoverEffectArea.some(t => t.q === q && t.r === r);
+      const isValidTarget = validTargets.some(t => t.q === q && t.r === r);
+      const isHovered = hoveredHex && hoveredHex[0] === q && hoveredHex[1] === r;
+
+      // Fill
+      if (inEffectArea) {
+        ctx.fillStyle = `rgba(212,148,58,${0.35 + pulse * 0.15})`;
+      } else if (isHovered && isValidTarget) {
+        ctx.fillStyle = `rgba(221,187,153,${0.4 + pulse * 0.2})`;
+      } else if (isValidTarget) {
+        ctx.fillStyle = 'rgba(221,187,153,0.12)';
+      } else if (isHovered) {
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      } else {
+        ctx.fillStyle = '#1e1d2a';
+      }
+      ctx.fill();
+
+      // Stroke
+      if (isHovered && isValidTarget) {
+        ctx.strokeStyle = `rgba(221,187,153,0.9)`;
+        ctx.lineWidth = 2.5;
+      } else if (inEffectArea) {
+        ctx.strokeStyle = `rgba(212,148,58,${0.7 + pulse * 0.3})`;
+        ctx.lineWidth = 1.8;
+      } else if (isValidTarget) {
+        ctx.strokeStyle = 'rgba(221,187,153,0.3)';
+        ctx.lineWidth = 1.2;
+      } else {
+        ctx.strokeStyle = 'rgba(83,81,100,0.4)';
+        ctx.lineWidth = 1;
+      }
+      ctx.stroke();
+    }
+  }
+
+  // Draw entities
+  for (const e of engine.registry.entities()) {
+    if (e.alive === false) continue;
+    const [cx, cy] = hexCenter(e.position.q, e.position.r);
+
+    if (e.type === 'CHARACTER') {
+      const charColor = e.class === '法师' ? '#8b5cf6' : e.class === '战士' ? '#e05555' : '#d4943a';
+      const charLabel = e.class === '法师' ? '法' : e.class === '战士' ? '战' : '射';
+
+      // Flat colored circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, 21, 0, Math.PI * 2);
+      ctx.fillStyle = charColor;
+      ctx.fill();
+
+      // White border
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Label
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px "KaiTi","STKaiti",serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(charLabel, cx, cy);
+
+      // Shield indicator (simple dashed ring)
+      const pool = engine.resourceSystem.getAll(e.id);
+      if (pool.shieldActive) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, 27, 0, Math.PI * 2);
+        ctx.strokeStyle = '#8b5cf6';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    if (e.type === 'GATE') {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(139,92,246,0.15)';
+      ctx.fill();
+      ctx.strokeStyle = '#8b5cf6';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    if (e.type === 'FORMATION') {
+      const formation = engine.formationSystem.getFormation(e.id);
+      const hexes = formation ? formation.coverageHexes : [[e.position.q, e.position.r]];
+      for (const [hq, hr] of hexes) {
+        const [hcx, hcy] = hexCenter(hq, hr);
+        ctx.beginPath();
+        ctx.arc(hcx, hcy, 12, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(139,92,246,0.12)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(139,92,246,0.4)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+  }
+
+  // Draw projectiles
+  const projs = engine.projectileCalculator.projectiles;
+  for (const proj of projs) {
+    if (!proj.alive) continue;
+
+    let pq, pr;
+    if (animStep >= 0) {
+      const kf = engine.projectileCalculator.generateKeyframes()
+        .filter(k => k.projectileId === proj.id && k.step <= animStep)
+        .pop();
+      if (kf && kf.q !== undefined) { pq = kf.q; pr = kf.r; }
+      else continue;
+    } else {
+      const [q, r] = proj.path[proj.stepIndex];
+      pq = q; pr = r;
+    }
+
+    const [cx, cy] = hexCenter(pq, pr);
+    const size = 5 + Math.min(10, proj.power / 50);
+    const isRed = projs.indexOf(proj) % 2 === 0;
+
+    // Trail glow
+    ctx.beginPath();
+    ctx.arc(cx, cy, size + 4, 0, Math.PI * 2);
+    ctx.fillStyle = isRed ? 'rgba(196,75,75,0.3)' : 'rgba(123,159,255,0.3)';
+    ctx.fill();
+
+    // Core
+    ctx.beginPath();
+    ctx.arc(cx, cy, size, 0, Math.PI * 2);
+    const projGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size);
+    projGrad.addColorStop(0, '#ffffff');
+    projGrad.addColorStop(0.4, isRed ? '#c44b4b' : '#7b9fff');
+    projGrad.addColorStop(1, isRed ? '#801010' : '#304080');
+    ctx.fillStyle = projGrad;
+    ctx.fill();
+
+    // Label
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(proj.power, cx, cy - 13);
+  }
+
+  // Draw casings
+  const state = engine.getState();
+  for (const c of state.casings) {
+    const [cx, cy] = hexCenter(c.q, c.r);
+    ctx.beginPath();
+    ctx.arc(cx + 10, cy + 10, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#c9a96e';
+    ctx.fill();
+    ctx.fillStyle = '#1a1410';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(c.count, cx + 10, cy + 10);
+  }
+
+  // Draw wild bullets
+  for (const wb of state.wildBullets) {
+    const [cx, cy] = hexCenter(wb.q, wb.r);
+    ctx.beginPath();
+    ctx.arc(cx - 10, cy + 10, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#d4943a';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#f5eedc';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('W', cx - 10, cy + 10);
+  }
+
+  // Draw submitted indicator
+  for (const c of engine.registry.characters()) {
+    if (c.alive === false) continue;
+    if (localSubmittedSet.has(c.id) || remoteSubmittedSet.has(c.id)) {
+      const [cx, cy] = hexCenter(c.position.q, c.position.r);
+      const isLocal = localSubmittedSet.has(c.id);
+      ctx.fillStyle = isLocal ? '#5a9e7e' : '#7b9fff';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✓', cx, cy - 28);
+    }
+  }
+}
+
+function renderPanels() {
+  const state = engine.getState();
+  const leftEl = document.getElementById('panels-left');
+  const rightEl = document.getElementById('panels-right');
+  if (!leftEl || !rightEl) return;
+
+  const chars = state.characters.filter(c => c.alive !== false);
+  const leftChars = chars.slice(0, 1);
+  const rightChars = chars.slice(1, 2);
+  const PER_PAGE = 8;
+
+  function renderCharPanel(char) {
+    const r = char.resources;
+    const cls = char.class;
+    const shortCls = cls === '法师' ? 'mage' : cls === '战士' ? 'warrior' : 'shooter';
+    const isMine = isMyCharacter(char.id);
+    const isP2P = networkManager && networkManager.mode !== 'local';
+    const opponentClass = !isMine && isP2P ? ' opponent-panel' : '';
+
+    let resHTML = '';
+    if (cls === '法师') resHTML = `气:${r.qi || 0} | 盾:${r.shield || 0}${r.shieldActive ? ' [开]' : ''}`;
+    else if (cls === '战士') resHTML = `怒:${r.rage || 0}`;
+    else if (cls === '射手') resHTML = `弹:${r.ammo || 0}/${r.ammoMax || 6} | 背:${r.backpackAmmo || 0}${r.blockActive !== false ? ' [格挡]' : ''}`;
+
+    const buffsHTML = char.buffs.map(b => {
+      const d = b.duration === -1 ? '∞' : b.duration;
+      return `<span class="buff">${b.name}(${d})</span>`;
+    }).join(' ') || '—';
+
+    const forcedId = engine.getForcedSkillId(char.id);
+    let forcedActive = false;
+    let forcedHTML = '';
+    if (forcedId !== undefined) {
+      forcedActive = true;
+      const fSkill = SKILLS[forcedId];
+      const fName = fSkill ? fSkill.name : (forcedId || '强制待机');
+      forcedHTML = `<div class="buffs"><span class="buff" style="background:#e94560;color:#fff;font-weight:700;">强制: ${fName}</span></div>`;
+    }
+
+    const allSkills = char.skills.filter(s => {
+      const skill = SKILLS[s.id];
+      if (!skill) return false;
+      if (forcedActive) return s.id === forcedId;
+      return !skill.hidden;
+    }).sort((a, b) => {
+      const costA = Object.values(SKILLS[a.id]?.cost || {}).reduce((sum, v) => sum + v, 0);
+      const costB = Object.values(SKILLS[b.id]?.cost || {}).reduce((sum, v) => sum + v, 0);
+      return costA - costB;
+    });
+
+    const totalPages = Math.max(1, Math.ceil(allSkills.length / PER_PAGE));
+    let page = skillPages.get(char.id) || 0;
+    if (page >= totalPages) page = 0;
+    skillPages.set(char.id, page);
+
+    const pageSkills = allSkills.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
+
+    function canAfford(skill) {
+      const cost = skill.cost || {};
+      for (const [res, amount] of Object.entries(cost)) {
+        if ((r[res] || 0) < amount) return false;
+      }
+      return true;
+    }
+
+    const skillsHTML = pageSkills.map(s => {
+      const skill = SKILLS[s.id];
+      const sel = selectedSkill?.charId === char.id && selectedSkill?.skillId === s.id ? ' selected' : '';
+      const used = localSubmittedSet.has(char.id) || remoteSubmittedSet.has(char.id) ? ' used' : '';
+      const opp = !isMine && isP2P ? ' opponent' : '';
+      const noAfford = isMine && !canAfford(skill) ? ' unaffordable' : '';
+      return `<button class="skill-btn${sel}${used}${opp}${noAfford}" data-skill="${s.id}" data-char="${char.id}">
+        <div class="skill-name">${skill.name}</div>
+        <div class="skill-desc">${skill.desc || ''}</div>
+      </button>`;
+    }).join('');
+
+    const pageNav = `
+      <div class="skill-page-nav">
+        <button class="skill-page-btn" data-char="${char.id}" data-page-dir="prev"${page === 0 ? ' disabled' : ''}>◀</button>
+        <span class="skill-page-indicator">${page + 1}/${totalPages}</span>
+        <button class="skill-page-btn" data-char="${char.id}" data-page-dir="next"${page >= totalPages - 1 ? ' disabled' : ''}>▶</button>
+      </div>`;
+
+    return `
+      <div class="char-panel ${shortCls}${opponentClass}">
+        <div class="panel-title">${char.name}${!isMine && isP2P ? ' (对手)' : ''}</div>
+        <div class="resources">${resHTML}</div>
+        <div class="buffs">${buffsHTML}</div>
+        ${forcedHTML}
+        <div class="skill-grid">${skillsHTML}</div>
+        ${pageNav}
+      </div>`;
+  }
+
+  leftEl.innerHTML = leftChars.map(c => renderCharPanel(c)).join('');
+  rightEl.innerHTML = rightChars.map(c => renderCharPanel(c)).join('');
+
+  // Auto-submit SELF-targeted forced skills (only if battle not ended)
+  if (!battleEnded) {
+    for (const c of chars) {
+      if (!isMyCharacter(c.id)) continue;
+      if (localSubmittedSet.has(c.id)) continue;
+      const forcedId = engine.getForcedSkillId(c.id);
+      if (forcedId !== undefined) {
+        const fSkill = SKILLS[forcedId];
+        if (fSkill && fSkill.targeting.shape === 'SELF') {
+          submitAction(c.id, forcedId, null);
+        }
+      }
+    }
+  }
+
+  // Wire page nav buttons
+  document.querySelectorAll('.skill-page-btn:not(:disabled)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const charId = btn.dataset.char;
+      const dir = btn.dataset.pageDir;
+      const cur = skillPages.get(charId) || 0;
+      skillPages.set(charId, dir === 'next' ? cur + 1 : cur - 1);
+      renderPanels();
+    });
+  });
+
+  // Wire skill button click handlers
+  document.querySelectorAll('.skill-btn:not(.used):not(.opponent)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const skillId = btn.dataset.skill;
+      const charId = btn.dataset.char;
+      selectSkill(charId, skillId);
+    });
+  });
+}
+
+function renderLog() {
+  const entries = engine.logger.getEntries(20);
+  document.getElementById('log').innerHTML = entries.map(e =>
+    `<div class="log-entry log-${e.category || 's'}">[${e.turn || '-'}] ${e.message}</div>`
+  ).join('');
+  document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (battleEnded) return;
+  if (galaxyActive) return; // Don't interfere with galaxy sub-phase
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+  // Keys 1-4: select visible skills on current page
+  const key = parseInt(e.key);
+  if (key >= 1 && key <= 4) {
+    e.preventDefault();
+    const myChars = getMyCharacterIds();
+    for (const charId of myChars) {
+      if (localSubmittedSet.has(charId)) continue;
+      const char = engine.registry.get(charId);
+      if (!char) continue;
+      const forcedId = engine.getForcedSkillId(charId);
+      const allSkills = char.skills.filter(s => {
+        const skill = SKILLS[s.id];
+        return skill && !skill.hidden && (!forcedId || s.id === forcedId);
+      }).sort((a, b) => {
+        const costA = Object.values(SKILLS[a.id]?.cost || {}).reduce((s, v) => s + v, 0);
+        const costB = Object.values(SKILLS[b.id]?.cost || {}).reduce((s, v) => s + v, 0);
+        return costA - costB;
+      });
+      const page = skillPages.get(charId) || 0;
+      const pageSkills = allSkills.slice(page * 4, (page + 1) * 4);
+      if (key <= pageSkills.length) {
+        const s = pageSkills[key - 1];
+        selectSkill(charId, s.id);
+        if (SKILLS[s.id]?.targeting.shape === 'SELF') {
+          submitAction(charId, s.id, null);
+        }
+      }
+      break;
+    }
+    return;
+  }
+
+  // Space: execute turn in local mode
+  if (e.key === ' ' && (!networkManager || networkManager.mode === 'local')) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-execute');
+    if (!btn.disabled) btn.click();
+  }
+
+  // Escape: clear selection
+  if (e.key === 'Escape') {
+    selectedSkill = null;
+    validTargets = [];
+    hoverEffectArea = [];
+    hoveredHex = null;
+    renderAll();
+  }
+});
+
+// Ripple effect on skill button click
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.skill-btn');
+  if (!btn) return;
+  const ripple = document.createElement('span');
+  ripple.className = 'ripple';
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+  ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+  ripple.style.width = ripple.style.height = size + 'px';
+  btn.appendChild(ripple);
+  ripple.addEventListener('animationend', () => ripple.remove());
+});
+
+// Canvas hover
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  hoveredHex = pixelToHex(mx, my);
+  if (!isOnBoard(hoveredHex[0], hoveredHex[1])) hoveredHex = null;
+
+  hoverEffectArea = [];
+  if (selectedSkill) {
+    const skill = SKILLS[selectedSkill.skillId];
+    const char = engine.registry.get(selectedSkill.charId);
+    if (skill && char) {
+      const shape = skill.targeting.shape;
+      if (shape === 'SELF' || shape === 'AOE_SELF') {
+        hoverEffectArea = computeEffectArea(skill, char.position, char.position);
+      } else if (hoveredHex && validTargets.some(t => t.q === hoveredHex[0] && t.r === hoveredHex[1])) {
+        hoverEffectArea = computeEffectArea(skill, char.position, { q: hoveredHex[0], r: hoveredHex[1] });
+      }
+    }
+  } else if (galaxyActive && galaxySelectedSkill && !document.getElementById('galaxy-overlay').classList.contains('show')) {
+    // Galaxy target selection hover
+    const skill = SKILLS[galaxySelectedSkill];
+    const char = engine.registry.get(galaxyCharId);
+    if (skill && char) {
+      if (hoveredHex && validTargets.some(t => t.q === hoveredHex[0] && t.r === hoveredHex[1])) {
+        hoverEffectArea = computeEffectArea(skill, char.position, { q: hoveredHex[0], r: hoveredHex[1] });
+      }
+    }
+  }
+
+  renderAll();
+});
+
+// --- Local mode: class selection + start ---
+document.getElementById('btn-start').addEventListener('click', () => {
+  const p1 = document.getElementById('p1-class-select').value;
+  const p2 = document.getElementById('p2-class-select').value;
+  initGame(p1, p2);
+  document.getElementById('btn-execute').disabled = true;
+  document.getElementById('submit-status').textContent = '等待提交...';
+  document.getElementById('log').innerHTML = '';
+  clearTurnTimeout();
+  startTurnTimeout();
+});
+
+</script>
+</body>
+</html>

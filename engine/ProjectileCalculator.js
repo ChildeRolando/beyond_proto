@@ -1,0 +1,500 @@
+// Projectile path tracing, collision, interception, body contact, and animation keyframes
+import { hexLine, hexDistance, hexSpiral, isOnBoard } from './HexMath.js';
+import { EvtType } from './CommandTypes.js';
+import { HookName } from './BuffHooks.js';
+
+let _projId = 0;
+
+// Deterministic PRNG — same seed produces same sequence on both sides
+function seededRandom(seed) {
+  let s = seed | 0;
+  return function() {
+    s = (s * 1664525 + 1013904223) | 0;
+    return (s >>> 0) / 4294967296;
+  };
+}
+
+export class ProjectileCalculator {
+  #projectiles = [];
+  #casings = new Map();
+  #wildBullets = new Map();      // posKey → count
+  #wildBulletsCollected = 0;
+  #keyframes = [];
+  #lastInterceptions = [];
+  #lastHits = [];
+  #logger;
+
+  constructor(logger) {
+    this.#logger = logger;
+  }
+
+  get projectiles() { return this.#projectiles; }
+  get activeCount() { return this.#projectiles.filter(p => p.alive).length; }
+
+  createProjectile(ownerId, fromQ, fromR, toQ, toR, power, speed, flags = []) {
+    const path = hexLine(fromQ, fromR, toQ, toR);
+    const isStationary = flags.includes('STATIONARY');
+    if (path.length < 2 && !isStationary) return null;
+
+    const proj = {
+      id: 'proj_' + (++_projId),
+      ownerId,
+      path,
+      stepIndex: 0,
+      power,
+      speed: speed || 1,
+      flags,
+      alive: true,
+      fromQ, fromR,
+      toQ, toR,
+    };
+
+    this.#projectiles.push(proj);
+    this.#keyframes.push({ projectileId: proj.id, step: 0, q: fromQ, r: fromR, event: 'fired', speedTier: 0 });
+
+    if (flags.includes('CASING_DROP')) {
+      this._dropCasing(fromQ, fromR);
+    }
+
+    return proj;
+  }
+
+  // Comprehensive projectile resolution: advance through full path, checking body contact at each hex
+  resolveStep(speedTier, registry, damageCalculator, buffManager) {
+    this.#lastInterceptions = [];
+    this.#lastHits = [];
+    const active = this.#projectiles.filter(p => p.alive && p.speed === speedTier);
+    if (active.length === 0) return { interceptions: [], hits: [] };
+
+    // Advance all projectiles one step at a time, checking cross-collisions after each step.
+    // The outer loop runs until all projectiles reach their destinations (or are destroyed).
+    // Projectiles with SURE_HIT homing may extend their paths mid-flight.
+    let maxSteps = 0;
+    for (const proj of active) {
+      const rem = proj.path.length - 1 - proj.stepIndex;
+      if (rem > maxSteps) maxSteps = rem;
+    }
+
+    for (let s = 0; s < maxSteps; s++) {
+      // --- SURE_HIT homing: extend paths for projectiles that reached destination without hitting ---
+      for (const proj of active) {
+        if (!proj.alive) continue;
+        if (proj.stepIndex < proj.path.length - 1) continue;
+        // At path end — check for SURE_HIT target to home in on
+        const [pq, pr] = proj.path[proj.stepIndex];
+        for (const entity of registry.characters()) {
+          if (entity.alive === false || entity.id === proj.ownerId) continue;
+          const acqCtx = buffManager.dispatch(HookName.ON_TARGET_ACQUIRE, {
+            sourceId: proj.ownerId, targetId: entity.id, forceHit: false,
+          });
+          if (acqCtx?.forceHit) {
+            const tq = entity.position.q, tr = entity.position.r;
+            if (tq !== pq || tr !== pr) {
+              const newSeg = hexLine(pq, pr, tq, tr);
+              proj.path.push(...newSeg.slice(1));
+              this.#logger?.log('🎯 必中！弹体追踪目标新位置', 'rg');
+            }
+            break;
+          }
+        }
+      }
+
+      // Recompute maxSteps (paths may have been extended by homing)
+      maxSteps = s;
+      for (const proj of active) {
+        if (!proj.alive) continue;
+        const rem = proj.path.length - 1 - proj.stepIndex;
+        if (s + rem > maxSteps) maxSteps = s + rem;
+      }
+
+      // --- Advance all alive projectiles by one step ---
+      for (const proj of active) {
+        if (!proj.alive) continue;
+        if (proj.stepIndex >= proj.path.length - 1) continue;
+
+        proj.stepIndex++;
+        const [q, r] = proj.path[proj.stepIndex];
+
+        this.#keyframes.push({
+          projectileId: proj.id, step: proj.stepIndex, q, r,
+          event: 'step', speedTier,
+        });
+
+        this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager);
+      }
+
+      // After all projectiles advanced one step: check same-hex collisions (mutual annihilation)
+      this._checkCollisions();
+
+      // Remove dead projectiles from active set
+      for (let i = active.length - 1; i >= 0; i--) {
+        if (!active[i].alive) active.splice(i, 1);
+      }
+    }
+
+    // Stationary projectiles: check body contact at their hex, then expire
+    const stationaryProjs = this.#projectiles.filter(
+      p => p.alive && p.flags.includes('STATIONARY') && p.speed === speedTier
+    );
+    for (const proj of stationaryProjs) {
+      const [q, r] = proj.path[proj.stepIndex];
+      this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager);
+    }
+    this._checkCollisions();
+    for (const proj of stationaryProjs) {
+      if (proj.alive) {
+        proj.alive = false;
+        const [q, r] = proj.path[proj.stepIndex];
+        this.#keyframes.push({
+          projectileId: proj.id, event: 'stationary_expired', q, r,
+        });
+      }
+    }
+
+    // After all steps done: expire any projectiles that ran out of path (stuck, no homing target)
+    for (const proj of active) {
+      if (!proj.alive) continue;
+      if (proj.stepIndex >= proj.path.length - 1) {
+        proj.alive = false;
+        const [q, r] = proj.path[proj.stepIndex];
+        this.#keyframes.push({
+          projectileId: proj.id, step: proj.stepIndex, q, r, event: 'expired', speedTier,
+        });
+      }
+    }
+
+    this.#projectiles = this.#projectiles.filter(p => p.alive);
+    return { interceptions: this.#lastInterceptions, hits: this.#lastHits };
+  }
+
+  // Internal: check projectiles sharing same hex → power annihilation
+  _checkCollisions() {
+    const destroyed = new Set();
+    const byHex = new Map();
+
+    for (const proj of this.#projectiles) {
+      if (!proj.alive || destroyed.has(proj.id)) continue;
+      const [q, r] = proj.path[proj.stepIndex];
+      const key = `${q},${r}`;
+      if (!byHex.has(key)) byHex.set(key, []);
+      byHex.get(key).push(proj);
+    }
+
+    for (const [key, projs] of byHex) {
+      if (projs.length < 2) continue;
+      projs.sort((a, b) => b.power - a.power);
+
+      for (let i = 0; i < projs.length; i++) {
+        if (!projs[i].alive || destroyed.has(projs[i].id)) continue;
+        for (let j = i + 1; j < projs.length; j++) {
+          if (!projs[j].alive || destroyed.has(projs[j].id)) continue;
+          // Friendly projectiles (same owner) do NOT annihilate each other
+          if (projs[i].ownerId === projs[j].ownerId) continue;
+
+          const strong = projs[i], weak = projs[j];
+          const strongMelee = strong.flags.includes('MELEE');
+          const weakMelee = weak.flags.includes('MELEE');
+          if (strong.power === weak.power) {
+            strong.alive = false;
+            weak.alive = false;
+            destroyed.add(strong.id);
+            destroyed.add(weak.id);
+            const tag = (strongMelee || weakMelee) ? '⚔💥 斩击相杀！' : '💥 弹体相杀！';
+            this.#logger?.log(`${tag}威${strong.power} vs 威${weak.power}`, 'die');
+          } else {
+            strong.power -= weak.power;
+            weak.alive = false;
+            destroyed.add(weak.id);
+            const tag = (strongMelee || weakMelee) ? '⚔💥 斩击贯穿！' : '💥 弹体贯穿！';
+            this.#logger?.log(`${tag}余威${strong.power}`, 'sh');
+          }
+        }
+      }
+    }
+  }
+
+  // Check buff interception and body contact for a projectile at a specific hex
+  _checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager) {
+    // Check buff interception at this hex
+    let intercepted = false;
+    for (const entity of registry.characters()) {
+      if (entity.alive === false || entity.id === proj.ownerId) continue;
+      const dist = hexDistance(entity.position.q, entity.position.r, q, r);
+
+      const ctx = buffManager.dispatch(HookName.ON_PROJECTILE_ENTER_RANGE, {
+        entityId: entity.id,
+        projectileId: proj.id,
+        projectileQ: q, projectileR: r,
+        projectilePower: proj.power,
+        projectileOwnerId: proj.ownerId,
+        distance: dist,
+        intercepted: false,
+        interceptPower: 0,
+      });
+
+      if (ctx?.intercepted) {
+        const ip = ctx.interceptPower || 300;
+        this.#lastInterceptions.push({
+          projectileId: proj.id, interceptorId: entity.id,
+          intercepted: true, interceptPower: ip, projectilePower: proj.power,
+        });
+
+        if (ip >= proj.power) {
+          proj.alive = false;
+          const meleeTag = proj.flags.includes('MELEE') ? '斩击' : '弹体';
+          this.#logger?.log(`⚔ 拦截！威${ip}斩破${meleeTag}威${proj.power}`, 'rg');
+          this.#keyframes.push({
+            projectileId: proj.id, event: 'intercepted', q, r, interceptorId: entity.id,
+          });
+          return;
+        } else {
+          proj.power -= ip;
+          const meleeTag = proj.flags.includes('MELEE') ? '斩击' : '弹体';
+          this.#logger?.log(`⚔ 拦截！${meleeTag}削弱至威${proj.power}`, 'rg');
+        }
+        intercepted = true;
+        break;
+      }
+    }
+    if (intercepted || !proj.alive) return;
+
+    // Check body contact at this hex
+    const entities = registry.getAt(q, r);
+    let hit = false;
+    let targetId = null;
+    const isAoe = proj.flags.includes('AOE_RADIUS_1');
+
+    if (isAoe) {
+      const hasBody = entities.some(e => e.type === 'CHARACTER' && e.id !== proj.ownerId && e.alive !== false);
+      if (hasBody) {
+        for (const entity of registry.characters()) {
+          if (entity.alive === false || entity.id === proj.ownerId) continue;
+          if (hexDistance(entity.position.q, entity.position.r, q, r) <= 1) {
+            const result = damageCalculator.resolve(
+              proj.ownerId, entity.id, proj.power, 'PHYSICAL',
+              { projectile: true, flags: proj.flags }
+            );
+            if (result.killed || result.finalDamage > 0) hit = true;
+          }
+        }
+        proj.alive = false;
+        this.#logger?.log(`💥 弹体爆裂AOE！威${proj.power}`, 'sh');
+        this.#keyframes.push({
+          projectileId: proj.id, event: 'aoe_explosion', q, r, hit,
+        });
+      }
+    } else {
+      for (const e of entities) {
+        if (e.type !== 'CHARACTER' || e.id === proj.ownerId || e.alive === false) continue;
+
+        const acqCtx = buffManager.dispatch(HookName.ON_TARGET_ACQUIRE, {
+          sourceId: proj.ownerId, targetId: e.id, forceHit: false,
+        });
+        const isArmorPierce = proj.flags.includes('ARMOR_PIERCE');
+        const result = damageCalculator.resolve(
+          proj.ownerId, e.id, proj.power, 'PHYSICAL',
+          { projectile: true, flags: proj.flags, armorPierce: isArmorPierce }
+        );
+
+        hit = true;
+        targetId = e.id;
+        proj.alive = false;
+        const isMeleeHit = proj.flags.includes('MELEE');
+        if (result.killed) {
+          this.#logger?.log((isMeleeHit ? '⚔ 斩击击杀！威' : '🔮 弹体击杀！威') + proj.power, 'die');
+        } else if (result.finalDamage > 0) {
+          this.#logger?.log((isMeleeHit ? '⚔ 斩击命中！威' : '🔮 弹体命中！威') + proj.power, 'sh');
+        } else {
+          this.#logger?.log((isMeleeHit ? '⚔ 斩击(被防御吸收) 威' : '🔮 弹体命中(被防御吸收) 威') + proj.power, 'sh');
+        }
+        this.#keyframes.push({
+          projectileId: proj.id, event: 'body_contact', q, r, targetId: e.id, hit,
+        });
+        break;
+      }
+    }
+
+    this.#lastHits.push({ ownerId: proj.ownerId, projectileId: proj.id, targetId, hit });
+  }
+
+  // Melee intercept: check if a projectile at (q,r) can be destroyed by melee
+  interceptAt(q, r, meleePower) {
+    for (const proj of this.#projectiles) {
+      if (!proj.alive) continue;
+      const [pq, pr] = proj.path[proj.stepIndex];
+      if (pq === q && pr === r) {
+        if (meleePower >= proj.power) {
+          proj.alive = false;
+          this.#keyframes.push({
+            projectileId: proj.id, event: 'melee_intercepted', q, r, meleePower,
+          });
+          return true;
+        } else {
+          proj.power -= meleePower;
+          return false;
+        }
+      }
+    }
+    return false;
+  }
+
+  getLastInterceptions() { return this.#lastInterceptions; }
+  getLastHits() { return this.#lastHits; }
+
+  // Casing management
+  _dropCasing(q, r) {
+    const key = `${q},${r}`;
+    this.#casings.set(key, (this.#casings.get(key) || 0) + 1);
+  }
+
+  collectCasings(q, r, area = 'ADJACENT') {
+    let collected = 0;
+    const toCheck = new Set();
+    toCheck.add(`${q},${r}`);
+    for (const [nq, nr] of [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]]) {
+      toCheck.add(`${q + nq},${r + nr}`);
+    }
+    for (const key of toCheck) {
+      const count = this.#casings.get(key) || 0;
+      if (count > 0) {
+        collected += count;
+        this.#casings.delete(key);
+      }
+    }
+    return collected;
+  }
+
+  collectCasingsAlongPath(pathHexes) {
+    const toCheck = new Set();
+    for (const [pq, pr] of pathHexes) {
+      toCheck.add(`${pq},${pr}`);
+      for (const [nq, nr] of [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]]) {
+        toCheck.add(`${pq + nq},${pr + nr}`);
+      }
+    }
+    let collected = 0;
+    for (const key of toCheck) {
+      const count = this.#casings.get(key) || 0;
+      if (count > 0) {
+        collected += count;
+        this.#casings.delete(key);
+      }
+    }
+    return collected;
+  }
+
+  getCasingsAt(q, r) {
+    return this.#casings.get(`${q},${r}`) || 0;
+  }
+
+  // Wild bullet management
+  spawnWildBullets(count, registry, seed = 0, friendlyHalf = null) {
+    const occupied = new Set();
+    for (const c of registry.characters()) {
+      if (c.alive !== false) occupied.add(`${c.position.q},${c.position.r}`);
+    }
+    for (const key of this.#wildBullets.keys()) occupied.add(key);
+
+    const friendlyHexes = [];
+    const enemyHexes = [];
+    for (const [hq, hr] of hexSpiral(0, 0, 3)) {
+      if (!isOnBoard(hq, hr)) continue;
+      if (occupied.has(`${hq},${hr}`)) continue;
+      if (friendlyHalf === 'upper' && hr <= 0) friendlyHexes.push([hq, hr]);
+      else if (friendlyHalf === 'lower' && hr > 0) friendlyHexes.push([hq, hr]);
+      else enemyHexes.push([hq, hr]);
+    }
+
+    const rng = seededRandom(seed);
+    let spawned = 0;
+
+    // Spawn half in friendly zone first
+    const friendlyCount = Math.floor(count / 2);
+    for (let i = 0; i < friendlyCount && friendlyHexes.length > 0; i++) {
+      const idx = Math.floor(rng() * friendlyHexes.length);
+      const [wq, wr] = friendlyHexes[idx];
+      friendlyHexes.splice(idx, 1);
+      this.#wildBullets.set(`${wq},${wr}`, (this.#wildBullets.get(`${wq},${wr}`) || 0) + 1);
+      spawned++;
+    }
+
+    // Remaining from all available (friendly + enemy)
+    const remaining = [...friendlyHexes, ...enemyHexes];
+    for (let i = spawned; i < count && remaining.length > 0; i++) {
+      const idx = Math.floor(rng() * remaining.length);
+      const [wq, wr] = remaining[idx];
+      remaining.splice(idx, 1);
+      this.#wildBullets.set(`${wq},${wr}`, (this.#wildBullets.get(`${wq},${wr}`) || 0) + 1);
+      spawned++;
+    }
+    return spawned;
+  }
+
+  collectWildBullets(q, r, area = 'ADJACENT') {
+    let collected = 0;
+    const toCheck = new Set();
+    toCheck.add(`${q},${r}`);
+    for (const [nq, nr] of [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]]) {
+      toCheck.add(`${q + nq},${r + nr}`);
+    }
+    for (const key of toCheck) {
+      const count = this.#wildBullets.get(key) || 0;
+      if (count > 0) {
+        collected += count;
+        this.#wildBullets.delete(key);
+      }
+    }
+    this.#wildBulletsCollected += collected;
+    return collected;
+  }
+
+  collectWildBulletsAlongPath(pathHexes) {
+    const toCheck = new Set();
+    for (const [pq, pr] of pathHexes) {
+      toCheck.add(`${pq},${pr}`);
+      for (const [nq, nr] of [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]]) {
+        toCheck.add(`${pq + nq},${pr + nr}`);
+      }
+    }
+    let collected = 0;
+    for (const key of toCheck) {
+      const count = this.#wildBullets.get(key) || 0;
+      if (count > 0) {
+        collected += count;
+        this.#wildBullets.delete(key);
+      }
+    }
+    this.#wildBulletsCollected += collected;
+    return collected;
+  }
+
+  getWildBullets() {
+    const result = [];
+    for (const [key, count] of this.#wildBullets) {
+      const [q, r] = key.split(',').map(Number);
+      result.push({ q, r, count });
+    }
+    return result;
+  }
+
+  getWildBulletsCollected() { return this.#wildBulletsCollected; }
+  clearWildBulletsCollected() { this.#wildBulletsCollected = 0; }
+
+  generateKeyframes(sinceIndex = 0) {
+    return this.#keyframes.slice(sinceIndex);
+  }
+
+  clearKeyframes() {
+    this.#keyframes.length = 0;
+  }
+
+  reset() {
+    this.#projectiles.length = 0;
+    this.#casings.clear();
+    this.#wildBullets.clear();
+    this.#wildBulletsCollected = 0;
+    this.#keyframes.length = 0;
+    this.#lastInterceptions.length = 0;
+    this.#lastHits.length = 0;
+  }
+}
