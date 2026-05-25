@@ -181,6 +181,7 @@ export class NetworkManager {
           this.#pendingIce.length = 0;
         } else if (payload.type === 'ice') {
           try {
+            console.log('[ICE] received candidate:', payload.candidate?.candidate?.substring(0, 60));
             await this.#pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
           } catch (_) { /* ignore invalid candidates */ }
         }
@@ -204,6 +205,8 @@ export class NetworkManager {
   async #createPeerConnection() {
     this.#pc = new RTCPeerConnection({
       iceServers: [
+        { urls: 'stun:stun.miwifi.com:3478' },
+        { urls: 'stun:stun.qq.com:3478' },
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
       ],
@@ -211,6 +214,7 @@ export class NetworkManager {
     this.#pc.onicecandidate = (e) => {
       if (e.candidate) {
         const candidate = e.candidate.toJSON();
+        console.log('[ICE] candidate gathered:', candidate.candidate?.substring(0, 60));
         if (this.#pc.remoteDescription) {
           this.#sendWS({ type: 'RELAY', payload: { type: 'ice', candidate } });
         } else {
@@ -218,7 +222,11 @@ export class NetworkManager {
         }
       }
     };
+    this.#pc.onicegatheringstatechange = () => {
+      console.log('[ICE] gathering state:', this.#pc.iceGatheringState);
+    };
     this.#pc.oniceconnectionstatechange = () => {
+      console.log('[ICE] connection state:', this.#pc.iceConnectionState);
       if (this.#pc.iceConnectionState === 'disconnected') {
         // Give ICE 5 seconds to recover before declaring disconnect
         setTimeout(() => {
