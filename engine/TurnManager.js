@@ -497,7 +497,29 @@ export class TurnManager {
     for (const e of this.#registry.entities()) {
       if (e.type !== 'CHARACTER' || e.id === cmd.actorId || e.alive === false) continue;
       if (hexDistance(q, r, e.position.q, e.position.r) <= (cmd.payload.radius || 1)) {
-        const result = this.#damageCalculator.resolve(cmd.actorId, e.id, power);
+        let targetPower = power;
+        // Check sheathe/block interception per target (same hook as projectile system)
+        const ctx = this.#buffManager.dispatch(HookName.ON_PROJECTILE_ENTER_RANGE, {
+          entityId: e.id,
+          projectileId: null,
+          projectileQ: e.position.q, projectileR: e.position.r,
+          projectilePower: power,
+          projectileOwnerId: cmd.actorId,
+          distance: 0,
+          intercepted: false,
+          interceptPower: 0,
+        });
+        if (ctx?.intercepted) {
+          const ip = ctx.interceptPower || 300;
+          if (ip >= targetPower) {
+            this.#logger?.log(`⚔ 纳刀拦截！威${ip}斩破AOE威${targetPower}`, 'rg');
+            hit = true; // interception breaks sheathe, counts as "hit"
+            continue;
+          }
+          targetPower -= ip;
+          this.#logger?.log(`⚔ 纳刀削弱！AOE降至威${targetPower}`, 'rg');
+        }
+        const result = this.#damageCalculator.resolve(cmd.actorId, e.id, targetPower);
         if (result.killed || result.finalDamage > 0) hit = true;
       }
     }
