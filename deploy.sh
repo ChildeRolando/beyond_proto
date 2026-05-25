@@ -7,15 +7,13 @@ REMOTE_DIR="C:/Users/Administrator/Desktop/combat-engine"
 
 echo "=== Deploying combat-engine to $SERVER ==="
 
-# Kill running servers
-ssh $SSH_OPTS $SERVER 'taskkill /f /im node.exe 2>&1' || true
-
 # Upload files
 scp $SSH_OPTS -r engine server index.html package.json "$SERVER:$REMOTE_DIR/" 2>&1
 
-# Start servers (Start-Process detaches from SSH session)
-ssh $SSH_OPTS $SERVER "powershell -Command \"Start-Process -WindowStyle Hidden -FilePath 'node' -ArgumentList 'server/signaling.js','8088' -WorkingDirectory '$REMOTE_DIR'\" && powershell -Command \"Start-Process -WindowStyle Hidden -FilePath 'node' -ArgumentList 'server/static.js','3000' -WorkingDirectory '$REMOTE_DIR'\"" 2>&1
+# Schedule restart via Task Scheduler (survives SSH disconnect)
+ssh $SSH_OPTS $SERVER "powershell -Command \"\$t = (Get-Date).AddMinutes(1); schtasks /create /tn CombatDeploy /tr 'powershell -ExecutionPolicy Bypass -File $REMOTE_DIR\server\start-servers.ps1' /sc ONCE /st \$t.ToString('HH:mm') /sd \$t.ToString('yyyy/MM/dd') /f\"" 2>&1
 
 echo "=== Deploy complete ==="
+echo "Servers will restart in ~1 minute via scheduled task."
 echo "Game: http://120.77.178.15:3000"
 echo "Signaling: ws://120.77.178.15:8088"
