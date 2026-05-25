@@ -240,28 +240,44 @@ body {
   transition: all 0.5s;
 }
 
-#panels-left, #panels-right {
+#left-column {
   grid-row: 2;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 640px;
+  min-width: 0;
+}
+#panels-left {
+  flex-shrink: 0;
+}
+#log {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  overflow-y: auto;
+  font-size: 11px;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  min-height: 0;
+}
+.char-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  min-width: 170px;
+}
+#panels-right {
+  grid-row: 2;
+  grid-column: 3;
   display: flex;
   flex-direction: column;
   gap: 6px;
   overflow-y: auto;
   max-height: 640px;
-}
-#panels-left { grid-column: 1; }
-#panels-right { grid-column: 3; }
-
-.char-panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 10px;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: all 0.3s;
 }
 .char-panel.mage { border-left: 3px solid var(--purple); }
 .char-panel.warrior { border-left: 3px solid var(--red); }
@@ -372,17 +388,6 @@ canvas {
   cursor: crosshair;
 }
 
-#log {
-  grid-column: 1/-1;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 8px 14px;
-  height: 80px;
-  overflow-y: auto;
-  font-size: 12px;
-  font-family: 'Cascadia Code', 'Consolas', monospace;
-}
 .log-entry {
   padding: 1px 0;
   border-bottom: 1px solid rgba(83,81,100,0.4);
@@ -581,7 +586,10 @@ select:focus { outline: none; border-color: var(--accent); }
     <button id="btn-execute" disabled>执行回合</button>
     <button id="btn-reset">重置</button>
   </div>
-  <div id="panels-left"></div>
+  <div id="left-column">
+    <div id="panels-left"></div>
+    <div id="log"></div>
+  </div>
   <div id="canvas-wrap"><canvas id="board" width="680" height="640"></canvas></div>
   <div id="panels-right"></div>
   <div id="gameover-panel">
@@ -610,7 +618,6 @@ select:focus { outline: none; border-color: var(--accent); }
       <button id="btn-lobby" style="padding:5px 14px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;font-family:var(--font-display);letter-spacing:1px;">返回大厅</button>
     </div>
   </div>
-  <div id="log"></div>
 </div>
 
 <!-- Disconnect overlay -->
