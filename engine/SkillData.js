@@ -65,12 +65,12 @@ export const SKILLS = {
 
   mage_realm_sweep: {
     id: 'mage_realm_sweep', name: '横扫千军', class: '法师', type: '攻击',
-    cost: { qi: 7 }, speed: 1, targeting: { shape: 'AOE_SELF', radius: 99 },
+    cost: { qi: 7 }, speed: 1, targeting: { shape: 'AOE_SELF', radius: 3 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 7 },
-      { cmd: 'SPAWN_STATIONARY_AOE', power: 700, radius: 6 },
+      { cmd: 'SPAWN_STATIONARY_AOE', power: 700, radius: 3 },
     ],
-    desc: '全屏AOE | 威力700 | 速1 | cost7',
+    desc: '自身半径3 AOE | 威力700 | 速1 | cost7',
   },
 
   mage_buddha_palm: {
@@ -413,12 +413,12 @@ export const SKILLS = {
 
   warrior_realm_sweep: {
     id: 'warrior_realm_sweep', name: '横扫千军', class: '战士', type: '攻击',
-    cost: { rage: 7 }, speed: 1, targeting: { shape: 'AOE_SELF', radius: 99 },
+    cost: { rage: 7 }, speed: 1, targeting: { shape: 'AOE_SELF', radius: 3 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 7 },
-      { cmd: 'SPAWN_STATIONARY_AOE', power: 700, radius: 6 },
+      { cmd: 'SPAWN_STATIONARY_AOE', power: 700, radius: 3 },
     ],
-    desc: '全屏AOE | 威力700 | 速1 | cost7',
+    desc: '自身半径3 AOE | 威力700 | 速1 | cost7',
   },
 
   warrior_dimension_slash: {
