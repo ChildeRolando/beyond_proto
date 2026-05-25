@@ -1,5 +1,5 @@
 // WebRTC DataChannel + lockstep protocol manager for P2P combat
-const DEFAULT_SIGNALING = 'ws://localhost:8088';
+const DEFAULT_SIGNALING = 'ws://120.77.178.15:8088';
 
 export class NetworkManager {
   #ws = null;

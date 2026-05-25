@@ -647,14 +647,14 @@ let networkManager = null;  // null in local mode, NetworkManager in P2P mode
 const isNgrok = window.location.hostname.includes('ngrok-free');
 const autoSignalingUrl = isNgrok
   ? `wss://${window.location.host}`
-  : 'ws://localhost:8088';
+  : 'ws://120.77.178.15:8088';
 
 // Set initial server address values
 document.addEventListener('DOMContentLoaded', () => {
   const hostInput = document.getElementById('server-addr-input-host');
   const joinInput = document.getElementById('server-addr-input');
-  if (hostInput) hostInput.value = isNgrok ? window.location.host : 'localhost:8088';
-  if (joinInput) joinInput.value = isNgrok ? window.location.host : 'localhost:8088';
+  if (hostInput) hostInput.value = isNgrok ? window.location.host : '120.77.178.15:8088';
+  if (joinInput) joinInput.value = isNgrok ? window.location.host : '120.77.178.15:8088';
 });
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
