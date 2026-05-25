@@ -1422,7 +1422,7 @@ canvas.addEventListener('click', (e) => {
   const charId = selectedSkill.charId;
   const skill = SKILLS[selectedSkill.skillId];
 
-  if (skill.targeting.shape === 'SELF') {
+  if (skill.targeting.shape === 'SELF' || skill.targeting.shape === 'AOE_SELF') {
     submitAction(charId, selectedSkill.skillId, null);
     return;
   }

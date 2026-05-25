@@ -34,6 +34,7 @@ export class TurnManager {
   #lastHitByActor = new Map(); // actorId → boolean (did their last attack hit?)
   #shieldHitEntities = new Set(); // entityIds whose shield was hit this turn
   #submittedChars = new Set();   // charIds that submitted this turn
+  #resourceFailed = new Set();  // sequenceIds whose resource cost check failed at exec time
 
   constructor(deps) {
     this.#registry = deps.registry;
@@ -64,6 +65,7 @@ export class TurnManager {
   async executeTurn() {
     this.#shieldHitEntities.clear();
     this.#submittedChars.clear();
+    this.#resourceFailed.clear();
     this.#logger?.setTurn(this.#turnNumber);
     this.#logger?.log(`=== 第 ${this.#turnNumber} 回合 ===`, 'turn');
     this.#phase = TurnPhase.RESOLVE;
@@ -183,6 +185,13 @@ export class TurnManager {
     const actor = this.#registry.get(cmd.actorId);
     if (!actor || actor.alive === false) return;
 
+    // Skip action commands if resource cost check failed for this command's sequence
+    if (this.#resourceFailed.has(cmd.sequenceId) &&
+        cmd.type !== CmdType.GAIN_RESOURCE &&
+        cmd.type !== CmdType.CONSUME_RESOURCE) {
+      return;
+    }
+
     // Before-action hook
     const beforeCtx = this.#buffManager.dispatch(HookName.ON_BEFORE_ACTION, {
       entityId: cmd.actorId, command: cmd,
@@ -288,13 +297,25 @@ export class TurnManager {
     let amount = cmd.payload.amount;
     if (amount === 'ALL') {
       if (cmd.payload.resource === 'ammo') {
+        // consumeAllAmmo handles both the check and the consumption
+        const current = this.#resourceSystem.getAmmo(cmd.actorId);
+        if (current <= 0) return;
         amount = this.#resourceSystem.consumeAllAmmo(cmd.actorId);
         if (!this.#pendingFlags.has(cmd.actorId)) this.#pendingFlags.set(cmd.actorId, {});
         this.#pendingFlags.get(cmd.actorId).consumedAmmo = amount;
+        return; // consumeAllAmmo already deducted — skip subtract below
       } else {
         amount = this.#resourceSystem.get(cmd.actorId, cmd.payload.resource);
       }
       if (amount <= 0) return;
+    }
+    // Re-check affordability at execution time (resources may have changed from damage)
+    const cost = { [cmd.payload.resource]: amount };
+    if (!this.#resourceSystem.canAfford(cmd.actorId, cost)) {
+      const actor = this.#registry.get(cmd.actorId);
+      this.#logger?.log(`${actor?.name || cmd.actorId} 资源不足，技能发动失败`, 'warn');
+      this.#resourceFailed.add(cmd.sequenceId);
+      return;
     }
     this.#resourceSystem.subtract(cmd.actorId, cmd.payload.resource, amount);
   }
@@ -1053,6 +1074,7 @@ export class TurnManager {
     this.#lastHitByActor.clear();
     this.#shieldHitEntities.clear();
     this.#submittedChars.clear();
+    this.#resourceFailed.clear();
     this.#commandQueue.clearAll();
   }
 }

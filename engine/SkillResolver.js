@@ -27,10 +27,12 @@ export class SkillResolver {
       }
     }
 
+    const sid = seqId();
+
     // Translate effects to commands
     const commands = [];
     for (const eff of skill.effects) {
-      const result = this._translateEffect(eff, actor, targetPos, skill);
+      const result = this._translateEffect(eff, actor, targetPos, skill, sid);
       if (!result) continue;
       if (Array.isArray(result)) commands.push(...result);
       else commands.push(result);
@@ -39,7 +41,7 @@ export class SkillResolver {
     return {
       success: true,
       sequence: {
-        id: seqId(),
+        id: sid,
         skillId,
         actorId,
         commands,
@@ -80,11 +82,12 @@ export class SkillResolver {
   }
 
   // --- Effect translation ---
-  _translateEffect(eff, actor, targetPos, skill) {
+  _translateEffect(eff, actor, targetPos, skill, sequenceId) {
     const base = {
       id: cmdId(),
       actorId: actor.id,
       skillId: skill.id,
+      sequenceId,
       speed: skill.speed,
       subSpeed: eff.subSpeed ?? null,
       payload: {},
