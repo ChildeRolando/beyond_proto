@@ -1,15 +1,12 @@
-// WebRTC DataChannel + lockstep protocol manager for P2P combat
+// WebSocket relay manager for P2P combat (server-relayed, no WebRTC)
 const DEFAULT_SIGNALING = 'ws://120.77.178.15:8088';
 
 export class NetworkManager {
   #ws = null;
-  #pc = null;
-  #dc = null;
   #mode = 'local';           // 'local' | 'host' | 'client'
   #roomCode = null;
   #myPlayerId = null;        // 'player1' | 'player2'
   #status = 'disconnected';  // 'disconnected' | 'connecting' | 'connected'
-  #pendingIce = [];          // ICE candidates queued before remote description set
   #signalingUrl;
 
   // Lockstep state
@@ -57,7 +54,7 @@ export class NetworkManager {
 
   submitMyAction(charId, skillId, targetPos) {
     this.#myAction = { charId, skillId, targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null };
-    this.#sendDC({
+    this.#sendGame({
       type: 'TURN_ACTION',
       turnNumber: this.#turnNumber,
       charId,
@@ -74,15 +71,15 @@ export class NetworkManager {
   }
 
   sendClassPick(playerClass, battleSeed = 0) {
-    this.#sendDC({ type: 'CLASS_PICK', playerClass, battleSeed });
+    this.#sendGame({ type: 'CLASS_PICK', playerClass, battleSeed });
   }
 
   sendMessage(msg) {
-    this.#sendDC(msg);
+    this.#sendGame(msg);
   }
 
   sendGalaxyAction(charId, skillId, targetPos) {
-    this.#sendDC({
+    this.#sendGame({
       type: 'GALAXY_ACTION',
       turnNumber: this.#turnNumber,
       charId,
@@ -93,17 +90,14 @@ export class NetworkManager {
 
   disconnect() {
     this.#stopHeartbeat();
-    if (this.#dc) { try { this.#dc.close(); } catch (_) { /* ignore */ } this.#dc = null; }
-    if (this.#pc) { try { this.#pc.close(); } catch (_) { /* ignore */ } this.#pc = null; }
     if (this.#ws) { try { this.#ws.close(); } catch (_) { /* ignore */ } this.#ws = null; }
     this.#setStatus('disconnected');
     this.#mode = 'local';
     this.#myAction = null;
     this.#remoteAction = null;
-    this.#pendingIce = [];
   }
 
-  // --- WebSocket (signaling) ---
+  // --- WebSocket ---
 
   async #connectWS() {
     this.#ws = new WebSocket(this.#signalingUrl);
@@ -113,7 +107,7 @@ export class NetworkManager {
       this.#ws.onmessage = (e) => this.#onWSMessage(e.data);
       this.#ws.onclose = () => {
         if (this.#status === 'connected') {
-          this.#callbacks.onDisconnect?.('signaling_lost');
+          this.#callbacks.onDisconnect?.('connection_lost');
           this.disconnect();
         }
       };
@@ -125,6 +119,10 @@ export class NetworkManager {
     if (this.#ws?.readyState === WebSocket.OPEN) {
       this.#ws.send(JSON.stringify(data));
     }
+  }
+
+  #sendGame(payload) {
+    this.#sendWS({ type: 'GAME', payload });
   }
 
   async #onWSMessage(raw) {
@@ -139,11 +137,8 @@ export class NetworkManager {
 
       case 'JOIN_SUCCESS':
         this.#myPlayerId = msg.playerId;
-        await this.#createPeerConnection();
-        this.#pc.ondatachannel = (e) => {
-          this.#dc = e.channel;
-          this.#setupDataChannel(this.#dc);
-        };
+        this.#setStatus('connected');
+        this.#startHeartbeat();
         break;
 
       case 'JOIN_ERROR':
@@ -152,41 +147,9 @@ export class NetworkManager {
         break;
 
       case 'PEER_JOINED':
-        // Client joined signaling — now create WebRTC connection as host
-        this.#callbacks.onStatusChange?.({ status: 'peer_joining' });
-        await this.#createPeerConnection();
-        this.#dc = this.#pc.createDataChannel('combat');
-        this.#setupDataChannel(this.#dc);
-        await this.#createAndSendOffer();
+        this.#setStatus('connected');
+        this.#startHeartbeat();
         break;
-
-      case 'RELAY': {
-        const { payload } = msg;
-        if (payload.type === 'offer') {
-          await this.#pc.setRemoteDescription(new RTCSessionDescription(payload));
-          const answer = await this.#pc.createAnswer();
-          await this.#pc.setLocalDescription(answer);
-          this.#sendWS({ type: 'RELAY', payload: this.#pc.localDescription });
-          // Flush queued ICE
-          for (const c of this.#pendingIce) {
-            this.#sendWS({ type: 'RELAY', payload: { type: 'ice', candidate: c } });
-          }
-          this.#pendingIce.length = 0;
-        } else if (payload.type === 'answer') {
-          await this.#pc.setRemoteDescription(new RTCSessionDescription(payload));
-          // Flush queued ICE candidates (gathered before remote description was set)
-          for (const c of this.#pendingIce) {
-            this.#sendWS({ type: 'RELAY', payload: { type: 'ice', candidate: c } });
-          }
-          this.#pendingIce.length = 0;
-        } else if (payload.type === 'ice') {
-          try {
-            console.log('[ICE] received candidate:', payload.candidate?.candidate?.substring(0, 60));
-            await this.#pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-          } catch (_) { /* ignore invalid candidates */ }
-        }
-        break;
-      }
 
       case 'PEER_DISCONNECTED':
         if (this.#status === 'connected') {
@@ -195,111 +158,41 @@ export class NetworkManager {
         this.disconnect();
         break;
 
-      case 'PONG':
-        break;
-    }
-  }
+      case 'GAME': {
+        const { payload } = msg;
+        switch (payload.type) {
+          case 'TURN_ACTION':
+            this.#remoteAction = {
+              charId: payload.charId,
+              skillId: payload.skillId,
+              targetPos: payload.targetPos,
+            };
+            this.#callbacks.onRemoteSubmitted?.(this.#remoteAction);
+            this.#checkBothReady();
+            break;
 
-  // --- WebRTC ---
+          case 'CLASS_PICK':
+            this.#callbacks.onClassPick?.(payload.playerClass, payload.battleSeed || 0);
+            break;
 
-  async #createPeerConnection() {
-    this.#pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.miwifi.com:3478' },
-        { urls: 'stun:stun.qq.com:3478' },
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-      ],
-    });
-    this.#pc.onicecandidate = (e) => {
-      if (e.candidate) {
-        const candidate = e.candidate.toJSON();
-        console.log('[ICE] candidate gathered:', candidate.candidate?.substring(0, 60));
-        if (this.#pc.remoteDescription) {
-          this.#sendWS({ type: 'RELAY', payload: { type: 'ice', candidate } });
-        } else {
-          this.#pendingIce.push(candidate);
+          case 'GALAXY_ACTION':
+            this.#callbacks.onGalaxyAction?.(payload.charId, payload.skillId, payload.targetPos);
+            break;
+
+          case 'PING':
+            this.#sendGame({ type: 'PONG', timestamp: payload.timestamp });
+            break;
+
+          case 'PONG':
+            this.#lastPong = Date.now();
+            break;
+
+          default:
+            this.#callbacks.onMessage?.(payload);
+            break;
         }
+        break;
       }
-    };
-    this.#pc.onicegatheringstatechange = () => {
-      console.log('[ICE] gathering state:', this.#pc.iceGatheringState);
-    };
-    this.#pc.oniceconnectionstatechange = () => {
-      console.log('[ICE] connection state:', this.#pc.iceConnectionState);
-      if (this.#pc.iceConnectionState === 'disconnected') {
-        // Give ICE 5 seconds to recover before declaring disconnect
-        setTimeout(() => {
-          if (this.#pc?.iceConnectionState === 'disconnected' && this.#status === 'connected') {
-            this.#callbacks.onDisconnect?.('connection_lost');
-            this.disconnect();
-          }
-        }, 5000);
-      }
-    };
-  }
-
-  #setupDataChannel(channel) {
-    channel.onopen = () => {
-      this.#setStatus('connected');
-      this.#startHeartbeat();
-      this.#callbacks.onStatusChange?.({ status: 'connected' });
-    };
-    channel.onclose = () => {
-      if (this.#status === 'connected') {
-        this.#callbacks.onDisconnect?.('peer_left');
-      }
-      this.disconnect();
-    };
-    channel.onmessage = (e) => this.#onDCMessage(e.data);
-  }
-
-  async #createAndSendOffer() {
-    const offer = await this.#pc.createOffer();
-    await this.#pc.setLocalDescription(offer);
-    this.#sendWS({ type: 'RELAY', payload: this.#pc.localDescription });
-  }
-
-  #sendDC(data) {
-    if (this.#dc?.readyState === 'open') {
-      this.#dc.send(JSON.stringify(data));
-    }
-  }
-
-  #onDCMessage(raw) {
-    let msg;
-    try { msg = JSON.parse(raw); } catch (_) { return; }
-
-    switch (msg.type) {
-      case 'TURN_ACTION':
-        this.#remoteAction = {
-          charId: msg.charId,
-          skillId: msg.skillId,
-          targetPos: msg.targetPos,
-        };
-        this.#callbacks.onRemoteSubmitted?.(this.#remoteAction);
-        this.#checkBothReady();
-        break;
-
-      case 'CLASS_PICK':
-        this.#callbacks.onClassPick?.(msg.playerClass, msg.battleSeed || 0);
-        break;
-
-      case 'GALAXY_ACTION':
-        this.#callbacks.onGalaxyAction?.(msg.charId, msg.skillId, msg.targetPos);
-        break;
-
-      case 'PING':
-        this.#sendDC({ type: 'PONG', timestamp: msg.timestamp });
-        break;
-
-      case 'PONG':
-        this.#lastPong = Date.now();
-        break;
-
-      default:
-        this.#callbacks.onMessage?.(msg);
-        break;
     }
   }
 
@@ -319,7 +212,7 @@ export class NetworkManager {
         this.disconnect();
         return;
       }
-      this.#sendDC({ type: 'PING', timestamp: Date.now() });
+      this.#sendGame({ type: 'PING', timestamp: Date.now() });
     }, 5000);
   }
 

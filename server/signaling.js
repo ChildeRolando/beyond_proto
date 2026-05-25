@@ -148,6 +148,14 @@ function handleMessage(socket, msg) {
       if (target) send(target, { type: 'RELAY', from: conn.role, payload: data.payload });
       break;
     }
+    case 'GAME': {
+      if (!conn) return;
+      const room = rooms.get(conn.roomCode);
+      if (!room) return;
+      const target = conn.role === 'host' ? room.peer : room.host;
+      if (target) send(target, { type: 'GAME', payload: data.payload });
+      break;
+    }
     case 'PING':
       send(socket, { type: 'PONG' });
       break;
