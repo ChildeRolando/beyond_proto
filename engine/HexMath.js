@@ -3,8 +3,15 @@ export const HS = 50;
 export const SQ3 = Math.sqrt(3);
 export const BOARD_RADIUS = 3;
 
+let _cx = 350, _cy = 320;
+
+export function setCanvasSize(w, h) {
+  _cx = w / 2;
+  _cy = h / 2;
+}
+
 export function hexCenter(q, r) {
-  return [350 + HS * (SQ3 * q + (SQ3 / 2) * r), 320 + HS * (3 / 2) * r];
+  return [_cx + HS * (SQ3 * q + (SQ3 / 2) * r), _cy + HS * (3 / 2) * r];
 }
 
 export function isOnBoard(q, r) {
@@ -31,8 +38,8 @@ export function hexRound(q, r) {
 }
 
 export function pixelToHex(px, py) {
-  const q = ((px - 350) * SQ3 / 3 - (py - 320) / 3) / HS;
-  const r = ((py - 320) * 2 / 3) / HS;
+  const q = ((px - _cx) * SQ3 / 3 - (py - _cy) / 3) / HS;
+  const r = ((py - _cy) * 2 / 3) / HS;
   return hexRound(q, r);
 }
 

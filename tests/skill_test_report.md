@@ -42,7 +42,7 @@
 
 ### mage_reactive — 反应装甲
 
-✅ 反应装甲消耗护盾造成AOE伤害 — shield=300, warrior dead=false
+✅ 反应装甲消耗护盾生成静止弹体群 — shield=0, warrior dead=true
 
 ### mage_shield_repair — 补盾
 
@@ -55,7 +55,7 @@
 
 ### mage_sword_flight — 御剑
 
-✅ 御剑状态应用 — remaining=2, dir=5, swordPower=300
+✅ 御剑状态应用 — remaining=1, dir=5, swordPower=300
 ✅ 飞剑威力300
 ✅ 即时冲刺(同回合2格) — mage@(0,0)
 ✅ 下回合自动移动 — from (0,0) to (0,2)
@@ -100,7 +100,7 @@
 ### mage_galaxy — 银河远征(3行动,速度上限2,分布到不同速度层)
 
 ✅ 银河远征状态已清除
-✅ 银河远征速0技能已结算(盾被耗尽) — shield=0
+✅ 银河远征速1技能已结算(盾被耗尽) — shield=0
 ✅ 银河远征回合完成
 
 ### mage_formation — 结阵
@@ -157,12 +157,13 @@
 
 ### warrior_iaido — 居合斩
 
-✅ 居合斩300威力被护盾全吸收 — shield=0, alive=true
+✅ 居合斩消耗纳刀造成100伤害 — shield=200, alive=true, sheathed=false
 ✅ 居合斩无纳刀=100威力 — shield=200 (300-100)
 
 ### warrior_hook — 无情铁手
 
-✅ 无情铁手拉近目标 — mage@(0,0), dist to warrior=2
+✅ 无情铁手拉至身前 — mage@(0,1), dist to warrior=1 (expected 1)
+✅ 无情铁手禁锢目标 — has IMMOBILIZED: true
 
 ### warrior_lock — 杀意锁定
 
@@ -279,4 +280,4 @@
 
 ---
 
-**总计: 139 通过, 0 失败**
+**总计: 140 通过, 0 失败**

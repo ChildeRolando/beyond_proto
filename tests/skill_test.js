@@ -186,12 +186,12 @@ async function testMageSkills() {
     const { e, m, w } = freshEngine({ magePos: { q:0, r:1 }, warriorPos: { q:0, r:2 } });
     // T1: mage gather (speed 3), warrior moves adjacent (speed 3)
     await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_move', target: { q:0, r:0 } });
-    // T2: mage reactive (speed 0), warrior slash (speed 1)
-    // Speed 1: slash hits first → shield absorbs 100 → shield=200. Speed 0: reactive → power=200, AOE r=1.
-    // Warrior adjacent → takes 200. Warrior has 0 rage (none gathered) → takes 200 → dies.
+    // T2: mage reactive (speed 1), warrior slash (speed 1)
+    // Same tier: slash hits first → shield absorbs 100 → shield=200. reactive → 7 stationary projectiles power=200.
+    // Warrior at (0,0) is within radius 1 of mage (0,1) → stationary projectile hits → takes 200 → dies.
     await doTurn(e, { id: m, skill: 'mage_reactive' }, { id: w, skill: 'warrior_slash', target: { q:0, r:1 } });
     const mShield = e.resourceSystem.getShield(m);
-    result('反应装甲消耗护盾造成AOE伤害', true, `shield=${mShield}, warrior dead=${isDead(e, w)}`);
+    result('反应装甲消耗护盾生成静止弹体群', true, `shield=${mShield}, warrior dead=${isDead(e, w)}`);
   }
 
   // --- mage_shield_repair: 补盾 ---
@@ -356,7 +356,7 @@ async function testMageSkills() {
     // Pre-queue 3 galaxy actions BEFORE executeTurn:
     // Action 1: mage_breath_small (speed 0) → groups[0]
     // Action 2: mage_gather (speed 3 → capped 2) → immediate execution → sets shieldActive
-    // Action 3: mage_reactive (speed 0) → groups[0]
+    // Action 3: mage_reactive (speed 1, SELF) → groups[1], spawns 7 stationary projectiles
     e.submitGalaxyAction('mage_breath_small', null);
     e.submitGalaxyAction('mage_gather', null);
     e.submitGalaxyAction('mage_reactive', null);
@@ -367,10 +367,10 @@ async function testMageSkills() {
     // Check that GALAXY_PENDING was consumed
     result('银河远征状态已清除', !e.buffManager.hasStatus(m, 'GALAXY_PENDING'));
 
-    // mage_gather at speed-2 set shieldActive; mage_reactive at speed-0 consumed it
+    // mage_gather at speed-2 set shieldActive; mage_reactive at speed-1 consumed it
     // The shield was 300 from init, consumed by mage_reactive (SHIELD_CURRENT)
     const shield = e.resourceSystem.getShield(m);
-    result('银河远征速0技能已结算(盾被耗尽)', shield === 0, `shield=${shield}`);
+    result('银河远征速1技能已结算(盾被耗尽)', shield === 0, `shield=${shield}`);
 
     // mage is still alive (warrior used rage, not an attack)
     result('银河远征回合完成', isAlive(e, m));
@@ -601,20 +601,21 @@ async function testWarriorSkills() {
   h2('warrior_iaido — 居合斩');
   {
     const { e, m, w } = freshEngine({ magePos: { q:0, r:0 }, warriorPos: { q:0, r:1 } });
-    // T1: build rage (iaido costs 2 rage)
-    await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_rage' });
-    // T2: sheathe (SHEATHED duration=1 lasts through next turn)
+    // T1-2: build rage (iaido costs 3 rage)
+    await runTurns(e, m, w, 2, 'mage_gather', 'warrior_rage');
+    // T3: sheathe (SHEATHED duration=1 lasts through next turn)
     await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_sheathe' });
-    // T3: iaido on mage (0,0). SHEATHED_BONUS → 300. Mage shield at speed 3 → absorbs 300.
+    // T4: iaido on mage (0,0). Has SHEATHED → consumed, range 2, cost refunded. Power 100.
     await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_iaido', target: { q:0, r:0 } });
     const mShield = e.resourceSystem.getShield(m);
-    result('居合斩300威力被护盾全吸收', isAlive(e, m) && mShield === 0, `shield=${mShield}, alive=${isAlive(e, m)}`);
+    const hasSheathed = e.buffManager.hasStatus(w, 'SHEATHED');
+    result('居合斩消耗纳刀造成100伤害', isAlive(e, m) && mShield === 200 && !hasSheathed, `shield=${mShield}, alive=${isAlive(e, m)}, sheathed=${hasSheathed}`);
   }
 
   {
     const { e, m, w } = freshEngine({ magePos: { q:0, r:0 }, warriorPos: { q:0, r:1 } });
-    // No sheathe — SHEATHED_BONUS → 100
-    await runTurns(e, m, w, 1, 'mage_gather', 'warrior_rage');
+    // No sheathe — power 100, range 1, cost 3
+    await runTurns(e, m, w, 2, 'mage_gather', 'warrior_rage');
     await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_iaido', target: { q:0, r:0 } });
     const mShield = e.resourceSystem.getShield(m);
     result('居合斩无纳刀=100威力', mShield === 200, `shield=${mShield} (300-100)`);
@@ -629,7 +630,9 @@ async function testWarriorSkills() {
     await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_hook', target: { q:0, r:-2 } });
     const mPos = e.registry.getPosition(m);
     const dist = hexDistance(mPos.q, mPos.r, 0, 2);
-    result('无情铁手拉近目标', dist < 4, `mage@(${mPos.q},${mPos.r}), dist to warrior=${dist}`);
+    const rooted = e.buffManager.hasStatus(m, 'IMMOBILIZED');
+    result('无情铁手拉至身前', dist === 1, `mage@(${mPos.q},${mPos.r}), dist to warrior=${dist} (expected 1)`);
+    result('无情铁手禁锢目标', rooted, `has IMMOBILIZED: ${rooted}`);
   }
 
   // --- warrior_lock: 杀意锁定 ---

@@ -47,6 +47,15 @@ export class CommandQueue {
     return { valid, rejected };
   }
 
+  cancelByActor(actorId, belowSpeed = -1) {
+    // Remove commands for actorId from speed tiers < belowSpeed (slower than the caller)
+    // belowSpeed = -1 = remove ALL; belowSpeed = 1 = remove speed 0; belowSpeed = 2 = remove speed 1,0
+    for (const [speed, cmds] of this.#queues) {
+      if (belowSpeed >= 0 && speed >= belowSpeed) continue;
+      this.#queues.set(speed, cmds.filter(c => c.actorId !== actorId));
+    }
+  }
+
   clearAll() { for (const k of this.#queues.keys()) this.#queues.set(k, []); }
 
   // Iterate commands in speed order (3→2→1→0)

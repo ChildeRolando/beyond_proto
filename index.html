@@ -64,7 +64,8 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* --- Start screen --- */
@@ -175,10 +176,13 @@ body {
 /* --- Game screen --- */
 #app {
   display: none;
-  grid-template-columns: 110px 190px 640px 190px;
+  grid-template-columns: 320px 285px 1fr 285px 320px;
   grid-template-rows: auto 1fr;
   gap: 8px;
-  padding: 14px;
+  padding: 10px;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 
 #topbar {
@@ -194,19 +198,19 @@ body {
 }
 #topbar h1 {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 18px;
   color: var(--accent);
   letter-spacing: 3px;
   margin-right: auto;
 }
-#topbar .info { font-size: 13px; color: var(--text-dim); letter-spacing: 1px; }
+#topbar .info { font-size: 14px; color: var(--text-dim); letter-spacing: 1px; }
 #topbar button {
   padding: 6px 18px;
   border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 15px;
   letter-spacing: 2px;
   transition: all 0.2s;
 }
@@ -243,14 +247,17 @@ body {
 #left-column {
   grid-row: 2;
   grid-column: 2;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 640px;
+  overflow: hidden;
   min-width: 0;
 }
 #panels-left {
-  flex-shrink: 0;
+  height: 100%;
+}
+#panels-left .char-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 #log {
   grid-row: 2;
@@ -260,11 +267,11 @@ body {
   border-radius: 4px;
   padding: 6px 8px;
   overflow-y: auto;
-  font-size: 10px;
+  font-size: 16px;
   font-family: 'Cascadia Code', 'Consolas', monospace;
-  max-height: 640px;
   word-break: break-all;
   overflow-wrap: break-word;
+  color: var(--text);
 }
 .char-panel {
   background: var(--surface);
@@ -276,11 +283,13 @@ body {
 #panels-right {
   grid-row: 2;
   grid-column: 4;
+  overflow: hidden;
+}
+#panels-right .char-panel {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  overflow-y: auto;
-  max-height: 640px;
+  overflow: hidden;
 }
 .char-panel.mage { border-left: 3px solid var(--purple); }
 .char-panel.warrior { border-left: 3px solid var(--red); }
@@ -289,7 +298,7 @@ body {
 
 .panel-title {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 2px;
   margin-bottom: 6px;
@@ -311,14 +320,14 @@ body {
   color: var(--accent);
 }
 
-.skill-grid { display: flex; flex-direction: column; gap: 4px; flex: 1; overflow-y: auto; min-height: 0; }
+.skill-grid { display: flex; flex-direction: column; gap: 4px; flex: 1; overflow-y: auto; min-height: 0; padding-right: 2px; }
 .skill-btn {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid #122E8A;
   border-radius: 3px;
-  background: var(--surface);
-  color: var(--text);
+  background: #F5EFEA;
+  color: #122E8A;
   cursor: pointer;
   text-align: left;
   font-size: 12px;
@@ -326,27 +335,26 @@ body {
   position: relative;
   overflow: hidden;
 }
-.skill-btn:hover { background: var(--surface-raised); border-color: var(--accent); }
+.skill-btn:hover { background: #e8ddd0; border-color: #122E8A; }
 .skill-btn.selected {
-  background: rgba(221,187,153,0.12);
-  color: var(--accent);
-  border-color: var(--accent);
+  background: #122E8A;
+  color: #F5EFEA;
+  border-color: #122E8A;
   font-weight: 700;
 }
-.skill-btn.selected.mage-sel {
-  background: rgba(139,92,246,0.15);
-  color: var(--purple);
-  border-color: var(--purple);
-}
+.skill-btn.selected .skill-name { color: #F5EFEA; }
+.skill-btn.selected .skill-desc { color: rgba(245,239,234,0.8); }
 .skill-btn.used { background: rgba(0,0,0,0.2); color: #555; border-color: #2a2a3a; cursor: not-allowed; }
-.skill-btn.opponent { cursor: not-allowed; opacity: 0.5; }
-.skill-btn.opponent:hover { background: var(--surface); border-color: var(--border); }
+.skill-btn.used .skill-name { color: #F5EFEA; }
+.skill-btn.used .skill-desc { color: rgba(245,239,234,0.7); }
+.skill-btn.opponent { opacity: 0.55; cursor: pointer; }
+.skill-btn.opponent:hover { background: rgba(255,255,255,0.06); border-color: #535164; }
+.skill-btn.used.opponent { cursor: pointer; }
 .skill-btn.unaffordable { opacity: 0.42; }
 .skill-btn.unaffordable:hover { opacity: 0.6; }
 
-.skill-name { font-weight: 600; font-size: 13px; }
-.skill-desc { font-size: 10px; color: var(--text-dim); }
-.skill-btn.selected .skill-desc { color: var(--accent); }
+.skill-name { font-weight: 600; font-size: 16px; color: #122E8A; }
+.skill-desc { font-size: 13px; color: #5a6a9a; }
 
 /* Pagination */
 .skill-page-nav {
@@ -354,23 +362,23 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 4px;
-  padding-top: 4px;
+  padding: 4px 0;
   flex-shrink: 0;
 }
 .skill-page-btn {
   flex: 0 0 auto;
   padding: 2px 8px;
-  border: 1px solid var(--border);
+  border: 1px solid #122E8A;
   border-radius: 3px;
-  background: var(--surface);
-  color: var(--text-dim);
+  background: #F5EFEA;
+  color: #122E8A;
   cursor: pointer;
   font-size: 12px;
   transition: all 0.2s;
 }
-.skill-page-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.skill-page-btn:hover:not(:disabled) { background: #122E8A; color: #F5EFEA; }
 .skill-page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.skill-page-indicator { font-size: 11px; color: var(--text-dim); min-width: 32px; text-align: center; }
+.skill-page-indicator { font-size: 12px; color: #ffffff; min-width: 32px; text-align: center; }
 
 /* Ripple effect for skill buttons */
 .skill-btn .ripple {
@@ -383,12 +391,20 @@ body {
   animation: ripple 0.6s ease-out forwards;
 }
 
-#canvas-wrap { grid-row: 2; grid-column: 3; display: flex; justify-content: center; align-items: center; }
+#canvas-wrap {
+  grid-row: 2;
+  grid-column: 3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
 canvas {
   border-radius: 6px;
   background: #1e1d2a;
   border: 1px solid var(--border);
   cursor: crosshair;
+  display: block;
 }
 
 .log-entry {
@@ -400,6 +416,7 @@ canvas {
 .log-die { color: #ff3333; }
 .log-qi { color: var(--purple); }
 .log-s { color: var(--text-dim); }
+.log-warn { color: #d4943a; }
 .log-turn { color: var(--accent); font-weight: bold; }
 .log-action { color: #7bb8cf; }
 
@@ -438,11 +455,17 @@ canvas {
   color: white;
 }
 
-/* --- Game-over side panel --- */
+/* --- Right sidebar (results / chat) --- */
+#right-sidebar {
+  grid-row: 2;
+  grid-column: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
 #gameover-panel {
   display: none;
-  grid-row: 2;
-  grid-column: 3;
   background: var(--surface);
   border: 1px solid var(--accent);
   border-radius: 4px;
@@ -452,13 +475,44 @@ canvas {
 #gameover-panel.show { display: flex; }
 #gameover-panel .panel-title {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 2px;
   color: var(--accent);
   text-align: center;
 }
 #gameover-panel button:hover { opacity: 0.85; }
+
+#chat-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+#chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  min-height: 0;
+}
+#chat-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 11px;
+  font-family: var(--font-body);
+  resize: none;
+}
+#chat-input:focus { outline: none; border-color: var(--accent); }
 
 /* --- Galaxy action bar --- */
 #galaxy-overlay { display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 15; }
@@ -593,32 +647,38 @@ select:focus { outline: none; border-color: var(--accent); }
   <div id="left-column">
     <div id="panels-left"></div>
   </div>
-  <div id="canvas-wrap"><canvas id="board" width="680" height="640"></canvas></div>
+  <div id="canvas-wrap"><canvas id="board"></canvas></div>
   <div id="panels-right"></div>
-  <div id="gameover-panel">
-    <div class="panel-title">战斗结束</div>
-    <p id="gameover-winner" style="color:var(--accent); font-size:15px; text-align:center; margin:8px 0;"></p>
-    <div style="display:flex; flex-direction:column; gap:6px; margin:4px 0;">
-      <div id="go-p1-pick">
-        <label style="color:var(--text-dim); font-size:11px; display:block; margin-bottom:2px;">玩家1职业</label>
-        <select id="rematch-class-p1" style="width:100%; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:3px 6px; font-size:12px;">
-          <option value="法师">法师</option>
-          <option value="战士">战士</option>
-          <option value="射手">射手</option>
-        </select>
+  <div id="right-sidebar">
+    <div id="gameover-panel">
+      <div class="panel-title">战斗结束</div>
+      <p id="gameover-winner" style="color:var(--accent); font-size:15px; text-align:center; margin:8px 0;"></p>
+      <div style="display:flex; flex-direction:column; gap:6px; margin:4px 0;">
+        <div id="go-p1-pick">
+          <label style="color:var(--text-dim); font-size:11px; display:block; margin-bottom:2px;">玩家1职业</label>
+          <select id="rematch-class-p1" style="width:100%; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:3px 6px; font-size:12px;">
+            <option value="法师">法师</option>
+            <option value="战士">战士</option>
+            <option value="射手">射手</option>
+          </select>
+        </div>
+        <div id="go-p2-pick">
+          <label style="color:var(--text-dim); font-size:11px; display:block; margin-bottom:2px;">玩家2职业</label>
+          <select id="rematch-class-p2" style="width:100%; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:3px 6px; font-size:12px;">
+            <option value="法师">法师</option>
+            <option value="战士">战士</option>
+            <option value="射手">射手</option>
+          </select>
+        </div>
       </div>
-      <div id="go-p2-pick">
-        <label style="color:var(--text-dim); font-size:11px; display:block; margin-bottom:2px;">玩家2职业</label>
-        <select id="rematch-class-p2" style="width:100%; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:3px 6px; font-size:12px;">
-          <option value="法师">法师</option>
-          <option value="战士">战士</option>
-          <option value="射手">射手</option>
-        </select>
+      <div style="display:flex; gap:6px; justify-content:center; margin-top:4px;">
+        <button id="btn-rematch" style="padding:5px 14px;border:1px solid var(--accent);border-radius:3px;background:var(--accent);color:var(--bg);cursor:pointer;font-size:13px;font-family:var(--font-display);letter-spacing:1px;">重新开始</button>
+        <button id="btn-lobby" style="padding:5px 14px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;font-family:var(--font-display);letter-spacing:1px;">返回大厅</button>
       </div>
     </div>
-    <div style="display:flex; gap:6px; justify-content:center; margin-top:4px;">
-      <button id="btn-rematch" style="padding:5px 14px;border:1px solid var(--accent);border-radius:3px;background:var(--accent);color:var(--bg);cursor:pointer;font-size:13px;font-family:var(--font-display);letter-spacing:1px;">重新开始</button>
-      <button id="btn-lobby" style="padding:5px 14px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;font-family:var(--font-display);letter-spacing:1px;">返回大厅</button>
+    <div id="chat-box">
+      <div id="chat-messages"></div>
+      <input type="text" id="chat-input" placeholder="聊天消息..." autocomplete="off">
     </div>
   </div>
 </div>
@@ -647,7 +707,7 @@ select:focus { outline: none; border-color: var(--accent); }
 import { GameEngine } from './engine/GameEngine.js';
 import { NetworkManager } from './engine/NetworkManager.js';
 import { SKILLS, SKILLS_BY_CLASS } from './engine/SkillData.js';
-import { isOnBoard, hexCenter, hexCorners, pixelToHex, hexDistance, hexLine, hexSpiral } from './engine/HexMath.js';
+import { isOnBoard, hexCenter, hexCorners, pixelToHex, hexDistance, hexLine, hexSpiral, setCanvasSize } from './engine/HexMath.js';
 
 // --- Init ---
 const engine = new GameEngine();
@@ -669,10 +729,23 @@ document.addEventListener('DOMContentLoaded', () => {
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 
+function resizeCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  const w = wrap.clientWidth;
+  const h = wrap.clientHeight;
+  if (w <= 0 || h <= 0) return;
+  canvas.width = w;
+  canvas.height = h;
+  setCanvasSize(w, h);
+  renderAll();
+}
+window.addEventListener('resize', resizeCanvas);
+
 let characterIds = [];
 let localSubmittedSet = new Set();    // chars I submitted locally
 let remoteSubmittedSet = new Set();   // chars opponent submitted (P2P only)
 let selectedSkill = null;
+let viewingSkill = null;   // view-only opponent skill inspection (shows range, can't submit)
 let validTargets = [];
 let hoveredHex = null;
 let hoverEffectArea = [];
@@ -680,6 +753,7 @@ let turnTimeoutId = null;
 let battleEnded = false;
 let battleActive = false; // true while a game is in progress (set in initGame, cleared on BATTLE_END)
 const skillPages = new Map(); // charId -> current page number (0-indexed)
+let skillsPerPage = 10;
 
 // Listen for battle end
 engine.eventBus.on('BATTLE_END', (data) => {
@@ -863,6 +937,7 @@ document.getElementById('btn-create-room').addEventListener('click', async () =>
     onGalaxyAction: (charId, skillId, targetPos) => {
       engine.submitGalaxyAction(skillId, targetPos);
     },
+    onMessage: (payload) => handleNetworkMessage(payload),
   }, signalingUrl);
   networkManager = nm;
   try {
@@ -903,6 +978,7 @@ document.getElementById('btn-join-room').addEventListener('click', async () => {
     onGalaxyAction: (charId, skillId, targetPos) => {
       engine.submitGalaxyAction(skillId, targetPos);
     },
+    onMessage: (payload) => handleNetworkMessage(payload),
   }, signalingUrl);
   networkManager = nm;
   try {
@@ -1037,7 +1113,8 @@ async function executeP2PTurn(nm) {
     return;
   }
 
-  animateProjectiles().then(() => {
+  animateTurn().then(() => {
+    engine.projectileCalculator.clearKeyframes();
     renderAll();
     startTurnTimeout();
   });
@@ -1071,6 +1148,7 @@ window.returnToStart = function() {
   localSubmittedSet.clear();
   remoteSubmittedSet.clear();
   selectedSkill = null;
+  viewingSkill = null;
   validTargets = [];
   hoverEffectArea = [];
   hoveredHex = null;
@@ -1224,10 +1302,12 @@ function initGame(p1Class, p2Class, seed = 0) {
   localSubmittedSet.clear();
   remoteSubmittedSet.clear();
   selectedSkill = null;
+  viewingSkill = null;
   validTargets = [];
   hoverEffectArea = [];
   hoveredHex = null;
   skillPages.clear();
+  resizeCanvas();
   renderAll();
 }
 
@@ -1241,6 +1321,7 @@ function selectSkill(charId, skillId) {
   if (!skill) return;
 
   selectedSkill = { charId, skillId };
+  viewingSkill = null;
   validTargets = [];
   hoverEffectArea = [];
   hoveredHex = null;
@@ -1257,7 +1338,50 @@ function selectSkill(charId, skillId) {
     for (let q = -3; q <= 3; q++) {
       for (let r = -3; r <= 3; r++) {
         if (!isOnBoard(q, r)) continue;
-        if (q === char.position.q && r === char.position.r) continue;
+        const dist = hexDistance(char.position.q, char.position.r, q, r);
+        if (dist > range) continue;
+        validTargets.push({ q, r });
+      }
+    }
+  }
+
+  renderAll();
+}
+
+// View opponent skill range without allowing submission
+function viewOpponentSkill(charId, skillId) {
+  if (battleEnded) return;
+  const skill = SKILLS[skillId];
+  if (!skill) return;
+
+  // Toggle off if already viewing this skill
+  if (viewingSkill && viewingSkill.charId === charId && viewingSkill.skillId === skillId) {
+    viewingSkill = null;
+    validTargets = [];
+    hoverEffectArea = [];
+    hoveredHex = null;
+    renderAll();
+    return;
+  }
+
+  viewingSkill = { charId, skillId };
+  selectedSkill = null;
+  validTargets = [];
+  hoverEffectArea = [];
+  hoveredHex = null;
+
+  const char = engine.registry.get(charId);
+  if (!char) { renderAll(); return; }
+
+  const shape = skill.targeting.shape;
+  const range = skill.targeting.range ?? 99;
+
+  if (shape === 'SELF' || shape === 'AOE_SELF') {
+    validTargets = [{ q: char.position.q, r: char.position.r, self: true }];
+  } else if (shape === 'HEX' || shape === 'DIRECTION') {
+    for (let q = -3; q <= 3; q++) {
+      for (let r = -3; r <= 3; r++) {
+        if (!isOnBoard(q, r)) continue;
         const dist = hexDistance(char.position.q, char.position.r, q, r);
         if (dist > range) continue;
         validTargets.push({ q, r });
@@ -1427,6 +1551,16 @@ canvas.addEventListener('click', (e) => {
     }
   }
 
+  // If only viewing opponent skill, clicking a hex clears the view
+  if (viewingSkill && !selectedSkill) {
+    viewingSkill = null;
+    validTargets = [];
+    hoverEffectArea = [];
+    hoveredHex = null;
+    renderAll();
+    return;
+  }
+
   if (!selectedSkill) return;
 
   const charId = selectedSkill.charId;
@@ -1434,6 +1568,16 @@ canvas.addEventListener('click', (e) => {
 
   if (skill.targeting.shape === 'SELF' || skill.targeting.shape === 'AOE_SELF') {
     submitAction(charId, selectedSkill.skillId, null);
+    return;
+  }
+
+  // Click on invalid hex cancels selection
+  if (!validTargets.some(t => t.q === hq && t.r === hr)) {
+    selectedSkill = null;
+    validTargets = [];
+    hoverEffectArea = [];
+    hoveredHex = null;
+    renderAll();
     return;
   }
 
@@ -1451,6 +1595,7 @@ function submitAction(charId, skillId, targetPos) {
     validTargets = [];
     hoverEffectArea = [];
     hoveredHex = null;
+    skillPages.set(charId, 0);
 
     if (networkManager && networkManager.mode !== 'local') {
       networkManager.submitMyAction(charId, skillId, targetPos);
@@ -1476,7 +1621,8 @@ document.getElementById('btn-execute').addEventListener('click', async () => {
   }
 
   document.getElementById('submit-status').textContent = '等待提交...';
-  await animateProjectiles();
+  await animateTurn();
+  engine.projectileCalculator.clearKeyframes();
   renderAll();
   startTurnTimeout();
 });
@@ -1493,23 +1639,38 @@ document.getElementById('btn-reset').addEventListener('click', () => {
   startTurnTimeout();
 });
 
-// --- Projectile animation ---
-async function animateProjectiles() {
+// --- Turn animation ---
+async function animateTurn() {
   const keyframes = engine.projectileCalculator.generateKeyframes();
-  if (keyframes.length === 0) return;
+  const animEvents = engine.projectileCalculator.getAnimEvents();
+  const projs = engine.projectileCalculator.projectiles;
+  if (keyframes.length === 0 && animEvents.length === 0 && projs.length === 0) return;
 
-  const steps = keyframes.reduce((max, kf) => Math.max(max, kf.step || 0), 0);
-  for (let s = 1; s <= steps; s++) {
-    await sleep(200);
-    renderAll(s);
+  const maxStep = Math.max(
+    keyframes.reduce((max, kf) => Math.max(max, kf.step || 0), 0),
+    animEvents.reduce((max, e) => Math.max(max, (e.step || 0) + (e.duration || 1) - 1), 0)
+  );
+  const SUBFRAMES = 4;
+  const frameMs = 25;
+
+  for (let s = 0; s <= maxStep; s++) {
+    const startSub = (s === 0) ? 0 : 1;
+    for (let sub = startSub; sub <= SUBFRAMES; sub++) {
+      const t = sub / SUBFRAMES;
+      await sleep(frameMs);
+      renderAll(s, t);
+    }
   }
+  await sleep(200);
+  renderAll(-1, 0);
+  engine.projectileCalculator.clearAnimEvents();
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // --- Rendering ---
-function renderAll(animStep = -1) {
-  renderBoard(animStep);
+function renderAll(animStep = -1, subT = 0) {
+  renderBoard(animStep, subT);
   renderPanels();
   renderLog();
   document.getElementById('turn-num').textContent = engine.turnManager.turnNumber;
@@ -1525,13 +1686,90 @@ function renderAll(animStep = -1) {
   }
 }
 
-function renderBoard(animStep) {
-  ctx.clearRect(0, 0, 680, 640);
+function renderBoard(animStep = -1, subT = 0) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Subtle grid background
   const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 1000);
+  const projs = engine.projectileCalculator.projectiles;
+  const keyframes = engine.projectileCalculator.generateKeyframes();
+  const state = engine.getState();
 
-  // Draw hex grid
+  // Pre-compute animation data from keyframes (projectiles may be dead/gone after resolution)
+  const projPositions = new Map(); // projId → { q, r, alive, isMelee, power, fromQ, fromR, toQ, toR }
+  const hitEvents = []; // { q, r, power, isMelee, age }
+  const slashEvents = []; // { fromQ, fromR, toQ, toR, power, progress }
+
+  // Group keyframes by projectileId
+  const kfGroups = new Map();
+  for (const kf of keyframes) {
+    if (!kfGroups.has(kf.projectileId)) kfGroups.set(kf.projectileId, []);
+    kfGroups.get(kf.projectileId).push(kf);
+  }
+
+  if (animStep >= 0) {
+    for (const [projId, kfs] of kfGroups) {
+      kfs.sort((a, b) => a.step - b.step);
+      const firedKf = kfs.find(k => k.event === 'fired');
+      if (!firedKf) continue;
+      const isMelee = firedKf.flags?.includes('MELEE') || false;
+      const power = firedKf.power || 0;
+      const fromQ = firedKf.fromQ, fromR = firedKf.fromR;
+      const toQ = firedKf.toQ, toR = firedKf.toR;
+
+      // Find current position keyframe
+      let curKf = null, nextKf = null;
+      for (let i = kfs.length - 1; i >= 0; i--) {
+        if (kfs[i].step <= animStep) { curKf = kfs[i]; nextKf = kfs[i + 1] || null; break; }
+      }
+      if (!curKf && kfs.length > 0) { curKf = kfs[0]; nextKf = kfs[1] || null; }
+      if (!curKf) continue;
+
+      // Interpolated position
+      let iq = curKf.q, ir = curKf.r;
+      if (nextKf && nextKf.q !== undefined) {
+        iq = curKf.q + (nextKf.q - curKf.q) * subT;
+        ir = curKf.r + (nextKf.r - curKf.r) * subT;
+      }
+
+      // Alive based on keyframe timeline
+      const bodyContactStep = kfs.find(k => k.event === 'body_contact')?.step ?? Infinity;
+      const expiredStep = kfs.find(k => k.event === 'expired')?.step ?? Infinity;
+      const deathStep = Math.min(bodyContactStep, expiredStep);
+      const alive = animStep < deathStep || (animStep === deathStep && subT < 0.5);
+
+      projPositions.set(projId, { q: iq, r: ir, alive, isMelee, power, fromQ, fromR, toQ, toR });
+
+      // Hit / slash events at this animation step
+      const stepEvents = kfs.filter(k => k.step === animStep);
+      for (const evt of stepEvents) {
+        if (evt.event === 'body_contact') {
+          hitEvents.push({ q: evt.q, r: evt.r, power, isMelee, age: subT });
+        }
+      }
+      if (isMelee) {
+        for (const evt of stepEvents) {
+          if (evt.event === 'fired') {
+            slashEvents.push({ fromQ, fromR, toQ, toR, power, progress: subT });
+          }
+          if (evt.event === 'body_contact') {
+            slashEvents.push({ fromQ, fromR, toQ: evt.q, toR: evt.r, power, progress: 1 });
+          }
+        }
+      }
+    }
+  } else {
+    // Static render: alive projectiles from arr
+    for (const proj of projs) {
+      if (!proj.alive) continue;
+      const [q, r] = proj.path[proj.stepIndex];
+      projPositions.set(proj.id, {
+        q, r, alive: true, isMelee: proj.flags.includes('MELEE'), power: proj.power,
+        fromQ: proj.fromQ, fromR: proj.fromR, toQ: proj.toQ, toR: proj.toR,
+      });
+    }
+  }
+
+  // --- Draw hex grid ---
   for (let q = -3; q <= 3; q++) {
     for (let r = -3; r <= 3; r++) {
       if (!isOnBoard(q, r)) continue;
@@ -1547,7 +1785,6 @@ function renderBoard(animStep) {
       const isValidTarget = validTargets.some(t => t.q === q && t.r === r);
       const isHovered = hoveredHex && hoveredHex[0] === q && hoveredHex[1] === r;
 
-      // Fill
       if (inEffectArea) {
         ctx.fillStyle = `rgba(212,148,58,${0.35 + pulse * 0.15})`;
       } else if (isHovered && isValidTarget) {
@@ -1561,7 +1798,6 @@ function renderBoard(animStep) {
       }
       ctx.fill();
 
-      // Stroke
       if (isHovered && isValidTarget) {
         ctx.strokeStyle = `rgba(221,187,153,0.9)`;
         ctx.lineWidth = 2.5;
@@ -1579,38 +1815,117 @@ function renderBoard(animStep) {
     }
   }
 
-  // Draw entities
+  // --- Draw impact flashes (behind projectiles) ---
+  for (const hit of hitEvents) {
+    drawImpactEffect(hit.q, hit.r, hit.power, hit.isMelee, hit.age);
+  }
+
+  // --- Draw melee slash arcs ---
+  for (const slash of slashEvents) {
+    drawSlashArc(slash.fromQ, slash.fromR, slash.toQ, slash.toR, slash.power, slash.progress);
+  }
+
+  // --- Draw projectile trails ---
+  for (const [projId, pos] of projPositions) {
+    if (!pos.alive || pos.isMelee) continue;
+    drawProjectileTrail(projId, pos, animStep, keyframes);
+  }
+
+  // --- Draw animation events (gather, dash, teleport, walk, grapple) ---
+  if (animStep >= 0) {
+    const animEvents = engine.projectileCalculator.getAnimEvents();
+    for (const evt of animEvents) {
+      const evtStart = evt.step;
+      const evtEnd = evtStart + (evt.duration || 1);
+      if (animStep < evtStart || animStep >= evtEnd) continue;
+      const evtProgress = (animStep - evtStart + subT) / (evt.duration || 1);
+      switch (evt.event) {
+        case 'gather': drawGatherEffect(evt.q, evt.r, evt.color, evt.amount, evtProgress); break;
+        case 'dash': drawDashTrail(evt.fromQ, evt.fromR, evt.toQ, evt.toR, evtProgress); break;
+        case 'teleport': drawTeleportEffect(evt.fromQ, evt.fromR, evt.toQ, evt.toR, evtProgress); break;
+        case 'walk': drawWalkTrail(evt.fromQ, evt.fromR, evt.toQ, evt.toR, evtProgress); break;
+        case 'grapple': drawGrappleLine(evt.fromQ, evt.fromR, evt.toQ, evt.toR, evtProgress); break;
+      }
+    }
+  }
+
+  // --- Draw entities ---
+  // Group characters by hex to split overlapping positions
+  const charsByHex = new Map();
+  const allChars = [];
+  for (const e of engine.registry.entities()) {
+    if (e.type === 'CHARACTER' && e.alive !== false) {
+      allChars.push(e);
+      const key = `${e.position.q},${e.position.r}`;
+      if (!charsByHex.has(key)) charsByHex.set(key, []);
+      charsByHex.get(key).push(e);
+    }
+  }
+
+  // Compute offset positions for characters sharing a hex
+  const charDrawPos = new Map(); // entityId -> {cx, cy}
+  for (const [key, chars] of charsByHex) {
+    const [hcx, hcy] = hexCenter(chars[0].position.q, chars[0].position.r);
+    if (chars.length === 1) {
+      charDrawPos.set(chars[0].id, { cx: hcx, cy: hcy });
+    } else if (chars.length === 2) {
+      charDrawPos.set(chars[0].id, { cx: hcx - 12, cy: hcy - 5 });
+      charDrawPos.set(chars[1].id, { cx: hcx + 12, cy: hcy + 5 });
+    } else {
+      const r = 14;
+      for (let i = 0; i < chars.length; i++) {
+        const angle = (i / chars.length) * Math.PI * 2 - Math.PI / 2;
+        charDrawPos.set(chars[i].id, { cx: hcx + Math.cos(angle) * r, cy: hcy + Math.sin(angle) * r });
+      }
+    }
+  }
+
   for (const e of engine.registry.entities()) {
     if (e.alive === false) continue;
-    const [cx, cy] = hexCenter(e.position.q, e.position.r);
 
     if (e.type === 'CHARACTER') {
+      const pos = charDrawPos.get(e.id) || hexCenter(e.position.q, e.position.r);
+      const cx = pos.cx, cy = pos.cy;
       const charColor = e.class === '法师' ? '#8b5cf6' : e.class === '战士' ? '#e05555' : '#d4943a';
       const charLabel = e.class === '法师' ? '法' : e.class === '战士' ? '战' : '射';
 
-      // Flat colored circle
+      // Hit flash: check if this character's hex is at a hit position
+      let hitFlash = 0;
+      for (const hit of hitEvents) {
+        if (hit.q === e.position.q && hit.r === e.position.r) { hitFlash = 1 - hit.age; break; }
+      }
+
       ctx.beginPath();
-      ctx.arc(cx, cy, 21, 0, Math.PI * 2);
-      ctx.fillStyle = charColor;
+      ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+      if (hitFlash > 0.3) {
+        ctx.fillStyle = `rgba(255,255,255,${hitFlash})`;
+      } else {
+        ctx.fillStyle = charColor;
+      }
       ctx.fill();
 
-      // White border
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 2 + hitFlash * 3;
       ctx.stroke();
 
-      // Label
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 16px "KaiTi","STKaiti",serif';
+      ctx.font = 'bold 14px "KaiTi","STKaiti",serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(charLabel, cx, cy);
 
-      // Shield indicator (simple dashed ring)
+      // p1/p2 badge
+      const badge = e.ownerId === 'player1' ? '1P' : '2P';
+      ctx.fillStyle = e.ownerId === 'player1' ? '#8b5cf6' : '#d4943a';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(badge, cx + 13, cy + 10);
+
       const pool = engine.resourceSystem.getAll(e.id);
       if (pool.shieldActive) {
         ctx.beginPath();
-        ctx.arc(cx, cy, 27, 0, Math.PI * 2);
+        ctx.arc(cx, cy, 23, 0, Math.PI * 2);
         ctx.strokeStyle = '#8b5cf6';
         ctx.lineWidth = 2.5;
         ctx.setLineDash([4, 4]);
@@ -1620,6 +1935,7 @@ function renderBoard(animStep) {
     }
 
     if (e.type === 'GATE') {
+      const [cx, cy] = hexCenter(e.position.q, e.position.r);
       ctx.beginPath();
       ctx.arc(cx, cy, 18, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(139,92,246,0.15)';
@@ -1649,52 +1965,37 @@ function renderBoard(animStep) {
     }
   }
 
-  // Draw projectiles
-  const projs = engine.projectileCalculator.projectiles;
-  for (const proj of projs) {
-    if (!proj.alive) continue;
+  // --- Draw projectiles (non-melee) ---
+  for (const [projId, pos] of projPositions) {
+    if (!pos.alive || pos.isMelee) continue;
+    const [cx, cy] = hexCenter(pos.q, pos.r);
+    const size = 5 + Math.min(10, pos.power / 50);
 
-    let pq, pr;
-    if (animStep >= 0) {
-      const kf = engine.projectileCalculator.generateKeyframes()
-        .filter(k => k.projectileId === proj.id && k.step <= animStep)
-        .pop();
-      if (kf && kf.q !== undefined) { pq = kf.q; pr = kf.r; }
-      else continue;
-    } else {
-      const [q, r] = proj.path[proj.stepIndex];
-      pq = q; pr = r;
-    }
-
-    const [cx, cy] = hexCenter(pq, pr);
-    const size = 5 + Math.min(10, proj.power / 50);
-    const isRed = projs.indexOf(proj) % 2 === 0;
-
-    // Trail glow
+    // Glow
     ctx.beginPath();
-    ctx.arc(cx, cy, size + 4, 0, Math.PI * 2);
-    ctx.fillStyle = isRed ? 'rgba(196,75,75,0.3)' : 'rgba(123,159,255,0.3)';
+    ctx.arc(cx, cy, size + 5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
     ctx.fill();
 
     // Core
     ctx.beginPath();
     ctx.arc(cx, cy, size, 0, Math.PI * 2);
-    const projGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size);
-    projGrad.addColorStop(0, '#ffffff');
-    projGrad.addColorStop(0.4, isRed ? '#c44b4b' : '#7b9fff');
-    projGrad.addColorStop(1, isRed ? '#801010' : '#304080');
-    ctx.fillStyle = projGrad;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, size);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.3, '#ffcc66');
+    g.addColorStop(0.7, '#e05555');
+    g.addColorStop(1, '#801010');
+    ctx.fillStyle = g;
     ctx.fill();
 
-    // Label
+    // Power label
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 9px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(proj.power, cx, cy - 13);
+    ctx.fillText(Math.round(pos.power), cx, cy - 14);
   }
 
-  // Draw casings
-  const state = engine.getState();
+  // --- Draw casings ---
   for (const c of state.casings) {
     const [cx, cy] = hexCenter(c.q, c.r);
     ctx.beginPath();
@@ -1708,7 +2009,7 @@ function renderBoard(animStep) {
     ctx.fillText(c.count, cx + 10, cy + 10);
   }
 
-  // Draw wild bullets
+  // --- Draw wild bullets ---
   for (const wb of state.wildBullets) {
     const [cx, cy] = hexCenter(wb.q, wb.r);
     ctx.beginPath();
@@ -1725,7 +2026,7 @@ function renderBoard(animStep) {
     ctx.fillText('W', cx - 10, cy + 10);
   }
 
-  // Draw submitted indicator
+  // --- Draw submitted indicator ---
   for (const c of engine.registry.characters()) {
     if (c.alive === false) continue;
     if (localSubmittedSet.has(c.id) || remoteSubmittedSet.has(c.id)) {
@@ -1740,6 +2041,317 @@ function renderBoard(animStep) {
   }
 }
 
+// --- Visual effect helpers ---
+
+function drawSlashArc(fromQ, fromR, toQ, toR, power, progress) {
+  const [fx, fy] = hexCenter(fromQ, fromR);
+  const [tx, ty] = hexCenter(toQ, toR);
+  const midX = (fx + tx) / 2, midY = (fy + ty) / 2;
+  const dx = tx - fx, dy = ty - fy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const perpX = -dy / (dist || 1), perpY = dx / (dist || 1);
+
+  const alpha = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
+  const arcSize = 20 + power / 20;
+  const thickness = 3 + power / 100;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // Outer glow
+  ctx.beginPath();
+  ctx.moveTo(fx, fy);
+  ctx.quadraticCurveTo(midX + perpX * arcSize, midY + perpY * arcSize, tx, ty);
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = thickness + 6;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Inner bright arc
+  ctx.beginPath();
+  ctx.moveTo(fx, fy);
+  ctx.quadraticCurveTo(midX + perpX * arcSize * 0.7, midY + perpY * arcSize * 0.7, tx, ty);
+  ctx.strokeStyle = 'rgba(255,220,150,0.9)';
+  ctx.lineWidth = thickness;
+  ctx.stroke();
+
+  // Core white arc
+  ctx.beginPath();
+  ctx.moveTo(fx, fy);
+  ctx.quadraticCurveTo(midX + perpX * arcSize * 0.5, midY + perpY * arcSize * 0.5, tx, ty);
+  ctx.strokeStyle = 'rgba(255,255,255,1)';
+  ctx.lineWidth = Math.max(1, thickness - 1);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawImpactEffect(q, r, power, isMelee, age) {
+  const [cx, cy] = hexCenter(q, r);
+  const alpha = 1 - age;
+  if (alpha <= 0) return;
+
+  const baseRadius = 10 + power / 30;
+  const ringCount = isMelee ? 2 : 1;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  for (let i = 0; i < ringCount; i++) {
+    const r1 = baseRadius + age * 35 + i * 8;
+    const r2 = baseRadius + age * 20 + i * 5;
+    if (r1 < 50) {
+      // Expanding shock ring
+      ctx.beginPath();
+      ctx.arc(cx, cy, r1, 0, Math.PI * 2);
+      ctx.strokeStyle = isMelee ? 'rgba(255,200,100,0.7)' : 'rgba(255,150,80,0.6)';
+      ctx.lineWidth = 3 - age * 2;
+      ctx.stroke();
+    }
+
+    // Inner filled circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, r2, 0, Math.PI * 2);
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r2);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)');
+    g.addColorStop(0.3, isMelee ? 'rgba(255,220,120,0.5)' : 'rgba(255,180,60,0.4)');
+    g.addColorStop(1, 'rgba(255,100,30,0)');
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+
+  // Spark particles
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2 + age * 2;
+    const dist = age * 30 + 5;
+    const sx = cx + Math.cos(angle) * dist;
+    const sy = cy + Math.sin(angle) * dist;
+    const sparkSize = 2 - age * 1.5;
+    if (sparkSize > 0.3) {
+      ctx.beginPath();
+      ctx.arc(sx, sy, sparkSize, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,240,200,${alpha})`;
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawProjectileTrail(projId, pos, animStep, keyframes) {
+  if (animStep < 1) return;
+  const projKfs = keyframes.filter(k => k.projectileId === projId).sort((a, b) => a.step - b.step);
+
+  for (let i = 1; i <= Math.min(3, animStep); i++) {
+    const kfIdx = animStep - i;
+    let trailQ, trailR;
+    if (kfIdx >= 0 && kfIdx < projKfs.length) {
+      trailQ = projKfs[kfIdx].q;
+      trailR = projKfs[kfIdx].r;
+    } else if (pos.prevQ !== undefined) {
+      trailQ = pos.prevQ; trailR = pos.prevR;
+    } else continue;
+
+    const [cx, cy] = hexCenter(trailQ, trailR);
+    const alpha = (3 - i) / 3 * 0.4;
+    const size = 3 + i;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,200,100,${alpha})`;
+    ctx.fill();
+  }
+}
+
+function drawGatherEffect(q, r, color, amount, progress) {
+  const [cx, cy] = hexCenter(q, r);
+  // Longer peak: alpha stays high for middle 60% of animation
+  const peak = 1 - Math.abs(progress - 0.5) * 1.4;
+  const alpha = Math.max(0, peak);
+
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.85;
+
+  // Pulsing rings (2 rings at different phases)
+  for (let ring = 0; ring < 2; ring++) {
+    const rp = (progress + ring * 0.3) % 1;
+    const radius = 16 + rp * 28;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3 - rp * 2;
+    ctx.stroke();
+  }
+
+  // Inner bright glow
+  const glowR = 12 + Math.sin(progress * Math.PI) * 10;
+  ctx.beginPath();
+  ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+  g.addColorStop(0, 'rgba(255,255,255,0.9)');
+  g.addColorStop(0.3, color);
+  g.addColorStop(1, 'transparent');
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  // Particles spiraling upward (8 particles)
+  for (let i = 0; i < 8; i++) {
+    const baseAngle = (i / 8) * Math.PI * 2;
+    const angle = baseAngle + progress * 4;
+    const dist = 10 + progress * 28;
+    const px = cx + Math.cos(angle) * dist;
+    const py = cy + Math.sin(angle) * dist * 0.6 - progress * 26;
+    const pSize = 3.5 - progress * 1.5;
+    if (pSize > 0.5) {
+      ctx.beginPath();
+      ctx.arc(px, py, pSize, 0, Math.PI * 2);
+      ctx.fillStyle = i % 2 === 0 ? '#ffffff' : color;
+      ctx.fill();
+    }
+  }
+
+  // Amount text floating up
+  if (amount > 0 && progress < 0.8) {
+    ctx.fillStyle = `rgba(255,255,255,${1 - progress})`;
+    ctx.font = 'bold 14px "KaiTi",serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`+${amount}`, cx, cy - 30 - progress * 24);
+  }
+
+  ctx.restore();
+}
+
+function drawDashTrail(fromQ, fromR, toQ, toR, progress) {
+  const [fx, fy] = hexCenter(fromQ, fromR);
+  const [tx, ty] = hexCenter(toQ, toR);
+  const dx = tx - fx, dy = ty - fy;
+  const perpX = -dy * 0.3, perpY = dx * 0.3;
+
+  ctx.save();
+  const alpha = 0.7 - progress * 0.5;
+
+  // Speed lines along dash path
+  for (let i = 0; i < 4; i++) {
+    const t = (i / 4) + progress * 0.3;
+    if (t > 1) continue;
+    const lx = fx + dx * Math.max(0, t - 0.2);
+    const ly = fy + dy * Math.max(0, t - 0.2);
+    const rx = fx + dx * Math.min(1, t + 0.1);
+    const ry = fy + dy * Math.min(1, t + 0.1);
+
+    ctx.beginPath();
+    ctx.moveTo(lx + perpX, ly + perpY);
+    ctx.lineTo(rx + perpX, ry + perpY);
+    ctx.moveTo(lx - perpX, ly - perpY);
+    ctx.lineTo(rx - perpX, ry - perpY);
+    ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.5})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // Ghost afterimages
+  for (let i = 0; i < 3; i++) {
+    const t = progress - (i + 1) * 0.15;
+    if (t < 0) continue;
+    const gx = fx + dx * t;
+    const gy = fy + dy * t;
+    ctx.beginPath();
+    ctx.arc(gx, gy, 18, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.15 - i * 0.04})`;
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawTeleportEffect(fromQ, fromR, toQ, toR, progress) {
+  const [fx, fy] = hexCenter(fromQ, fromR);
+  const [tx, ty] = hexCenter(toQ, toR);
+
+  ctx.save();
+
+  // Origin flash (fading out)
+  const outAlpha = (1 - progress) * 0.8;
+  if (outAlpha > 0) {
+    ctx.beginPath();
+    ctx.arc(fx, fy, 22 + progress * 10, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(139,92,246,${outAlpha * 0.3})`;
+    ctx.fill();
+    ctx.strokeStyle = `rgba(255,255,255,${outAlpha})`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  // Destination flash (fading in)
+  const inAlpha = progress * 0.8;
+  if (inAlpha > 0) {
+    ctx.beginPath();
+    ctx.arc(tx, ty, 22 + (1 - progress) * 10, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(139,92,246,${inAlpha * 0.3})`;
+    ctx.fill();
+    ctx.strokeStyle = `rgba(255,255,255,${inAlpha})`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Inner bright core
+    ctx.beginPath();
+    ctx.arc(tx, ty, 8, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${inAlpha * 0.9})`;
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawWalkTrail(fromQ, fromR, toQ, toR, progress) {
+  const [fx, fy] = hexCenter(fromQ, fromR);
+  const [tx, ty] = hexCenter(toQ, toR);
+
+  ctx.save();
+  // Simple dust puffs along the path
+  for (let i = 0; i < 2; i++) {
+    const t = progress - i * 0.3;
+    if (t < 0 || t > 1) continue;
+    const px = fx + (tx - fx) * t;
+    const py = fy + (ty - fy) * t;
+    const alpha = (1 - i * 0.3) * 0.4 * (1 - progress);
+
+    ctx.beginPath();
+    ctx.arc(px + (i - 0.5) * 8, py + 12, 4 + progress * 3, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(200,190,180,${alpha})`;
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawGrappleLine(fromQ, fromR, toQ, toR, progress) {
+  const [fx, fy] = hexCenter(fromQ, fromR);
+  const [tx, ty] = hexCenter(toQ, toR);
+
+  ctx.save();
+  // Rope/chain line
+  ctx.beginPath();
+  ctx.moveTo(fx, fy);
+  ctx.lineTo(tx, ty);
+  ctx.strokeStyle = `rgba(180,160,140,0.6)`;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 3]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Hook head at destination
+  const hookAlpha = progress > 0.5 ? 1 : progress * 2;
+  ctx.beginPath();
+  ctx.arc(tx, ty, 5, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(200,180,150,${hookAlpha})`;
+  ctx.fill();
+  ctx.strokeStyle = `rgba(255,255,255,${hookAlpha * 0.7})`;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 function renderPanels() {
   const state = engine.getState();
   const leftEl = document.getElementById('panels-left');
@@ -1749,7 +2361,7 @@ function renderPanels() {
   const chars = state.characters.filter(c => c.alive !== false);
   const leftChars = chars.slice(0, 1);
   const rightChars = chars.slice(1, 2);
-  const PER_PAGE = 8;
+  const PER_PAGE = skillsPerPage;
 
   function renderCharPanel(char) {
     const r = char.resources;
@@ -1807,7 +2419,8 @@ function renderPanels() {
 
     const skillsHTML = pageSkills.map(s => {
       const skill = SKILLS[s.id];
-      const sel = selectedSkill?.charId === char.id && selectedSkill?.skillId === s.id ? ' selected' : '';
+      const sel = (selectedSkill?.charId === char.id && selectedSkill?.skillId === s.id) ||
+                 (viewingSkill?.charId === char.id && viewingSkill?.skillId === s.id) ? ' selected' : '';
       const used = localSubmittedSet.has(char.id) || remoteSubmittedSet.has(char.id) ? ' used' : '';
       const opp = !isMine && isP2P ? ' opponent' : '';
       const noAfford = isMine && !canAfford(skill) ? ' unaffordable' : '';
@@ -1865,11 +2478,17 @@ function renderPanels() {
   });
 
   // Wire skill button click handlers
-  document.querySelectorAll('.skill-btn:not(.used):not(.opponent)').forEach(btn => {
+  document.querySelectorAll('.skill-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const skillId = btn.dataset.skill;
       const charId = btn.dataset.char;
-      selectSkill(charId, skillId);
+      if (btn.classList.contains('opponent')) {
+        viewOpponentSkill(charId, skillId);
+      } else if (btn.classList.contains('used')) {
+        return; // own character already submitted, do nothing
+      } else {
+        selectSkill(charId, skillId);
+      }
     });
   });
 }
@@ -1907,7 +2526,7 @@ document.addEventListener('keydown', (e) => {
         return costA - costB;
       });
       const page = skillPages.get(charId) || 0;
-      const pageSkills = allSkills.slice(page * 4, (page + 1) * 4);
+      const pageSkills = allSkills.slice(page * skillsPerPage, (page + 1) * skillsPerPage);
       if (key <= pageSkills.length) {
         const s = pageSkills[key - 1];
         selectSkill(charId, s.id);
@@ -1930,12 +2549,41 @@ document.addEventListener('keydown', (e) => {
   // Escape: clear selection
   if (e.key === 'Escape') {
     selectedSkill = null;
+    viewingSkill = null;
     validTargets = [];
     hoverEffectArea = [];
     hoveredHex = null;
     renderAll();
   }
 });
+
+// Chat
+document.getElementById('chat-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const msg = e.target.value.trim();
+    if (!msg) return;
+    e.target.value = '';
+    appendChatMessage('我', msg);
+    if (networkManager && networkManager.mode !== 'local') {
+      networkManager.sendMessage({ type: 'CHAT', text: msg });
+    }
+  }
+});
+
+function appendChatMessage(sender, text) {
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.style.marginBottom = '2px';
+  div.innerHTML = `<b>${sender}:</b> ${text}`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function handleNetworkMessage(payload) {
+  if (payload.type === 'CHAT') {
+    appendChatMessage('对手', payload.text);
+  }
+}
 
 // Ripple effect on skill button click
 document.addEventListener('click', (e) => {
@@ -1960,9 +2608,10 @@ canvas.addEventListener('mousemove', (e) => {
   if (!isOnBoard(hoveredHex[0], hoveredHex[1])) hoveredHex = null;
 
   hoverEffectArea = [];
-  if (selectedSkill) {
-    const skill = SKILLS[selectedSkill.skillId];
-    const char = engine.registry.get(selectedSkill.charId);
+  if (selectedSkill || viewingSkill) {
+    const sel = selectedSkill || viewingSkill;
+    const skill = SKILLS[sel.skillId];
+    const char = engine.registry.get(sel.charId);
     if (skill && char) {
       const shape = skill.targeting.shape;
       if (shape === 'SELF' || shape === 'AOE_SELF') {

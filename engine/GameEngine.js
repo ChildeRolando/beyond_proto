@@ -126,7 +126,6 @@ export class GameEngine {
     }
     await this.turnManager.executeTurn();
     this._submitted.clear();
-    this.projectileCalculator.clearKeyframes();
     const battleEnded = this.turnManager.phase === 'BATTLE_END';
     return { success: true, battleEnded };
   }

@@ -110,7 +110,7 @@ export class MovementSystem {
     for (let i = 1; i < line.length; i++) {
       const [q, r] = line[i];
       if (q === actorQ && r === actorR) break; // reached actor's hex, stop
-      if (hexDistance(q, r, actorQ, actorR) <= 1) break; // adjacent to actor, stop here
+      if (hexDistance(q, r, actorQ, actorR) < 1) break; // reached actor's hex, stop
       if (!isOnBoard(q, r)) break;
       bestQ = q; bestR = r;
     }

@@ -31,10 +31,13 @@ export class TurnManager {
   #phase = TurnPhase.PLAN;
   #delayedCommands = [];
   #pendingFlags = new Map(); // entityId → { pendingQi, ... }
+  #jumpReturns = new Map();  // entityId → { q, r } for end-of-turn jump return
   #lastHitByActor = new Map(); // actorId → boolean (did their last attack hit?)
   #shieldHitEntities = new Set(); // entityIds whose shield was hit this turn
   #submittedChars = new Set();   // charIds that submitted this turn
   #resourceFailed = new Set();  // sequenceIds whose resource cost check failed at exec time
+  #currentAnimStep = 0;
+  #speedGroups = null;
 
   constructor(deps) {
     this.#registry = deps.registry;
@@ -100,6 +103,7 @@ export class TurnManager {
     for (const spd of [3, 2, 1, 0]) {
       groups[spd].sort((a, b) => (a.actorId || '').localeCompare(b.actorId || ''));
     }
+    this.#speedGroups = groups;
 
     // Process delayed commands from previous turns before speed-tier loop
     // (so created projectiles are resolved during this turn's projectile steps)
@@ -108,11 +112,12 @@ export class TurnManager {
     // --- RESOLVE: Execute by speed tier 3→2→1→0 ---
     for (const spd of [3, 2, 1, 0]) {
       if (this.#phase === TurnPhase.BATTLE_END) break;
+      this.#currentAnimStep = 3 - spd;
       this.#eventBus.emit(EvtType.SPEED_TIER_START, { speed: spd });
 
       const cmds = groups[spd];
-      // 御剑 auto-move + 悬剑落剑 at speed 2
-      if (spd === 2) { this._resolveSwordFlightAutoMove(); this._resolveSwordHangingDrop(); }
+      // 悬剑落剑 at speed 2 (runs before commands)
+      if (spd === 2) { this._resolveSwordHangingDrop(); }
 
       // Separate ON_HIT GAIN_RESOURCE — defer until after projectiles resolve
       // so #lastHitByActor reflects projectile/melee body-contact results.
@@ -147,6 +152,9 @@ export class TurnManager {
         if (this.#phase === TurnPhase.BATTLE_END) break;
         this._executeCommand(cmd);
       }
+
+      // 御剑 auto-move at speed 2 — runs AFTER commands so freshly-applied SWORD_FLIGHT is visible
+      if (spd === 2) { this._resolveSwordFlightAutoMove(); }
 
       // Check win
       if (this._checkWinCondition()) break;
@@ -291,6 +299,17 @@ export class TurnManager {
     });
     const finalAmount = ctx?.amount ?? amount;
     this.#resourceSystem.add(cmd.actorId, resource, finalAmount);
+    // Record gather animation event
+    if (finalAmount > 0 && resource !== 'ammo') {
+      const actor = this.#registry.get(cmd.actorId);
+      if (actor) {
+        const color = resource === 'qi' ? '#8b5cf6' : resource === 'rage' ? '#e05555' : '#d4943a';
+        this.#projectileCalculator?.addAnimEvent({
+          event: 'gather', step: this.#currentAnimStep, duration: 2,
+          q: actor.position.q, r: actor.position.r, color, amount: finalAmount,
+        });
+      }
+    }
   }
 
   _execConsumeResource(cmd) {
@@ -336,6 +355,10 @@ export class TurnManager {
 
     this.#registry.updatePosition(cmd.actorId, fromQ, fromR, toQ, toR);
     this.#eventBus.emit(EvtType.MOVEMENT_COMPLETE, { entityId: cmd.actorId, from: { q: fromQ, r: fromR }, to: { q: toQ, r: toR } });
+    this.#projectileCalculator?.addAnimEvent({
+      event: 'walk', step: this.#currentAnimStep,
+      fromQ, fromR, toQ, toR, charId: cmd.actorId,
+    });
   }
 
   _execMoveTeleport(cmd) {
@@ -347,6 +370,10 @@ export class TurnManager {
     if (!isOnBoard(cmd.targetPos.q, cmd.targetPos.r)) return;
 
     this.#registry.updatePosition(cmd.actorId, fromQ, fromR, cmd.targetPos.q, cmd.targetPos.r);
+    this.#projectileCalculator?.addAnimEvent({
+      event: 'teleport', step: this.#currentAnimStep,
+      fromQ, fromR, toQ: cmd.targetPos.q, toR: cmd.targetPos.r, charId: cmd.actorId,
+    });
   }
 
   _execMoveDash(cmd) {
@@ -385,6 +412,10 @@ export class TurnManager {
 
     this.#registry.updatePosition(cmd.actorId, fromQ, fromR, curQ, curR);
     this.#eventBus.emit(EvtType.MOVEMENT_COMPLETE, { entityId: cmd.actorId, from: { q: fromQ, r: fromR }, to: { q: curQ, r: curR } });
+    this.#projectileCalculator?.addAnimEvent({
+      event: 'dash', step: this.#currentAnimStep,
+      fromQ, fromR, toQ: curQ, toR: curR, charId: cmd.actorId,
+    });
   }
 
   _execAttackMelee(cmd) {
@@ -415,10 +446,17 @@ export class TurnManager {
       return;
     }
 
-    // Resolve power (e.g., SHEATHED_BONUS → 300 if sheathed, else 100)
+    // Resolve power
     let power = cmd.payload.power;
-    if (power === 'SHEATHED_BONUS') {
-      power = this.#buffManager.hasStatus(cmd.actorId, 'SHEATHED') ? 300 : 100;
+
+    // Consume SHEATHED for enhanced melee (居合斩)
+    if (cmd.payload.consumeSheathed && this.#buffManager.hasStatus(cmd.actorId, 'SHEATHED')) {
+      // Remove SHEATHED buff and enhance the attack
+      this.#buffManager.removeByStatus(cmd.actorId, 'SHEATHED');
+      cmd.payload.range = 2; // enhanced range
+      // Refund the rage cost (cost becomes 0)
+      this.#resourceSystem?.add(cmd.actorId, 'rage', 3);
+      this.#logger?.log('纳刀解放！居合斩强化', 'rg');
     }
 
     // Same-hex melee: resolve directly (projectile path would be empty)
@@ -458,7 +496,13 @@ export class TurnManager {
 
     const fromQ = actor.position.q, fromR = actor.position.r;
     let toQ = cmd.targetPos.q, toR = cmd.targetPos.r;
-    const power = cmd.payload.power;
+    let power = cmd.payload.power;
+
+    // Resolve SHIELD_CURRENT: consume all shield as projectile power
+    if (power === 'SHIELD_CURRENT') {
+      power = this.#resourceSystem.getShield(cmd.actorId);
+      this.#resourceSystem.setShield(cmd.actorId, 0);
+    }
 
     // SURE_HIT: redirect projectile to target's current position (handles displacement)
     for (const e of this.#registry.characters()) {
@@ -533,16 +577,23 @@ export class TurnManager {
 
     const q = actor.position.q, r = actor.position.r;
     const radius = cmd.payload.radius || 1;
-    const power = cmd.payload.power;
+    let power = cmd.payload.power;
     const speed = cmd.speed || cmd.subSpeed || 1;
+    const includeCenter = cmd.payload.includeCenter || false;
+
+    if (power === 'SHIELD_CURRENT') {
+      power = this.#resourceSystem.getShield(cmd.actorId);
+      this.#resourceSystem.setShield(cmd.actorId, 0);
+    }
 
     if (cmd.payload.dropCasing && this.#projectileCalculator) {
       this.#projectileCalculator._dropCasing(q, r);
     }
 
-    const hexes = hexSpiral(q, r, radius).filter(
-      ([hq, hr]) => !(hq === q && hr === r)
-    );
+    let hexes = hexSpiral(q, r, radius);
+    if (!includeCenter) {
+      hexes = hexes.filter(([hq, hr]) => !(hq === q && hr === r));
+    }
 
     for (const [hq, hr] of hexes) {
       if (this.#projectileCalculator) {
@@ -607,7 +658,6 @@ export class TurnManager {
       this.#resourceSystem.activateBlock(targetId);
     }
 
-    this.#logger?.log('状态: ' + cmd.payload.status + ' → ' + targetId, 's');
   }
 
   _execRemoveStatus(cmd) {
@@ -635,9 +685,25 @@ export class TurnManager {
   }
 
   _execPass(cmd) {
+    if (cmd.payload?.placeholderMessage) {
+      this.#logger?.log(cmd.payload.placeholderMessage, 'warn');
+    }
     if (cmd.payload?.flag) {
       if (!this.#pendingFlags.has(cmd.actorId)) this.#pendingFlags.set(cmd.actorId, {});
       this.#pendingFlags.get(cmd.actorId)[cmd.payload.flag] = cmd.payload.value;
+      // Save position for end-of-turn jump return
+      if (cmd.payload.flag === 'jumpReturn') {
+        const actor = this.#registry.get(cmd.actorId);
+        if (actor) {
+          this.#jumpReturns.set(cmd.actorId, { q: actor.position.q, r: actor.position.r });
+        }
+      }
+      // Record gather animation when gathering is flagged (e.g., mage shield → qi)
+      if (cmd.payload.flag === 'pendingQi') {
+        // Store the anim step so the gather effect plays at the correct time
+        // (only if qi is actually gained at end-of-turn, after shield-hit check)
+        this.#pendingFlags.get(cmd.actorId)._gatherAnimStep = this.#currentAnimStep;
+      }
     }
     if (cmd.payload?.collectCasings && this.#projectileCalculator) {
       const actor = this.#registry.get(cmd.actorId);
@@ -701,10 +767,21 @@ export class TurnManager {
     const entities = this.#registry.getAt(cmd.targetPos.q, cmd.targetPos.r);
     for (const e of entities) {
       if (e.type === 'CHARACTER' && e.id !== cmd.actorId && e.alive !== false) {
+        // Cancel target's pending commands at slower speed tiers (interrupt)
+        this.#commandQueue.cancelByActor(e.id, cmd.speed);
+        // Also cancel from current turn's speed groups (already built before tier loop)
+        if (this.#speedGroups) {
+          for (const spd of [0, 1]) {
+            if (cmd.speed >= 0 && spd >= cmd.speed) continue;
+            this.#speedGroups[spd] = this.#speedGroups[spd].filter(c => c.actorId !== e.id);
+          }
+        }
+        // Apply 禁锢 (immobilize) for 1 turn
+        this.#buffManager.apply(e.id, 'IMMOBILIZED', 1, cmd.actorId);
         const result = this.#movementSystem.resolvePull(actor.position.q, actor.position.r, e.position.q, e.position.r);
         this.#registry.updatePosition(e.id, e.position.q, e.position.r, result.q, result.r);
         this.#eventBus.emit(EvtType.MOVEMENT_COMPLETE, { entityId: e.id, from: { q: e.position.q, r: e.position.r }, to: { q: result.q, r: result.r } });
-        this.#logger?.log('无情铁手！拉至身前', 'rg');
+        this.#logger?.log('无情铁手！拉至身前 + 禁锢', 'rg');
         break;
       }
     }
@@ -729,6 +806,10 @@ export class TurnManager {
       if (wildCollected > 0) this.#logger?.log(`钩锁途中捡起野生子弹 +${wildCollected}`, 's');
     }
     this.#registry.updatePosition(cmd.actorId, fromQ, fromR, cmd.targetPos.q, cmd.targetPos.r);
+    this.#projectileCalculator?.addAnimEvent({
+      event: 'grapple', step: this.#currentAnimStep,
+      fromQ, fromR, toQ: cmd.targetPos.q, toR: cmd.targetPos.r, charId: cmd.actorId,
+    });
   }
 
   // --- Turn-start hook resolution ---
@@ -934,6 +1015,14 @@ export class TurnManager {
           });
           const finalAmount = ctx?.amount ?? 1;
           this.#resourceSystem.add(entityId, 'qi', finalAmount);
+          const animStep = flags._gatherAnimStep ?? this.#currentAnimStep;
+          const gatherActor = this.#registry.get(entityId);
+          if (gatherActor && finalAmount > 0) {
+            this.#projectileCalculator?.addAnimEvent({
+              event: 'gather', step: animStep, duration: 2,
+              q: gatherActor.position.q, r: gatherActor.position.r, color: '#8b5cf6', amount: finalAmount,
+            });
+          }
           this.#logger?.log(`🔮 集气成功 +${finalAmount}气`, 'qi');
         } else {
           this.#logger?.log('🔮 护盾受击，未获气', 'sh');
@@ -945,6 +1034,22 @@ export class TurnManager {
     for (const e of this.#registry.characters()) {
       this.#resourceSystem.setShieldActive(e.id, false);
     }
+
+    // Jump return: teleport entities back to their saved positions
+    for (const [entityId, pos] of this.#jumpReturns) {
+      const actor = this.#registry.get(entityId);
+      if (actor && actor.alive !== false) {
+        const fromQ = actor.position.q, fromR = actor.position.r;
+        this.#registry.updatePosition(entityId, fromQ, fromR, pos.q, pos.r);
+        this.#eventBus.emit(EvtType.MOVEMENT_COMPLETE, { entityId, from: { q: fromQ, r: fromR }, to: { q: pos.q, r: pos.r } });
+        this.#projectileCalculator?.addAnimEvent({
+          event: 'teleport', step: this.#currentAnimStep,
+          fromQ, fromR, toQ: pos.q, toR: pos.r, charId: entityId,
+        });
+        this.#logger?.log(`↩ 跃迁返回 (${pos.q},${pos.r})`, 'mv');
+      }
+    }
+    this.#jumpReturns.clear();
 
     this.#pendingFlags.clear();
   }
@@ -1097,6 +1202,8 @@ export class TurnManager {
     this.#shieldHitEntities.clear();
     this.#submittedChars.clear();
     this.#resourceFailed.clear();
+    this.#jumpReturns.clear();
+    this.#speedGroups = null;
     this.#commandQueue.clearAll();
   }
 }

@@ -80,6 +80,30 @@ export class BuffManager {
     return false;
   }
 
+  // Upgrade SHEATHED to permanent when interception destroys a projectile
+  lockSheathed(entityId) {
+    const buffIds = this.#buffsByEntity.get(entityId);
+    if (!buffIds) return;
+    for (const id of buffIds) {
+      const inst = this.#buffs.get(id);
+      if (inst?.statusType === 'SHEATHED' && inst.duration !== -1) {
+        inst.duration = -1;
+        inst.data.locked = true;
+      }
+    }
+  }
+
+  removeByStatus(entityId, statusType) {
+    const buffIds = this.#buffsByEntity.get(entityId);
+    if (!buffIds) return;
+    for (const id of buffIds) {
+      if (this.#buffs.get(id)?.statusType === statusType) {
+        this.remove(id);
+        return;
+      }
+    }
+  }
+
   getActiveBuffs(entityId) {
     const ids = this.#buffsByEntity.get(entityId);
     if (!ids) return [];
@@ -164,6 +188,13 @@ export class BuffManager {
         break;
 
       case 'ROOTED':
+        this.registerHook(buffId, HookName.ON_BEFORE_MOVE, (ctx) => {
+          if (ctx.entityId === entityId) return false;
+          return ctx;
+        });
+        break;
+
+      case 'IMMOBILIZED':
         this.registerHook(buffId, HookName.ON_BEFORE_MOVE, (ctx) => {
           if (ctx.entityId === entityId) return false;
           return ctx;

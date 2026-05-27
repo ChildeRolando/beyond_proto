@@ -35,6 +35,13 @@ export const STATUS_DEFS = {
     blocking: true,
     // Cannot move
   },
+  IMMOBILIZED: {
+    id: 'IMMOBILIZED',
+    name: '禁锢',
+    duration: 1,
+    blocking: true,
+    // Cannot move or act for 1 turn
+  },
   SURE_HIT: {
     id: 'SURE_HIT',
     name: '必中',

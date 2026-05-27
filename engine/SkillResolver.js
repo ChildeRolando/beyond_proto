@@ -131,7 +131,7 @@ export class SkillResolver {
       case 'ATTACK_MELEE':
         return { ...base, type: CmdType.ATTACK_MELEE,
           targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null,
-          payload: { power: eff.power, range: eff.range || 1, origin: eff.origin || 'ACTOR_POS' } };
+          payload: { power: eff.power, range: eff.range || 1, origin: eff.origin || 'ACTOR_POS', consumeSheathed: eff.consumeSheathed || false } };
 
       case 'ATTACK_PROJECTILE':
         return { ...base, type: CmdType.ATTACK_PROJECTILE,
@@ -220,8 +220,9 @@ export class SkillResolver {
           payload: { flag: eff.flag, value: eff.value, targetRef: eff.target } };
 
       case 'REACTIVE_ARMOR':
-        return { ...base, type: CmdType.ATTACK_AOE_SELF,
-          payload: { power: 'SHIELD_CURRENT', radius: 1 } };
+        return { ...base, type: CmdType.ATTACK_PROJECTILE,
+          targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null,
+          payload: { power: 'SHIELD_CURRENT', projectileSpeed: 1, flags: [] } };
 
       case 'RELOAD_AMMO':
         return { ...base, type: CmdType.GAIN_RESOURCE,
@@ -264,13 +265,16 @@ export class SkillResolver {
 
       case 'SPAWN_STATIONARY_AOE':
         return { ...base, type: CmdType.SPAWN_STATIONARY_AOE,
-          payload: { power: eff.power, radius: eff.radius, dropCasing: eff.dropCasing || false } };
+          payload: { power: eff.power, radius: eff.radius, dropCasing: eff.dropCasing || false, includeCenter: eff.includeCenter || false } };
 
       case 'BREAK_FORMATION':
         return { ...base, type: CmdType.BREAK_FORMATION,
           targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null };
 
       case 'PASS':
+        return { ...base, type: CmdType.PASS,
+          payload: { placeholderMessage: eff.placeholderMessage || null } };
+
       default:
         return { ...base, type: CmdType.PASS, payload: {} };
     }

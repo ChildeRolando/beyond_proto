@@ -20,6 +20,7 @@ export class ProjectileCalculator {
   #wildBullets = new Map();      // posKey → count
   #wildBulletsCollected = 0;
   #keyframes = [];
+  #animEvents = [];              // non-projectile visual events (gather, dash, teleport, etc.)
   #lastInterceptions = [];
   #lastHits = [];
   #logger;
@@ -50,7 +51,7 @@ export class ProjectileCalculator {
     };
 
     this.#projectiles.push(proj);
-    this.#keyframes.push({ projectileId: proj.id, step: 0, q: fromQ, r: fromR, event: 'fired', speedTier: 0 });
+    this.#keyframes.push({ projectileId: proj.id, step: 0, q: fromQ, r: fromR, event: 'fired', speedTier: 0, power, flags: [...flags], fromQ, fromR, toQ, toR });
 
     if (flags.includes('CASING_DROP')) {
       this._dropCasing(fromQ, fromR);
@@ -202,11 +203,10 @@ export class ProjectileCalculator {
             const tag = (strongMelee || weakMelee) ? '⚔💥 斩击相杀！' : '💥 弹体相杀！';
             this.#logger?.log(`${tag}威${strong.power} vs 威${weak.power}`, 'die');
           } else {
-            strong.power -= weak.power;
             weak.alive = false;
             destroyed.add(weak.id);
             const tag = (strongMelee || weakMelee) ? '⚔💥 斩击贯穿！' : '💥 弹体贯穿！';
-            this.#logger?.log(`${tag}余威${strong.power}`, 'sh');
+            this.#logger?.log(`${tag}余威${strong.power}(不降威)`, 'sh');
           }
         }
       }
@@ -241,6 +241,8 @@ export class ProjectileCalculator {
 
         if (ip >= proj.power) {
           proj.alive = false;
+          // If interceptor has SHEATHED buff, upgrade it to permanent
+          buffManager.lockSheathed(entity.id);
           const meleeTag = proj.flags.includes('MELEE') ? '斩击' : '弹体';
           this.#logger?.log(`⚔ 拦截！威${ip}斩破${meleeTag}威${proj.power}`, 'rg');
           this.#keyframes.push({
@@ -488,12 +490,25 @@ export class ProjectileCalculator {
     this.#keyframes.length = 0;
   }
 
+  addAnimEvent(event) {
+    this.#animEvents.push(event);
+  }
+
+  getAnimEvents() {
+    return this.#animEvents;
+  }
+
+  clearAnimEvents() {
+    this.#animEvents.length = 0;
+  }
+
   reset() {
     this.#projectiles.length = 0;
     this.#casings.clear();
     this.#wildBullets.clear();
     this.#wildBulletsCollected = 0;
     this.#keyframes.length = 0;
+    this.#animEvents.length = 0;
     this.#lastInterceptions.length = 0;
     this.#lastHits.length = 0;
   }
