@@ -98,3 +98,5 @@ Examples of what counts as "minor":
 - Bug fixes
 
 **Commit messages**: Chinese or mixed Chinese/English. Describe the functional change, not the implementation.
+
+**CHANGELOG.md**: After every change session (not per-commit), append a dated entry summarizing all functional changes. Keep entries concise — collaborator and their Claude read this to catch up. Commit CHANGELOG.md along with the changes.
