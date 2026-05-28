@@ -10,8 +10,10 @@ export class NetworkManager {
   #signalingUrl;
 
   // Lockstep state
-  #myAction = null;          // { charId, skillId, targetPos }
-  #remoteAction = null;      // { charId, skillId, targetPos }
+  #myActions = [];           // [{ charId, skillId, targetPos }]
+  #remoteActions = [];       // [{ charId, skillId, targetPos }]
+  #myReady = false;
+  #remoteReady = false;
   #turnNumber = 1;
 
   // Heartbeat
@@ -30,8 +32,8 @@ export class NetworkManager {
   get myPlayerId() { return this.#myPlayerId; }
   get roomCode() { return this.#roomCode; }
   get status() { return this.#status; }
-  get remoteSubmitted() { return this.#remoteAction !== null; }
-  get iSubmitted() { return this.#myAction !== null; }
+  get remoteSubmitted() { return this.#remoteReady; }
+  get iSubmitted() { return this.#myReady; }
 
   // --- Public API ---
 
@@ -53,7 +55,8 @@ export class NetworkManager {
   }
 
   submitMyAction(charId, skillId, targetPos) {
-    this.#myAction = { charId, skillId, targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null };
+    const action = { charId, skillId, targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null };
+    this.#myActions.push(action);
     this.#sendGame({
       type: 'TURN_ACTION',
       turnNumber: this.#turnNumber,
@@ -61,13 +64,21 @@ export class NetworkManager {
       skillId,
       targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null,
     });
+  }
+
+  markReady() {
+    if (this.#myReady) return;
+    this.#myReady = true;
+    this.#sendGame({ type: 'TURN_READY', turnNumber: this.#turnNumber });
     this.#checkBothReady();
   }
 
   clearTurn() {
     this.#turnNumber++;
-    this.#myAction = null;
-    this.#remoteAction = null;
+    this.#myActions = [];
+    this.#remoteActions = [];
+    this.#myReady = false;
+    this.#remoteReady = false;
   }
 
   sendClassPick(playerClass, battleSeed = 0) {
@@ -93,8 +104,10 @@ export class NetworkManager {
     if (this.#ws) { try { this.#ws.close(); } catch (_) { /* ignore */ } this.#ws = null; }
     this.#setStatus('disconnected');
     this.#mode = 'local';
-    this.#myAction = null;
-    this.#remoteAction = null;
+    this.#myActions = [];
+    this.#remoteActions = [];
+    this.#myReady = false;
+    this.#remoteReady = false;
   }
 
   // --- WebSocket ---
@@ -162,12 +175,18 @@ export class NetworkManager {
         const { payload } = msg;
         switch (payload.type) {
           case 'TURN_ACTION':
-            this.#remoteAction = {
+            const remoteAction = {
               charId: payload.charId,
               skillId: payload.skillId,
               targetPos: payload.targetPos,
             };
-            this.#callbacks.onRemoteSubmitted?.(this.#remoteAction);
+            this.#remoteActions.push(remoteAction);
+            this.#callbacks.onRemoteSubmitted?.(remoteAction);
+            break;
+
+          case 'TURN_READY':
+            this.#remoteReady = true;
+            this.#callbacks.onRemoteReady?.();
             this.#checkBothReady();
             break;
 
@@ -197,7 +216,7 @@ export class NetworkManager {
   }
 
   #checkBothReady() {
-    if (this.#myAction && this.#remoteAction) {
+    if (this.#myReady && this.#remoteReady) {
       this.#callbacks.onReady?.();
     }
   }

@@ -68,19 +68,14 @@ check('player1 role registered', p1?.roleId === 'shooter_gunfighter', p1?.roleId
 check('player2 role registered', p2?.roleId === 'warrior_jimmy', p2?.roleId);
 check('player1 loadout registered', p1?.loadoutSkillIds?.length === LOADOUT_SIZE, String(p1?.loadoutSkillIds?.length));
 check('player1 role traits exposed', p1?.traits?.some(t => t.id === 'gunfighter_finesse'));
-check('player1 final skills include role placeholder', p1?.skills?.some(s => s.id === 'role_gunfighter_quick_action'));
+check('player1 final skills do not include passive-only finesse skill', !p1?.skills?.some(s => s.id === 'role_gunfighter_quick_action'));
 check('player1 final skills include loadout skill', p1?.skills?.some(s => s.id === 'shooter_attack'));
 
 const rejected = engine.submitAction(ids.player1Id, 'shooter_causality', { q: 0, r: 2 });
 check('unloaded skill is rejected', !rejected.success && rejected.error === 'skill_not_in_loadout', rejected.error);
 
-const accepted = engine.submitAction(ids.player1Id, 'role_gunfighter_quick_action', null);
-check('role placeholder skill can be submitted', accepted.success, accepted.error);
-engine.submitAction(ids.player2Id, 'warrior_rage', null);
-const turn = await engine.executeTurn();
-check('placeholder turn executes', turn.success, turn.error);
-const logHit = engine.logger.getEntries().some(e => e.message.includes('角色技能暂未实装：灵巧行动'));
-check('placeholder skill logs planned message', logHit);
+const passiveRejected = engine.submitAction(ids.player1Id, 'role_gunfighter_quick_action', null);
+check('passive-only finesse skill cannot be submitted directly', !passiveRejected.success && passiveRejected.error === 'skill_not_in_loadout', passiveRejected.error);
 
 console.log(`\n=== Result: ${passed} passed, ${failed} failed ===`);
 if (failed > 0) process.exit(1);

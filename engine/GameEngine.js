@@ -4,6 +4,7 @@ import { EventBus } from './EventBus.js';
 import { Logger } from './Logger.js';
 import { CommandQueue } from './CommandQueue.js';
 import { ResourceSystem } from './ResourceSystem.js';
+import { ActionPointSystem } from './ActionPointSystem.js';
 import { BuffManager } from './BuffManager.js';
 import { DamageCalculator } from './DamageCalculator.js';
 import { MovementSystem } from './MovementSystem.js';
@@ -13,6 +14,14 @@ import { TurnManager } from './TurnManager.js';
 import { DimensionSystem } from './DimensionSystem.js';
 import { FormationSystem } from './FormationSystem.js';
 import { SKILLS_BY_CLASS } from './SkillData.js';
+import {
+  ROLE_DEFS,
+  buildAllowedSkillIds,
+  getDefaultLoadout,
+  getRoleSkillIds,
+  getRoleTraits,
+  normalizePlayerConfig,
+} from './RoleData.js';
 import { STATUS_DEFS } from './StatusEffectDefs.js';
 import { isOnBoard, hexCenter } from './HexMath.js';
 
@@ -23,6 +32,7 @@ export class GameEngine {
     this.logger = new Logger();
     this.commandQueue = new CommandQueue(this.eventBus);
     this.resourceSystem = new ResourceSystem(this.eventBus);
+    this.actionPointSystem = new ActionPointSystem();
     this.buffManager = new BuffManager(this.eventBus, this.registry);
     this.formationSystem = new FormationSystem(this.registry, this.eventBus, this.resourceSystem);
     this.damageCalculator = new DamageCalculator(this.registry, this.eventBus, this.resourceSystem, this.formationSystem, this.buffManager);
@@ -38,6 +48,7 @@ export class GameEngine {
       buffManager: this.buffManager,
       damageCalculator: this.damageCalculator,
       resourceSystem: this.resourceSystem,
+      actionPointSystem: this.actionPointSystem,
       logger: this.logger,
       skillResolver: this.skillResolver,
       movementSystem: this.movementSystem,
@@ -65,30 +76,54 @@ export class GameEngine {
     this.reset();
 
     const battleSeed = scenario.seed || 0;
-    const p1Class = scenario.player1Class || '法师';
-    const p2Class = scenario.player2Class || '战士';
+    const usingPlayerConfigs = Array.isArray(scenario.players) && scenario.players.length >= 2;
+    const p1Config = usingPlayerConfigs
+      ? normalizePlayerConfig(scenario.players.find(p => p.playerId === 'player1') || scenario.players[0], 'player1')
+      : null;
+    const p2Config = usingPlayerConfigs
+      ? normalizePlayerConfig(scenario.players.find(p => p.playerId === 'player2') || scenario.players[1], 'player2')
+      : null;
+    const p1Class = p1Config?.class || scenario.player1Class || '法师';
+    const p2Class = p2Config?.class || scenario.player2Class || '战士';
     const p1Pos = scenario.p1Pos || { q: 0, r: -2 };
     const p2Pos = scenario.p2Pos || { q: 0, r: 2 };
 
-    const p1Id = 'char_' + (p1Class === '法师' ? 'mage' : p1Class === '战士' ? 'warrior' : 'shooter') + '_p1';
-    const p2Id = 'char_' + (p2Class === '法师' ? 'mage' : p2Class === '战士' ? 'warrior' : 'shooter') + '_p2';
+    const p1Id = usingPlayerConfigs
+      ? 'char_' + p1Config.roleId + '_p1'
+      : 'char_' + (p1Class === '法师' ? 'mage' : p1Class === '战士' ? 'warrior' : 'shooter') + '_p1';
+    const p2Id = usingPlayerConfigs
+      ? 'char_' + p2Config.roleId + '_p2'
+      : 'char_' + (p2Class === '法师' ? 'mage' : p2Class === '战士' ? 'warrior' : 'shooter') + '_p2';
+    const p1Role = p1Config ? ROLE_DEFS[p1Config.roleId] : null;
+    const p2Role = p2Config ? ROLE_DEFS[p2Config.roleId] : null;
+    const p1Loadout = p1Config?.loadoutSkillIds || getDefaultLoadout(p1Class);
+    const p2Loadout = p2Config?.loadoutSkillIds || getDefaultLoadout(p2Class);
+    const p1Allowed = p1Config ? buildAllowedSkillIds(p1Class, p1Config.roleId, p1Loadout) : null;
+    const p2Allowed = p2Config ? buildAllowedSkillIds(p2Class, p2Config.roleId, p2Loadout) : null;
 
     this.registry.register({
-      id: p1Id, type: 'CHARACTER', name: p1Class === '法师' ? '法师' : p1Class === '战士' ? '战士' : '射手',
+      id: p1Id, type: 'CHARACTER', name: p1Role?.name || (p1Class === '法师' ? '法师' : p1Class === '战士' ? '战士' : '射手'),
       class: p1Class, position: { q: p1Pos.q, r: p1Pos.r, dim: 'real' },
       alive: true, ownerId: 'player1',
+      roleId: p1Config?.roleId || null,
+      loadoutSkillIds: p1Config ? [...p1Loadout] : null,
+      allowedSkillIds: p1Allowed,
     });
     this._playerClass.set(p1Id, p1Class);
 
     this.registry.register({
-      id: p2Id, type: 'CHARACTER', name: p2Class === '法师' ? '法师' : p2Class === '战士' ? '战士' : '射手',
+      id: p2Id, type: 'CHARACTER', name: p2Role?.name || (p2Class === '法师' ? '法师' : p2Class === '战士' ? '战士' : '射手'),
       class: p2Class, position: { q: p2Pos.q, r: p2Pos.r, dim: 'real' },
       alive: true, ownerId: 'player2',
+      roleId: p2Config?.roleId || null,
+      loadoutSkillIds: p2Config ? [...p2Loadout] : null,
+      allowedSkillIds: p2Allowed,
     });
     this._playerClass.set(p2Id, p2Class);
 
     this.resourceSystem.initCharacter(p1Id, p1Class);
     this.resourceSystem.initCharacter(p2Id, p2Class);
+    this.actionPointSystem.resetTurn();
 
     // Spawn 6 wild bullets if any shooter is present; half in friendly zone
     const shooterClass = p1Class === '射手' ? p1Class : p2Class === '射手' ? p2Class : null;
@@ -104,7 +139,10 @@ export class GameEngine {
   submitAction(characterId, skillId, targetPos) {
     const result = this.turnManager.submitAction(characterId, skillId, targetPos);
     if (result.success) {
-      this._submitted.add(characterId);
+      const character = this.registry.get(characterId);
+      if (character && this.actionPointSystem.isRequiredReady(character)) {
+        this._submitted.add(characterId);
+      }
     }
     return result;
   }
@@ -155,13 +193,18 @@ export class GameEngine {
     const characters = [];
     for (const c of this.registry.characters()) {
       characters.push({
-        id: c.id, name: c.name, class: c.class,
+        id: c.id, name: c.name, class: c.class, ownerId: c.ownerId,
+        roleId: c.roleId || null,
         position: { ...c.position }, alive: c.alive,
         resources: { ...this.resourceSystem.getAll(c.id) },
         buffs: this.buffManager.getActiveBuffs(c.id).map(b => ({
           id: b.id, statusType: b.statusType, name: STATUS_DEFS[b.statusType]?.name || b.statusType, duration: b.duration, data: { ...b.data },
         })),
-        skills: (SKILLS_BY_CLASS[c.class] || []).map(sid => ({ id: sid })),
+        traits: getRoleTraits(c.roleId),
+        loadoutSkillIds: c.loadoutSkillIds ? [...c.loadoutSkillIds] : null,
+        roleSkillIds: getRoleSkillIds(c.roleId),
+        actionPoints: this.actionPointSystem.getState(c),
+        skills: this._getVisibleSkillIdsForCharacter(c).map(sid => ({ id: sid })),
       });
     }
 
@@ -198,6 +241,15 @@ export class GameEngine {
     return SKILLS_BY_CLASS[className] || [];
   }
 
+  _getVisibleSkillIdsForCharacter(character) {
+    if (!character.loadoutSkillIds) return SKILLS_BY_CLASS[character.class] || [];
+    const result = [];
+    for (const sid of [...getRoleSkillIds(character.roleId), ...character.loadoutSkillIds]) {
+      if (!result.includes(sid)) result.push(sid);
+    }
+    return result;
+  }
+
   getCharacterIdByClass(className) {
     for (const c of this.registry.characters()) {
       if (c.class === className) return c.id;
@@ -208,6 +260,17 @@ export class GameEngine {
   getCharacterOwner(charId) {
     const c = this.registry.get(charId);
     return c ? c.ownerId : null;
+  }
+
+  canSubmitAction(characterId, skillId = null) {
+    const character = this.registry.get(characterId);
+    if (!character) return { ok: false, canSubmit: false, reason: 'unknown_actor' };
+    if (skillId) {
+      const result = this.actionPointSystem.canSubmit(character, skillId);
+      return { ...result, canSubmit: result.ok };
+    }
+    const state = this.actionPointSystem.getState(character);
+    return { ok: state.canSubmit, canSubmit: state.canSubmit, state };
   }
 
   getCharactersByOwner(ownerId) {
@@ -237,6 +300,7 @@ export class GameEngine {
     this.registry.clear();
     this.commandQueue.clearAll();
     this.resourceSystem.clear();
+    this.actionPointSystem.resetTurn();
     this.buffManager.clear();
     this.projectileCalculator.reset();
     this.dimensionSystem.reset();

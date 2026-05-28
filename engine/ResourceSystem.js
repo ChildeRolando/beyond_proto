@@ -142,7 +142,9 @@ export class ResourceSystem {
   addBackpackAmmo(entityId, amount) {
     const pool = this.#pools.get(entityId);
     if (!pool) return 0;
+    const old = pool.backpackAmmo || 0;
     pool.backpackAmmo = (pool.backpackAmmo || 0) + amount;
+    this.#eventBus.emit(EvtType.RESOURCE_CHANGED, { entityId, resource: 'backpackAmmo', old, new: pool.backpackAmmo, delta: amount });
     return pool.backpackAmmo;
   }
 

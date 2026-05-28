@@ -20,6 +20,7 @@ export class TurnManager {
   #buffManager;
   #damageCalculator;
   #resourceSystem;
+  #actionPointSystem;
   #logger;
   #skillResolver = null;
   #movementSystem = null;
@@ -36,6 +37,7 @@ export class TurnManager {
   #shieldHitEntities = new Set(); // entityIds whose shield was hit this turn
   #submittedChars = new Set();   // charIds that submitted this turn
   #resourceFailed = new Set();  // sequenceIds whose resource cost check failed at exec time
+  #canceledSequences = new Set(); // sequenceIds canceled by interruption/reaction effects
   #currentAnimStep = 0;
   #speedGroups = null;
 
@@ -46,6 +48,7 @@ export class TurnManager {
     this.#buffManager = deps.buffManager;
     this.#damageCalculator = deps.damageCalculator;
     this.#resourceSystem = deps.resourceSystem;
+    this.#actionPointSystem = deps.actionPointSystem || null;
     this.#logger = deps.logger;
     this.#skillResolver = deps.skillResolver || null;
     this.#movementSystem = deps.movementSystem || null;
@@ -69,6 +72,7 @@ export class TurnManager {
     this.#shieldHitEntities.clear();
     this.#submittedChars.clear();
     this.#resourceFailed.clear();
+    this.#canceledSequences.clear();
     this.#logger?.setTurn(this.#turnNumber);
     this.#logger?.log(`=== 第 ${this.#turnNumber} 回合 ===`, 'turn');
     this.#phase = TurnPhase.RESOLVE;
@@ -185,6 +189,7 @@ export class TurnManager {
 
     this.#turnNumber++;
     this.#phase = TurnPhase.PLAN;
+    this.#actionPointSystem?.resetTurn();
     this.#eventBus.emit(EvtType.TURN_END, { turn: this.#turnNumber - 1 });
   }
 
@@ -197,6 +202,15 @@ export class TurnManager {
     if (this.#resourceFailed.has(cmd.sequenceId) &&
         cmd.type !== CmdType.GAIN_RESOURCE &&
         cmd.type !== CmdType.CONSUME_RESOURCE) {
+      return;
+    }
+    if (this.#canceledSequences.has(cmd.sequenceId)) return;
+
+    if (this._shouldCancelAttackByYan(cmd)) {
+      this.#canceledSequences.add(cmd.sequenceId);
+      this.#buffManager.removeByType(cmd.actorId, 'YAN_EMPTY_GUN');
+      this.#lastHitByActor.set(cmd.actorId, false);
+      this.#logger?.log('我赌你的枪里没有子弹：攻击取消，费用不返还', 'warn');
       return;
     }
 
@@ -283,6 +297,21 @@ export class TurnManager {
     });
   }
 
+  _isAttackCommand(cmd) {
+    return [
+      CmdType.ATTACK_MELEE,
+      CmdType.ATTACK_PROJECTILE,
+      CmdType.ATTACK_AOE_SELF,
+      CmdType.ATTACK_AOE_PATH,
+      CmdType.ATTACK_AOE_TARGET,
+      CmdType.SPAWN_STATIONARY_AOE,
+    ].includes(cmd.type);
+  }
+
+  _shouldCancelAttackByYan(cmd) {
+    return this._isAttackCommand(cmd) && this.#buffManager.hasStatus(cmd.actorId, 'YAN_EMPTY_GUN');
+  }
+
   // --- Individual command executors ---
   _execGainResource(cmd) {
     let { resource, amount, condition } = cmd.payload;
@@ -298,6 +327,11 @@ export class TurnManager {
       entityId: cmd.actorId, resource, amount,
     });
     const finalAmount = ctx?.amount ?? amount;
+    if (resource === 'backpackAmmo') {
+      this.#resourceSystem.addBackpackAmmo(cmd.actorId, finalAmount);
+      this.#logger?.log(`背包弹药 +${finalAmount}`, 's');
+      return;
+    }
     this.#resourceSystem.add(cmd.actorId, resource, finalAmount);
     // Record gather animation event
     if (finalAmount > 0 && resource !== 'ammo') {
@@ -575,7 +609,8 @@ export class TurnManager {
     const actor = this.#registry.get(cmd.actorId);
     if (!actor) return;
 
-    const q = actor.position.q, r = actor.position.r;
+    const q = cmd.targetPos ? cmd.targetPos.q : actor.position.q;
+    const r = cmd.targetPos ? cmd.targetPos.r : actor.position.r;
     const radius = cmd.payload.radius || 1;
     let power = cmd.payload.power;
     const speed = cmd.speed || cmd.subSpeed || 1;
@@ -1078,8 +1113,10 @@ export class TurnManager {
   }
 
   _cleanup() {
+    this._resolveRoleCleanupEffects();
     // Tick buff durations
     this.#buffManager.tickDurations(this.#turnNumber);
+    this._clearEndOfTurnRoleStatuses();
     // Clear queue
     this.#commandQueue.clearAll();
     // Respawn wild bullets if shooter present
@@ -1095,6 +1132,22 @@ export class TurnManager {
           this.#projectileCalculator.spawnWildBullets(toRespawn, this.#registry, this.#turnNumber, friendlyHalf);
         }
       }
+    }
+  }
+
+  _resolveRoleCleanupEffects() {
+    for (const e of this.#registry.characters()) {
+      if (e.alive === false) continue;
+      if (e.roleId === 'shooter_helldiver') {
+        this.#resourceSystem.add(e.id, 'ammo', 1);
+        this.#logger?.log('绝地潜兵激光武器蓄能 +1弹药', 's');
+      }
+    }
+  }
+
+  _clearEndOfTurnRoleStatuses() {
+    for (const e of this.#registry.characters()) {
+      this.#buffManager.removeByType(e.id, 'YAN_EMPTY_GUN');
     }
   }
 
@@ -1142,6 +1195,12 @@ export class TurnManager {
     const result = this.#skillResolver.resolve(skillId, characterId, targetPos);
     if (!result.success) return result;
 
+    const actor = this.#registry.get(characterId);
+    const actionPoint = this.#actionPointSystem?.consume(actor, skillId);
+    if (actionPoint && !actionPoint.ok) {
+      return { success: false, error: actionPoint.reason };
+    }
+
     // Set current turn for buff timing checks
     this.#buffManager.setCurrentTurn(this.#turnNumber);
 
@@ -1173,7 +1232,7 @@ export class TurnManager {
 
     this.#commandQueue.enqueueSequence(finalSequence);
     this.#submittedChars.add(characterId);
-    return { success: true, sequence: finalSequence };
+    return { success: true, sequence: finalSequence, actionPoint };
   }
 
   autoSubmitForcedActions() {
@@ -1202,8 +1261,10 @@ export class TurnManager {
     this.#shieldHitEntities.clear();
     this.#submittedChars.clear();
     this.#resourceFailed.clear();
+    this.#canceledSequences.clear();
     this.#jumpReturns.clear();
     this.#speedGroups = null;
+    this.#actionPointSystem?.resetTurn();
     this.#commandQueue.clearAll();
   }
 }

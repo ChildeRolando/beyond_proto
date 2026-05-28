@@ -173,11 +173,243 @@ body {
 
 #room-error { font-size: 12px; color: var(--red); min-height: 16px; }
 
+/* --- Config screen --- */
+#config-screen {
+  display: none;
+  width: 100vw;
+  height: 100vh;
+  padding: 18px 24px;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 14px;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.05)),
+    var(--bg);
+}
+.config-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+.config-top h1 {
+  font-family: var(--font-display);
+  color: var(--accent);
+  font-size: 22px;
+  letter-spacing: 4px;
+  margin-right: auto;
+}
+.config-status { color: var(--text-dim); font-size: 13px; }
+.config-player-switch {
+  display: flex;
+  gap: 6px;
+}
+.config-player-switch button,
+.class-tabs button,
+.config-action {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+}
+.config-player-switch button.active,
+.class-tabs button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(221,187,153,0.08);
+}
+.class-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.role-stage {
+  display: grid;
+  grid-template-columns: 280px 1fr 280px;
+  gap: 16px;
+  min-height: 0;
+  align-items: stretch;
+}
+.role-detail,
+.peer-config-card {
+  background: rgba(0,0,0,0.16);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px;
+  overflow: auto;
+}
+.role-detail h2,
+.peer-config-card h2 {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+.role-detail p,
+.peer-config-card p {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.55;
+  margin-bottom: 8px;
+}
+.trait-pill {
+  display: inline-block;
+  border: 1px solid rgba(221,187,153,0.35);
+  color: var(--accent);
+  padding: 3px 7px;
+  border-radius: 3px;
+  font-size: 11px;
+  margin: 0 4px 4px 0;
+}
+.role-carousel {
+  display: grid;
+  grid-template-columns: 46px 1fr 46px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.role-nav {
+  height: 120px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--accent);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 28px;
+}
+.role-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  gap: 14px;
+  align-items: center;
+}
+.role-card {
+  height: min(58vh, 470px);
+  min-height: 330px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: linear-gradient(160deg, #3e3d54, #25242d);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  transition: transform 0.2s, border-color 0.2s, opacity 0.2s;
+  opacity: 0.72;
+}
+.role-card::before {
+  content: '';
+  position: absolute;
+  inset: 18px 28px 86px;
+  border-radius: 999px 999px 12px 12px;
+  background: rgba(255,255,255,0.12);
+  clip-path: polygon(50% 0%, 78% 22%, 86% 62%, 64% 100%, 36% 100%, 14% 62%, 22% 22%);
+}
+.role-card.center {
+  transform: scale(1.04);
+  border-color: var(--accent);
+  opacity: 1;
+}
+.role-card.theme-violet { background: linear-gradient(160deg, #5b4b8a, #25242d); }
+.role-card.theme-indigo { background: linear-gradient(160deg, #3f4f88, #25242d); }
+.role-card.theme-cyan { background: linear-gradient(160deg, #2f6b72, #25242d); }
+.role-card.theme-crimson { background: linear-gradient(160deg, #7c343d, #25242d); }
+.role-card.theme-amber { background: linear-gradient(160deg, #7a5a2f, #25242d); }
+.role-card.theme-steel { background: linear-gradient(160deg, #56606d, #25242d); }
+.role-card.theme-copper { background: linear-gradient(160deg, #80563b, #25242d); }
+.role-card.theme-olive { background: linear-gradient(160deg, #596b3a, #25242d); }
+.role-card.theme-navy { background: linear-gradient(160deg, #30476d, #25242d); }
+.role-card h3 {
+  position: relative;
+  font-family: var(--font-display);
+  color: #fff;
+  font-size: 24px;
+  letter-spacing: 3px;
+}
+.role-card span {
+  position: relative;
+  color: rgba(255,255,255,0.76);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.loadout-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 14px;
+}
+.loadout-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.loadout-header h2 {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 17px;
+  letter-spacing: 2px;
+  margin-right: auto;
+}
+.loadout-body {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+.loadout-body.open { display: grid; }
+.loadout-slots,
+.skill-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-content: flex-start;
+}
+.loadout-slot,
+.pool-skill {
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.12);
+  color: var(--text);
+  border-radius: 4px;
+  min-height: 34px;
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.loadout-slot { min-width: 112px; }
+.pool-skill.selected {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(221,187,153,0.08);
+}
+.config-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+.config-action.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+}
+.config-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* --- Game screen --- */
 #app {
   display: none;
-  grid-template-columns: 320px 285px 1fr 285px 320px;
-  grid-template-rows: auto 1fr;
+  position: relative;
+  grid-template-columns: minmax(620px, 1fr) 320px;
+  grid-template-rows: auto minmax(0, 1fr) 154px;
   gap: 8px;
   padding: 10px;
   width: 100vw;
@@ -244,34 +476,49 @@ body {
   transition: all 0.5s;
 }
 
-#left-column {
-  grid-row: 2;
-  grid-column: 2;
-  overflow: hidden;
-  min-width: 0;
-}
-#panels-left {
-  height: 100%;
-}
-#panels-left .char-panel {
-  height: 100%;
-  display: flex;
+#selected-unit-drawer {
+  position: absolute;
+  left: 10px;
+  top: 70px;
+  bottom: 174px;
+  width: 300px;
+  z-index: 4;
+  display: none;
   flex-direction: column;
+  gap: 8px;
+  background: rgba(33,32,44,0.96);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  padding: 12px;
   overflow: hidden;
+  box-shadow: 0 18px 42px rgba(0,0,0,0.32);
 }
-#log {
-  grid-row: 2;
-  grid-column: 1;
-  background: var(--surface);
+#selected-unit-drawer.open { display: flex; }
+.drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.drawer-header .hud-section-label { margin: 0 auto 0 0; }
+.drawer-close {
+  width: 28px;
+  height: 28px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 6px 8px;
-  overflow-y: auto;
-  font-size: 16px;
-  font-family: 'Cascadia Code', 'Consolas', monospace;
-  word-break: break-all;
-  overflow-wrap: break-word;
-  color: var(--text);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.drawer-close:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.drawer-empty,
+.inspector-empty {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.5;
 }
 .char-panel {
   background: var(--surface);
@@ -280,21 +527,15 @@ body {
   padding: 10px 12px;
   min-width: 170px;
 }
-#panels-right {
-  grid-row: 2;
-  grid-column: 4;
-  overflow: hidden;
-}
-#panels-right .char-panel {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
 .char-panel.mage { border-left: 3px solid var(--purple); }
 .char-panel.warrior { border-left: 3px solid var(--red); }
 .char-panel.shooter { border-left: 3px solid var(--amber); }
 .char-panel.opponent-panel { opacity: 0.65; }
+.char-panel.info-only {
+  min-width: 0;
+  flex: 1;
+  overflow: auto;
+}
 
 .panel-title {
   font-family: var(--font-display);
@@ -393,7 +634,7 @@ body {
 
 #canvas-wrap {
   grid-row: 2;
-  grid-column: 3;
+  grid-column: 1;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -405,6 +646,161 @@ canvas {
   border: 1px solid var(--border);
   cursor: crosshair;
   display: block;
+}
+
+#action-dock {
+  grid-row: 3;
+  grid-column: 1;
+  min-height: 0;
+  height: 154px;
+  display: grid;
+  grid-template-columns: 210px 1fr 170px;
+  gap: 10px;
+  align-items: stretch;
+  background: rgba(33,32,44,0.96);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 10px;
+  box-shadow: 0 -14px 36px rgba(0,0,0,0.28);
+  overflow: hidden;
+}
+.dock-actor {
+  border-right: 1px solid var(--border);
+  padding-right: 10px;
+  min-width: 0;
+}
+.dock-actor-label,
+.hud-section-label {
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+.dock-actor-name {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+.dock-skills {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dock-skills .skill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 64px));
+  grid-auto-rows: 58px;
+  gap: 6px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+#action-dock .skill-icon-btn {
+  width: 100%;
+  height: 58px;
+  min-width: 0;
+  padding: 0;
+  border-color: #122E8A;
+  background: #F5EFEA;
+  color: #122E8A;
+  text-align: center;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  overflow: hidden;
+}
+#action-dock .skill-icon-btn.selected {
+  background: #122E8A;
+  color: #F5EFEA;
+}
+#action-dock .skill-icon-btn.used {
+  opacity: 0.42;
+}
+.skill-glyph {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+.skill-glyph img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.skill-glyph span {
+  display: none;
+}
+.skill-meta {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  font-size: 10px;
+  line-height: 1;
+  padding: 1px 2px;
+}
+.skill-meta span {
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+#skill-tooltip {
+  position: fixed;
+  z-index: 30;
+  display: none;
+  max-width: 360px;
+  padding: 8px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: rgba(33,32,44,0.98);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+}
+#skill-tooltip.visible { display: block; }
+#skill-tooltip strong {
+  display: block;
+  color: var(--accent);
+  margin-bottom: 3px;
+}
+.dock-control {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+}
+.target-hint {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+  min-height: 36px;
+}
+.dock-execute-proxy {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  border-radius: 4px;
+  min-height: 42px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+.dock-execute-proxy:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: #3e3d54;
+  border-color: #3e3d54;
+  color: #6a6680;
 }
 
 .log-entry {
@@ -457,12 +853,65 @@ canvas {
 
 /* --- Right sidebar (results / chat) --- */
 #right-sidebar {
-  grid-row: 2;
-  grid-column: 5;
+  grid-row: 2 / span 2;
+  grid-column: 2;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+#hover-inspector {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  min-height: 132px;
+}
+#right-sidebar-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+#right-sidebar-tabs button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+}
+#right-sidebar-tabs button.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(221,187,153,0.08);
+}
+#sidebar-tab-panels {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-tab-panel {
+  display: none;
+  flex: 1;
+  min-height: 0;
+}
+.sidebar-tab-panel.active { display: flex; }
+#log {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
   overflow-y: auto;
+  font-size: 13px;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  color: var(--text);
+  flex-direction: column;
 }
 #gameover-panel {
   display: none;
@@ -513,6 +962,46 @@ canvas {
   resize: none;
 }
 #chat-input:focus { outline: none; border-color: var(--accent); }
+#chat-box.sidebar-tab-panel { display: none; }
+#chat-box.sidebar-tab-panel.active { display: flex; }
+
+.info-skill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.info-skill,
+.drawer-skill-btn {
+  border: 1px solid rgba(221,187,153,0.12);
+  border-radius: 3px;
+  padding: 5px 6px;
+  background: rgba(0,0,0,0.12);
+  text-align: left;
+  color: var(--text);
+}
+.drawer-skill-btn {
+  cursor: pointer;
+}
+.drawer-skill-btn.selected,
+.drawer-skill-btn:hover {
+  border-color: var(--accent);
+  background: rgba(221,187,153,0.08);
+}
+.info-skill span {
+  display: block;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.info-skill small {
+  display: block;
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.35;
+}
 
 /* --- Galaxy action bar --- */
 #galaxy-overlay { display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 15; }
@@ -617,6 +1106,51 @@ select:focus { outline: none; border-color: var(--accent); }
   </div>
 </div>
 
+<!-- Config screen -->
+<div id="config-screen">
+  <div class="config-top">
+    <h1>出战配置</h1>
+    <span class="config-status" id="config-mode-label">本地配置</span>
+    <div class="config-player-switch" id="config-player-switch">
+      <button data-player="player1" class="active">P1</button>
+      <button data-player="player2">P2</button>
+    </div>
+    <button class="config-action" id="btn-config-back">返回</button>
+  </div>
+  <div class="class-tabs" id="config-class-tabs"></div>
+  <div class="role-stage">
+    <div class="role-detail" id="role-detail"></div>
+    <div class="role-carousel">
+      <button class="role-nav" id="role-prev">‹</button>
+      <div class="role-cards" id="role-cards"></div>
+      <button class="role-nav" id="role-next">›</button>
+    </div>
+    <div class="peer-config-card" id="peer-config-card"></div>
+  </div>
+  <div class="loadout-panel">
+    <div class="loadout-header">
+      <h2>技能带入</h2>
+      <span class="config-status" id="loadout-count"></span>
+      <button class="config-action" id="btn-toggle-loadout">展开配置</button>
+    </div>
+    <div class="loadout-body" id="loadout-body">
+      <div>
+        <div class="config-status" style="margin-bottom:6px;">带入槽</div>
+        <div class="loadout-slots" id="loadout-slots"></div>
+      </div>
+      <div>
+        <div class="config-status" style="margin-bottom:6px;">职业技能池</div>
+        <div class="skill-pool" id="skill-pool"></div>
+      </div>
+    </div>
+  </div>
+  <div class="config-footer">
+    <span class="config-status" id="config-ready-status"></span>
+    <button class="config-action primary" id="btn-config-lock">锁定配置</button>
+    <button class="config-action primary" id="btn-config-start" style="display:none;">开始战斗</button>
+  </div>
+</div>
+
 <!-- Game screen -->
 <div id="app">
   <div id="topbar">
@@ -643,13 +1177,22 @@ select:focus { outline: none; border-color: var(--accent); }
     <button id="btn-execute" disabled>执行回合</button>
     <button id="btn-reset">重置</button>
   </div>
-  <div id="log"></div>
-  <div id="left-column">
-    <div id="panels-left"></div>
-  </div>
+  <div id="selected-unit-drawer"></div>
   <div id="canvas-wrap"><canvas id="board"></canvas></div>
-  <div id="panels-right"></div>
+  <div id="action-dock"></div>
   <div id="right-sidebar">
+    <div id="hover-inspector"></div>
+    <div id="right-sidebar-tabs">
+      <button id="tab-log" class="active" data-tab="log">日志</button>
+      <button id="tab-chat" data-tab="chat">聊天</button>
+    </div>
+    <div id="sidebar-tab-panels">
+      <div id="log" class="sidebar-tab-panel active"></div>
+      <div id="chat-box" class="sidebar-tab-panel">
+        <div id="chat-messages"></div>
+        <input type="text" id="chat-input" placeholder="聊天消息..." autocomplete="off">
+      </div>
+    </div>
     <div id="gameover-panel">
       <div class="panel-title">战斗结束</div>
       <p id="gameover-winner" style="color:var(--accent); font-size:15px; text-align:center; margin:8px 0;"></p>
@@ -676,12 +1219,10 @@ select:focus { outline: none; border-color: var(--accent); }
         <button id="btn-lobby" style="padding:5px 14px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;font-family:var(--font-display);letter-spacing:1px;">返回大厅</button>
       </div>
     </div>
-    <div id="chat-box">
-      <div id="chat-messages"></div>
-      <input type="text" id="chat-input" placeholder="聊天消息..." autocomplete="off">
-    </div>
   </div>
 </div>
+
+<div id="skill-tooltip"></div>
 
 <!-- Disconnect overlay -->
 <div id="disconnect-overlay">
@@ -707,6 +1248,16 @@ select:focus { outline: none; border-color: var(--accent); }
 import { GameEngine } from './engine/GameEngine.js';
 import { NetworkManager } from './engine/NetworkManager.js';
 import { SKILLS, SKILLS_BY_CLASS } from './engine/SkillData.js';
+import {
+  LOADOUT_SIZE,
+  ROLE_DEFS,
+  ROLE_TRAITS,
+  getDefaultLoadout,
+  getDefaultRoleId,
+  getRolesByClass,
+  normalizePlayerConfig,
+  validateLoadout,
+} from './engine/RoleData.js';
 import { isOnBoard, hexCenter, hexCorners, pixelToHex, hexDistance, hexLine, hexSpiral, setCanvasSize } from './engine/HexMath.js';
 
 // --- Init ---
@@ -749,11 +1300,296 @@ let viewingSkill = null;   // view-only opponent skill inspection (shows range, 
 let validTargets = [];
 let hoveredHex = null;
 let hoverEffectArea = [];
+let selectedCharacterId = null;
+let lastHoveredCharacterId = null;
+let activeSidebarTab = 'log';
 let turnTimeoutId = null;
 let battleEnded = false;
 let battleActive = false; // true while a game is in progress (set in initGame, cleared on BATTLE_END)
 const skillPages = new Map(); // charId -> current page number (0-indexed)
 let skillsPerPage = 10;
+
+const CLASSES = ['法师', '战士', '射手'];
+let currentRoute = 'start';
+let configMode = 'local';
+let currentConfigPlayer = 'player1';
+let configLoadoutOpen = false;
+let hoverRoleId = null;
+let battleConfigs = null;
+
+function makeDefaultPlayerConfig(playerId, className) {
+  const cls = className || (playerId === 'player1' ? '法师' : '战士');
+  return normalizePlayerConfig({
+    playerId,
+    class: cls,
+    roleId: getDefaultRoleId(cls),
+    loadoutSkillIds: getDefaultLoadout(cls),
+    locked: false,
+  }, playerId);
+}
+
+let configPlayers = {
+  player1: makeDefaultPlayerConfig('player1', '法师'),
+  player2: makeDefaultPlayerConfig('player2', '战士'),
+};
+
+function cloneConfig(config) {
+  return {
+    playerId: config.playerId,
+    class: config.class,
+    roleId: config.roleId,
+    loadoutSkillIds: [...config.loadoutSkillIds],
+    locked: Boolean(config.locked),
+  };
+}
+
+function setRoute(route) {
+  currentRoute = route;
+  document.getElementById('start-screen').style.display = route === 'start' ? 'flex' : 'none';
+  document.getElementById('config-screen').style.display = route === 'config' ? 'grid' : 'none';
+  document.getElementById('app').style.display = route === 'battle' ? 'grid' : 'none';
+}
+
+function showConfigScreen(mode) {
+  configMode = mode || configMode || 'local';
+  battleEnded = false;
+  battleActive = false;
+  selectedSkill = null;
+  viewingSkill = null;
+  validTargets = [];
+  hoverEffectArea = [];
+  hoveredHex = null;
+  if (configMode === 'p2p' && networkManager?.myPlayerId) {
+    currentConfigPlayer = networkManager.myPlayerId;
+  }
+  for (const pid of ['player1', 'player2']) {
+    configPlayers[pid].locked = false;
+  }
+  document.getElementById('gameover-panel').classList.remove('show');
+  setRoute('config');
+  renderConfigScreen();
+  sendConfigUpdate();
+}
+
+function activeConfig() {
+  return configPlayers[currentConfigPlayer];
+}
+
+function isConfigEditable(playerId = currentConfigPlayer) {
+  if (configMode === 'local') return true;
+  return networkManager?.myPlayerId === playerId;
+}
+
+function getOpponentPlayerId(playerId) {
+  return playerId === 'player1' ? 'player2' : 'player1';
+}
+
+function setActiveClass(className) {
+  const cfg = activeConfig();
+  if (!isConfigEditable() || cfg.locked) return;
+  configPlayers[currentConfigPlayer] = makeDefaultPlayerConfig(currentConfigPlayer, className);
+  hoverRoleId = null;
+  renderConfigScreen();
+  sendConfigUpdate();
+}
+
+function setActiveRole(roleId) {
+  const cfg = activeConfig();
+  const role = ROLE_DEFS[roleId];
+  if (!role || role.class !== cfg.class || !isConfigEditable() || cfg.locked) return;
+  cfg.roleId = roleId;
+  hoverRoleId = roleId;
+  renderConfigScreen();
+  sendConfigUpdate();
+}
+
+function shiftRole(delta) {
+  const cfg = activeConfig();
+  const roles = getRolesByClass(cfg.class);
+  const idx = Math.max(0, roles.findIndex(r => r.id === cfg.roleId));
+  const next = roles[(idx + delta + roles.length) % roles.length];
+  if (next) setActiveRole(next.id);
+}
+
+function toggleLoadoutSkill(skillId) {
+  const cfg = activeConfig();
+  if (!isConfigEditable() || cfg.locked) return;
+  const existing = cfg.loadoutSkillIds.indexOf(skillId);
+  if (existing >= 0) {
+    cfg.loadoutSkillIds.splice(existing, 1);
+  } else if (cfg.loadoutSkillIds.length < LOADOUT_SIZE) {
+    cfg.loadoutSkillIds.push(skillId);
+  }
+  renderConfigScreen();
+  sendConfigUpdate();
+}
+
+function removeLoadoutAt(index) {
+  const cfg = activeConfig();
+  if (!isConfigEditable() || cfg.locked) return;
+  cfg.loadoutSkillIds.splice(index, 1);
+  renderConfigScreen();
+  sendConfigUpdate();
+}
+
+function renderConfigScreen() {
+  const cfg = activeConfig();
+  const editable = isConfigEditable();
+  const role = ROLE_DEFS[hoverRoleId] || ROLE_DEFS[cfg.roleId];
+  document.getElementById('config-mode-label').textContent = configMode === 'local' ? '本地配置' : `联机配置 ${networkManager?.roomCode || ''}`;
+  document.getElementById('config-player-switch').style.display = configMode === 'local' ? 'flex' : 'none';
+
+  document.querySelectorAll('#config-player-switch button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.player === currentConfigPlayer);
+  });
+
+  document.getElementById('config-class-tabs').innerHTML = CLASSES.map(cls =>
+    `<button data-class="${cls}" class="${cfg.class === cls ? 'active' : ''}"${(!editable || cfg.locked) ? ' disabled' : ''}>${cls}</button>`
+  ).join('');
+
+  renderRoleCards(cfg);
+  renderRoleDetail(role);
+  renderPeerConfig();
+  renderLoadout(cfg);
+  renderConfigFooter();
+  wireConfigEvents();
+}
+
+function renderRoleCards(cfg) {
+  const roles = getRolesByClass(cfg.class);
+  const selectedIndex = Math.max(0, roles.findIndex(r => r.id === cfg.roleId));
+  const visible = [-1, 0, 1].map(offset => roles[(selectedIndex + offset + roles.length) % roles.length]);
+  document.getElementById('role-cards').innerHTML = visible.map((role, idx) => `
+    <div class="role-card theme-${role.portraitTheme || 'steel'} ${idx === 1 ? 'center' : ''}" data-role="${role.id}">
+      <h3>${role.name}</h3>
+      <span>${role.class} · ${idx === 1 ? '当前选择' : '点击切换'}</span>
+    </div>
+  `).join('');
+}
+
+function renderRoleDetail(role) {
+  if (!role) {
+    document.getElementById('role-detail').innerHTML = '';
+    return;
+  }
+  const traits = role.traitIds.map(id => ROLE_TRAITS[id]).filter(Boolean);
+  const skills = role.roleSkillIds.map(id => SKILLS[id]).filter(Boolean);
+  document.getElementById('role-detail').innerHTML = `
+    <h2>${role.name}</h2>
+    <p>${role.description || ''}</p>
+    <div>${traits.map(t => `<span class="trait-pill">${t.name}</span>`).join('')}</div>
+    <p>${traits.map(t => `${t.name}: ${t.desc}`).join('<br>')}</p>
+    <p>${skills.map(s => `专属主动：${s.name} — ${s.desc || ''}`).join('<br>')}</p>
+    <p>${role.plannedMechanics || ''}</p>
+  `;
+}
+
+function renderPeerConfig() {
+  const myId = currentConfigPlayer;
+  const peerId = configMode === 'local' ? getOpponentPlayerId(myId) : getOpponentPlayerId(networkManager?.myPlayerId || myId);
+  const peer = configPlayers[peerId];
+  const peerRole = ROLE_DEFS[peer.roleId];
+  const my = configPlayers[myId];
+  document.getElementById('peer-config-card').innerHTML = `
+    <h2>${configMode === 'local' ? '另一名玩家' : '对手配置'}</h2>
+    <p>${peerId.toUpperCase()}：${peer.class} / ${peerRole?.name || '未选择'}</p>
+    <p>带入：${peer.loadoutSkillIds.map(id => SKILLS[id]?.name || id).join('、')}</p>
+    <p>状态：${peer.locked ? '已锁定' : '配置中'}</p>
+    <h2 style="margin-top:14px;">当前编辑</h2>
+    <p>${my.playerId.toUpperCase()}：${my.class} / ${ROLE_DEFS[my.roleId]?.name || '未选择'}</p>
+    <p>${isConfigEditable(my.playerId) ? '可编辑' : '只读'} · ${my.locked ? '已锁定' : '未锁定'}</p>
+  `;
+}
+
+function renderLoadout(cfg) {
+  const validation = validateLoadout(cfg.class, cfg.loadoutSkillIds);
+  document.getElementById('loadout-count').textContent = `${cfg.loadoutSkillIds.length}/${LOADOUT_SIZE}${validation.ok ? '' : ' · 配置无效'}`;
+  document.getElementById('loadout-body').classList.toggle('open', configLoadoutOpen);
+  document.getElementById('btn-toggle-loadout').textContent = configLoadoutOpen ? '收起配置' : '展开配置';
+  document.getElementById('loadout-slots').innerHTML = Array.from({ length: LOADOUT_SIZE }, (_, i) => {
+    const sid = cfg.loadoutSkillIds[i];
+    const label = sid ? SKILLS[sid]?.name || sid : '空槽';
+    return `<button class="loadout-slot" data-slot="${i}">${i + 1}. ${label}</button>`;
+  }).join('');
+  const pool = (SKILLS_BY_CLASS[cfg.class] || []).filter(id => SKILLS[id] && !SKILLS[id].hidden);
+  document.getElementById('skill-pool').innerHTML = pool.map(id => `
+    <button class="pool-skill ${cfg.loadoutSkillIds.includes(id) ? 'selected' : ''}" data-skill="${id}" title="${SKILLS[id].desc || ''}">
+      ${SKILLS[id].name}
+    </button>
+  `).join('');
+}
+
+function renderConfigFooter() {
+  const p1Ok = validateLoadout(configPlayers.player1.class, configPlayers.player1.loadoutSkillIds).ok &&
+    configPlayers.player1.loadoutSkillIds.length === LOADOUT_SIZE;
+  const p2Ok = validateLoadout(configPlayers.player2.class, configPlayers.player2.loadoutSkillIds).ok &&
+    configPlayers.player2.loadoutSkillIds.length === LOADOUT_SIZE;
+  const bothLocked = configPlayers.player1.locked && configPlayers.player2.locked;
+  const cfg = activeConfig();
+  document.getElementById('config-ready-status').textContent =
+    `P1 ${configPlayers.player1.locked ? '已锁定' : '配置中'} / P2 ${configPlayers.player2.locked ? '已锁定' : '配置中'}`;
+  const lockBtn = document.getElementById('btn-config-lock');
+  lockBtn.style.display = isConfigEditable() ? '' : 'none';
+  lockBtn.textContent = cfg.locked ? '修改配置' : '锁定配置';
+  const ownOk = validateLoadout(cfg.class, cfg.loadoutSkillIds).ok && cfg.loadoutSkillIds.length === LOADOUT_SIZE;
+  lockBtn.disabled = !ownOk;
+  document.getElementById('btn-config-start').style.display = configMode === 'local' ? '' : 'none';
+  document.getElementById('btn-config-start').disabled = !(p1Ok && p2Ok && bothLocked);
+}
+
+function wireConfigEvents() {
+  document.querySelectorAll('#config-class-tabs button').forEach(btn => {
+    btn.onclick = () => setActiveClass(btn.dataset.class);
+  });
+  document.querySelectorAll('.role-card').forEach(card => {
+    card.onmouseenter = () => { hoverRoleId = card.dataset.role; renderRoleDetail(ROLE_DEFS[hoverRoleId]); };
+    card.onclick = () => setActiveRole(card.dataset.role);
+  });
+  document.querySelectorAll('.pool-skill').forEach(btn => {
+    btn.onclick = () => toggleLoadoutSkill(btn.dataset.skill);
+  });
+  document.querySelectorAll('.loadout-slot').forEach(btn => {
+    btn.onclick = () => removeLoadoutAt(Number(btn.dataset.slot));
+  });
+}
+
+function getBattlePlayerConfigs() {
+  return [cloneConfig(configPlayers.player1), cloneConfig(configPlayers.player2)];
+}
+
+function startBattleFromConfigs(seed = Date.now(), players = getBattlePlayerConfigs()) {
+  battleConfigs = players.map(cloneConfig);
+  const p1 = players.find(p => p.playerId === 'player1') || players[0];
+  const p2 = players.find(p => p.playerId === 'player2') || players[1];
+  initGame(p1.class, p2.class, seed, players);
+  document.getElementById('btn-execute').disabled = true;
+  document.getElementById('submit-status').textContent = '等待提交...';
+  document.getElementById('log').innerHTML = '';
+  clearTurnTimeout();
+  startTurnTimeout();
+}
+
+function sendConfigUpdate() {
+  if (!networkManager || networkManager.mode === 'local' || !networkManager.myPlayerId) return;
+  const cfg = cloneConfig(configPlayers[networkManager.myPlayerId]);
+  networkManager.sendMessage({ type: 'CONFIG_UPDATE', config: cfg });
+}
+
+function sendConfigLock() {
+  if (!networkManager || networkManager.mode === 'local' || !networkManager.myPlayerId) return;
+  const cfg = configPlayers[networkManager.myPlayerId];
+  networkManager.sendMessage({ type: 'CONFIG_LOCK', playerId: cfg.playerId, locked: cfg.locked });
+}
+
+function maybeStartP2PBattle() {
+  if (!networkManager || networkManager.myPlayerId !== 'player1') return;
+  if (currentRoute !== 'config') return;
+  if (!configPlayers.player1.locked || !configPlayers.player2.locked) return;
+  const seed = Date.now();
+  const players = getBattlePlayerConfigs();
+  networkManager.sendMessage({ type: 'BATTLE_START', seed, players });
+  startBattleFromConfigs(seed, players);
+}
 
 // Listen for battle end
 engine.eventBus.on('BATTLE_END', (data) => {
@@ -801,7 +1637,8 @@ function showGalaxyPanel() {
   document.getElementById('galaxy-hint').textContent =
     `行动 ${galaxyActionIndex + 1}/${galaxyActionTotal}`;
 
-  const skillIds = SKILLS_BY_CLASS[char.class] || [];
+  const stateChar = engine.getState().characters.find(c => c.id === galaxyCharId);
+  const skillIds = stateChar?.skills?.map(s => s.id) || SKILLS_BY_CLASS[char.class] || [];
   const skills = skillIds.filter(sid => {
     const skill = SKILLS[sid];
     return skill && !skill.hidden;
@@ -875,19 +1712,18 @@ document.getElementById('btn-galaxy-skip').addEventListener('click', () => {
 // --- Start screen ---
 document.getElementById('btn-local').addEventListener('click', () => {
   networkManager = null;
-  document.getElementById('start-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'grid';
+  configMode = 'local';
+  currentConfigPlayer = 'player1';
+  configPlayers.player1 = makeDefaultPlayerConfig('player1', configPlayers.player1.class || '法师');
+  configPlayers.player2 = makeDefaultPlayerConfig('player2', configPlayers.player2.class || '战士');
   document.getElementById('mode-badge').textContent = '本地';
   document.getElementById('mode-badge').className = 'local';
   document.getElementById('conn-indicator').style.display = 'none';
-  document.getElementById('p1-class-select').style.display = '';
-  document.getElementById('p2-class-select').style.display = '';
-  document.getElementById('btn-start').style.display = '';
+  document.getElementById('p1-class-select').style.display = 'none';
+  document.getElementById('p2-class-select').style.display = 'none';
+  document.getElementById('btn-start').style.display = 'none';
   document.getElementById('btn-reset').style.display = '';
-  initGame(
-    document.getElementById('p1-class-select').value,
-    document.getElementById('p2-class-select').value
-  );
+  showConfigScreen('local');
 });
 
 document.getElementById('btn-p2p').addEventListener('click', () => {
@@ -896,7 +1732,7 @@ document.getElementById('btn-p2p').addEventListener('click', () => {
   document.getElementById('room-join-section').style.display = 'block';
   document.getElementById('room-code-text').style.display = 'none';
   document.getElementById('room-error').textContent = '';
-  document.getElementById('p2p-class-pick').style.display = 'flex';
+  document.getElementById('p2p-class-pick').style.display = 'none';
 });
 
 document.getElementById('btn-back-start').addEventListener('click', () => {
@@ -932,8 +1768,9 @@ document.getElementById('btn-create-room').addEventListener('click', async () =>
     },
     onDisconnect: (reason) => showDisconnect(reason),
     onRemoteSubmitted: (action) => handleRemoteAction(nm, action),
+    onRemoteReady: () => updateSubmitStatus(nm),
     onReady: () => executeP2PTurn(nm),
-    onClassPick: (cls, seed) => onClassPick(nm, cls, seed),
+    onClassPick: () => {},
     onGalaxyAction: (charId, skillId, targetPos) => {
       engine.submitGalaxyAction(skillId, targetPos);
     },
@@ -973,8 +1810,9 @@ document.getElementById('btn-join-room').addEventListener('click', async () => {
     },
     onDisconnect: (reason) => showDisconnect(reason),
     onRemoteSubmitted: (action) => handleRemoteAction(nm, action),
+    onRemoteReady: () => updateSubmitStatus(nm),
     onReady: () => executeP2PTurn(nm),
-    onClassPick: (cls, seed) => onClassPick(nm, cls, seed),
+    onClassPick: () => {},
     onGalaxyAction: (charId, skillId, targetPos) => {
       engine.submitGalaxyAction(skillId, targetPos);
     },
@@ -1011,17 +1849,51 @@ function resetConnectionUI() {
   document.getElementById('server-addr-input-host').value = defaultAddr;
 }
 
+document.querySelectorAll('#config-player-switch button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentConfigPlayer = btn.dataset.player;
+    hoverRoleId = null;
+    renderConfigScreen();
+  });
+});
+
+document.getElementById('role-prev').addEventListener('click', () => shiftRole(-1));
+document.getElementById('role-next').addEventListener('click', () => shiftRole(1));
+document.getElementById('btn-toggle-loadout').addEventListener('click', () => {
+  configLoadoutOpen = !configLoadoutOpen;
+  renderConfigScreen();
+});
+document.getElementById('btn-config-lock').addEventListener('click', () => {
+  const cfg = activeConfig();
+  if (!isConfigEditable(cfg.playerId)) return;
+  const ownOk = validateLoadout(cfg.class, cfg.loadoutSkillIds).ok && cfg.loadoutSkillIds.length === LOADOUT_SIZE;
+  if (!cfg.locked && !ownOk) return;
+  cfg.locked = !cfg.locked;
+  renderConfigScreen();
+  sendConfigLock();
+  maybeStartP2PBattle();
+});
+document.getElementById('btn-config-start').addEventListener('click', () => {
+  if (!configPlayers.player1.locked || !configPlayers.player2.locked) return;
+  startBattleFromConfigs(Date.now(), getBattlePlayerConfigs());
+});
+document.getElementById('btn-config-back').addEventListener('click', () => {
+  if (networkManager) { networkManager.disconnect(); networkManager = null; }
+  setRoute('start');
+  document.getElementById('room-setup').style.display = 'none';
+  resetConnectionUI();
+});
+
 function startP2PGame(nm) {
   document.getElementById('gameover-panel').classList.remove('show');
-  document.getElementById('panels-right').style.display = '';
   battleEnded = false;
+  configMode = 'p2p';
+  currentConfigPlayer = nm.myPlayerId;
   // Reset all rematch/class-pick state for fresh connection
   remoteClassPick = null;
   pendingRemoteRematchClass = null;
   opponentReadyForRematch = false;
   pendingMyClass = null;
-  document.getElementById('start-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'grid';
   document.getElementById('mode-badge').textContent = '联机 ' + (nm.roomCode || '');
   document.getElementById('mode-badge').className = 'online';
   document.getElementById('conn-indicator').style.display = '';
@@ -1030,20 +1902,12 @@ function startP2PGame(nm) {
   document.getElementById('btn-start').style.display = 'none';
   document.getElementById('btn-reset').style.display = 'none';
 
-  const myClass = document.getElementById('p2p-class-select').value;
-  // Host generates time-based seed for wild bullet spawn
-  if (nm.myPlayerId === 'player1' && !battleSeed) battleSeed = Date.now();
-  // Send class pick to peer — when both sides know, initGame will be called
-  nm.sendClassPick(myClass, battleSeed);
-
-  // If remote class already received (race condition), init now
-  tryInitWithClasses(nm, myClass);
-
   document.getElementById('btn-execute').disabled = true;
-  document.getElementById('submit-status').textContent = '等待对方选择职业...';
+  document.getElementById('submit-status').textContent = '等待配置...';
   document.getElementById('log').innerHTML = '';
   localSubmittedSet.clear();
   remoteSubmittedSet.clear();
+  showConfigScreen('p2p');
 }
 
 let remoteClassPick = null;
@@ -1094,7 +1958,7 @@ function tryInitWithClasses(nm, myClass) {
 function handleRemoteAction(nm, action) {
   // Apply opponent's action to our local engine
   engine.submitAction(action.charId, action.skillId, action.targetPos);
-  remoteSubmittedSet.add(action.charId);
+  if (isRequiredActionReady(action.charId)) remoteSubmittedSet.add(action.charId);
   updateSubmitStatus(nm);
   renderAll();
 }
@@ -1107,6 +1971,7 @@ async function executeP2PTurn(nm) {
   localSubmittedSet.clear();
   remoteSubmittedSet.clear();
   nm.clearTurn();
+  document.getElementById('submit-status').textContent = '等待双方提交...';
 
   if (result.battleEnded) {
     renderAll();
@@ -1137,8 +2002,7 @@ window.returnToStart = function() {
   if (networkManager) { networkManager.disconnect(); networkManager = null; }
   document.getElementById('disconnect-overlay').classList.remove('show');
   document.getElementById('gameover-panel').classList.remove('show');
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('start-screen').style.display = 'flex';
+  setRoute('start');
   document.getElementById('room-setup').style.display = 'none';
   document.getElementById('room-code-text').style.display = 'none';
   document.getElementById('p2p-class-pick').style.display = 'none';
@@ -1176,49 +2040,24 @@ function showGameOver(winner) {
   document.getElementById('btn-rematch').disabled = false;
   updateRematchButton();
 
-  const isP2P = networkManager && networkManager.mode !== 'local';
-  const myId = isP2P ? networkManager.myPlayerId : null;
+  document.getElementById('go-p1-pick').style.display = 'none';
+  document.getElementById('go-p2-pick').style.display = 'none';
 
-  document.getElementById('go-p1-pick').style.display = (!isP2P || myId === 'player1') ? '' : 'none';
-  document.getElementById('go-p2-pick').style.display = (!isP2P || myId === 'player2') ? '' : 'none';
-
-  document.getElementById('panels-right').style.display = 'none';
   document.getElementById('gameover-panel').classList.add('show');
 }
 
 // Rematch button
 document.getElementById('btn-rematch').addEventListener('click', () => {
   const isP2P = networkManager && networkManager.mode !== 'local';
-  if (isP2P) {
-    const myId = networkManager.myPlayerId;
-    const myClass = myId === 'player1'
-      ? document.getElementById('rematch-class-p1').value
-      : document.getElementById('rematch-class-p2').value;
-    pendingMyClass = myClass;
-    if (networkManager.myPlayerId === 'player1') battleSeed = Date.now();
-    networkManager.sendClassPick(myClass, battleSeed);
-    // Hide rematch button, show waiting status (overlay stays until initGame)
-    document.getElementById('btn-rematch').disabled = true;
-    document.getElementById('btn-rematch').textContent = '等待对方...';
-    document.getElementById('btn-execute').disabled = true;
-    document.getElementById('submit-status').textContent = '等待对方选择职业...';
-    document.getElementById('log').innerHTML = '';
-    localSubmittedSet.clear();
-    remoteSubmittedSet.clear();
-    // If remote pick already arrived, init now
-    tryInitWithClasses(networkManager, myClass);
-  } else {
-    document.getElementById('gameover-panel').classList.remove('show');
-    const p1Class = document.getElementById('rematch-class-p1').value;
-    const p2Class = document.getElementById('rematch-class-p2').value;
-    battleEnded = false;
-    initGame(p1Class, p2Class);
-    document.getElementById('btn-execute').disabled = true;
-    document.getElementById('submit-status').textContent = '等待提交...';
-    document.getElementById('log').innerHTML = '';
-    clearTurnTimeout();
-    startTurnTimeout();
-  }
+  document.getElementById('gameover-panel').classList.remove('show');
+  battleEnded = false;
+  document.getElementById('btn-execute').disabled = true;
+  document.getElementById('submit-status').textContent = '等待配置...';
+  document.getElementById('log').innerHTML = '';
+  localSubmittedSet.clear();
+  remoteSubmittedSet.clear();
+  clearTurnTimeout();
+  showConfigScreen(isP2P ? 'p2p' : 'local');
 });
 
 // Return to lobby button
@@ -1233,7 +2072,7 @@ function startTurnTimeout() {
     // Auto-submit pass for any unsubmitted characters I own
     const myChars = getMyCharacterIds();
     for (const charId of myChars) {
-      if (!localSubmittedSet.has(charId)) {
+      if (canSubmitForChar(charId)) {
         const forcedId = engine.getForcedSkillId(charId);
         if (forcedId !== undefined) {
           submitAction(charId, forcedId, null);
@@ -1259,16 +2098,66 @@ function isMyCharacter(charId) {
   return engine.getCharacterOwner(charId) === networkManager.myPlayerId;
 }
 
+function getCharacterState(charId) {
+  return engine.getState().characters.find(c => c.id === charId) || null;
+}
+
+function canSubmitForChar(charId, skillId = null) {
+  if (networkManager && networkManager.mode !== 'local' && networkManager.iSubmitted) return false;
+  const result = engine.canSubmitAction?.(charId, skillId);
+  return Boolean(result?.canSubmit ?? result?.ok);
+}
+
+function isRequiredActionReady(charId) {
+  return Boolean(getCharacterState(charId)?.actionPoints?.requiredReady);
+}
+
+function hasOptionalActionAvailable(charId) {
+  const ap = getCharacterState(charId)?.actionPoints;
+  if (!ap?.requiredReady) return false;
+  return (ap.finesse?.used || 0) < (ap.finesse?.total || 0);
+}
+
+function areMyRequiredActionsReady() {
+  return getMyCharacterIds()
+    .filter(id => engine.registry.get(id)?.alive !== false)
+    .every(id => isRequiredActionReady(id));
+}
+
+function hasAnyMyOptionalActionAvailable() {
+  return getMyCharacterIds()
+    .filter(id => engine.registry.get(id)?.alive !== false)
+    .some(id => hasOptionalActionAvailable(id));
+}
+
+function markP2PReady(nm) {
+  if (!nm || nm.mode === 'local' || nm.iSubmitted) return;
+  if (!areMyRequiredActionsReady()) return;
+  nm.markReady();
+  updateSubmitStatus(nm);
+  renderAll();
+}
+
+function maybeAutoReadyP2P(nm) {
+  if (!nm || nm.mode === 'local' || nm.iSubmitted) return;
+  if (areMyRequiredActionsReady() && !hasAnyMyOptionalActionAvailable()) {
+    markP2PReady(nm);
+  }
+}
+
 function updateSubmitStatus(nm) {
   const allAlive = characterIds.filter(id => engine.registry.get(id)?.alive !== false);
   if (nm && nm.mode !== 'local') {
     const localCount = allAlive.filter(id => localSubmittedSet.has(id)).length;
     const remoteCount = allAlive.filter(id => remoteSubmittedSet.has(id)).length;
-    document.getElementById('submit-status').textContent =
-      `你:${localCount} 对手:${remoteCount} / 共${allAlive.length}`;
-    if (localSubmittedSet.size + remoteSubmittedSet.size >= allAlive.length) {
-      // Both ready — NetworkManager.onReady will fire executeP2PTurn
+    document.getElementById('btn-execute').disabled = nm.iSubmitted || !areMyRequiredActionsReady();
+    if (nm.iSubmitted && nm.remoteSubmitted) {
       document.getElementById('submit-status').textContent = '双方就绪，执行中...';
+    } else {
+      const mine = nm.iSubmitted ? '你已就绪' : '你待提交';
+      const peer = nm.remoteSubmitted ? '对手已就绪' : '对手待提交';
+      document.getElementById('submit-status').textContent =
+        `${mine} / ${peer} 行动:${localCount}-${remoteCount}/${allAlive.length}`;
     }
   } else {
     const submitted = allAlive.filter(id => localSubmittedSet.has(id)).length;
@@ -1285,11 +2174,14 @@ function updateSubmitStatus(nm) {
 let player1Class = '法师';
 let player2Class = '战士';
 
-function initGame(p1Class, p2Class, seed = 0) {
+function initGame(p1Class, p2Class, seed = 0, players = null) {
   player1Class = p1Class || player1Class;
   player2Class = p2Class || player2Class;
+  setRoute('battle');
+  document.getElementById('p1-class-select').style.display = 'none';
+  document.getElementById('p2-class-select').style.display = 'none';
+  document.getElementById('btn-start').style.display = 'none';
   document.getElementById('gameover-panel').classList.remove('show');
-  document.getElementById('panels-right').style.display = '';
   battleEnded = false;
   battleActive = true;
   remoteClassPick = null;
@@ -1297,7 +2189,9 @@ function initGame(p1Class, p2Class, seed = 0) {
   opponentReadyForRematch = false;
   engine.reset();
   const battleSeed = seed || Date.now();
-  const result = engine.initBattle({ player1Class, player2Class, seed: battleSeed });
+  const result = engine.initBattle(players
+    ? { players, seed: battleSeed }
+    : { player1Class, player2Class, seed: battleSeed });
   characterIds = [result.player1Id, result.player2Id];
   localSubmittedSet.clear();
   remoteSubmittedSet.clear();
@@ -1306,6 +2200,9 @@ function initGame(p1Class, p2Class, seed = 0) {
   validTargets = [];
   hoverEffectArea = [];
   hoveredHex = null;
+  selectedCharacterId = null;
+  lastHoveredCharacterId = null;
+  activeSidebarTab = 'log';
   skillPages.clear();
   resizeCanvas();
   renderAll();
@@ -1315,7 +2212,7 @@ function initGame(p1Class, p2Class, seed = 0) {
 function selectSkill(charId, skillId) {
   if (battleEnded) return;
   if (!isMyCharacter(charId)) return;
-  if (localSubmittedSet.has(charId)) return;
+  if (!canSubmitForChar(charId, skillId)) return;
 
   const skill = SKILLS[skillId];
   if (!skill) return;
@@ -1526,6 +2423,12 @@ function computeEffectArea(skill, charPos, hoveredTarget) {
   return [...area].map(k => { const [q, r] = k.split(',').map(Number); return { q, r }; });
 }
 
+function getCharacterAtHex(q, r) {
+  return engine.getState().characters.find(c =>
+    c.alive !== false && c.position?.q === q && c.position?.r === r
+  ) || null;
+}
+
 // --- Canvas click ---
 canvas.addEventListener('click', (e) => {
   const rect = canvas.getBoundingClientRect();
@@ -1533,6 +2436,8 @@ canvas.addEventListener('click', (e) => {
   const [hq, hr] = pixelToHex(mx, my);
 
   if (!isOnBoard(hq, hr)) return;
+
+  const clickedChar = getCharacterAtHex(hq, hr);
 
   // Galaxy sub-phase target selection (panel hidden, waiting for hex click)
   if (galaxyActive && galaxySelectedSkill && !document.getElementById('galaxy-overlay').classList.contains('show')) {
@@ -1557,11 +2462,19 @@ canvas.addEventListener('click', (e) => {
     validTargets = [];
     hoverEffectArea = [];
     hoveredHex = null;
+    if (clickedChar) selectedCharacterId = clickedChar.id;
     renderAll();
     return;
   }
 
-  if (!selectedSkill) return;
+  if (!selectedSkill) {
+    if (clickedChar) {
+      selectedCharacterId = clickedChar.id;
+      lastHoveredCharacterId = clickedChar.id;
+      renderAll();
+    }
+    return;
+  }
 
   const charId = selectedSkill.charId;
   const skill = SKILLS[selectedSkill.skillId];
@@ -1590,7 +2503,7 @@ function submitAction(charId, skillId, targetPos) {
 
   const result = engine.submitAction(charId, skillId, targetPos);
   if (result.success) {
-    localSubmittedSet.add(charId);
+    if (isRequiredActionReady(charId)) localSubmittedSet.add(charId);
     selectedSkill = null;
     validTargets = [];
     hoverEffectArea = [];
@@ -1599,6 +2512,7 @@ function submitAction(charId, skillId, targetPos) {
 
     if (networkManager && networkManager.mode !== 'local') {
       networkManager.submitMyAction(charId, skillId, targetPos);
+      maybeAutoReadyP2P(networkManager);
     }
     updateSubmitStatus(networkManager);
   }
@@ -1607,7 +2521,10 @@ function submitAction(charId, skillId, targetPos) {
 
 // --- Execute turn ---
 document.getElementById('btn-execute').addEventListener('click', async () => {
-  if (networkManager && networkManager.mode !== 'local') return; // P2P: auto-execute only
+  if (networkManager && networkManager.mode !== 'local') {
+    markP2PReady(networkManager);
+    return;
+  }
   clearTurnTimeout();
   const result = await engine.executeTurn();
   if (!result.success) return;
@@ -1629,9 +2546,11 @@ document.getElementById('btn-execute').addEventListener('click', async () => {
 
 // --- Reset ---
 document.getElementById('btn-reset').addEventListener('click', () => {
-  const p1 = document.getElementById('p1-class-select').value;
-  const p2 = document.getElementById('p2-class-select').value;
-  initGame(p1, p2);
+  if (battleConfigs) {
+    startBattleFromConfigs(Date.now(), battleConfigs);
+  } else {
+    startBattleFromConfigs(Date.now(), getBattlePlayerConfigs());
+  }
   document.getElementById('btn-execute').disabled = true;
   document.getElementById('submit-status').textContent = '等待提交...';
   document.getElementById('log').innerHTML = '';
@@ -2352,7 +3271,7 @@ function drawGrappleLine(fromQ, fromR, toQ, toR, progress) {
   ctx.restore();
 }
 
-function renderPanels() {
+function renderLegacyPanels() {
   const state = engine.getState();
   const leftEl = document.getElementById('panels-left');
   const rightEl = document.getElementById('panels-right');
@@ -2380,6 +3299,9 @@ function renderPanels() {
       const d = b.duration === -1 ? '∞' : b.duration;
       return `<span class="buff">${b.name}(${d})</span>`;
     }).join(' ') || '—';
+    const traitsHTML = (char.traits || []).map(t =>
+      `<span class="buff" title="${t.desc || ''}">${t.name}</span>`
+    ).join(' ');
 
     const forcedId = engine.getForcedSkillId(char.id);
     let forcedActive = false;
@@ -2421,7 +3343,7 @@ function renderPanels() {
       const skill = SKILLS[s.id];
       const sel = (selectedSkill?.charId === char.id && selectedSkill?.skillId === s.id) ||
                  (viewingSkill?.charId === char.id && viewingSkill?.skillId === s.id) ? ' selected' : '';
-      const used = localSubmittedSet.has(char.id) || remoteSubmittedSet.has(char.id) ? ' used' : '';
+      const used = isMine && !canSubmitForChar(char.id, s.id) ? ' used' : '';
       const opp = !isMine && isP2P ? ' opponent' : '';
       const noAfford = isMine && !canAfford(skill) ? ' unaffordable' : '';
       return `<button class="skill-btn${sel}${used}${opp}${noAfford}" data-skill="${s.id}" data-char="${char.id}">
@@ -2441,6 +3363,7 @@ function renderPanels() {
       <div class="char-panel ${shortCls}${opponentClass}">
         <div class="panel-title">${char.name}${!isMine && isP2P ? ' (对手)' : ''}</div>
         <div class="resources">${resHTML}</div>
+        ${traitsHTML ? `<div class="buffs">${traitsHTML}</div>` : ''}
         <div class="buffs">${buffsHTML}</div>
         ${forcedHTML}
         <div class="skill-grid">${skillsHTML}</div>
@@ -2455,7 +3378,7 @@ function renderPanels() {
   if (!battleEnded) {
     for (const c of chars) {
       if (!isMyCharacter(c.id)) continue;
-      if (localSubmittedSet.has(c.id)) continue;
+      if (!canSubmitForChar(c.id)) continue;
       const forcedId = engine.getForcedSkillId(c.id);
       if (forcedId !== undefined) {
         const fSkill = SKILLS[forcedId];
@@ -2493,6 +3416,273 @@ function renderPanels() {
   });
 }
 
+function classPanelKey(className) {
+  if (className === '法师') return 'mage';
+  if (className === '战士') return 'warrior';
+  return 'shooter';
+}
+
+function renderResourceHTML(char) {
+  const r = char.resources || {};
+  if (char.class === '法师') return `气:${r.qi || 0} | 盾:${r.shield || 0}${r.shieldActive ? ' [开]' : ''}`;
+  if (char.class === '战士') return `怒:${r.rage || 0}`;
+  return `弹:${r.ammo || 0}/${r.ammoMax || 6} | 备:${r.backpackAmmo || 0}${r.blockActive !== false ? ' [格挡]' : ''}`;
+}
+
+function renderBuffHTML(char) {
+  return (char.buffs || []).map(b => {
+    const d = b.duration === -1 ? '∞' : b.duration;
+    return `<span class="buff">${b.name}(${d})</span>`;
+  }).join(' ') || '—';
+}
+
+function renderTraitHTML(char) {
+  return (char.traits || []).map(t =>
+    `<span class="buff" title="${t.desc || ''}">${t.name}</span>`
+  ).join(' ');
+}
+
+function visibleSkillsForChar(char) {
+  const forcedId = engine.getForcedSkillId(char.id);
+  return (char.skills || []).filter(s => {
+    const skill = SKILLS[s.id];
+    if (!skill) return false;
+    if (forcedId !== undefined) return s.id === forcedId;
+    return !skill.hidden;
+  }).sort((a, b) => {
+    const costA = Object.values(SKILLS[a.id]?.cost || {}).reduce((sum, v) => sum + v, 0);
+    const costB = Object.values(SKILLS[b.id]?.cost || {}).reduce((sum, v) => sum + v, 0);
+    return costA - costB;
+  });
+}
+
+function skillCostLabel(skill) {
+  const total = Object.values(skill.cost || {}).reduce((sum, v) => sum + v, 0);
+  return `C${total}`;
+}
+
+function skillGlyph(skill) {
+  if (skill.icon) return `<img src="${skill.icon}" alt="${skill.name}" style="width:100%;height:100%;object-fit:contain;">`;
+  return (skill.name || '?').slice(0, 1);
+}
+
+function renderInfoPanel(char, title, options = {}) {
+  if (!char) return `<div class="inspector-empty">将指针停留在角色上查看状态。</div>`;
+  const shortCls = classPanelKey(char.class);
+  const traitsHTML = renderTraitHTML(char);
+  const showSkills = options.showSkills !== false;
+  const skillRows = visibleSkillsForChar(char).map(s => {
+    const skill = SKILLS[s.id];
+    const selected = viewingSkill?.charId === char.id && viewingSkill?.skillId === s.id ? ' selected' : '';
+    return `<button class="drawer-skill-btn${selected}" data-skill="${s.id}" data-char="${char.id}" title="${skill.desc || ''}">
+      <span>${skill.name}</span><small>${skill.desc || ''}</small>
+    </button>`;
+  }).join('');
+  return `
+    <div class="char-panel info-only ${shortCls}">
+      <div class="drawer-header">
+        <div class="hud-section-label">${title}</div>
+        ${options.closable ? '<button class="drawer-close" id="selected-unit-close" title="关闭">×</button>' : ''}
+      </div>
+      <div class="panel-title">${char.name}</div>
+      <div class="resources">${renderResourceHTML(char)}</div>
+      ${traitsHTML ? `<div class="buffs">${traitsHTML}</div>` : ''}
+      <div class="buffs">${renderBuffHTML(char)}</div>
+      ${showSkills ? '<div class="hud-section-label">技能列表</div>' : ''}
+      ${showSkills ? `<div class="info-skill-list">${skillRows || '<div class="drawer-empty">无可见技能</div>'}</div>` : ''}
+    </div>`;
+}
+
+function renderSelectedUnitDrawer(state) {
+  const drawer = document.getElementById('selected-unit-drawer');
+  const char = state.characters.find(c => c.id === selectedCharacterId && c.alive !== false);
+  if (!drawer) return;
+  if (!char) {
+    drawer.classList.remove('open');
+    drawer.innerHTML = '';
+    return;
+  }
+  drawer.classList.add('open');
+  drawer.innerHTML = renderInfoPanel(char, '角色详情', { closable: true, showSkills: true });
+}
+
+function renderHoverInspector(state) {
+  const el = document.getElementById('hover-inspector');
+  if (!el) return;
+  const char = state.characters.find(c => c.id === lastHoveredCharacterId && c.alive !== false) ||
+    state.characters.find(c => c.alive !== false && !isMyCharacter(c.id)) ||
+    state.characters.find(c => c.alive !== false);
+  el.innerHTML = renderInfoPanel(char, char?.id === lastHoveredCharacterId ? '悬停角色' : '战场目标', { showSkills: false });
+}
+
+function renderActionDock(state) {
+  const dock = document.getElementById('action-dock');
+  if (!dock) return;
+  const chars = state.characters.filter(c => c.alive !== false && isMyCharacter(c.id));
+  const selectedMine = chars.find(c => c.id === selectedCharacterId);
+  const pendingMine = chars.find(c => canSubmitForChar(c.id));
+  const actor = selectedSkill
+    ? chars.find(c => c.id === selectedSkill.charId)
+    : (selectedMine && canSubmitForChar(selectedMine.id) ? selectedMine : pendingMine || selectedMine || chars[0]);
+
+  if (!actor) {
+    dock.innerHTML = '<div class="drawer-empty">没有可操作角色。</div>';
+    return;
+  }
+
+  const forcedId = engine.getForcedSkillId(actor.id);
+  const forcedSkill = forcedId !== undefined ? SKILLS[forcedId] : null;
+  if (!battleEnded && forcedSkill && forcedSkill.targeting.shape === 'SELF' && canSubmitForChar(actor.id, forcedId)) {
+    submitAction(actor.id, forcedId, null);
+    return;
+  }
+
+  const allSkills = visibleSkillsForChar(actor);
+  const totalPages = Math.max(1, Math.ceil(allSkills.length / skillsPerPage));
+  let page = skillPages.get(actor.id) || 0;
+  if (page >= totalPages) page = 0;
+  skillPages.set(actor.id, page);
+  const pageSkills = allSkills.slice(page * skillsPerPage, (page + 1) * skillsPerPage);
+
+  function canAfford(skill) {
+    const cost = skill.cost || {};
+    for (const [res, amount] of Object.entries(cost)) {
+      if ((actor.resources?.[res] || 0) < amount) return false;
+    }
+    return true;
+  }
+
+  const skillsHTML = pageSkills.map(s => {
+    const skill = SKILLS[s.id];
+    const sel = selectedSkill?.charId === actor.id && selectedSkill?.skillId === s.id ? ' selected' : '';
+    const used = !canSubmitForChar(actor.id, s.id) ? ' used' : '';
+    const noAfford = !canAfford(skill) ? ' unaffordable' : '';
+    return `<button class="skill-btn skill-icon-btn${sel}${used}${noAfford}" data-skill="${s.id}" data-char="${actor.id}" title="${skill.name}: ${skill.desc || ''}" data-tooltip-title="${skill.name}" data-tooltip="${skill.desc || ''}">
+      <div class="skill-glyph">${skillGlyph(skill)}</div>
+      <div class="skill-meta"><span>${skillCostLabel(skill)}</span><span>S${skill.speed ?? '-'}</span></div>
+    </button>`;
+  }).join('');
+
+  const pageNav = `
+    <div class="skill-page-nav">
+      <button class="skill-page-btn" data-char="${actor.id}" data-page-dir="prev"${page === 0 ? ' disabled' : ''}>◀</button>
+      <span class="skill-page-indicator">${page + 1}/${totalPages}</span>
+      <button class="skill-page-btn" data-char="${actor.id}" data-page-dir="next"${page >= totalPages - 1 ? ' disabled' : ''}>▶</button>
+    </div>`;
+  const hint = selectedSkill?.charId === actor.id
+    ? `选择 ${SKILLS[selectedSkill.skillId]?.name || '技能'} 的目标格`
+    : (hasOptionalActionAvailable(actor.id) ? '可追加灵巧行动，或执行回合' : (canSubmitForChar(actor.id) ? '选择技能后在棋盘指定目标' : '该角色已提交行动'));
+  const executeBtn = document.getElementById('btn-execute');
+
+  dock.innerHTML = `
+    <div class="dock-actor">
+      <div class="dock-actor-label">当前行动</div>
+      <div class="dock-actor-name">${actor.name}</div>
+      <div class="resources">${renderResourceHTML(actor)}</div>
+      <div class="buffs">${renderTraitHTML(actor) || '—'}</div>
+    </div>
+    <div class="dock-skills">
+      <div class="hud-section-label">技能</div>
+      <div class="skill-grid">${skillsHTML || '<span class="drawer-empty">无可用技能</span>'}</div>
+      ${pageNav}
+    </div>
+    <div class="dock-control">
+      <div>
+        <div class="hud-section-label">目标提示</div>
+        <div class="target-hint">${hint}</div>
+      </div>
+      <button class="dock-execute-proxy" id="dock-execute" ${executeBtn?.disabled ? 'disabled' : ''}>执行回合</button>
+    </div>`;
+}
+
+function renderRightSidebarTabs() {
+  document.querySelectorAll('#right-sidebar-tabs button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === activeSidebarTab);
+    btn.onclick = () => {
+      activeSidebarTab = btn.dataset.tab;
+      renderRightSidebarTabs();
+    };
+  });
+  document.getElementById('log')?.classList.toggle('active', activeSidebarTab === 'log');
+  document.getElementById('chat-box')?.classList.toggle('active', activeSidebarTab === 'chat');
+}
+
+function wireActionDock() {
+  document.getElementById('selected-unit-close')?.addEventListener('click', () => {
+    selectedCharacterId = null;
+    viewingSkill = null;
+    validTargets = [];
+    hoverEffectArea = [];
+    hoveredHex = null;
+    renderAll();
+  });
+  document.querySelectorAll('#selected-unit-drawer .drawer-skill-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.classList.add('selected');
+      viewOpponentSkill(btn.dataset.char, btn.dataset.skill);
+    });
+  });
+  document.querySelectorAll('#action-dock .skill-page-btn:not(:disabled)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const charId = btn.dataset.char;
+      const dir = btn.dataset.pageDir;
+      const cur = skillPages.get(charId) || 0;
+      skillPages.set(charId, dir === 'next' ? cur + 1 : cur - 1);
+      renderAll();
+    });
+  });
+  document.querySelectorAll('#action-dock .skill-btn').forEach(btn => {
+    btn.addEventListener('mouseenter', (e) => showSkillTooltip(e, btn));
+    btn.addEventListener('mousemove', (e) => positionSkillTooltip(e));
+    btn.addEventListener('mouseleave', hideSkillTooltip);
+    btn.addEventListener('click', () => {
+      const charId = btn.dataset.char;
+      const skillId = btn.dataset.skill;
+      if (btn.classList.contains('used')) return;
+      selectSkill(charId, skillId);
+    });
+  });
+  document.getElementById('dock-execute')?.addEventListener('click', () => {
+    document.getElementById('btn-execute')?.click();
+  });
+}
+
+function showSkillTooltip(e, btn) {
+  const tooltip = document.getElementById('skill-tooltip');
+  if (!tooltip) return;
+  const title = btn.dataset.tooltipTitle || '';
+  const body = btn.dataset.tooltip || btn.getAttribute('title') || '';
+  tooltip.innerHTML = `<strong>${title}</strong><span>${body}</span>`;
+  tooltip.classList.add('visible');
+  positionSkillTooltip(e);
+}
+
+function positionSkillTooltip(e) {
+  const tooltip = document.getElementById('skill-tooltip');
+  if (!tooltip) return;
+  const pad = 14;
+  const rect = tooltip.getBoundingClientRect();
+  let left = e.clientX + pad;
+  let top = e.clientY - rect.height - pad;
+  if (left + rect.width > window.innerWidth - 8) left = window.innerWidth - rect.width - 8;
+  if (top < 8) top = e.clientY + pad;
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function hideSkillTooltip() {
+  document.getElementById('skill-tooltip')?.classList.remove('visible');
+}
+
+function renderPanels() {
+  const state = engine.getState();
+  renderSelectedUnitDrawer(state);
+  renderHoverInspector(state);
+  renderActionDock(state);
+  renderRightSidebarTabs();
+  wireActionDock();
+}
+
 function renderLog() {
   const entries = engine.logger.getEntries(20);
   document.getElementById('log').innerHTML = entries.map(e =>
@@ -2513,7 +3703,7 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     const myChars = getMyCharacterIds();
     for (const charId of myChars) {
-      if (localSubmittedSet.has(charId)) continue;
+      if (!canSubmitForChar(charId)) continue;
       const char = engine.registry.get(charId);
       if (!char) continue;
       const forcedId = engine.getForcedSkillId(charId);
@@ -2582,6 +3772,28 @@ function appendChatMessage(sender, text) {
 function handleNetworkMessage(payload) {
   if (payload.type === 'CHAT') {
     appendChatMessage('对手', payload.text);
+  } else if (payload.type === 'CONFIG_UPDATE') {
+    const cfg = payload.config;
+    if (cfg?.playerId && cfg.playerId !== networkManager?.myPlayerId) {
+      configPlayers[cfg.playerId] = normalizePlayerConfig(cfg, cfg.playerId);
+      renderConfigScreen();
+      maybeStartP2PBattle();
+    }
+  } else if (payload.type === 'CONFIG_LOCK') {
+    const playerId = payload.playerId;
+    if (playerId && playerId !== networkManager?.myPlayerId && configPlayers[playerId]) {
+      configPlayers[playerId].locked = Boolean(payload.locked);
+      renderConfigScreen();
+      maybeStartP2PBattle();
+    }
+  } else if (payload.type === 'BATTLE_START') {
+    if (currentRoute === 'battle' && battleActive) return;
+    if (Array.isArray(payload.players)) {
+      for (const cfg of payload.players) {
+        if (cfg?.playerId) configPlayers[cfg.playerId] = normalizePlayerConfig(cfg, cfg.playerId);
+      }
+      startBattleFromConfigs(payload.seed || Date.now(), payload.players.map((cfg, idx) => normalizePlayerConfig(cfg, idx === 0 ? 'player1' : 'player2')));
+    }
   }
 }
 
@@ -2606,6 +3818,10 @@ canvas.addEventListener('mousemove', (e) => {
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
   hoveredHex = pixelToHex(mx, my);
   if (!isOnBoard(hoveredHex[0], hoveredHex[1])) hoveredHex = null;
+  if (hoveredHex) {
+    const hoverChar = getCharacterAtHex(hoveredHex[0], hoveredHex[1]);
+    if (hoverChar) lastHoveredCharacterId = hoverChar.id;
+  }
 
   hoverEffectArea = [];
   if (selectedSkill || viewingSkill) {

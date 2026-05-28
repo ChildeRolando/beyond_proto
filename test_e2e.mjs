@@ -43,8 +43,8 @@ async function test() {
   const browser = await chromium.launch({ headless: true });
 
   try {
-    const hostCtx = await browser.newContext();
-    const clientCtx = await browser.newContext();
+    const hostCtx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+    const clientCtx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
     const hostPage = await hostCtx.newPage();
     const clientPage = await clientCtx.newPage();
 
@@ -56,12 +56,13 @@ async function test() {
     console.log('[1] Load pages');
     await hostPage.goto(BASE, { waitUntil: 'networkidle' });
     await clientPage.goto(BASE, { waitUntil: 'networkidle' });
-    check('Pages load', await hostPage.title() === '黄粱一梦 · 战斗引擎' && await clientPage.title() === '黄粱一梦 · 战斗引擎');
+    check('Pages load', await hostPage.title() === '超越极限 · 战斗引擎' && await clientPage.title() === '超越极限 · 战斗引擎');
 
     // Go to start
     for (const page of [hostPage, clientPage]) {
       await page.evaluate(() => {
         document.getElementById('app').style.display = 'none';
+        document.getElementById('config-screen').style.display = 'none';
         document.getElementById('start-screen').style.display = 'flex';
         document.getElementById('room-setup').style.display = 'none';
       });
@@ -71,6 +72,7 @@ async function test() {
     console.log('[2] Create room');
     await hostPage.click('#btn-p2p');
     await hostPage.waitForTimeout(300);
+    await hostPage.fill('#server-addr-input-host', 'localhost:8088');
     await hostPage.click('#btn-create-room');
     await hostPage.waitForFunction(() => {
       const el = document.getElementById('room-code-text');
@@ -88,18 +90,22 @@ async function test() {
     await clientPage.fill('#server-addr-input', 'localhost:8088');
     await clientPage.click('#btn-join-room');
 
-    // Wait for WebRTC
-    console.log('[4] WebRTC connection');
+    // Wait for WebSocket relay connection and config page
+    console.log('[4] Relay connection + config page');
     let hostOk = false, clientOk = false;
     const dl = Date.now() + 20000;
     while (Date.now() < dl) {
       if (!hostOk) hostOk = await hostPage.evaluate(() => {
         const el = document.getElementById('conn-indicator');
-        return el && el.style.display !== 'none' && el.textContent.includes('已连接');
+        const config = document.getElementById('config-screen');
+        return el && el.style.display !== 'none' && el.textContent.includes('已连接') &&
+          config && config.style.display !== 'none';
       });
       if (!clientOk) clientOk = await clientPage.evaluate(() => {
         const el = document.getElementById('conn-indicator');
-        return el && el.style.display !== 'none' && el.textContent.includes('已连接');
+        const config = document.getElementById('config-screen');
+        return el && el.style.display !== 'none' && el.textContent.includes('已连接') &&
+          config && config.style.display !== 'none';
       });
       if (hostOk && clientOk) break;
       await new Promise(r => setTimeout(r, 500));
@@ -112,9 +118,45 @@ async function test() {
     await dumpState(hostPage, 'host');
     await dumpState(clientPage, 'client');
 
-    // Wait for class negotiation (CLASS_PICK exchange)
-    console.log('\n[6] Waiting for class negotiation (2s)...');
-    await hostPage.waitForTimeout(2000);
+    // Lock both configurations; host sends BATTLE_START when both are ready.
+    console.log('\n[6] Lock configurations');
+    check('Host config has 3 role cards', await hostPage.locator('.role-card').count() === 3);
+    check('Client config has 3 role cards', await clientPage.locator('.role-card').count() === 3);
+    await hostPage.click('#btn-config-lock');
+    await clientPage.click('#btn-config-lock');
+    await hostPage.waitForSelector('#app', { state: 'visible', timeout: 10000 });
+    await clientPage.waitForSelector('#app', { state: 'visible', timeout: 10000 });
+    check('Battle action dock is visible', await hostPage.locator('#action-dock').isVisible());
+    check('Action dock has usable skill buttons', await hostPage.locator('#action-dock .skill-btn').count() > 0);
+    check('Selected unit drawer is hidden by default', await hostPage.locator('#selected-unit-drawer').isHidden());
+    check('Hover inspector exists', await hostPage.locator('#hover-inspector').isVisible());
+    check('Log/chat tabs exist', await hostPage.locator('#right-sidebar-tabs button').count() === 2);
+    check('Action dock uses icon skill buttons', await hostPage.locator('#action-dock .skill-icon-btn').count() > 0);
+    check('Action skill buttons show cost and speed', await hostPage.locator('#action-dock .skill-icon-btn .skill-meta').count() > 0);
+    check('Action skill buttons expose hover descriptions', await hostPage.evaluate(() => {
+      const btn = document.querySelector('#action-dock .skill-icon-btn');
+      return !!btn?.getAttribute('title') && btn.getAttribute('title').length > 8;
+    }));
+    await hostPage.locator('#action-dock .skill-icon-btn').first().hover();
+    check('Action skill hover shows detail tooltip', await hostPage.locator('#skill-tooltip.visible').isVisible());
+    check('Hover inspector does not show skill list', await hostPage.locator('#hover-inspector .info-skill-list').count() === 0);
+    await hostPage.click('canvas', { position: { x: 872, y: 583 } });
+    await hostPage.waitForTimeout(200);
+    check('Selected drawer opens from board click', await hostPage.locator('#selected-unit-drawer').isVisible());
+    check('Selected drawer has close button', await hostPage.locator('#selected-unit-close').isVisible());
+    check('Selected drawer skills can inspect range', await hostPage.evaluate(() => {
+      const btn = document.querySelector('#selected-unit-drawer .drawer-skill-btn');
+      if (!btn) return false;
+      btn.click();
+      return btn.classList.contains('selected');
+    }));
+    check('Selected drawer stays above action dock', await hostPage.evaluate(() => {
+      const drawer = document.getElementById('selected-unit-drawer').getBoundingClientRect();
+      const dock = document.getElementById('action-dock').getBoundingClientRect();
+      return drawer.bottom <= dock.top - 4;
+    }));
+    await hostPage.click('#selected-unit-close');
+    check('Selected drawer closes', await hostPage.locator('#selected-unit-drawer').isHidden());
     await dumpState(hostPage, 'host');
     await dumpState(clientPage, 'client');
 
@@ -128,7 +170,7 @@ async function test() {
     console.log(`    Host available skills: ${hostSkillBtn}`);
 
     if (hostSkillBtn > 0) {
-      await hostPage.click('canvas', { position: { x: 280, y: 260 } });
+      await hostPage.click('canvas', { position: { x: 786, y: 433 } });
       await hostPage.waitForTimeout(500);
       await dumpState(hostPage, 'host after submit');
     }
@@ -140,7 +182,7 @@ async function test() {
     });
     console.log(`    Client available skills: ${clientSkillBtn}`);
     if (clientSkillBtn > 0) {
-      await clientPage.click('canvas', { position: { x: 280, y: 260 } });
+      await clientPage.click('canvas', { position: { x: 786, y: 433 } });
       await clientPage.waitForTimeout(500);
     }
 

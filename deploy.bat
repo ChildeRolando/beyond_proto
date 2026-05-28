@@ -3,7 +3,7 @@ echo === Deploying combat-engine to cloud server ===
 echo.
 
 REM Upload files
-scp -i "%USERPROFILE%\.ssh\id_ed25519" -o IdentitiesOnly=yes -r engine server index.html package.json Administrator@120.77.178.15:"C:/Users/Administrator/Desktop/combat-engine/"
+scp -i "%USERPROFILE%\.ssh\id_ed25519" -o IdentitiesOnly=yes -r engine server assets index.html package.json Administrator@120.77.178.15:"C:/Users/Administrator/Desktop/combat-engine/"
 
 REM Schedule restart via Task Scheduler (survives SSH disconnect)
 ssh -i "%USERPROFILE%\.ssh\id_ed25519" -o IdentitiesOnly=yes Administrator@120.77.178.15 "powershell -Command \"$t = (Get-Date).AddMinutes(1); schtasks /create /tn CombatDeploy /tr 'powershell -ExecutionPolicy Bypass -File C:\Users\Administrator\Desktop\combat-engine\server\start-servers.ps1' /sc ONCE /st $t.ToString('HH:mm') /sd $t.ToString('yyyy/MM/dd') /f\""

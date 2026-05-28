@@ -6,7 +6,7 @@ export const SKILLS = {
   // 法师 (Mage) — 18 skills
   // =========================================================================
   mage_gather: {
-    id: 'mage_gather', name: '集气护盾', class: '法师', type: '蓄气',
+    id: 'mage_gather', name: '集气护盾', icon: 'assets/skill-icons/mage/mage_gather.png', class: '法师', type: '蓄气',
     cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SHIELD_ACTIVE', target: 'SELF' },
@@ -16,7 +16,7 @@ export const SKILLS = {
   },
 
   mage_blast: {
-    id: 'mage_blast', name: '气功波', class: '法师', type: '攻击',
+    id: 'mage_blast', name: '气功波', icon: 'assets/skill-icons/mage/mage_blast.png', class: '法师', type: '攻击',
     cost: { qi: 1 }, speed: 1, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 1 },
@@ -26,7 +26,7 @@ export const SKILLS = {
   },
 
   mage_small_blast: {
-    id: 'mage_small_blast', name: '疾波', class: '法师', type: '攻击',
+    id: 'mage_small_blast', name: '疾波', icon: 'assets/skill-icons/mage/mage_small_blast.png', class: '法师', type: '攻击',
     cost: { qi: 3 }, speed: 2, targeting: { shape: 'HEX', range: 5 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -36,7 +36,7 @@ export const SKILLS = {
   },
 
   mage_bigblast: {
-    id: 'mage_bigblast', name: '大气功波', class: '法师', type: '攻击',
+    id: 'mage_bigblast', name: '大气功波', icon: 'assets/skill-icons/mage/mage_bigblast.png', class: '法师', type: '攻击',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -46,7 +46,7 @@ export const SKILLS = {
   },
 
   mage_burst: {
-    id: 'mage_burst', name: '连弹', class: '法师', type: '攻击',
+    id: 'mage_burst', name: '连弹', icon: 'assets/skill-icons/mage/mage_burst.png', class: '法师', type: '攻击',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -64,7 +64,7 @@ export const SKILLS = {
   },
 
   mage_realm_sweep: {
-    id: 'mage_realm_sweep', name: '横扫千军', class: '法师', type: '攻击',
+    id: 'mage_realm_sweep', name: '横扫千军', icon: 'assets/skill-icons/mage/mage_realm_sweep.png', class: '法师', type: '攻击',
     cost: { qi: 7 }, speed: 1, targeting: { shape: 'AOE_SELF', radius: 2 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 7 },
@@ -74,7 +74,7 @@ export const SKILLS = {
   },
 
   mage_buddha_palm: {
-    id: 'mage_buddha_palm', name: '如来神掌', class: '法师', type: '攻击',
+    id: 'mage_buddha_palm', name: '如来神掌', icon: 'assets/skill-icons/mage/mage_buddha_palm.png', class: '法师', type: '攻击',
     cost: { qi: 5 }, speed: 1, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
@@ -84,7 +84,7 @@ export const SKILLS = {
   },
 
   mage_teleport: {
-    id: 'mage_teleport', name: '缩地成寸', class: '法师', type: '移动',
+    id: 'mage_teleport', name: '缩地成寸', icon: 'assets/skill-icons/mage/mage_teleport.png', class: '法师', type: '移动',
     cost: { qi: 1 }, speed: 2, targeting: { shape: 'HEX', range: 3,
       filter: 'NOT_OCCUPIED_BY_ENEMY' },
     effects: [
@@ -95,7 +95,7 @@ export const SKILLS = {
   },
 
   mage_reactive: {
-    id: 'mage_reactive', name: '反应装甲', class: '法师', type: '特殊',
+    id: 'mage_reactive', name: '反应装甲', icon: 'assets/skill-icons/mage/mage_reactive.png', class: '法师', type: '特殊',
     cost: {}, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'SPAWN_STATIONARY_AOE', power: 'SHIELD_CURRENT', radius: 1, includeCenter: true },
@@ -104,7 +104,7 @@ export const SKILLS = {
   },
 
   mage_shield_repair: {
-    id: 'mage_shield_repair', name: '补盾', class: '法师', type: '防御',
+    id: 'mage_shield_repair', name: '补盾', icon: 'assets/skill-icons/mage/mage_shield_repair.png', class: '法师', type: '防御',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -114,7 +114,7 @@ export const SKILLS = {
   },
 
   mage_armor_breaker: {
-    id: 'mage_armor_breaker', name: '破气针', class: '法师', type: '攻击',
+    id: 'mage_armor_breaker', name: '破气针', icon: 'assets/skill-icons/mage/mage_armor_breaker.png', class: '法师', type: '攻击',
     cost: { qi: 2 }, speed: 1, targeting: { shape: 'HEX', range: 4 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 2 },
@@ -124,7 +124,7 @@ export const SKILLS = {
   },
 
   mage_jump: {
-    id: 'mage_jump', name: '折返跃迁', class: '法师', type: '移动',
+    id: 'mage_jump', name: '折返跃迁', icon: 'assets/skill-icons/mage/mage_jump.png', class: '法师', type: '移动',
     cost: {}, speed: 3, targeting: { shape: 'HEX', range: 1 },
     effects: [
       { cmd: 'SET_FLAG', flag: 'jumpReturn', value: true, target: 'SELF' },
@@ -134,7 +134,7 @@ export const SKILLS = {
   },
 
   mage_sword_flight: {
-    id: 'mage_sword_flight', name: '御剑', class: '法师', type: '移动',
+    id: 'mage_sword_flight', name: '御剑', icon: 'assets/skill-icons/mage/mage_sword_flight.png', class: '法师', type: '移动',
     cost: { qi: 3 }, speed: 2, targeting: { shape: 'DIRECTION', range: 1 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -144,7 +144,7 @@ export const SKILLS = {
   },
 
   mage_dimension_gate: {
-    id: 'mage_dimension_gate', name: '次元之门', class: '法师', type: '特殊',
+    id: 'mage_dimension_gate', name: '次元之门', icon: 'assets/skill-icons/mage/mage_dimension_gate.png', class: '法师', type: '特殊',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'HEX', range: 3 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -154,7 +154,7 @@ export const SKILLS = {
   },
 
   mage_breath_small: {
-    id: 'mage_breath_small', name: '吐纳·小周天', class: '法师', type: '蓄气',
+    id: 'mage_breath_small', name: '吐纳·小周天', icon: 'assets/skill-icons/mage/mage_breath_small.png', class: '法师', type: '蓄气',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -164,7 +164,7 @@ export const SKILLS = {
   },
 
   mage_breath_big: {
-    id: 'mage_breath_big', name: '吐纳·大周天', class: '法师', type: '蓄气',
+    id: 'mage_breath_big', name: '吐纳·大周天', icon: 'assets/skill-icons/mage/mage_breath_big.png', class: '法师', type: '蓄气',
     cost: { qi: 5 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
@@ -174,7 +174,7 @@ export const SKILLS = {
   },
 
   mage_breath_tide: {
-    id: 'mage_breath_tide', name: '气海潮汐', class: '法师', type: '蓄气',
+    id: 'mage_breath_tide', name: '气海潮汐', icon: 'assets/skill-icons/mage/mage_breath_tide.png', class: '法师', type: '蓄气',
     cost: { qi: 5 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
@@ -184,7 +184,7 @@ export const SKILLS = {
   },
 
   mage_lion_roar: {
-    id: 'mage_lion_roar', name: '狮吼', class: '法师', type: '攻击',
+    id: 'mage_lion_roar', name: '狮吼', icon: 'assets/skill-icons/mage/mage_lion_roar.png', class: '法师', type: '攻击',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -194,7 +194,7 @@ export const SKILLS = {
   },
 
   mage_double_cast: {
-    id: 'mage_double_cast', name: '二重咏唱', class: '法师', type: '特殊',
+    id: 'mage_double_cast', name: '二重咏唱', icon: 'assets/skill-icons/mage/mage_double_cast.png', class: '法师', type: '特殊',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -204,7 +204,7 @@ export const SKILLS = {
   },
 
   mage_triple_cast: {
-    id: 'mage_triple_cast', name: '三重咏唱', class: '法师', type: '特殊',
+    id: 'mage_triple_cast', name: '三重咏唱', icon: 'assets/skill-icons/mage/mage_triple_cast.png', class: '法师', type: '特殊',
     cost: { qi: 5 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
@@ -214,7 +214,7 @@ export const SKILLS = {
   },
 
   mage_sword_hang: {
-    id: 'mage_sword_hang', name: '悬剑·落剑', class: '法师', type: '攻击',
+    id: 'mage_sword_hang', name: '悬剑·落剑', icon: 'assets/skill-icons/mage/mage_sword_hang.png', class: '法师', type: '攻击',
     cost: { qi: 3 }, speed: 2, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -224,7 +224,7 @@ export const SKILLS = {
   },
 
   mage_galaxy: {
-    id: 'mage_galaxy', name: '银河远征', class: '法师', type: '特殊',
+    id: 'mage_galaxy', name: '银河远征', icon: 'assets/skill-icons/mage/mage_galaxy.png', class: '法师', type: '特殊',
     cost: { qi: 5 }, speed: 2, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
@@ -234,7 +234,7 @@ export const SKILLS = {
   },
 
   mage_formation: {
-    id: 'mage_formation', name: '结阵', class: '法师', type: '特殊',
+    id: 'mage_formation', name: '结阵', icon: 'assets/skill-icons/mage/mage_formation.png', class: '法师', type: '特殊',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'HEX', range: 5 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -244,7 +244,7 @@ export const SKILLS = {
   },
 
   mage_dimension_slash: {
-    id: 'mage_dimension_slash', name: '次元斩', class: '法师', type: '攻击',
+    id: 'mage_dimension_slash', name: '次元斩', icon: 'assets/skill-icons/mage/mage_dimension_slash.png', class: '法师', type: '攻击',
     cost: { qi: 10 }, speed: 2, targeting: { shape: 'HEX', range: 8 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 10 },
@@ -634,9 +634,10 @@ export const SKILLS = {
     id: 'role_jimmy_marrow_wine', name: '易经洗髓酒', class: '战士', type: '角色',
     cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
-      { cmd: 'PASS', placeholderMessage: '角色技能暂未实装：易经洗髓酒' },
+      { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 2 },
+      { cmd: 'APPLY_STATUS', status: 'JIMMY_MARROW', target: 'SELF', duration: -1, data: { stacks: 1 } },
     ],
-    desc: '自动扣除，获得洗髓层数；后续发动cost递增。机制占位 | 速3 | cost0',
+    desc: '获得2怒气并获得洗髓成长层 | 速3 | cost0',
   },
   role_duelist_windstep: {
     id: 'role_duelist_windstep', name: '逐风步', class: '战士', type: '角色',
@@ -657,35 +658,35 @@ export const SKILLS = {
 
   role_gunfighter_quick_action: {
     id: 'role_gunfighter_quick_action', name: '灵巧行动', class: '射手', type: '角色',
-    cost: {}, speed: 3, targeting: { shape: 'SELF' },
+    cost: {}, speed: 3, targeting: { shape: 'SELF' }, hidden: true,
     effects: [
-      { cmd: 'PASS', placeholderMessage: '角色技能暂未实装：灵巧行动' },
+      { cmd: 'PASS', placeholderMessage: '灵巧行动是枪侠被动特质，不作为主动技能提交' },
     ],
-    desc: '每回合额外行动点可用于上子弹、翻滚、预瞄、预判。机制占位 | 速3 | cost0',
+    desc: '枪侠被动：每回合在主行动后额外提交一个cost0行动。',
   },
   role_helldiver_supply_drop: {
     id: 'role_helldiver_supply_drop', name: '呼叫补给', class: '射手', type: '角色',
     cost: {}, speed: 1, targeting: { shape: 'SELF' },
     effects: [
-      { cmd: 'PASS', placeholderMessage: '角色技能暂未实装：呼叫补给' },
+      { cmd: 'GAIN_RESOURCE', resource: 'backpackAmmo', amount: 2 },
     ],
-    desc: 'cd5，呼叫空投补给，拾取获得弹药+2。机制占位 | 速1 | cost0',
+    desc: '呼叫补给，背包弹药+2 | 速1 | cost0',
   },
   role_helldiver_precision_strike: {
     id: 'role_helldiver_precision_strike', name: '精准轰炸', class: '射手', type: '角色',
     cost: {}, speed: 1, targeting: { shape: 'HEX', range: 6 },
     effects: [
-      { cmd: 'PASS', placeholderMessage: '角色技能暂未实装：精准轰炸' },
+      { cmd: 'SPAWN_STATIONARY_AOE', power: 300, radius: 1, includeCenter: true },
     ],
-    desc: 'cd3，每场限次，对目标点3×3范围造成轰炸伤害。机制占位 | 速1 | cost0',
+    desc: '目标周围1格轰炸，每格300伤害 | 速1 | cost0',
   },
   role_yan_empty_gun: {
     id: 'role_yan_empty_gun', name: '我赌你的枪里没有子弹', class: '射手', type: '角色',
     cost: {}, speed: 3, targeting: { shape: 'HEX', range: 6 },
     effects: [
-      { cmd: 'PASS', placeholderMessage: '角色技能暂未实装：我赌你的枪里没有子弹' },
+      { cmd: 'APPLY_STATUS', status: 'YAN_EMPTY_GUN', target: 'TARGET', duration: 1 },
     ],
-    desc: 'cd10，若目标本回合攻击，则该攻击无效且费用归零。机制占位 | 速3 | cost0',
+    desc: '指定目标，本回合取消其下一次攻击但不返还费用 | 速3 | cost0',
   },
 };
 

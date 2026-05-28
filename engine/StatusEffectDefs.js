@@ -123,6 +123,21 @@ export const STATUS_DEFS = {
     blocking: false,
     // Grants extra turns that resolve simultaneously
   },
+  JIMMY_MARROW: {
+    id: 'JIMMY_MARROW',
+    name: '洗髓',
+    duration: -1,
+    blocking: false,
+    data: { stacks: 1 },
+    // Permanent first-pass Jimmy growth marker.
+  },
+  YAN_EMPTY_GUN: {
+    id: 'YAN_EMPTY_GUN',
+    name: '枪里没有子弹',
+    duration: 1,
+    blocking: false,
+    // Same turn: cancel the marked actor's next attack command after costs are paid.
+  },
   FORMATION_SIGHT: {
     id: 'FORMATION_SIGHT',
     name: '阵法堪破',

@@ -9,12 +9,12 @@ export const ROLE_TRAITS = {
   gunfighter_finesse: {
     id: 'gunfighter_finesse',
     name: '灵巧',
-    desc: '每回合额外获得一个专用于灵巧行动的行动点。机制占位。',
+    desc: '每回合可额外提交一个cost0行动，且不挤占付费主行动。',
   },
   gunfighter_rapid_fire: {
     id: 'gunfighter_rapid_fire',
     name: '速射',
-    desc: '执行有cost行动时，可用一个行动点连续执行有cost行动。机制占位。',
+    desc: '围绕额外cost0行动压缩射手节奏。',
   },
   helldiver_laser_weapon: {
     id: 'helldiver_laser_weapon',
@@ -132,9 +132,9 @@ export const ROLE_DEFS = {
     class: '射手',
     portraitTheme: 'copper',
     traitIds: ['gunfighter_finesse', 'gunfighter_rapid_fire'],
-    roleSkillIds: ['role_gunfighter_quick_action'],
+    roleSkillIds: [],
     description: '用灵巧行动和速射压缩射击节奏的射手角色。',
-    plannedMechanics: '额外行动点、残影多动和cost行动连发。',
+    plannedMechanics: '每回合一个额外cost0行动点；残影多动和cost行动连发待后续扩展。',
   },
   shooter_helldiver: {
     id: 'shooter_helldiver',
@@ -154,7 +154,7 @@ export const ROLE_DEFS = {
     traitIds: ['placeholder_adapt'],
     roleSkillIds: ['role_yan_empty_gun'],
     description: '通过心理博弈封锁对手攻击的射手角色。',
-    plannedMechanics: '选定角色，本回合若其攻击则取消攻击并返还费用。',
+    plannedMechanics: '选定角色，本回合若其攻击则取消攻击但不返还费用。',
   },
 };
 
@@ -222,9 +222,11 @@ export function getRoleSkillIds(roleId) {
 export function buildAllowedSkillIds(className, roleId, loadoutSkillIds) {
   const allowed = new Set([...(loadoutSkillIds || []), ...getRoleSkillIds(roleId)]);
 
-  // Hidden skills are internal follow-ups such as 丧钟·响 and 大荒星陨·坠.
-  for (const [skillId, skill] of Object.entries(SKILLS)) {
-    if (skill.hidden && skill.class === className) allowed.add(skillId);
+  // Hidden skills are internal follow-ups listed in the class pool, such as
+  // 丧钟·响 and 大荒星陨·坠. Passive role markers stay unavailable.
+  for (const skillId of SKILLS_BY_CLASS[className] || []) {
+    const skill = SKILLS[skillId];
+    if (skill?.hidden) allowed.add(skillId);
   }
   return [...allowed];
 }

@@ -20,6 +20,10 @@ export class SkillResolver {
     const actor = this.registry.get(actorId);
     if (!actor) return { success: false, error: 'unknown_actor' };
 
+    if (Array.isArray(actor.allowedSkillIds) && !actor.allowedSkillIds.includes(skillId)) {
+      return { success: false, error: 'skill_not_in_loadout' };
+    }
+
     // Validate cost (actual payment happens via CONSUME_RESOURCE commands during execution)
     if (!opts.skipCostCheck && Object.keys(skill.cost).length > 0) {
       if (!this.resourceSystem.canAfford(actorId, skill.cost)) {
@@ -265,6 +269,7 @@ export class SkillResolver {
 
       case 'SPAWN_STATIONARY_AOE':
         return { ...base, type: CmdType.SPAWN_STATIONARY_AOE,
+          targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null,
           payload: { power: eff.power, radius: eff.radius, dropCasing: eff.dropCasing || false, includeCenter: eff.includeCenter || false } };
 
       case 'BREAK_FORMATION':
