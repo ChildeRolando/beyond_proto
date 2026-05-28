@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-05-28 — 法师技能图标集成
+
+- 24个法师技能在 SkillData.js 中统一添加 `icon` 字段，指向 `assets/skill-icons/mage/<id>.png`
+- `skillGlyph()` 自动读取 `skill.icon`，有图标显示图片，无图标回退文字首字
+- action dock 技能按钮图标 `object-fit: cover` 铺满，去 padding
+- deploy.sh / deploy.bat 加入 `assets/` 目录
+- 战士/射手出图标后只需在 SkillData 加 `icon` 字段
+
+## 2026-05-28 - 四个角色首版战斗机制
+
+- 吉米 `易经洗髓酒` 不再是占位：发动后获得 2 怒气和永久 `JIMMY_MARROW` 成长标记。
+- 新增 `ActionPointSystem`：每名角色每回合有 1 个主行动；枪侠通过 `灵巧` 特质每回合额外获得 1 个 cost0 行动，cost0 先交也不会阻止后续付费主行动。
+- 枪侠 `灵巧行动` 改为被动特质，不再作为主动技能出现在战斗技能栏，也不能直接提交。
+- 绝地潜兵 `呼叫补给` 获得背包弹药 +2，`精准轰炸` 改为目标点周围 1 格的静止 AOE，绝地潜兵每回合清理阶段自动获得 1 弹药。
+- 燕双鹰 `我赌你的枪里没有子弹` 不再是占位：标记目标并在其攻击命令执行前取消攻击；已支付费用不返还。
+- P2P 回合协议拆分为多条 `TURN_ACTION` 和一次 `TURN_READY`，支持同一角色在行动点允许时提交多个技能。
+- 新增 `tests/role_mechanics_test.js` 覆盖四个角色机制和枪侠行动点规则，并更新 `tests/role_loadout_test.js` 的角色技能断言。
+- 回归验证已通过：`node tests/role_mechanics_test.js`、`node tests/role_loadout_test.js`、`node tests/skill_test.js`、`node test_signaling.js`、`node test_e2e.mjs`。
+
+## 2026-05-28 - 战斗页 UI 指挥台改造
+
+- 战斗页改为“棋盘优先”布局：中央棋盘扩大，左侧默认不常驻信息栏。
+- 新增底部 `action-dock` 作为主控 UI，集中显示当前行动角色、资源、技能、目标提示和执行按钮。
+- 新增左侧 `selected-unit-drawer`，点击棋盘角色后展开，仅用于查看角色详情、特质、Buff 和技能列表，不承担主操作。
+- 新增右侧 `hover-inspector`，显示上一名指针停留角色的状态；日志和聊天改为右侧 tabs。
+- 修正 selected drawer 与底部 action dock 的重叠问题，并新增关闭按钮。
+- selected drawer 的技能列表现在可点击查看技能范围，但不会提交行动。
+- hover inspector 改为只显示角色状态，不再显示技能列表。
+- action dock 技能改为图标按钮，只显示技能首字、费用和速度；悬停时显示自定义技能详情浮层。
+- 更新 P2P E2E 断言，覆盖 action dock、selected drawer、hover inspector、log/chat tabs，并适配新棋盘尺寸。
+- 回归验证已通过：`node test_e2e.mjs`、`node tests/role_loadout_test.js`、`node tests/skill_test.js`、`node test_signaling.js`。
+
+## 2026-05-28 - 角色选择配置页 + 技能带入 + P2P 配置同步
+
+- 新增三段路由流程：`start -> config -> battle`，本地游玩和 P2P 加入后先进入出战配置页，再初始化战斗。
+- 新增配置页 UI：顶部职业标签，中部 3 张角色卡轮播和悬停详情，底部可展开的 8 格技能带入配置模块。
+- 本地模式支持 P1/P2 切换配置；P2P 模式仅允许编辑自己，同时展示对手职业、角色、带入摘要和锁定状态。
+- P2P 开局协议改为 `CONFIG_UPDATE`、`CONFIG_LOCK`、`BATTLE_START`；房主在双方锁定后发送最终 seed 和双方完整配置。
+- 结算后的重赛入口改为回到 `config` 页面，保留上一局配置继续调整。
+- 战斗 UI 使用 `engine.getState().characters[].skills` 渲染最终技能列表，支持角色专属技能 + 带入技能；角色特质展示在战斗面板。
+- `test_e2e.mjs` 已更新为独立脚本形式的新流程验证：创建房间、进入配置页、双方锁定、进入战斗、提交并执行一回合。
+- 回归验证已通过：`node tests/role_loadout_test.js`、`node tests/skill_test.js`、`node test_signaling.js`、`node test_e2e.mjs`。
+- 注意：`test_e2e.mjs` 不是 Playwright test spec，应使用 `node test_e2e.mjs`，不要用 `npx playwright test test_e2e.mjs`。
+
 ## 2026-05-28 — 战士技能重做 + 法师新技能 + 弹体/UI改进
 
 - **居合斩**: 消耗纳刀强化为范围2/cost0, 否则范围1/cost3
