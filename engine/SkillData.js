@@ -632,12 +632,12 @@ export const SKILLS = {
 
   role_jimmy_marrow_wine: {
     id: 'role_jimmy_marrow_wine', name: '易经洗髓酒', class: '战士', type: '角色',
+    hidden: true,
     cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
-      { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 2 },
-      { cmd: 'APPLY_STATUS', status: 'JIMMY_MARROW', target: 'SELF', duration: -1, data: { stacks: 1 } },
+      { cmd: 'PASS', placeholderMessage: '易经洗髓酒已改为被动特质，自动生效' },
     ],
-    desc: '获得2怒气并获得洗髓成长层 | 速3 | cost0',
+    desc: '被动特质：回合结束时若怒气达标(6/8/10/12)自动扣除怒气并获得永久强化',
   },
   role_duelist_windstep: {
     id: 'role_duelist_windstep', name: '逐风步', class: '战士', type: '角色',
@@ -686,7 +686,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'APPLY_STATUS', status: 'YAN_EMPTY_GUN', target: 'TARGET', duration: 1 },
     ],
-    desc: '指定目标，本回合取消其下一次攻击但不返还费用 | 速3 | cost0',
+    desc: '指定目标，本回合取消其下一次攻击，不返还费用并剥夺全部剩余资源 | 速3 | cost0',
   },
 };
 

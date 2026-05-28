@@ -58,15 +58,18 @@ console.log('[1] Jimmy');
     { class: '射手', roleId: 'shooter_gunfighter' },
   );
 
-  const p1Result = engine.submitAction(ids.player1Id, 'role_jimmy_marrow_wine', null);
+  // Marrow is now a passive trait, auto-applied at battle init
+  check('Jimmy marrow auto-applied at battle start', hasBuff(engine, 'player1', 'JIMMY_MARROW'));
+
+  const p1Result = engine.submitAction(ids.player1Id, 'warrior_rage', null);
   const p2Result = engine.submitAction(ids.player2Id, 'shooter_block', null);
-  check('Jimmy marrow wine can be submitted', p1Result.success, p1Result.error);
-  check('Opponent filler action can be submitted', p2Result.success, p2Result.error);
+  check('Jimmy rage skill submitted', p1Result.success, p1Result.error);
+  check('Opponent filler action submitted', p2Result.success, p2Result.error);
 
   await engine.executeTurn();
   const p1 = character(engine, 'player1');
-  check('Jimmy gains marrow status', hasBuff(engine, 'player1', 'JIMMY_MARROW'));
-  check('Jimmy gains 2 rage from marrow wine', p1.resources.rage === 2, `rage=${p1.resources.rage}`);
+  // 2 base rage + 1 from 呼吸法·吸 (odd turn 1)
+  check('Jimmy gains 3 rage from rage skill + breathing', p1.resources.rage === 3, `rage=${p1.resources.rage}`);
 }
 
 console.log('\n[2] Gunfighter');

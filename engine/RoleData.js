@@ -34,7 +34,12 @@ export const ROLE_TRAITS = {
   jimmy_breathing: {
     id: 'jimmy_breathing',
     name: '呼吸法',
-    desc: '奇偶回合在怒气、距离、消耗间切换强化。机制占位。',
+    desc: '奇数回合[吸]：怒气获得+1，攻击距离-1；偶数回合[呼]：攻击距离+1，怒气获得-1。',
+  },
+  jimmy_marrow: {
+    id: 'jimmy_marrow',
+    name: '易经洗髓酒',
+    desc: '被动：回合结束时若怒气达标(6/8/10/12)自动扣除怒气并获得永久强化，依次为怒气获得+1/攻击距离+1/移动距离+1/威力+100。',
   },
   mirror_slippery: {
     id: 'mirror_slippery',
@@ -55,6 +60,11 @@ export const ROLE_TRAITS = {
     id: 'mirror_phase_sling',
     name: '相位弹弓',
     desc: '技能穿过次元门后加速并提高威力。机制占位。',
+  },
+  yan_death_wind: {
+    id: 'yan_death_wind',
+    name: '死亡如风',
+    desc: '每当对手发起攻击但没有命中时，立即执行一次上子弹（不占用行动）。',
   },
   placeholder_adapt: {
     id: 'placeholder_adapt',
@@ -100,10 +110,10 @@ export const ROLE_DEFS = {
     name: '吉米',
     class: '战士',
     portraitTheme: 'crimson',
-    traitIds: ['jimmy_breathing'],
-    roleSkillIds: ['role_jimmy_marrow_wine'],
+    traitIds: ['jimmy_breathing', 'jimmy_marrow'],
+    roleSkillIds: [],
     description: '通过呼吸节奏和洗髓层数成长的战士角色。',
-    plannedMechanics: '奇偶回合强化、洗髓永久成长、局内升级。',
+    plannedMechanics: '呼吸法奇偶回合切换、洗髓四层永久成长(怒6/8/10/12触发)。',
   },
   warrior_duelist: {
     id: 'warrior_duelist',
@@ -151,10 +161,10 @@ export const ROLE_DEFS = {
     name: '燕双鹰',
     class: '射手',
     portraitTheme: 'navy',
-    traitIds: ['placeholder_adapt'],
+    traitIds: ['yan_death_wind'],
     roleSkillIds: ['role_yan_empty_gun'],
-    description: '通过心理博弈封锁对手攻击的射手角色。',
-    plannedMechanics: '选定角色，本回合若其攻击则取消攻击但不返还费用。',
+    description: '通过心理博弈封锁对手攻击，对手攻击落空时自动上弹的射手角色。',
+    plannedMechanics: '死亡如风被动装填、我赌你的枪里没有子弹攻击取消。',
   },
 };
 

@@ -690,24 +690,21 @@ canvas {
 }
 .dock-skills .skill-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(56px, 64px));
-  grid-auto-rows: 58px;
+  grid-template-columns: repeat(auto-fill, minmax(58px, 64px));
+  grid-auto-rows: auto;
   gap: 6px;
   overflow-y: auto;
   padding-right: 2px;
 }
 #action-dock .skill-icon-btn {
   width: 100%;
-  height: 58px;
+  aspect-ratio: 1;
   min-width: 0;
   padding: 0;
   border-color: #122E8A;
   background: #F5EFEA;
   color: #122E8A;
-  text-align: center;
-  display: grid;
-  grid-template-rows: 1fr auto;
-  align-items: center;
+  position: relative;
   overflow: hidden;
 }
 #action-dock .skill-icon-btn.selected {
@@ -718,15 +715,12 @@ canvas {
   opacity: 0.42;
 }
 .skill-glyph {
-  font-family: var(--font-display);
-  font-size: 22px;
-  line-height: 1;
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  width: 100%;
-  height: 100%;
 }
 .skill-glyph img {
   width: 100%;
@@ -738,12 +732,16 @@ canvas {
   display: none;
 }
 .skill-meta {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
   display: flex;
   justify-content: center;
   gap: 4px;
   font-size: 10px;
   line-height: 1;
-  padding: 1px 2px;
+  padding: 2px 2px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
 }
 .skill-meta span {
   border: 1px solid currentColor;
@@ -1260,6 +1258,16 @@ import {
 } from './engine/RoleData.js';
 import { isOnBoard, hexCenter, hexCorners, pixelToHex, hexDistance, hexLine, hexSpiral, setCanvasSize } from './engine/HexMath.js';
 
+// --- Preload skill icons (non-blocking) ---
+(function preloadIcons() {
+  for (const skill of Object.values(SKILLS)) {
+    if (skill.icon) {
+      const img = new Image();
+      img.src = skill.icon;
+    }
+  }
+})();
+
 // --- Init ---
 const engine = new GameEngine();
 let networkManager = null;  // null in local mode, NetworkManager in P2P mode
@@ -1685,7 +1693,7 @@ document.getElementById('btn-galaxy-confirm').addEventListener('click', () => {
     document.getElementById('submit-status').textContent = `银河远征: 点击棋盘选择 ${skill.name} 的目标`;
 
     const char = engine.registry.get(galaxyCharId);
-    const range = skill.targeting.range ?? 99;
+    const range = engine.getEffectiveRange(galaxyCharId, skill.targeting.range ?? 99);
     validTargets = [];
     hoverEffectArea = [];
     hoveredHex = null;
@@ -2227,7 +2235,7 @@ function selectSkill(charId, skillId) {
   if (!char) { renderAll(); return; }
 
   const shape = skill.targeting.shape;
-  const range = skill.targeting.range ?? 99;
+  const range = engine.getEffectiveRange(charId, skill.targeting.range ?? 99);
 
   if (shape === 'SELF' || shape === 'AOE_SELF') {
     validTargets = [{ q: -99, r: -99, self: true }];
@@ -2271,7 +2279,7 @@ function viewOpponentSkill(charId, skillId) {
   if (!char) { renderAll(); return; }
 
   const shape = skill.targeting.shape;
-  const range = skill.targeting.range ?? 99;
+  const range = engine.getEffectiveRange(charId, skill.targeting.range ?? 99);
 
   if (shape === 'SELF' || shape === 'AOE_SELF') {
     validTargets = [{ q: char.position.q, r: char.position.r, self: true }];

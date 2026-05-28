@@ -12,6 +12,8 @@ const MIME = {
   '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml',
 };
 
+const CACHE_IMMUTABLE = { 'Cache-Control': 'public, max-age=31536000, immutable' };
+
 http.createServer((req, res) => {
   let filePath = path.join(ROOT, req.url === '/' ? 'index.html' : req.url.split('?')[0]);
   if (!filePath.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
@@ -23,7 +25,11 @@ http.createServer((req, res) => {
       return;
     }
     const ext = path.extname(filePath);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' };
+    if (ext === '.png' || ext === '.svg' || ext === '.woff2' || ext === '.ttf') {
+      Object.assign(headers, CACHE_IMMUTABLE);
+    }
+    res.writeHead(200, headers);
     res.end(data);
   });
 }).listen(PORT, () => {

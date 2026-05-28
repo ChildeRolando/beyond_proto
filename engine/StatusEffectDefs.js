@@ -128,8 +128,52 @@ export const STATUS_DEFS = {
     name: '洗髓',
     duration: -1,
     blocking: false,
-    data: { stacks: 1 },
-    // Permanent first-pass Jimmy growth marker.
+    data: { layer: 0 },
+    // Tracks marrow awakening layer (0-4). Thresholds: 6/8/10/12 rage.
+    // Layer 1: rage gain +1, Layer 2: attack range +1, Layer 3: move +1, Layer 4: power +100.
+    // Checked at end of each turn; rage is auto-consumed at each threshold.
+  },
+  JIMMY_MARROW_RAGE: {
+    id: 'JIMMY_MARROW_RAGE',
+    name: '洗髓·怒',
+    duration: -1,
+    blocking: false,
+    // Permanent: rage gain +1
+  },
+  JIMMY_MARROW_RANGE: {
+    id: 'JIMMY_MARROW_RANGE',
+    name: '洗髓·距',
+    duration: -1,
+    blocking: false,
+    // Permanent: attack range +1
+  },
+  JIMMY_MARROW_MOVE: {
+    id: 'JIMMY_MARROW_MOVE',
+    name: '洗髓·行',
+    duration: -1,
+    blocking: false,
+    // Permanent: move range +1
+  },
+  JIMMY_MARROW_POWER: {
+    id: 'JIMMY_MARROW_POWER',
+    name: '洗髓·威',
+    duration: -1,
+    blocking: false,
+    // Permanent: power +100
+  },
+  JIMMY_BREATH_IN: {
+    id: 'JIMMY_BREATH_IN',
+    name: '吸',
+    duration: -1,
+    blocking: false,
+    // Odd turns: rage gain +1, attack range -1
+  },
+  JIMMY_BREATH_OUT: {
+    id: 'JIMMY_BREATH_OUT',
+    name: '呼',
+    duration: -1,
+    blocking: false,
+    // Even turns: attack range +1, rage gain -1
   },
   YAN_EMPTY_GUN: {
     id: 'YAN_EMPTY_GUN',
@@ -137,6 +181,13 @@ export const STATUS_DEFS = {
     duration: 1,
     blocking: false,
     // Same turn: cancel the marked actor's next attack command after costs are paid.
+  },
+  YAN_DEATH_WIND: {
+    id: 'YAN_DEATH_WIND',
+    name: '死亡如风',
+    duration: -1,
+    blocking: false,
+    // Permanent passive: whenever an opponent attacks but misses, immediately reload.
   },
   FORMATION_SIGHT: {
     id: 'FORMATION_SIGHT',

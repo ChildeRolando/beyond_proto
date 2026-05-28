@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-05-28 — 吉米呼吸法+洗髓实装 & 燕双鹰死亡如风
+
+- **吉米 呼吸法**: 每回合开始时（清理阶段后/战斗初始化时）根据奇偶切换[吸]/[呼]状态，在行动选择前即生效，通过 `ON_RESOURCE_GAIN` ±1怒气、`ON_RANGE_CALCULATE` ±1攻击距离
+- 修复呼吸法时机：从 `executeTurn` 开始移至回合清理后 `turnNumber++` 处，并新增 `initRolePassives()` 在 `initBattle` 时初始化首回合buff，确保玩家选择行动前buff已生效
+- **吉米 易经洗髓酒**: 回合清理阶段自动检测怒气阈值(6/8/10/12)，达标则扣除怒气并依次获得永久强化：怒气获得+1 / 攻击距离+1 / 移动距离+1 / 威力+100
+- 新增三个Hook: `ON_RANGE_CALCULATE`、`ON_MOVE_RANGE_CALCULATE`、`ON_POWER_CALCULATE`，统一由 BuffManager 提供 `getEffectiveRange/getEffectiveMoveRange/getEffectivePower` 便捷方法
+- TurnManager 攻击执行器（近战/弹体/AOE/静止AOE）均调度 ON_POWER_CALCULATE；移动执行器调度 ON_MOVE_RANGE_CALCULATE
+- GameEngine.getValidMoves/getValidTeleports 自动应用有效移动距离；index.html UI 目标选择使用 `engine.getEffectiveRange()`
+- **燕双鹰 死亡如风**: 新增被动特质 `YAN_DEATH_WIND`，对手攻击落空时获得1弹并自动装填（不占行动），通过 `ON_ATTACK_MISSED` hook 触发
+- TurnManager 在近战/AOE 攻击落空后立即调度 ON_ATTACK_MISSED，弹体攻击在 resolveStep 后批量检查落空
+- 更新 `role_mechanics_test.js` 断言（呼吸法+1怒气）
+- 回归验证已通过：`node tests/role_mechanics_test.js`、`node tests/role_loadout_test.js`、`node tests/skill_test.js`、`node test_signaling.js`、`node test_e2e.mjs`
+
 ## 2026-05-28 — 法师技能图标集成
 
 - 24个法师技能在 SkillData.js 中统一添加 `icon` 字段，指向 `assets/skill-icons/mage/<id>.png`

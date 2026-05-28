@@ -301,7 +301,95 @@ export class BuffManager {
       case 'BLOCKING':
         // Block handled by DefenseLayers
         break;
+
+      case 'JIMMY_BREATH_IN':
+        // Odd turns: rage gain +1, attack range -1
+        this.registerHook(buffId, HookName.ON_RESOURCE_GAIN, (ctx) => {
+          if (ctx.entityId === entityId && ctx.resource === 'rage') {
+            return { ...ctx, amount: ctx.amount + 1 };
+          }
+          return ctx;
+        });
+        this.registerHook(buffId, HookName.ON_RANGE_CALCULATE, (ctx) => {
+          if (ctx.entityId === entityId) return { ...ctx, range: Math.max(1, (ctx.range || 1) - 1) };
+          return ctx;
+        });
+        break;
+
+      case 'JIMMY_BREATH_OUT':
+        // Even turns: attack range +1, rage gain -1
+        this.registerHook(buffId, HookName.ON_RESOURCE_GAIN, (ctx) => {
+          if (ctx.entityId === entityId && ctx.resource === 'rage') {
+            return { ...ctx, amount: Math.max(0, ctx.amount - 1) };
+          }
+          return ctx;
+        });
+        this.registerHook(buffId, HookName.ON_RANGE_CALCULATE, (ctx) => {
+          if (ctx.entityId === entityId) return { ...ctx, range: (ctx.range || 1) + 1 };
+          return ctx;
+        });
+        break;
+
+      case 'JIMMY_MARROW_RAGE':
+        this.registerHook(buffId, HookName.ON_RESOURCE_GAIN, (ctx) => {
+          if (ctx.entityId === entityId && ctx.resource === 'rage') {
+            return { ...ctx, amount: ctx.amount + 1 };
+          }
+          return ctx;
+        });
+        break;
+
+      case 'JIMMY_MARROW_RANGE':
+        this.registerHook(buffId, HookName.ON_RANGE_CALCULATE, (ctx) => {
+          if (ctx.entityId === entityId) return { ...ctx, range: (ctx.range || 1) + 1 };
+          return ctx;
+        });
+        break;
+
+      case 'JIMMY_MARROW_MOVE':
+        this.registerHook(buffId, HookName.ON_MOVE_RANGE_CALCULATE, (ctx) => {
+          if (ctx.entityId === entityId) return { ...ctx, range: (ctx.range || 1) + 1 };
+          return ctx;
+        });
+        break;
+
+      case 'JIMMY_MARROW_POWER':
+        this.registerHook(buffId, HookName.ON_POWER_CALCULATE, (ctx) => {
+          if (ctx.entityId === entityId) return { ...ctx, power: (ctx.power || 0) + 100 };
+          return ctx;
+        });
+        break;
+
+      case 'YAN_DEATH_WIND':
+        this.registerHook(buffId, HookName.ON_ATTACK_MISSED, (ctx) => {
+          if (!ctx._deathWindReloads) ctx._deathWindReloads = [];
+          ctx._deathWindReloads.push(entityId);
+          return ctx;
+        });
+        break;
     }
+  }
+
+  // --- Convenience dispatch methods for UI / TurnManager ---
+  getEffectiveRange(entityId, baseRange) {
+    const ctx = this.dispatch(HookName.ON_RANGE_CALCULATE, {
+      entityId, range: baseRange,
+    });
+    return ctx?.range ?? baseRange;
+  }
+
+  getEffectiveMoveRange(entityId, baseRange) {
+    const ctx = this.dispatch(HookName.ON_MOVE_RANGE_CALCULATE, {
+      entityId, range: baseRange,
+    });
+    return ctx?.range ?? baseRange;
+  }
+
+  getEffectivePower(entityId, basePower) {
+    const ctx = this.dispatch(HookName.ON_POWER_CALCULATE, {
+      entityId, power: basePower,
+    });
+    return ctx?.power ?? basePower;
   }
 
   clear() {

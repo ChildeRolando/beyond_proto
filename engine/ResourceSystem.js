@@ -177,5 +177,23 @@ export class ResourceSystem {
     pool.blockActive = true;
   }
 
+  // Drain all spendable resources (qi, rage, ammo, backpackAmmo) — used by Yan's empty gun
+  drainAll(entityId) {
+    const pool = this.#pools.get(entityId);
+    if (!pool) return { qi: 0, rage: 0, ammo: 0, backpackAmmo: 0 };
+    const drained = {};
+    for (const res of ['qi', 'rage', 'ammo', 'backpackAmmo']) {
+      const val = pool[res] || 0;
+      if (val > 0) {
+        pool[res] = 0;
+        drained[res] = val;
+        this.#eventBus.emit(EvtType.RESOURCE_CHANGED, { entityId, resource: res, old: val, new: 0, delta: -val });
+      } else {
+        drained[res] = 0;
+      }
+    }
+    return drained;
+  }
+
   clear() { this.#pools.clear(); }
 }

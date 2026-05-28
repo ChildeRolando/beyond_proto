@@ -21,4 +21,8 @@ export const HookName = Object.freeze({
   ON_AFTER_DIMENSION_TRAVERSE: 'onAfterDimensionTraverse',
   ON_FORMATION_DAMAGED: 'onFormationDamaged',
   ON_RESOURCE_GAIN: 'onResourceGain',
+  ON_RANGE_CALCULATE: 'onRangeCalculate',
+  ON_MOVE_RANGE_CALCULATE: 'onMoveRangeCalculate',
+  ON_POWER_CALCULATE: 'onPowerCalculate',
+  ON_ATTACK_MISSED: 'onAttackMissed',
 });

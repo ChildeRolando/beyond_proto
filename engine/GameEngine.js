@@ -132,6 +132,9 @@ export class GameEngine {
       this.projectileCalculator.spawnWildBullets(4, this.registry, battleSeed, friendlyHalf);
     }
 
+    // Apply initial role passives for turn 1 (e.g., Jimmy breathing, Yan death wind)
+    this.turnManager.initRolePassives();
+
     return { player1Id: p1Id, player2Id: p2Id };
   }
 
@@ -225,12 +228,22 @@ export class GameEngine {
     };
   }
 
+  getEffectiveRange(characterId, baseRange) {
+    return this.buffManager.getEffectiveRange(characterId, baseRange);
+  }
+
+  getEffectiveMoveRange(characterId, baseRange) {
+    return this.buffManager.getEffectiveMoveRange(characterId, baseRange);
+  }
+
   getValidMoves(characterId) {
-    return this.movementSystem.getWalkableHexes(characterId, 1);
+    const range = this.buffManager.getEffectiveMoveRange(characterId, 1);
+    return this.movementSystem.getWalkableHexes(characterId, range);
   }
 
   getValidTeleports(characterId, range) {
-    return this.movementSystem.getTeleportableHexes(characterId, range);
+    const effectiveRange = this.buffManager.getEffectiveMoveRange(characterId, range);
+    return this.movementSystem.getTeleportableHexes(characterId, effectiveRange);
   }
 
   getForcedSkillId(characterId) {
