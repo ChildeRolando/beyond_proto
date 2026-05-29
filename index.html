@@ -3011,11 +3011,12 @@ async function submitAiAndExecutePveTurn() {
     ]);
     if (aiResult.success) {
       localSubmittedSet.add(aiId);
-      // AI finesse: submit optional action if available
+      // AI finesse: submit different optional action
       if (hasOptionalActionAvailable(aiId)) {
         const fResult = await engine.submitAiAction(aiId, {
           opponentId: getMyCharacterIds()[0],
           policy: { maxOwnActions: 8, maxOpponentActions: 4, maxTargetsPerSkill: 1, opponentTemperature: 50 },
+          candidates: { excludeSkillIds: aiResult.action ? [aiResult.action.skillId] : [] },
         });
         if (fResult.success) localSubmittedSet.add(aiId);
       }

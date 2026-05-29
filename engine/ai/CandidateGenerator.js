@@ -16,8 +16,10 @@ export function generateCandidateActions(engine, characterId, options = {}) {
     : getVisibleSkillIds(engine, actor);
 
   const isForced = forcedSkillId !== undefined;
+  const excludeSet = new Set(options.excludeSkillIds || []);
   const actions = [];
   for (const skillId of skillIds) {
+    if (excludeSet.has(skillId)) continue;
     const skill = SKILLS[skillId];
     if (isForced) {
       if (!skill) continue;
