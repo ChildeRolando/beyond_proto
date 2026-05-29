@@ -287,13 +287,13 @@ export const SKILLS = {
 
   warrior_dash: {
     id: 'warrior_dash', name: '踏前斩', icon: 'assets/skill-icons/warrior/warrior_dash.png', class: '战士', type: '攻击',
-    cost: { rage: 1 }, speed: 1, targeting: { shape: 'HEX', range: 2 },
+    cost: { rage: 1 }, speed: 1, targeting: { shape: 'HEX', range: 1 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 1 },
       { cmd: 'WINDSTEP_SLASH', power: 100, radius: 1 },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '位移2格 终点半径1自动斩击(优先角色其次弹体) 命中+1怒 | 威力100 | 速1 | cost1',
+    desc: '位移1格 终点半径1自动斩击(优先角色其次弹体) 命中+1怒 | 威力100 | 速1 | cost1',
   },
 
   warrior_sheathe: {
