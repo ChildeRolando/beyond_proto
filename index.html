@@ -964,6 +964,7 @@ canvas {
 .log-warn { color: #d4943a; }
 .log-turn { color: var(--accent); font-weight: bold; }
 .log-action { color: #7bb8cf; }
+.log-ai { color: #5a9e7e; }
 
 /* --- Overlays --- */
 #disconnect-overlay {
@@ -4013,8 +4014,11 @@ function renderActionDock(state) {
       const layer = marrow?.data?.layer || 0;
       cost = { rage: layer < costs.length ? costs[layer] : costs[costs.length - 1] };
     }
+    // Factor in pending resource gains from already-submitted actions
+    const pending = engine.getPendingResourceGains?.(actor.id) || {};
     for (const [res, amount] of Object.entries(cost)) {
-      if ((actor.resources?.[res] || 0) < amount) return false;
+      const available = (actor.resources?.[res] || 0) + (pending[res] || 0);
+      if (available < amount) return false;
     }
     return true;
   }

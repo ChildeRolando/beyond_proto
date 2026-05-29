@@ -1,5 +1,6 @@
 import { generateCandidateActions } from './CandidateGenerator.js';
 import { rankActionsOnePly } from './OnePlyPolicy.js';
+import { SKILLS } from '../SkillData.js';
 
 export async function chooseAiAction(engine, characterId, options = {}) {
   const actor = engine.registry.get(characterId);
@@ -15,6 +16,19 @@ export async function chooseAiAction(engine, characterId, options = {}) {
   const ranked = await rankActionsOnePly(engine, characterId, opponentId, options.policy || {});
   if (ranked.length > 0) {
     const best = ranked[0];
+
+    // Log top 5 as separate entries for readable display
+    const topN = ranked.slice(0, 5);
+    engine.logger?.log(`── AI ${actor.name} 候选TOP5 ──`, 'ai');
+    topN.forEach((r, i) => {
+      const name = SKILLS[r.action.skillId]?.name || r.action.skillId;
+      const tgt = r.action.targetPos ? `(${r.action.targetPos.q},${r.action.targetPos.r})` : 'self';
+      engine.logger?.log(
+        `#${i + 1} ${name} → ${tgt}  EV=${r.expectedValue.toFixed(1)}  worst=${r.worstValue.toFixed(1)}  n=${r.samples.length}`,
+        'ai'
+      );
+    });
+
     return {
       success: true,
       action: best.action,

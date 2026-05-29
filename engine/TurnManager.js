@@ -1388,7 +1388,11 @@ export class TurnManager {
       if (skillId !== forcedSkillId) return { success: false, error: 'forced_action', forcedSkillId };
     }
 
-    const result = this.#skillResolver.resolve(skillId, characterId, targetPos);
+    // Compute pending resource gains from already-submitted commands
+    const pendingGains = this._getPendingResourceGains(characterId);
+
+    const result = this.#skillResolver.resolve(skillId, characterId, targetPos,
+      Object.keys(pendingGains).length > 0 ? { pendingResources: pendingGains } : {});
     if (!result.success) return result;
 
     const actor = this.#registry.get(characterId);
@@ -1434,6 +1438,22 @@ export class TurnManager {
     this.#commandQueue.enqueueSequence(finalSequence);
     this.#submittedChars.add(characterId);
     return { success: true, sequence: finalSequence, actionPoint };
+  }
+
+  // Scan queued commands for pending GAIN_RESOURCE, for pre-spend preview
+  _getPendingResourceGains(characterId) {
+    const gains = {};
+    for (const speed of this.#commandQueue.speeds()) {
+      for (const cmd of this.#commandQueue.getTier(speed)) {
+        if (cmd.actorId !== characterId) continue;
+        if (cmd.type === CmdType.GAIN_RESOURCE) {
+          const res = cmd.payload.resource;
+          const amt = typeof cmd.payload.amount === 'number' ? cmd.payload.amount : 0;
+          gains[res] = (gains[res] || 0) + amt;
+        }
+      }
+    }
+    return gains;
   }
 
   autoSubmitForcedActions() {

@@ -36,10 +36,17 @@ export class SkillResolver {
       effectiveCost = { rage: rageCost };
     }
 
-    // Validate cost (actual payment happens via CONSUME_RESOURCE commands during execution)
+    // Validate cost — fold in pending resource gains from already-submitted actions
     if (!opts.skipCostCheck && Object.keys(effectiveCost).length > 0) {
-      if (!this.resourceSystem.canAfford(actorId, effectiveCost)) {
-        return { success: false, error: 'insufficient_resources' };
+      const available = { ...this.resourceSystem.getAll(actorId) };
+      const pending = opts.pendingResources || {};
+      for (const [res, amt] of Object.entries(pending)) {
+        available[res] = (available[res] || 0) + amt;
+      }
+      for (const [res, amt] of Object.entries(effectiveCost)) {
+        if ((available[res] || 0) < amt) {
+          return { success: false, error: 'insufficient_resources' };
+        }
       }
     }
 

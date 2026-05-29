@@ -349,6 +349,10 @@ export class GameEngine {
     return c ? c.ownerId : null;
   }
 
+  getPendingResourceGains(characterId) {
+    return this.turnManager._getPendingResourceGains(characterId);
+  }
+
   canSubmitAction(characterId, skillId = null) {
     const character = this.registry.get(characterId);
     if (!character) return { ok: false, canSubmit: false, reason: 'unknown_actor' };
