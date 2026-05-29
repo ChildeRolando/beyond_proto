@@ -1,5 +1,5 @@
 import { generateCandidateActions } from './CandidateGenerator.js';
-import { rankActionsOnePly } from './OnePlyPolicy.js';
+import { rankActionsOnePly, orderedCandidates } from './OnePlyPolicy.js';
 import { SKILLS } from '../SkillData.js';
 
 export async function chooseAiAction(engine, characterId, options = {}) {
@@ -57,8 +57,11 @@ export async function chooseAiAction(engine, characterId, options = {}) {
     };
   }
 
-  // Fallback: no valid one-ply candidates, use heuristic ordering
-  const candidates = generateCandidateActions(engine, characterId, options.candidates || {});
+  // Fallback: no valid one-ply candidates, use heuristic ordering with resource context
+  const resources = engine.resourceSystem.getAll(characterId);
+  const candidates = orderedCandidates(
+    generateCandidateActions(engine, characterId, options.candidates || {}), resources
+  );
   const topN = candidates.slice(0, 5);
   if (topN.length > 0) {
     engine.logger?.log(`── AI ${actor.name} 候选TOP5 (fallback) ──`, 'ai');

@@ -15,11 +15,13 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
     ...options,
     maxTargetsPerSkill: options.maxTargetsPerSkill ?? 1,
   };
+  const ownResources = engine.resourceSystem.getAll(actorId);
+  const oppResources = engine.resourceSystem.getAll(opponentId);
   const ownCandidates = orderedCandidates(
-    generateCandidateActions(engine, actorId, candidateOptions)
+    generateCandidateActions(engine, actorId, candidateOptions), ownResources
   ).slice(0, options.maxOwnActions ?? 16);
   const opponentCandidates = orderedCandidates(
-    generateCandidateActions(engine, opponentId, { ...candidateOptions, skipActionCheck: true })
+    generateCandidateActions(engine, opponentId, { ...candidateOptions, skipActionCheck: true }), oppResources
   ).slice(0, options.maxOpponentActions ?? 16);
 
   const results = [];
@@ -63,17 +65,17 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
   );
 }
 
-function orderedCandidates(actions) {
+export function orderedCandidates(actions, resources = null) {
   return actions
     .map((action, index) => ({ action, index }))
     .sort((a, b) =>
-      actionHeuristic(b.action) - actionHeuristic(a.action) ||
+      actionHeuristic(b.action, resources) - actionHeuristic(a.action, resources) ||
       a.index - b.index
     )
     .map(entry => entry.action);
 }
 
-function actionHeuristic(action) {
+function actionHeuristic(action, resources = null) {
   const profile = getSkillPrimitiveProfile(action.skillId);
   let score = 0;
 
@@ -87,6 +89,19 @@ function actionHeuristic(action) {
   if (profile.tags.includes(PrimitiveTag.INVEST)) score += 24;
   if (profile.tags.includes(PrimitiveTag.DEFEND)) score += 10;
   if (profile.tags.includes(PrimitiveTag.ESCAPE)) score += 6;
+
+  // Reload priority: when ammo is empty and backpack has stock, it's critical
+  if (action.skillId === 'shooter_reload' && resources) {
+    const ammo = resources.ammo || 0;
+    const backpack = resources.backpackAmmo || 0;
+    if (ammo <= 0 && backpack > 0) score += 40;
+    else if (ammo <= 2) score += backpack * 4;
+  }
+  // Setup skills are worthless without ammo to follow up
+  if (resources && (resources.ammo || 0) <= 0) {
+    if (action.skillId === 'shooter_predict' || action.skillId === 'shooter_aim') score -= 50;
+    if (action.skillId === 'shooter_cover_fire') score -= 80;
+  }
 
   score -= profile.commitment * 1.5;
   return score;

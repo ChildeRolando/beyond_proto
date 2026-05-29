@@ -41,7 +41,12 @@ function isCandidateSkill(engine, actor, skillId, skill, options = {}) {
     const ap = engine.canSubmitAction(actor.id, skillId);
     if (!ap.ok) return false;
   }
-  return engine.resourceSystem.canAfford(actor.id, skill.cost || {});
+  // Skip abilities that consume ALL ammo when there is none to spend
+  const cost = skill.cost || {};
+  for (const [res, amt] of Object.entries(cost)) {
+    if (amt === 'ALL' && (engine.resourceSystem.get(actor.id, res) || 0) <= 0) return false;
+  }
+  return engine.resourceSystem.canAfford(actor.id, cost);
 }
 
 function getCandidateTargets(engine, actor, skill, options) {
