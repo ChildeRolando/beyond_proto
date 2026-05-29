@@ -2974,16 +2974,31 @@ async function submitAiAndExecutePveTurn() {
   renderAll();
 
   try {
-    const aiResult = await engine.submitAiAction(aiId, {
-      opponentId: getMyCharacterIds()[0],
-      policy: { maxOwnActions: 10, maxOpponentActions: 16, opponentTemperature: 50 },
-    });
+    const aiResult = await Promise.race([
+      engine.submitAiAction(aiId, {
+        opponentId: getMyCharacterIds()[0],
+        policy: { maxOwnActions: 8, maxOpponentActions: 8, maxTargetsPerSkill: 1, opponentTemperature: 50 },
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('ai_timeout')), 15000))
+    ]);
     if (aiResult.success) {
       localSubmittedSet.add(aiId);
       await executeLocalTurn();
     } else {
       document.getElementById('submit-status').textContent = `PVE: AI 提交失败 ${aiResult.error || ''}`;
       document.getElementById('btn-execute').disabled = false;
+    }
+  } catch (err) {
+    document.getElementById('submit-status').textContent = 'PVE: AI 超时，使用快速决策';
+    document.getElementById('btn-execute').disabled = false;
+    // Fast fallback: submit first candidate action
+    const { generateCandidateActions } = await import('./engine/ai/CandidateGenerator.js');
+    const candidates = generateCandidateActions(engine, aiId, { maxTargetsPerSkill: 1 });
+    if (candidates.length > 0) {
+      const fallback = candidates[0];
+      engine.submitAction(fallback.characterId, fallback.skillId, fallback.targetPos ?? null);
+      localSubmittedSet.add(aiId);
+      await executeLocalTurn();
     }
   } finally {
     pveAiRunning = false;
