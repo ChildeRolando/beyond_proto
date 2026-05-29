@@ -2742,9 +2742,8 @@ function computeEffectArea(skill, charPos, hoveredTarget, rangeOverride = null) 
       }
       case 'ATTACK_LINE': {
         const fwdLine = hexLine(simPos.q, simPos.r, hoveredTarget.q, hoveredTarget.r);
-        // Forward: hexLine from caster to target (like 气功波), stops at target
+        // Forward: hexLine from caster through target, projectile starts from self
         for (const [q, r] of fwdLine) {
-          if (q === simPos.q && r === simPos.r) continue;
           area.add(`${q},${r}`);
         }
         // Reverse: opposite direction from caster to board edge
@@ -2824,10 +2823,14 @@ function computeEffectArea(skill, charPos, hoveredTarget, rangeOverride = null) 
   return [...area].map(k => { const [q, r] = k.split(',').map(Number); return { q, r }; });
 }
 
-function getCharacterAtHex(q, r) {
-  return engine.getState().characters.find(c =>
+function getCharactersAtHex(q, r) {
+  return engine.getState().characters.filter(c =>
     c.alive !== false && c.position?.q === q && c.position?.r === r
-  ) || null;
+  );
+}
+function getCharacterAtHex(q, r) {
+  const chars = getCharactersAtHex(q, r);
+  return chars[0] || null;
 }
 
 // --- Canvas click ---
@@ -2870,8 +2873,17 @@ canvas.addEventListener('click', (e) => {
 
   if (!selectedSkill) {
     if (clickedChar) {
-      selectedCharacterId = clickedChar.id;
-      lastHoveredCharacterId = clickedChar.id;
+      // Cycle through chars on same hex on repeated clicks
+      const hexChars = getCharactersAtHex(hq, hr);
+      if (hexChars.length > 1 && hexChars.some(c => c.id === selectedCharacterId)) {
+        const curIdx = hexChars.findIndex(c => c.id === selectedCharacterId);
+        const next = hexChars[(curIdx + 1) % hexChars.length];
+        selectedCharacterId = next.id;
+        lastHoveredCharacterId = next.id;
+      } else {
+        selectedCharacterId = clickedChar.id;
+        lastHoveredCharacterId = clickedChar.id;
+      }
       renderAll();
     }
     return;

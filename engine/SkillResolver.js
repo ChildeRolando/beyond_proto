@@ -190,9 +190,8 @@ export class SkillResolver {
         const fwdLine = hexLine(fromQ, fromR, toQ, toR);
         const hexes = new Set();
 
-        // Forward: hexLine from caster to target (like 气功波), stops at target
+        // Forward: hexLine from caster through target, projectile starts from self
         for (const [q, r] of fwdLine) {
-          if (q === fromQ && r === fromR) continue;
           hexes.add(`${q},${r}`);
         }
 
