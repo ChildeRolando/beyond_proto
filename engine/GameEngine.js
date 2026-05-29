@@ -378,6 +378,9 @@ export class GameEngine {
       if (this.skillCooldowns && !this.skillCooldowns.isReady(characterId, skillId)) {
         return { ok: false, canSubmit: false, reason: 'skill_on_cooldown' };
       }
+      if (this.skillCooldowns && this.skillCooldowns.isExhausted(characterId, skillId)) {
+        return { ok: false, canSubmit: false, reason: 'skill_exhausted' };
+      }
       const result = this.actionPointSystem.canSubmit(character, skillId);
       return { ...result, canSubmit: result.ok };
     }

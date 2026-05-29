@@ -675,11 +675,11 @@ export const SKILLS = {
   },
   role_yan_empty_gun: {
     id: 'role_yan_empty_gun', name: '我赌你的枪里没有子弹', icon: 'assets/skill-icons/role/role_yan_empty_gun.png', class: '射手', type: '角色',
-    cost: {}, speed: 3, targeting: { shape: 'HEX', range: 6 },
+    cost: {}, speed: 3, targeting: { shape: 'HEX', range: 6 }, maxUses: 1,
     effects: [
       { cmd: 'APPLY_STATUS', status: 'YAN_EMPTY_GUN', target: 'TARGET', duration: 1 },
     ],
-    desc: '指定目标，本回合取消其下一次攻击，不返还费用并剥夺全部剩余资源 | 速3 | cost0',
+    desc: '限定技(1次) | 标记目标，若本回合目标未发起攻击则剥夺全部资源 | 速3 | cost0',
   },
 
   // === Passive trait skills (selectable in loadout, auto-applied in battle) ===

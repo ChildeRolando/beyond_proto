@@ -330,14 +330,17 @@ export class TurnManager {
           break;
       }
 
-    // Start cooldown if skill has one
-    const execSkill = SKILLS[cmd.skillId];
-    if (execSkill?.cooldown && this.#skillCooldowns) {
-      const actor = this.#registry.get(cmd.actorId);
-      if (actor) {
-        const haste = this._getSkillHaste(actor, cmd.skillId);
-        this.#skillCooldowns.startCooldown(cmd.actorId, cmd.skillId, execSkill.cooldown, haste);
+    // Start cooldown + consume limited use after execution
+    if (this.#skillCooldowns) {
+      const execSkill = SKILLS[cmd.skillId];
+      if (execSkill?.cooldown) {
+        const actor = this.#registry.get(cmd.actorId);
+        if (actor) {
+          const haste = this._getSkillHaste(actor, cmd.skillId);
+          this.#skillCooldowns.startCooldown(cmd.actorId, cmd.skillId, execSkill.cooldown, haste);
+        }
       }
+      this.#skillCooldowns.consumeUse(cmd.actorId, cmd.skillId);
     }
 
     // After-action hook
@@ -1544,11 +1547,12 @@ export class TurnManager {
 
     // Check skill cooldown
     const skill = SKILLS[skillId];
-    if (skill?.cooldown && this.#skillCooldowns) {
-      const haste = this._getSkillHaste(actor, skillId);
-      if (!this.#skillCooldowns.isReady(characterId, skillId)) {
-        const remaining = this.#skillCooldowns.getRemaining(characterId, skillId);
-        return { success: false, error: `skill_on_cooldown (${remaining} turns remaining)` };
+    if (this.#skillCooldowns) {
+      if (skill?.cooldown && !this.#skillCooldowns.isReady(characterId, skillId)) {
+        return { success: false, error: 'skill_on_cooldown' };
+      }
+      if (this.#skillCooldowns.isExhausted(characterId, skillId)) {
+        return { success: false, error: 'skill_exhausted' };
       }
     }
 

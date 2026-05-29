@@ -3011,6 +3011,14 @@ async function submitAiAndExecutePveTurn() {
     ]);
     if (aiResult.success) {
       localSubmittedSet.add(aiId);
+      // AI finesse: submit optional action if available
+      if (hasOptionalActionAvailable(aiId)) {
+        const fResult = await engine.submitAiAction(aiId, {
+          opponentId: getMyCharacterIds()[0],
+          policy: { maxOwnActions: 8, maxOpponentActions: 4, maxTargetsPerSkill: 1, opponentTemperature: 50 },
+        });
+        if (fResult.success) localSubmittedSet.add(aiId);
+      }
       await executeLocalTurn();
     } else {
       document.getElementById('submit-status').textContent = `PVE: AI 提交失败 ${aiResult.error || ''}`;
