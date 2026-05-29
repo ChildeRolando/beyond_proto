@@ -32,11 +32,7 @@ scp $SSH_OPTS -r engine server index.html package.json "$SERVER:$REMOTE_DIR/" 2>
 
 # Assets are large images that rarely change — only push when asked
 if $PUSH_ASSETS; then
-  # rsync with exclude for large source-only files (originals, prompt-tests not deployed)
-  rsync -avz -e "ssh $SSH_OPTS" \
-    --exclude='character-portraits/originals' \
-    --exclude='character-portraits/prompt-tests' \
-    assets "$SERVER:$REMOTE_DIR/" 2>&1
+  scp $SSH_OPTS -r assets "$SERVER:$REMOTE_DIR/" 2>&1
 fi
 
 # Schedule restart via Task Scheduler (survives SSH disconnect)
