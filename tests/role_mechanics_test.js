@@ -240,5 +240,68 @@ console.log('\n[5] Yan Shuangying');
   check('Yan empty gun expires at end of turn', !hasBuff(engine, 'player2', 'YAN_EMPTY_GUN'));
 }
 
+console.log('\n[6] Trait gating');
+{
+  // Explicit loadout: only selected traits should be active
+  const { engine, ids } = initRoleBattle(
+    { class: '射手', roleId: 'shooter_helldiver', roleLoadout: ['trait_helldiver_laser_weapon'] },
+    { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['trait_jimmy_breathing'] },
+  );
+  engine.submitAction(ids.player1Id, 'shooter_roll', { q: 1, r: -1 });
+  engine.submitAction(ids.player2Id, 'warrior_rage', null);
+  await engine.executeTurn();
+  const p1 = character(engine, 'player1');
+  check('Laser weapon active when selected', p1.resources.backpackAmmo === 1, `backpack=${p1.resources.backpackAmmo}`);
+  const hasFastReady = engine.turnManager._hasTraitInLoadout(
+    engine.registry.get(ids.player1Id), 'trait_helldiver_fast_ready');
+  const hasSpeedDraw = engine.turnManager._hasTraitInLoadout(
+    engine.registry.get(ids.player1Id), 'trait_helldiver_speed_draw');
+  check('Fast ready NOT active when not selected', !hasFastReady);
+  check('Speed draw NOT active when not selected', !hasSpeedDraw);
+}
+
+{
+  // Non-config path: roleLoadoutSkillIds undefined → should use default ROLE_LOADOUT_SIZE traits
+  const engine = new GameEngine();
+  const ids = engine.initBattle({
+    seed: 456,
+    p1Pos: { q: 0, r: -1 }, p2Pos: { q: 0, r: 1 },
+    players: [
+      { playerId: 'player1', class: '射手', roleId: 'shooter_helldiver',
+        loadoutSkillIds: getDefaultLoadout('射手'), roleLoadoutSkillIds: undefined },
+      { playerId: 'player2', class: '战士', roleId: 'warrior_jimmy',
+        loadoutSkillIds: getDefaultLoadout('战士'), roleLoadoutSkillIds: undefined },
+    ],
+  });
+  engine.submitAction(ids.player1Id, 'shooter_roll', { q: 1, r: -1 });
+  engine.submitAction(ids.player2Id, 'warrior_rage', null);
+  await engine.executeTurn();
+  const p1 = character(engine, 'player1');
+  // Default for Helldiver: first ROLE_LOADOUT_SIZE from pool = laser_weapon + priority_ready
+  const hasLaser = engine.turnManager._hasTraitInLoadout(
+    engine.registry.get(ids.player1Id), 'trait_helldiver_laser_weapon');
+  const hasPriority = engine.turnManager._hasTraitInLoadout(
+    engine.registry.get(ids.player1Id), 'trait_helldiver_priority_ready');
+  const hasFastDef = engine.turnManager._hasTraitInLoadout(
+    engine.registry.get(ids.player1Id), 'trait_helldiver_fast_ready');
+  check('Default traits include laser weapon', hasLaser);
+  check('Default traits include priority ready', hasPriority);
+  check('Default traits do NOT include fast ready', !hasFastDef);
+  check('Laser weapon fires in default (backpack +1)', p1.resources.backpackAmmo === 1, `backpack=${p1.resources.backpackAmmo}`);
+}
+
+{
+  // Verify that empty array means NO traits active
+  const { engine, ids } = initRoleBattle(
+    { class: '射手', roleId: 'shooter_helldiver', roleLoadout: [] },
+    { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['trait_jimmy_breathing'] },
+  );
+  engine.submitAction(ids.player1Id, 'shooter_roll', { q: 1, r: -1 });
+  engine.submitAction(ids.player2Id, 'warrior_rage', null);
+  await engine.executeTurn();
+  const p1 = character(engine, 'player1');
+  check('Empty loadout: no laser weapon active', p1.resources.backpackAmmo === 0, `backpack=${p1.resources.backpackAmmo}`);
+}
+
 console.log(`\n=== Result: ${passed} passed, ${failed} failed ===`);
 if (failed > 0) process.exit(1);
