@@ -94,10 +94,10 @@ function actionHeuristic(action, actorSkills = null, resources = null) {
   if (profile.tags.includes(PrimitiveTag.DEFEND)) score += 10;
   if (profile.tags.includes(PrimitiveTag.ESCAPE)) score += 6;
 
-  // Pure setup skills (SETUP without PRESSURE): worthless if no follow-up possible
+  // SETUP value = proportional to follow-up attack potential
   if (profile.tags.includes(PrimitiveTag.SETUP) && !profile.tags.includes(PrimitiveTag.PRESSURE)) {
-    if (actorSkills && resources && !hasAnyAffordablePressure(actorSkills, resources)) {
-      score -= 60;
+    if (actorSkills && resources) {
+      score += followUpPotential(actorSkills, resources) * 0.5;
     }
   }
 
@@ -105,7 +105,9 @@ function actionHeuristic(action, actorSkills = null, resources = null) {
   return score;
 }
 
-function hasAnyAffordablePressure(actorSkills, resources) {
+// Sum the heuristic value of all affordable PRESSURE skills — the "attack potential"
+function followUpPotential(actorSkills, resources) {
+  let total = 0;
   for (const skillRef of actorSkills) {
     const p = getSkillPrimitiveProfile(skillRef.id);
     if (!p.tags.includes(PrimitiveTag.PRESSURE)) continue;
@@ -113,9 +115,11 @@ function hasAnyAffordablePressure(actorSkills, resources) {
     for (const [res, amt] of Object.entries(p.cost)) {
       if ((resources[res] || 0) < amt) { affordable = false; break; }
     }
-    if (affordable) return true;
+    if (affordable) {
+      total += 20 + Math.min(120, p.maxPower * 0.1);
+    }
   }
-  return false;
+  return total;
 }
 
 function resourceBuildHeuristic(resourceDelta) {

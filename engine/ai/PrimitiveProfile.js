@@ -66,7 +66,7 @@ export function getSkillPrimitiveProfile(skillId) {
   profile.speed = skill.speed ?? 1;
   profile.range = skill.targeting?.range ?? 0;
   profile.areaRadius = skill.targeting?.radius ?? 0;
-  profile.commitment = commitmentFromCost(skill.cost || {});
+  profile.commitment = commitmentFromCost(skill.cost || {}) + commitmentFromEffects(skill.effects || []);
   profile.cost = normalizedCost(skill.cost || {});
 
   for (const effect of skill.effects || []) {
@@ -117,11 +117,10 @@ function applyEffect(profile, effect, skill) {
     addTag(profile, PrimitiveTag.BUILD);
     addDelta(profile, effect.resource, numeric(effect.amount));
   }
-  // RELOAD_AMMO: converts backpack → magazine, value proportional to conversion
+  // RELOAD_AMMO: converts backpack → magazine, enabling attacks (backpack cost already in commitment)
   if (effect.cmd === 'RELOAD_AMMO') {
     addTag(profile, PrimitiveTag.BUILD);
-    addDelta(profile, 'ammo', 6);        // max potential conversion
-    addDelta(profile, 'backpackAmmo', -6);
+    addDelta(profile, 'ammo', 6);
   }
   // 翻滚/钩锁 pick up casings — shooter's actual gathering actions
   if (effect.cmd === 'COLLECT_CASINGS') {
@@ -134,7 +133,8 @@ function applyEffect(profile, effect, skill) {
     addDelta(profile, 'qi', 1);
   }
   if (effect.cmd === 'CONSUME_RESOURCE') {
-    addDelta(profile, effect.resource, -numeric(effect.amount));
+    const amt = effect.amount === 'ALL' ? 6 : numeric(effect.amount);
+    addDelta(profile, effect.resource, -amt);
   }
   if (effect.cmd === 'APPLY_STATUS') applyStatusEffect(profile, effect);
   if (effect.cmd === 'DELAYED_SKILL') {
@@ -250,7 +250,17 @@ function normalizedCost(cost) {
 }
 
 function commitmentFromCost(cost) {
-  return Object.values(cost).reduce((sum, amount) => sum + numeric(amount), 0);
+  return Object.values(cost).reduce((sum, amount) => sum + (amount === 'ALL' ? 6 : numeric(amount)), 0);
+}
+
+function commitmentFromEffects(effects) {
+  let sum = 0;
+  for (const eff of effects) {
+    if (eff.cmd === 'CONSUME_RESOURCE') {
+      sum += eff.amount === 'ALL' ? 6 : numeric(eff.amount);
+    }
+  }
+  return sum;
 }
 
 function addDelta(profile, resource, amount) {

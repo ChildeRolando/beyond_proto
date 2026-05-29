@@ -41,12 +41,19 @@ function isCandidateSkill(engine, actor, skillId, skill, options = {}) {
     const ap = engine.canSubmitAction(actor.id, skillId);
     if (!ap.ok) return false;
   }
-  // Skip abilities that consume ALL ammo when there is none to spend
-  const cost = skill.cost || {};
-  for (const [res, amt] of Object.entries(cost)) {
-    if (amt === 'ALL' && (engine.resourceSystem.get(actor.id, res) || 0) <= 0) return false;
+  // Skip abilities that consume ALL of a resource when there is none to spend.
+  // Check both skill.cost and CONSUME_RESOURCE effects (e.g. 丧钟 has empty cost but CONSUME_RESOURCE ammo:ALL)
+  const allConsumed = new Set();
+  for (const [res, amt] of Object.entries(skill.cost || {})) {
+    if (amt === 'ALL') allConsumed.add(res);
   }
-  return engine.resourceSystem.canAfford(actor.id, cost);
+  for (const eff of skill.effects || []) {
+    if (eff.cmd === 'CONSUME_RESOURCE' && eff.amount === 'ALL') allConsumed.add(eff.resource);
+  }
+  for (const res of allConsumed) {
+    if ((engine.resourceSystem.get(actor.id, res) || 0) <= 0) return false;
+  }
+  return engine.resourceSystem.canAfford(actor.id, skill.cost || {});
 }
 
 function getCandidateTargets(engine, actor, skill, options) {
