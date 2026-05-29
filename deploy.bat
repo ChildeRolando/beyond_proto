@@ -19,6 +19,7 @@ if errorlevel 1 echo [WARN] scp code upload had errors
 
 :: Assets are large images that rarely change 鈥?only push when asked
 if %PUSH_ASSETS%==1 (
+  :: Note: originals/ subfolder contains source PNGs, not deployed. WebP copies are the deployed assets.
   scp -i "%USERPROFILE%\.ssh\id_ed25519" -o IdentitiesOnly=yes -r assets Administrator@120.77.178.15:"C:/Users/Administrator/Desktop/combat-engine/"
   if errorlevel 1 echo [WARN] scp assets upload had errors
 )
