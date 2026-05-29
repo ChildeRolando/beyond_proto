@@ -134,6 +134,17 @@ export class GameEngine {
     this.resourceSystem.initCharacter(p2Id, p2Class);
     this.actionPointSystem.resetTurn();
 
+    // Spawn wild bullets if any shooter is present (unless they have laser weapon trait)
+    const shooterClass = p1Class === '射手' ? p1Class : p2Class === '射手' ? p2Class : null;
+    if (shooterClass) {
+      const shooterConfig = p1Class === '射手' ? p1Config : p2Config;
+      const hasLaserWeapon = shooterConfig?.roleLoadoutSkillIds?.includes('trait_helldiver_laser_weapon');
+      if (!hasLaserWeapon) {
+        const friendlyHalf = p1Class === '射手' ? 'upper' : 'lower';
+        this.projectileCalculator.spawnWildBullets(4, this.registry, battleSeed, friendlyHalf);
+      }
+    }
+
     // Apply initial role passives for turn 1 (e.g., Jimmy breathing, Yan death wind)
     this.turnManager.initRolePassives();
 
