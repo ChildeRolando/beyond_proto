@@ -1506,13 +1506,17 @@ import {
 } from './engine/RoleData.js';
 import { isOnBoard, hexCenter, hexCorners, pixelToHex, hexDistance, hexLine, hexSpiral, setCanvasSize, getSectorHexes } from './engine/HexMath.js';
 
-// --- Preload skill icons (non-blocking) ---
+// --- Preload skill icons + role portraits (non-blocking) ---
 (function preloadIcons() {
   for (const skill of Object.values(SKILLS)) {
     if (skill.icon) {
       const img = new Image();
       img.src = skill.icon;
     }
+  }
+  for (const role of Object.values(ROLE_DEFS)) {
+    const img = new Image();
+    img.src = `assets/character-portraits/${role.id}.webp`;
   }
 })();
 
