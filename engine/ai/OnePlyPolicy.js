@@ -17,11 +17,15 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
   };
   const ownResources = engine.resourceSystem.getAll(actorId);
   const oppResources = engine.resourceSystem.getAll(opponentId);
+  const ownActor = engine.registry.get(actorId);
+  const oppActor = engine.registry.get(opponentId);
+  const ownSkills = engine.getState().characters.find(c => c.id === actorId)?.skills || [];
+  const oppSkills = engine.getState().characters.find(c => c.id === opponentId)?.skills || [];
   const ownCandidates = orderedCandidates(
-    generateCandidateActions(engine, actorId, candidateOptions), ownResources
+    generateCandidateActions(engine, actorId, candidateOptions), ownSkills, ownResources
   ).slice(0, options.maxOwnActions ?? 16);
   const opponentCandidates = orderedCandidates(
-    generateCandidateActions(engine, opponentId, { ...candidateOptions, skipActionCheck: true }), oppResources
+    generateCandidateActions(engine, opponentId, { ...candidateOptions, skipActionCheck: true }), oppSkills, oppResources
   ).slice(0, options.maxOpponentActions ?? 16);
 
   const results = [];
@@ -65,17 +69,17 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
   );
 }
 
-export function orderedCandidates(actions, resources = null) {
+export function orderedCandidates(actions, actorSkills = null, resources = null) {
   return actions
     .map((action, index) => ({ action, index }))
     .sort((a, b) =>
-      actionHeuristic(b.action, resources) - actionHeuristic(a.action, resources) ||
+      actionHeuristic(b.action, actorSkills, resources) - actionHeuristic(a.action, actorSkills, resources) ||
       a.index - b.index
     )
     .map(entry => entry.action);
 }
 
-function actionHeuristic(action, resources = null) {
+function actionHeuristic(action, actorSkills = null, resources = null) {
   const profile = getSkillPrimitiveProfile(action.skillId);
   let score = 0;
 
@@ -90,21 +94,28 @@ function actionHeuristic(action, resources = null) {
   if (profile.tags.includes(PrimitiveTag.DEFEND)) score += 10;
   if (profile.tags.includes(PrimitiveTag.ESCAPE)) score += 6;
 
-  // Reload priority: when ammo is empty and backpack has stock, it's critical
-  if (action.skillId === 'shooter_reload' && resources) {
-    const ammo = resources.ammo || 0;
-    const backpack = resources.backpackAmmo || 0;
-    if (ammo <= 0 && backpack > 0) score += 40;
-    else if (ammo <= 2) score += backpack * 4;
-  }
-  // Setup skills are worthless without ammo to follow up
-  if (resources && (resources.ammo || 0) <= 0) {
-    if (action.skillId === 'shooter_predict' || action.skillId === 'shooter_aim') score -= 50;
-    if (action.skillId === 'shooter_cover_fire') score -= 80;
+  // Pure setup skills (SETUP without PRESSURE): worthless if no follow-up possible
+  if (profile.tags.includes(PrimitiveTag.SETUP) && !profile.tags.includes(PrimitiveTag.PRESSURE)) {
+    if (actorSkills && resources && !hasAnyAffordablePressure(actorSkills, resources)) {
+      score -= 60;
+    }
   }
 
   score -= profile.commitment * 1.5;
   return score;
+}
+
+function hasAnyAffordablePressure(actorSkills, resources) {
+  for (const skillRef of actorSkills) {
+    const p = getSkillPrimitiveProfile(skillRef.id);
+    if (!p.tags.includes(PrimitiveTag.PRESSURE)) continue;
+    let affordable = true;
+    for (const [res, amt] of Object.entries(p.cost)) {
+      if ((resources[res] || 0) < amt) { affordable = false; break; }
+    }
+    if (affordable) return true;
+  }
+  return false;
 }
 
 function resourceBuildHeuristic(resourceDelta) {

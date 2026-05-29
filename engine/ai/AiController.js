@@ -57,10 +57,11 @@ export async function chooseAiAction(engine, characterId, options = {}) {
     };
   }
 
-  // Fallback: no valid one-ply candidates, use heuristic ordering with resource context
+  // Fallback: no valid one-ply candidates, use heuristic ordering with skill + resource context
   const resources = engine.resourceSystem.getAll(characterId);
+  const charSkills = engine.getState().characters.find(c => c.id === characterId)?.skills || [];
   const candidates = orderedCandidates(
-    generateCandidateActions(engine, characterId, options.candidates || {}), resources
+    generateCandidateActions(engine, characterId, options.candidates || {}), charSkills, resources
   );
   const topN = candidates.slice(0, 5);
   if (topN.length > 0) {

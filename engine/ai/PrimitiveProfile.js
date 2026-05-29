@@ -117,6 +117,12 @@ function applyEffect(profile, effect, skill) {
     addTag(profile, PrimitiveTag.BUILD);
     addDelta(profile, effect.resource, numeric(effect.amount));
   }
+  // RELOAD_AMMO: converts backpack → magazine, value proportional to conversion
+  if (effect.cmd === 'RELOAD_AMMO') {
+    addTag(profile, PrimitiveTag.BUILD);
+    addDelta(profile, 'ammo', 6);        // max potential conversion
+    addDelta(profile, 'backpackAmmo', -6);
+  }
   // 翻滚/钩锁 pick up casings — shooter's actual gathering actions
   if (effect.cmd === 'COLLECT_CASINGS') {
     addTag(profile, PrimitiveTag.BUILD);
