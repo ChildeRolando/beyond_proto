@@ -4156,11 +4156,12 @@ function renderPanels() {
 }
 
 function renderLog() {
-  const entries = engine.logger.getEntries(20);
-  document.getElementById('log').innerHTML = entries.map(e =>
+  const entries = engine.logger.getEntries();
+  const logEl = document.getElementById('log');
+  logEl.innerHTML = entries.map(e =>
     `<div class="log-entry log-${e.category || 's'}">[${e.turn || '-'}] ${e.message}</div>`
   ).join('');
-  document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+  logEl.scrollTop = logEl.scrollHeight;
 }
 
 // Keyboard shortcuts
