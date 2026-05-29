@@ -4,6 +4,7 @@ import { hexDistance, hexLine, hexNeighbors, hexSpiral, isOnBoard } from './HexM
 import { HookName } from './BuffHooks.js';
 import { STATUS_DEFS } from './StatusEffectDefs.js';
 import { SKILLS } from './SkillData.js';
+import { getDefaultRoleLoadout } from './RoleData.js';
 
 export const TurnPhase = Object.freeze({
   PLAN: 'PLAN',
@@ -1325,7 +1326,11 @@ export class TurnManager {
   // Check if a trait skill is in the character's role loadout.
   // Returns true when roleLoadoutSkillIds is null (non-config battles) to preserve backward compat.
   _hasTraitInLoadout(char, traitSkillId) {
-    if (!char.roleLoadoutSkillIds) return true;
+    if (!char.roleLoadoutSkillIds) {
+      // Backward compat: only default traits active (first ROLE_LOADOUT_SIZE from pool)
+      const defaults = char.roleId ? getDefaultRoleLoadout(char.roleId) : [];
+      return defaults.includes(traitSkillId);
+    }
     return char.roleLoadoutSkillIds.includes(traitSkillId);
   }
 
