@@ -25,6 +25,7 @@ import {
 } from './RoleData.js';
 import { STATUS_DEFS } from './StatusEffectDefs.js';
 import { isOnBoard, hexCenter } from './HexMath.js';
+import { SkillCooldowns } from './SkillCooldowns.js';
 import { chooseAiAction as chooseAiActionForEngine, submitAiAction as submitAiActionForEngine } from './ai/AiController.js';
 
 export class GameEngine {
@@ -36,6 +37,7 @@ export class GameEngine {
     this.resourceSystem = new ResourceSystem(this.eventBus);
     this.buffManager = new BuffManager(this.eventBus, this.registry);
     this.actionPointSystem = new ActionPointSystem(this.buffManager);
+    this.skillCooldowns = new SkillCooldowns();
     this.formationSystem = new FormationSystem(this.registry, this.eventBus, this.resourceSystem);
     this.damageCalculator = new DamageCalculator(this.registry, this.eventBus, this.resourceSystem, this.formationSystem, this.buffManager);
     this.movementSystem = new MovementSystem(this.registry, this.buffManager);
@@ -51,6 +53,7 @@ export class GameEngine {
       damageCalculator: this.damageCalculator,
       resourceSystem: this.resourceSystem,
       actionPointSystem: this.actionPointSystem,
+      skillCooldowns: this.skillCooldowns,
       logger: this.logger,
       skillResolver: this.skillResolver,
       movementSystem: this.movementSystem,
@@ -130,13 +133,6 @@ export class GameEngine {
     this.resourceSystem.initCharacter(p1Id, p1Class);
     this.resourceSystem.initCharacter(p2Id, p2Class);
     this.actionPointSystem.resetTurn();
-
-    // Spawn 6 wild bullets if any shooter is present; half in friendly zone
-    const shooterClass = p1Class === '射手' ? p1Class : p2Class === '射手' ? p2Class : null;
-    if (shooterClass) {
-      const friendlyHalf = p1Class === '射手' ? 'upper' : 'lower';
-      this.projectileCalculator.spawnWildBullets(4, this.registry, battleSeed, friendlyHalf);
-    }
 
     // Apply initial role passives for turn 1 (e.g., Jimmy breathing, Yan death wind)
     this.turnManager.initRolePassives();

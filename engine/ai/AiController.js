@@ -2,6 +2,8 @@ import { generateCandidateActions } from './CandidateGenerator.js';
 import { rankActionsOnePly, orderedCandidates } from './OnePlyPolicy.js';
 import { SKILLS } from '../SkillData.js';
 
+const DEFAULT_AI_TIMEOUT_MS = 15000;
+
 export async function chooseAiAction(engine, characterId, options = {}) {
   const actor = engine.registry.get(characterId);
   if (!actor || actor.alive === false) {
@@ -13,7 +15,20 @@ export async function chooseAiAction(engine, characterId, options = {}) {
     return { success: false, error: 'no_opponent' };
   }
 
-  const ranked = await rankActionsOnePly(engine, characterId, opponentId, options.policy || {});
+  const search = await rankWithTimeout(
+    () => rankActionsOnePly(engine, characterId, opponentId, options.policy || {}),
+    options.timeoutMs ?? options.policy?.timeoutMs ?? DEFAULT_AI_TIMEOUT_MS
+  );
+  if (search.timedOut || search.error) {
+    const reason = search.timedOut ? 'timeout' : `search_error:${search.error?.message || search.error}`;
+    engine.logger?.log(`AI ${actor.name} search ${reason}; using fast fallback`, 'ai');
+    return chooseFallbackAction(engine, characterId, actor, options, {
+      timedOut: search.timedOut || undefined,
+      searchError: search.error?.message || undefined,
+    });
+  }
+
+  const ranked = search.ranked;
   if (ranked.length > 0) {
     const best = ranked[0];
     const oppName = engine.registry.get(opponentId)?.name || '对手';
@@ -57,6 +72,10 @@ export async function chooseAiAction(engine, characterId, options = {}) {
     };
   }
 
+  return chooseFallbackAction(engine, characterId, actor, options);
+}
+
+function chooseFallbackAction(engine, characterId, actor, options = {}, metadata = {}) {
   // Fallback: no valid one-ply candidates, use heuristic ordering with skill + resource context
   const resources = engine.resourceSystem.getAll(characterId);
   const charSkills = engine.getState().characters.find(c => c.id === characterId)?.skills || [];
@@ -76,6 +95,7 @@ export async function chooseAiAction(engine, characterId, options = {}) {
   const fallback = candidates[0];
   if (!fallback) return { success: false, error: 'no_candidate_actions' };
   return {
+    ...metadata,
     success: true,
     action: fallback,
     expectedValue: 0,
@@ -84,6 +104,28 @@ export async function chooseAiAction(engine, characterId, options = {}) {
     ranked: [],
     fallback: true,
   };
+}
+
+async function rankWithTimeout(rankFn, timeoutMs) {
+  if (Number.isFinite(timeoutMs) && timeoutMs <= 0) return { timedOut: true };
+
+  const rankPromise = Promise.resolve()
+    .then(rankFn)
+    .then(ranked => ({ ranked }))
+    .catch(error => ({ error }));
+
+  if (!Number.isFinite(timeoutMs)) return rankPromise;
+
+  let timer = null;
+  const timeoutPromise = new Promise(resolve => {
+    timer = setTimeout(() => resolve({ timedOut: true }), timeoutMs);
+  });
+  const result = await Promise.race([
+    rankPromise,
+    timeoutPromise,
+  ]);
+  if (timer && !result.timedOut) clearTimeout(timer);
+  return result;
 }
 
 export async function submitAiAction(engine, characterId, options = {}) {

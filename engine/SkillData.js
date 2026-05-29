@@ -658,19 +658,28 @@ export const SKILLS = {
   },
   role_helldiver_supply_drop: {
     id: 'role_helldiver_supply_drop', name: '呼叫补给', icon: 'assets/skill-icons/role/role_helldiver_supply_drop.png', class: '射手', type: '角色',
-    cost: {}, speed: 1, targeting: { shape: 'SELF' },
+    cost: {}, speed: 1, targeting: { shape: 'HEX', range: 6 }, cooldown: 6,
     effects: [
-      { cmd: 'GAIN_RESOURCE', resource: 'backpackAmmo', amount: 2 },
+      { cmd: 'DROP_SUPPLY_CRATE' },
     ],
-    desc: '呼叫补给，背包弹药+2 | 速1 | cost0',
+    desc: '目标格空投降落补给箱 拾取背包+3 | 速1 | CD6 | cost0',
   },
-  role_helldiver_precision_strike: {
-    id: 'role_helldiver_precision_strike', name: '精准轰炸', icon: 'assets/skill-icons/role/role_helldiver_precision_strike.png', class: '射手', type: '角色',
-    cost: {}, speed: 1, targeting: { shape: 'HEX', range: 6 },
+  role_helldiver_bombardment: {
+    id: 'role_helldiver_bombardment', name: '呼叫轰炸', icon: 'assets/skill-icons/role/role_helldiver_supply_drop.png', class: '射手', type: '角色',
+    cost: {}, speed: 1, targeting: { shape: 'HEX', range: 6 }, cooldown: 6,
     effects: [
-      { cmd: 'SPAWN_STATIONARY_AOE', power: 300, radius: 1, includeCenter: true },
+      { cmd: 'DELAYED_SKILL', resolveInTurns: 1, skillId: 'role_helldiver_bombardment_resolve' },
+      { cmd: 'APPLY_STATUS', status: 'BOMBARDMENT_PENDING', target: 'SELF', duration: 1 },
     ],
-    desc: '目标周围1格轰炸，每格300伤害 | 速1 | cost0',
+    desc: '标记目标 下回合速1发射100伤害弹体 | 速1 | CD6 | cost0',
+  },
+  role_helldiver_bombardment_resolve: {
+    id: 'role_helldiver_bombardment_resolve', name: '轰炸·弹', class: '射手', type: '角色',
+    cost: {}, speed: 1, targeting: { shape: 'HEX', range: 6 }, hidden: true,
+    effects: [
+      { cmd: 'ATTACK_PROJECTILE', power: 100 },
+    ],
+    desc: '轰炸弹体 | 威力100 | hidden',
   },
   role_yan_empty_gun: {
     id: 'role_yan_empty_gun', name: '我赌你的枪里没有子弹', icon: 'assets/skill-icons/role/role_yan_empty_gun.png', class: '射手', type: '角色',
@@ -726,25 +735,33 @@ export const SKILLS = {
     id: 'trait_helldiver_laser_weapon', name: '激光武器', icon: 'assets/skill-icons/shooter/shooter_aim.png', class: '射手', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
-      { cmd: 'PASS', placeholderMessage: '激光武器：弹药自动蓄能（机制占位）' },
+      { cmd: 'PASS', placeholderMessage: '激光武器：每回合结束背包弹药+1，无上限' },
     ],
-    desc: '被动特质 | 弹药会自动蓄能，且没有弹药上限（机制占位）',
+    desc: '被动特质 | 每回合结束背包弹药+1，无弹药上限',
   },
   trait_helldiver_priority_ready: {
     id: 'trait_helldiver_priority_ready', name: '优先战备', icon: 'assets/skill-icons/shooter/shooter_bell.png', class: '射手', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
-      { cmd: 'PASS', placeholderMessage: '优先战备：呼叫技能冷却减少（机制占位）' },
+      { cmd: 'PASS', placeholderMessage: '优先战备：呼叫技能延迟-1回合，本回合即结算' },
     ],
-    desc: '被动特质 | 呼叫技能冷却减少（机制占位）',
+    desc: '被动特质 | 呼叫类技能延迟-1回合（本回合提交即当回合结算）',
   },
   trait_helldiver_fast_ready: {
     id: 'trait_helldiver_fast_ready', name: '快速战备', icon: 'assets/skill-icons/shooter/shooter_gun_dance.png', class: '射手', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
-      { cmd: 'PASS', placeholderMessage: '快速战备：呼叫技能速度提高（机制占位）' },
+      { cmd: 'PASS', placeholderMessage: '快速战备：呼叫技能+50技能急速' },
     ],
-    desc: '被动特质 | 呼叫技能速度提高（机制占位）',
+    desc: '被动特质 | 呼叫技能+50技能急速（CD6→CD4）',
+  },
+  trait_helldiver_speed_draw: {
+    id: 'trait_helldiver_speed_draw', name: '全凭手速', icon: 'assets/skill-icons/shooter/shooter_hook.png', class: '射手', type: '特质',
+    isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
+    effects: [
+      { cmd: 'PASS', placeholderMessage: '全凭手速：呼叫行动视为灵巧行动，每回合无限灵巧呼叫点' },
+    ],
+    desc: '被动特质 | 呼叫技能视为灵巧行动，每回合可使用无限个灵巧呼叫行动',
   },
   trait_mirror_slippery: {
     id: 'trait_mirror_slippery', name: '脚底抹油', class: '法师', type: '特质',
@@ -819,6 +836,7 @@ export const SKILLS_BY_CLASS = {
     'shooter_iaido',
     'trait_gunfighter_finesse', 'trait_gunfighter_strong',
     'trait_yan_death_wind',
-    'trait_helldiver_laser_weapon', 'trait_helldiver_priority_ready', 'trait_helldiver_fast_ready',
+    'trait_helldiver_laser_weapon', 'trait_helldiver_priority_ready', 'trait_helldiver_fast_ready', 'trait_helldiver_speed_draw',
+    'role_helldiver_supply_drop', 'role_helldiver_bombardment', 'role_helldiver_bombardment_resolve',
   ],
 };

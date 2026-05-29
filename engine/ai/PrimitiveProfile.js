@@ -122,6 +122,11 @@ function applyEffect(profile, effect, skill) {
     addTag(profile, PrimitiveTag.BUILD);
     addDelta(profile, 'ammo', 6);
   }
+  // Supply crate: places collectible worth 3 backpack ammo
+  if (effect.cmd === 'DROP_SUPPLY_CRATE') {
+    addTag(profile, PrimitiveTag.BUILD);
+    addDelta(profile, 'backpackAmmo', 3);
+  }
   // 翻滚/钩锁 pick up casings — shooter's actual gathering actions
   if (effect.cmd === 'COLLECT_CASINGS') {
     addTag(profile, PrimitiveTag.BUILD);

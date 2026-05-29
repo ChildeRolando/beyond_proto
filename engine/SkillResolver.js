@@ -289,10 +289,16 @@ export class SkillResolver {
           targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null,
           payload: { energy: eff.energy, talismans: eff.talismans } };
 
-      case 'DELAYED_SKILL':
+      case 'DELAYED_SKILL': {
+        // Priority ready: call-in delay reduced by 1 turn
+        let delay = eff.resolveInTurns;
+        if (delay > 0 && actor.roleLoadoutSkillIds?.includes('trait_helldiver_priority_ready')) {
+          delay = Math.max(0, delay - 1);
+        }
         return { ...base, type: CmdType.DELAYED_SKILL,
           targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null,
-          payload: { skillId: eff.skillId, resolveInTurns: eff.resolveInTurns, nestedEffects: eff.effects } };
+          payload: { skillId: eff.skillId, resolveInTurns: delay, nestedEffects: eff.effects } };
+      }
 
       case 'MULTI_CAST':
         return { ...base, type: CmdType.MULTI_CAST,
@@ -313,6 +319,10 @@ export class SkillResolver {
 
       case 'MARROW_UPGRADE':
         return { ...base, type: CmdType.MARROW_UPGRADE, payload: {} };
+
+      case 'DROP_SUPPLY_CRATE':
+        return { ...base, type: CmdType.DROP_SUPPLY_CRATE,
+          targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null };
 
       case 'PASS':
         return { ...base, type: CmdType.PASS,

@@ -17,6 +17,7 @@ function seededRandom(seed) {
 export class ProjectileCalculator {
   #projectiles = [];
   #casings = new Map();
+  #supplyCrates = new Map();     // posKey → count (worth 3 backpack each)
   #wildBullets = new Map();      // posKey → count
   #wildBulletsCollected = 0;
   #keyframes = [];
@@ -349,6 +350,11 @@ export class ProjectileCalculator {
     this.#casings.set(key, (this.#casings.get(key) || 0) + 1);
   }
 
+  _dropSupplyCrate(q, r) {
+    const key = `${q},${r}`;
+    this.#supplyCrates.set(key, (this.#supplyCrates.get(key) || 0) + 1);
+  }
+
   collectCasings(q, r, area = 'ADJACENT') {
     let collected = 0;
     const toCheck = new Set();
@@ -361,6 +367,11 @@ export class ProjectileCalculator {
       if (count > 0) {
         collected += count;
         this.#casings.delete(key);
+      }
+      const crateCount = this.#supplyCrates.get(key) || 0;
+      if (crateCount > 0) {
+        collected += crateCount * 3;
+        this.#supplyCrates.delete(key);
       }
     }
     return collected;
@@ -381,12 +392,17 @@ export class ProjectileCalculator {
         collected += count;
         this.#casings.delete(key);
       }
+      const crateCount = this.#supplyCrates.get(key) || 0;
+      if (crateCount > 0) {
+        collected += crateCount * 3;
+        this.#supplyCrates.delete(key);
+      }
     }
     return collected;
   }
 
   getCasingsAt(q, r) {
-    return this.#casings.get(`${q},${r}`) || 0;
+    return (this.#casings.get(`${q},${r}`) || 0) + (this.#supplyCrates.get(`${q},${r}`) || 0) * 3;
   }
 
   // Wild bullet management
@@ -505,6 +521,7 @@ export class ProjectileCalculator {
   reset() {
     this.#projectiles.length = 0;
     this.#casings.clear();
+    this.#supplyCrates.clear();
     this.#wildBullets.clear();
     this.#wildBulletsCollected = 0;
     this.#keyframes.length = 0;
@@ -517,6 +534,7 @@ export class ProjectileCalculator {
     return {
       projectiles: structuredClone(this.#projectiles),
       casings: [...this.#casings.entries()],
+      supplyCrates: [...this.#supplyCrates.entries()],
       wildBullets: [...this.#wildBullets.entries()],
       wildBulletsCollected: this.#wildBulletsCollected,
       keyframes: structuredClone(this.#keyframes),
@@ -530,6 +548,7 @@ export class ProjectileCalculator {
     this.reset();
     this.#projectiles.push(...structuredClone(data.projectiles || []));
     this.#casings = new Map(data.casings || []);
+    this.#supplyCrates = new Map(data.supplyCrates || []);
     this.#wildBullets = new Map(data.wildBullets || []);
     this.#wildBulletsCollected = data.wildBulletsCollected || 0;
     this.#keyframes.push(...structuredClone(data.keyframes || []));

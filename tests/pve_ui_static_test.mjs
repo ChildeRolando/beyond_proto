@@ -25,7 +25,7 @@ assert.match(html, /function isPveMode\(\)/, 'PVE mode guard should exist');
 assert.match(html, /submitAiAndExecutePveTurn/, 'PVE should submit AI and execute local turns');
 assert.match(html, /configMode === 'pve'/, 'PVE config route should be handled');
 
-const removeLoadoutMatch = html.match(/function removeLoadoutAt\([\s\S]*?\n}\n\nfunction renderConfigScreen/);
+const removeLoadoutMatch = html.match(/function removeLoadoutAt\([\s\S]*?\r?\n}\r?\n\r?\nfunction renderConfigScreen/);
 assert.ok(removeLoadoutMatch, 'removeLoadoutAt should be present');
 assert.doesNotMatch(
   removeLoadoutMatch[0],

@@ -112,3 +112,30 @@ console.log('=== AI Controller Tests ===\n');
     player.success && ai.success && executed.success && engine.getState().turn === 2,
     JSON.stringify({ player, ai, executed, turn: engine.getState().turn }));
 }
+
+{
+  const engine = new GameEngine();
+  const ids = engine.initBattle({
+    p1Pos: { q: 0, r: -2 },
+    p2Pos: { q: 0, r: 2 },
+    seed: 55,
+  });
+
+  const decision = await chooseAiAction(engine, ids.player2Id, {
+    opponentId: ids.player1Id,
+    timeoutMs: 0,
+    policy: { maxOwnActions: 16, maxOpponentActions: 16 },
+  });
+
+  check('AI controller falls back quickly when search times out',
+    decision.success &&
+    decision.fallback === true &&
+    decision.timedOut === true &&
+    decision.action.characterId === ids.player2Id &&
+    decision.ranked.length === 0 &&
+    decision.samples.length === 0,
+    JSON.stringify(decision));
+  check('AI timeout fallback does not submit or mutate live turn state',
+    engine.isBothSubmitted() === false &&
+    findOwner(engine.getState(), 'player2').actionPoints.requiredReady === false);
+}

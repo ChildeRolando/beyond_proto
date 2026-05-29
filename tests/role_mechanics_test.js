@@ -170,7 +170,7 @@ console.log('\n[3] Gunfighter finesse');
     { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['trait_jimmy_breathing'] },
   );
 
-  const firstFree = engine.submitAction(ids.player1Id, 'role_helldiver_supply_drop', null);
+  const firstFree = engine.submitAction(ids.player1Id, 'role_helldiver_supply_drop', { q: 0, r: -1 });
   const secondFree = engine.submitAction(ids.player1Id, 'shooter_roll', { q: 1, r: -1 });
   check('Non-Gunfighter first cost-0 action is accepted', firstFree.success, firstFree.error);
   check('Non-Gunfighter second cost-0 action is rejected', !secondFree.success && secondFree.error === 'action_points_exhausted', secondFree.error);
@@ -183,26 +183,40 @@ console.log('\n[4] Helldiver');
     { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['trait_jimmy_breathing'] },
   );
 
-  engine.submitAction(ids.player1Id, 'role_helldiver_supply_drop', null);
+  // Supply drop places a crate at target hex; roll over it to collect
+  engine.submitAction(ids.player1Id, 'role_helldiver_supply_drop', { q: 0, r: -1 });
   engine.submitAction(ids.player2Id, 'warrior_rage', null);
   await engine.executeTurn();
-  const p1 = character(engine, 'player1');
-  check('Helldiver supply drop adds backpack ammo', p1.resources.backpackAmmo === 2, `backpackAmmo=${p1.resources.backpackAmmo}`);
-  check('Helldiver laser passive charges ammo at cleanup', p1.resources.ammo === 1, `ammo=${p1.resources.ammo}`);
+  let p1 = character(engine, 'player1');
+  // Laser gives +1 backpack at cleanup, supply crate placed (not collected yet) = 1 backpack
+  check('Helldiver laser passive gives +1 backpack at cleanup', p1.resources.backpackAmmo === 1, `backpackAmmo=${p1.resources.backpackAmmo}`);
+  check('Helldiver supply crate placed but not auto-collected', p1.resources.ammo === 0, `ammo=${p1.resources.ammo}`);
+
+  // Roll over crate to collect
+  engine.submitAction(ids.player1Id, 'shooter_roll', { q: 0, r: -1 });
+  engine.submitAction(ids.player2Id, 'warrior_rage', null);
+  await engine.executeTurn();
+  p1 = character(engine, 'player1');
+  check('Helldiver rolling over supply crate collects +3 backpack', p1.resources.backpackAmmo === 5, `backpackAmmo=${p1.resources.backpackAmmo}`);
 }
 
 {
+  // 呼叫轰炸: delayed projectile, hits next turn speed 1
   const { engine, ids } = initRoleBattle(
-    { class: '射手', roleId: 'shooter_helldiver', roleLoadout: ['trait_helldiver_laser_weapon', 'role_helldiver_precision_strike'] },
+    { class: '射手', roleId: 'shooter_helldiver', roleLoadout: ['role_helldiver_bombardment'] },
     { class: '射手', roleId: 'shooter_gunfighter', roleLoadout: ['trait_gunfighter_finesse'] },
     { p1: { q: 0, r: 0 }, p2: { q: 0, r: 1 } },
   );
 
-  engine.submitAction(ids.player1Id, 'role_helldiver_precision_strike', { q: 0, r: 1 });
+  engine.submitAction(ids.player1Id, 'role_helldiver_bombardment', { q: 0, r: 1 });
+  engine.submitAction(ids.player2Id, 'shooter_aim', null);
+  await engine.executeTurn();
+  // Bombardment fires next turn — target should be hit after two turns
+  engine.submitAction(ids.player1Id, 'shooter_block', null);
   engine.submitAction(ids.player2Id, 'shooter_aim', null);
   await engine.executeTurn();
   const p2 = character(engine, 'player2');
-  check('Helldiver precision strike hits the targeted hex', p2.alive === false, `alive=${p2.alive}`);
+  check('Helldiver bombardment hits after 2 turns (1 delay + 1 resolve)', p2.resources.ammo === -100 || p2.alive === false, `alive=${p2.alive}`);
 }
 
 console.log('\n[5] Yan Shuangying');

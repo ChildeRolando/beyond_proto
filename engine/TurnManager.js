@@ -21,6 +21,7 @@ export class TurnManager {
   #damageCalculator;
   #resourceSystem;
   #actionPointSystem;
+  #skillCooldowns;
   #logger;
   #skillResolver = null;
   #movementSystem = null;
@@ -50,6 +51,7 @@ export class TurnManager {
     this.#damageCalculator = deps.damageCalculator;
     this.#resourceSystem = deps.resourceSystem;
     this.#actionPointSystem = deps.actionPointSystem || null;
+    this.#skillCooldowns = deps.skillCooldowns || null;
     this.#logger = deps.logger;
     this.#skillResolver = deps.skillResolver || null;
     this.#movementSystem = deps.movementSystem || null;
@@ -201,6 +203,12 @@ export class TurnManager {
     this.#turnNumber++;
     this.#phase = TurnPhase.PLAN;
     this.#actionPointSystem?.resetTurn();
+    // Tick skill cooldowns for all characters
+    if (this.#skillCooldowns) {
+      for (const e of this.#registry.characters()) {
+        if (e.alive !== false) this.#skillCooldowns.tick(e.id);
+      }
+    }
 
     // Apply per-role passives for the new turn (before players plan actions)
     this._applyTurnStartRolePassives();
@@ -291,6 +299,9 @@ export class TurnManager {
         case CmdType.MARROW_UPGRADE:
           this._execMarrowUpgrade(cmd);
           break;
+        case CmdType.DROP_SUPPLY_CRATE:
+          this._execDropSupplyCrate(cmd);
+          break;
         case CmdType.MULTI_CAST:
           this._execMultiCast(cmd);
           break;
@@ -314,6 +325,16 @@ export class TurnManager {
         default:
           break;
       }
+
+    // Start cooldown if skill has one
+    const execSkill = SKILLS[cmd.skillId];
+    if (execSkill?.cooldown && this.#skillCooldowns) {
+      const actor = this.#registry.get(cmd.actorId);
+      if (actor) {
+        const haste = this._getSkillHaste(actor, cmd.skillId);
+        this.#skillCooldowns.startCooldown(cmd.actorId, cmd.skillId, execSkill.cooldown, haste);
+      }
+    }
 
     // After-action hook
     this.#buffManager.dispatch(HookName.ON_AFTER_ACTION, {
@@ -1247,8 +1268,8 @@ export class TurnManager {
     for (const e of this.#registry.characters()) {
       if (e.alive === false) continue;
       if (e.roleId === 'shooter_helldiver' && this._hasTraitInLoadout(e, 'trait_helldiver_laser_weapon')) {
-        this.#resourceSystem.add(e.id, 'ammo', 1);
-        this.#logger?.log('绝地潜兵激光武器蓄能 +1弹药', 's');
+        this.#resourceSystem.addBackpackAmmo(e.id, 1);
+        this.#logger?.log('绝地潜兵激光武器蓄能 背包+1', 's');
       }
     }
   }
@@ -1308,6 +1329,19 @@ export class TurnManager {
     return char.roleLoadoutSkillIds.includes(traitSkillId);
   }
 
+  // Compute total skill haste for a given skill (global + single-skill)
+  _getSkillHaste(actor, skillId) {
+    let total = 0;
+    // Fast Ready: +50 haste for call-in type skills
+    if (this._hasTraitInLoadout(actor, 'trait_helldiver_fast_ready')) {
+      const skill = SKILLS[skillId];
+      if (skill && (skillId === 'role_helldiver_supply_drop' || skillId === 'role_helldiver_bombardment')) {
+        total += 50;
+      }
+    }
+    return total;
+  }
+
   // Jimmy 易经洗髓酒: cost is paid via CONSUME_RESOURCE (injected by SkillResolver)
   _execMarrowUpgrade(cmd) {
     const actor = this.#registry.get(cmd.actorId);
@@ -1334,6 +1368,12 @@ export class TurnManager {
     this.#buffManager.apply(actor.id, rewards[layer], -1, actor.id);
     marrow.data.layer = layer + 1;
     this.#logger?.log(`吉米 洗髓突破！获得${rewardNames[layer]} (第${layer + 1}层)`, 'rg');
+  }
+
+  _execDropSupplyCrate(cmd) {
+    if (!cmd.targetPos) return;
+    this.#projectileCalculator?._dropSupplyCrate(cmd.targetPos.q, cmd.targetPos.r);
+    this.#logger?.log(`补给箱空投降落 (${cmd.targetPos.q},${cmd.targetPos.r})`, 's');
   }
 
   _clearEndOfTurnRoleStatuses() {
@@ -1399,6 +1439,16 @@ export class TurnManager {
     const actionPoint = this.#actionPointSystem?.consume(actor, skillId);
     if (actionPoint && !actionPoint.ok) {
       return { success: false, error: actionPoint.reason };
+    }
+
+    // Check skill cooldown
+    const skill = SKILLS[skillId];
+    if (skill?.cooldown && this.#skillCooldowns) {
+      const haste = this._getSkillHaste(actor, skillId);
+      if (!this.#skillCooldowns.isReady(characterId, skillId)) {
+        const remaining = this.#skillCooldowns.getRemaining(characterId, skillId);
+        return { success: false, error: `skill_on_cooldown (${remaining} turns remaining)` };
+      }
     }
 
     // Remove finesse indicator when the finesse slot is consumed

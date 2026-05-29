@@ -34,9 +34,10 @@ export class ActionPointSystem {
       gunfighterReady = this.#gunfighterCooldown.get(character.id) === 0;
     }
     const hasMarrowMove = this.#buffManager?.hasStatus(character.id, 'JIMMY_MARROW_MOVE') || false;
+    const hasSpeedDraw = character?.roleLoadoutSkillIds?.includes('trait_helldiver_speed_draw') || false;
     return {
       main: 1,
-      finesse: (gunfighterReady || hasMarrowMove) ? 1 : 0,
+      finesse: (gunfighterReady || hasMarrowMove) ? 1 : (hasSpeedDraw ? Infinity : 0),
     };
   }
 
@@ -61,6 +62,14 @@ export class ActionPointSystem {
 
     const hasMarrowMove = this.#buffManager?.hasStatus(character.id, 'JIMMY_MARROW_MOVE') || false;
     const hasGunfighter = character?.roleLoadoutSkillIds?.includes('trait_gunfighter_finesse') || false;
+
+    const isCallIn = skillId === 'role_helldiver_supply_drop' || skillId === 'role_helldiver_bombardment';
+    const hasSpeedDraw = character?.roleLoadoutSkillIds?.includes('trait_helldiver_speed_draw') || false;
+
+    // 全凭手速: call-in actions are finesse, unlimited uses per turn
+    if (isCallIn && hasSpeedDraw) {
+      return { ok: true, slot: 'finesse' };
+    }
 
     // Jimmy marrow move: movement and 易经洗髓酒 use finesse slot before main
     if (isMovement && hasMarrowMove && state.finesse.used < state.finesse.total && totalCost === 0) {
