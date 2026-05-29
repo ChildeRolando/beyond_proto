@@ -212,7 +212,6 @@ function applyStatusEffect(profile, effect) {
   }
   if (status === 'SURE_HIT') {
     addTag(profile, PrimitiveTag.SETUP);
-    addTag(profile, PrimitiveTag.PRESSURE);
   }
 }
 

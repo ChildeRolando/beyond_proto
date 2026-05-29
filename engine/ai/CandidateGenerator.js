@@ -51,7 +51,7 @@ function getCandidateTargets(engine, actor, skill, options) {
 
   const range = getEffectiveRange(engine, actor.id, targeting.range ?? 0, skill);
   const allTargets = enumerateBoardTargets(engine, actor, skill, range, targeting.filter);
-  const ranked = rankTargets(engine, actor, allTargets);
+  const ranked = rankTargets(engine, actor, allTargets, skill);
   const maxTargets = options.maxTargetsPerSkill ?? DEFAULT_MAX_TARGETS_PER_SKILL;
   return ranked.slice(0, maxTargets).map(({ q, r }) => ({ q, r }));
 }
@@ -100,33 +100,51 @@ function isPureRepositionSkill(skill) {
     !profile.tags.includes(PrimitiveTag.CONTROL);
 }
 
-function rankTargets(engine, actor, targets) {
+function rankTargets(engine, actor, targets, skill) {
   const enemies = [...engine.registry.characters()].filter(c =>
     c.alive !== false &&
     c.ownerId !== actor.ownerId &&
     c.position?.dim === actor.position?.dim
   );
   const groundResources = getGroundResources(engine);
+  const hasCollect = (skill.effects || []).some(e => e.cmd === 'COLLECT_CASINGS');
+  const collectArea = hasCollect
+    ? (skill.effects.find(e => e.cmd === 'COLLECT_CASINGS')?.area || 'ADJACENT')
+    : null;
 
   return targets
     .map(target => ({
       ...target,
-      score: targetScore(actor, target, enemies, groundResources),
+      score: targetScore(actor, target, enemies, groundResources, collectArea),
     }))
     .sort((a, b) => b.score - a.score || a.q - b.q || a.r - b.r);
 }
 
-function targetScore(actor, target, enemies, groundResources) {
+function targetScore(actor, target, enemies, groundResources, collectArea) {
   let score = 0;
   for (const enemy of enemies) {
     const d = hexDistance(target.q, target.r, enemy.position.q, enemy.position.r);
     if (d === 0) score += 100;
     else score += Math.max(0, 20 - d * 4);
   }
-  for (const resource of groundResources) {
-    const d = hexDistance(target.q, target.r, resource.q, resource.r);
-    if (d === 0) score += 10;
-    else score += Math.max(0, 4 - d);
+  // Count actual resources in pickup range for COLLECT_CASINGS skills
+  if (collectArea) {
+    let collected = 0;
+    for (const res of groundResources) {
+      const d = hexDistance(target.q, target.r, res.q, res.r);
+      if (collectArea === 'PATH') {
+        if (d <= 2) collected += 8; // estimate: path picks up many
+      } else {
+        if (d <= 1) collected += 8; // ADJACENT: self + 6 neighbors
+      }
+    }
+    score += collected;
+  } else {
+    for (const resource of groundResources) {
+      const d = hexDistance(target.q, target.r, resource.q, resource.r);
+      if (d === 0) score += 10;
+      else score += Math.max(0, 4 - d);
+    }
   }
   score -= hexDistance(actor.position.q, actor.position.r, target.q, target.r) * 0.1;
   return score;
