@@ -9,7 +9,7 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
-  '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml',
+  '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml',
 };
 
 const CACHE_IMMUTABLE = { 'Cache-Control': 'public, max-age=31536000, immutable' };
@@ -26,7 +26,7 @@ http.createServer((req, res) => {
     }
     const ext = path.extname(filePath);
     const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' };
-    if (ext === '.png' || ext === '.svg' || ext === '.woff2' || ext === '.ttf') {
+    if (ext === '.png' || ext === '.webp' || ext === '.jpg' || ext === '.svg' || ext === '.woff2' || ext === '.ttf') {
       Object.assign(headers, CACHE_IMMUTABLE);
     }
     res.writeHead(200, headers);
