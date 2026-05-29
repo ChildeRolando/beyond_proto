@@ -627,8 +627,9 @@ export const SKILLS = {
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 1 },
       { cmd: 'WINDSTEP_SLASH', power: 100, radius: 1 },
+      { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '位移2格 终点半径1自动斩击(优先角色其次弹体) | 威力100 | 速1 | CD3 | cost1',
+    desc: '位移2格 终点半径1自动斩击(优先角色其次弹体) 命中+1怒 | 威力100 | 速1 | CD3 | cost1',
   },
   role_vanguard_breakline: {
     id: 'role_vanguard_breakline', name: '破阵线', class: '战士', type: '角色',
