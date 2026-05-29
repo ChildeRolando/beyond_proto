@@ -2,7 +2,7 @@
 // Run: node tests/role_mechanics_test.js
 
 import { GameEngine } from '../engine/GameEngine.js';
-import { getDefaultLoadout } from '../engine/RoleData.js';
+import { getDefaultLoadout, getDefaultRoleLoadout } from '../engine/RoleData.js';
 
 let passed = 0;
 let failed = 0;
@@ -29,12 +29,14 @@ function initRoleBattle(p1, p2, positions = {}) {
         class: p1.class,
         roleId: p1.roleId,
         loadoutSkillIds: p1.loadout || getDefaultLoadout(p1.class),
+        roleLoadoutSkillIds: p1.roleLoadout,
       },
       {
         playerId: 'player2',
         class: p2.class,
         roleId: p2.roleId,
         loadoutSkillIds: p2.loadout || getDefaultLoadout(p2.class),
+        roleLoadoutSkillIds: p2.roleLoadout,
       },
     ],
   });
@@ -51,15 +53,14 @@ function hasBuff(engine, ownerId, statusType) {
 
 console.log('=== Role Mechanic Tests ===\n');
 
-console.log('[1] Jimmy');
+console.log('[1] Jimmy breathing');
 {
   const { engine, ids } = initRoleBattle(
-    { class: '战士', roleId: 'warrior_jimmy' },
-    { class: '射手', roleId: 'shooter_gunfighter' },
+    { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['trait_jimmy_breathing'] },
+    { class: '射手', roleId: 'shooter_gunfighter', roleLoadout: ['trait_gunfighter_finesse'] },
   );
 
-  // Marrow is now a passive trait, auto-applied at battle init
-  check('Jimmy marrow auto-applied at battle start', hasBuff(engine, 'player1', 'JIMMY_MARROW'));
+  check('Jimmy marrow not applied (not in role loadout)', !hasBuff(engine, 'player1', 'JIMMY_MARROW'));
 
   const p1Result = engine.submitAction(ids.player1Id, 'warrior_rage', null);
   const p2Result = engine.submitAction(ids.player2Id, 'shooter_block', null);
@@ -68,15 +69,36 @@ console.log('[1] Jimmy');
 
   await engine.executeTurn();
   const p1 = character(engine, 'player1');
-  // 2 base rage + 1 from 呼吸法·吸 (odd turn 1)
   check('Jimmy gains 3 rage from rage skill + breathing', p1.resources.rage === 3, `rage=${p1.resources.rage}`);
 }
 
-console.log('\n[2] Gunfighter');
+console.log('\n[2] Jimmy marrow');
 {
   const { engine, ids } = initRoleBattle(
-    { class: '射手', roleId: 'shooter_gunfighter' },
-    { class: '战士', roleId: 'warrior_jimmy' },
+    { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['role_jimmy_marrow_wine'] },
+    { class: '射手', roleId: 'shooter_gunfighter', roleLoadout: ['trait_gunfighter_finesse'] },
+  );
+
+  check('Jimmy marrow not auto-applied (active skill)', !hasBuff(engine, 'player1', 'JIMMY_MARROW'));
+
+  // Use 易经洗髓酒: needs 3 rage for layer 0→1
+  engine.resourceSystem.add(ids.player1Id, 'rage', 3);
+  const p1Result = engine.submitAction(ids.player1Id, 'role_jimmy_marrow_wine', null);
+  check('Jimmy marrow wine submitted', p1Result.success, p1Result.error);
+  engine.submitAction(ids.player2Id, 'shooter_block', null);
+  await engine.executeTurn();
+  const p1 = character(engine, 'player1');
+  // 3 rage added - 3 consumed = 0, + 1 from turn-2 QI passive = 1
+  check('Jimmy marrow consumes 3 rage for layer 1', p1.resources.rage === 1, `rage=${p1.resources.rage}`);
+  check('Jimmy marrow grants qi reward buff', hasBuff(engine, 'player1', 'JIMMY_MARROW_QI'));
+  check('Jimmy marrow at layer 1', hasBuff(engine, 'player1', 'JIMMY_MARROW'));
+}
+
+console.log('\n[3] Gunfighter finesse');
+{
+  const { engine, ids } = initRoleBattle(
+    { class: '射手', roleId: 'shooter_gunfighter', roleLoadout: ['trait_gunfighter_finesse'] },
+    { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['trait_jimmy_breathing'] },
     { p1: { q: 0, r: -1 }, p2: { q: 0, r: 1 } },
   );
 
@@ -85,21 +107,38 @@ console.log('\n[2] Gunfighter');
 
   engine.resourceSystem.add(ids.player1Id, 'ammo', 1);
   const main = engine.submitAction(ids.player1Id, 'shooter_attack', { q: 0, r: 1 });
-  const extra = engine.submitAction(ids.player1Id, 'shooter_roll', { q: 1, r: -1 });
   engine.submitAction(ids.player2Id, 'warrior_rage', null);
   await engine.executeTurn();
   const p1 = character(engine, 'player1');
   check('Gunfighter can submit a normal action', main.success, main.error);
-  check('Gunfighter can submit one extra cost-0 finesse action', extra.success, extra.error);
   check('Gunfighter normal shot spends ammo', p1.resources.ammo === 0, `ammo=${p1.resources.ammo}`);
-  check('Gunfighter extra cost-0 action resolves in same turn', p1.position.q === 1 && p1.position.r === -1, `pos=${p1.position.q},${p1.position.r}`);
 }
 
 {
   const { engine, ids } = initRoleBattle(
-    { class: '射手', roleId: 'shooter_gunfighter' },
-    { class: '战士', roleId: 'warrior_jimmy' },
+    { class: '射手', roleId: 'shooter_gunfighter', roleLoadout: ['trait_gunfighter_finesse'] },
+    { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['trait_jimmy_breathing'] },
+    { p1: { q: 0, r: -1 }, p2: { q: 0, r: 1 } },
   );
+
+  const extra = engine.submitAction(ids.player1Id, 'shooter_roll', { q: 1, r: -1 });
+  engine.submitAction(ids.player2Id, 'warrior_rage', null);
+  await engine.executeTurn();
+  const p1 = character(engine, 'player1');
+  check('Gunfighter can submit cost-0 finesse action', extra.success, extra.error);
+  check('Gunfighter cost-0 action resolves in same turn', p1.position.q === 1 && p1.position.r === -1, `pos=${p1.position.q},${p1.position.r}`);
+}
+
+{
+  const { engine, ids } = initRoleBattle(
+    { class: '射手', roleId: 'shooter_gunfighter', roleLoadout: ['trait_gunfighter_finesse'] },
+    { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['trait_jimmy_breathing'] },
+  );
+
+  // Finesse is every 2 turns; turn 1 cooldown=1, need to advance to turn 2
+  engine.submitAction(ids.player1Id, 'shooter_block', null);
+  engine.submitAction(ids.player2Id, 'warrior_rage', null);
+  await engine.executeTurn();
 
   engine.resourceSystem.add(ids.player1Id, 'ammo', 1);
   const freeFirst = engine.submitAction(ids.player1Id, 'shooter_block', null);
@@ -109,9 +148,14 @@ console.log('\n[2] Gunfighter');
 
 {
   const { engine, ids } = initRoleBattle(
-    { class: '射手', roleId: 'shooter_gunfighter' },
-    { class: '战士', roleId: 'warrior_jimmy' },
+    { class: '射手', roleId: 'shooter_gunfighter', roleLoadout: ['trait_gunfighter_finesse'] },
+    { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['trait_jimmy_breathing'] },
   );
+
+  // Finesse is every 2 turns; turn 1 cooldown=1, need to advance to turn 2
+  engine.submitAction(ids.player1Id, 'shooter_block', null);
+  engine.submitAction(ids.player2Id, 'warrior_rage', null);
+  await engine.executeTurn();
 
   engine.resourceSystem.add(ids.player1Id, 'ammo', 2);
   const firstPaid = engine.submitAction(ids.player1Id, 'shooter_attack', { q: 0, r: 1 });
@@ -122,21 +166,21 @@ console.log('\n[2] Gunfighter');
 
 {
   const { engine, ids } = initRoleBattle(
-    { class: '射手', roleId: 'shooter_helldiver' },
-    { class: '战士', roleId: 'warrior_jimmy' },
+    { class: '射手', roleId: 'shooter_helldiver', roleLoadout: ['trait_helldiver_laser_weapon', 'role_helldiver_supply_drop'] },
+    { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['trait_jimmy_breathing'] },
   );
 
   const firstFree = engine.submitAction(ids.player1Id, 'role_helldiver_supply_drop', null);
-  const secondFree = engine.submitAction(ids.player1Id, 'shooter_block', null);
+  const secondFree = engine.submitAction(ids.player1Id, 'shooter_roll', { q: 1, r: -1 });
   check('Non-Gunfighter first cost-0 action is accepted', firstFree.success, firstFree.error);
   check('Non-Gunfighter second cost-0 action is rejected', !secondFree.success && secondFree.error === 'action_points_exhausted', secondFree.error);
 }
 
-console.log('\n[3] Helldiver');
+console.log('\n[4] Helldiver');
 {
   const { engine, ids } = initRoleBattle(
-    { class: '射手', roleId: 'shooter_helldiver' },
-    { class: '战士', roleId: 'warrior_jimmy' },
+    { class: '射手', roleId: 'shooter_helldiver', roleLoadout: ['trait_helldiver_laser_weapon', 'role_helldiver_supply_drop'] },
+    { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['trait_jimmy_breathing'] },
   );
 
   engine.submitAction(ids.player1Id, 'role_helldiver_supply_drop', null);
@@ -149,8 +193,8 @@ console.log('\n[3] Helldiver');
 
 {
   const { engine, ids } = initRoleBattle(
-    { class: '射手', roleId: 'shooter_helldiver' },
-    { class: '射手', roleId: 'shooter_gunfighter' },
+    { class: '射手', roleId: 'shooter_helldiver', roleLoadout: ['trait_helldiver_laser_weapon', 'role_helldiver_precision_strike'] },
+    { class: '射手', roleId: 'shooter_gunfighter', roleLoadout: ['trait_gunfighter_finesse'] },
     { p1: { q: 0, r: 0 }, p2: { q: 0, r: 1 } },
   );
 
@@ -161,11 +205,11 @@ console.log('\n[3] Helldiver');
   check('Helldiver precision strike hits the targeted hex', p2.alive === false, `alive=${p2.alive}`);
 }
 
-console.log('\n[4] Yan Shuangying');
+console.log('\n[5] Yan Shuangying');
 {
   const { engine, ids } = initRoleBattle(
-    { class: '射手', roleId: 'shooter_yan' },
-    { class: '战士', roleId: 'warrior_jimmy' },
+    { class: '射手', roleId: 'shooter_yan', roleLoadout: ['trait_yan_death_wind', 'role_yan_empty_gun'] },
+    { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['trait_jimmy_breathing'] },
     { p1: { q: 0, r: 0 }, p2: { q: 0, r: 1 } },
   );
 

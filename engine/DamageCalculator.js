@@ -1,6 +1,6 @@
 // Damage resolution through defense layers
 import { EvtType } from './CommandTypes.js';
-import { applyShield, applyRage, applyBlock, applyRagePassive, applyFormationEnergy } from './DefenseLayers.js';
+import { applyShield, applyRage, applyBlock, applyFormationEnergy } from './DefenseLayers.js';
 
 export class DamageCalculator {
   constructor(registry, eventBus, resourceSystem, formationSystem, buffManager) {
@@ -131,35 +131,12 @@ export class DamageCalculator {
     return this._result(sourceId, targetId, basePower, remaining, killed, breakdown, false);
   }
 
-  // Resolve lethal damage with passive save (斩破)
   _applyDamage(target, targetId, damage, sourceId, flags) {
     if (damage <= 0) return false;
 
-    // Before death hook — rage passive save can prevent death
-    const deathCtx = this.eventBus.emit(EvtType.CHARACTER_DYING, {
-      targetId, sourceId, fatalDamage: damage, flags,
-    });
-
-    let finalDamage = deathCtx?.fatalDamage ?? damage;
-    let preventedByBuff = false;
-
-    if (finalDamage <= 0) {
-      preventedByBuff = true;
-    }
-
-    if (!preventedByBuff) {
-      // Apply lethal: check rage passive save (斩破: 1 rage = 200)
-      const targetPool = this.resourceSystem.getAll(targetId);
-      if (targetPool && targetPool.rage > 0) {
-        const saveResult = applyRagePassive(targetPool, finalDamage, this.eventBus);
-        finalDamage = saveResult.remaining;
-        if (finalDamage <= 0) preventedByBuff = true;
-      }
-    }
-
-    if (finalDamage > 0) {
+    if (damage > 0) {
       target.alive = false;
-      this.eventBus.emit(EvtType.CHARACTER_DIED, { targetId, sourceId, finalDamage });
+      this.eventBus.emit(EvtType.CHARACTER_DIED, { targetId, sourceId, finalDamage: damage });
       return true;
     }
 

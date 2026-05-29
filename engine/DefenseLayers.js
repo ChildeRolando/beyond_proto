@@ -25,17 +25,6 @@ export function applyRage(targetPool, incomingDamage, eventBus) {
   return { absorbed: actualAbsorb, remaining: incomingDamage - actualAbsorb };
 }
 
-export function applyRagePassive(targetPool, incomingDamage, eventBus) {
-  // 斩破被动: on lethal, 1 rage = 200 damage. Auto-trigger.
-  if (!targetPool.rage || targetPool.rage <= 0) return { absorbed: 0, remaining: incomingDamage };
-  const maxMitigate = targetPool.rage * 200;
-  const absorbed = Math.min(maxMitigate, incomingDamage);
-  const rageUsed = Math.ceil(absorbed / 200);
-  targetPool.rage -= rageUsed;
-  eventBus.emit(EvtType.RAGE_MITIGATED, { absorbed, rageUsed, remaining: targetPool.rage, passive: true });
-  return { absorbed, remaining: incomingDamage - absorbed };
-}
-
 export function applyBlock(targetPool, incomingDamage, eventBus) {
   // Shooter block: 300 power, permanent until broken by 破气针
   if (!targetPool || targetPool.blockActive !== true) return { absorbed: 0, remaining: incomingDamage };

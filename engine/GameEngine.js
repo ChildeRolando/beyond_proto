@@ -13,17 +13,19 @@ import { SkillResolver } from './SkillResolver.js';
 import { TurnManager } from './TurnManager.js';
 import { DimensionSystem } from './DimensionSystem.js';
 import { FormationSystem } from './FormationSystem.js';
-import { SKILLS_BY_CLASS } from './SkillData.js';
+import { SKILLS, SKILLS_BY_CLASS } from './SkillData.js';
 import {
   ROLE_DEFS,
   buildAllowedSkillIds,
   getDefaultLoadout,
+  getDefaultRoleLoadout,
   getRoleSkillIds,
   getRoleTraits,
   normalizePlayerConfig,
 } from './RoleData.js';
 import { STATUS_DEFS } from './StatusEffectDefs.js';
 import { isOnBoard, hexCenter } from './HexMath.js';
+import { chooseAiAction as chooseAiActionForEngine, submitAiAction as submitAiActionForEngine } from './ai/AiController.js';
 
 export class GameEngine {
   constructor() {
@@ -32,14 +34,14 @@ export class GameEngine {
     this.logger = new Logger();
     this.commandQueue = new CommandQueue(this.eventBus);
     this.resourceSystem = new ResourceSystem(this.eventBus);
-    this.actionPointSystem = new ActionPointSystem();
     this.buffManager = new BuffManager(this.eventBus, this.registry);
+    this.actionPointSystem = new ActionPointSystem(this.buffManager);
     this.formationSystem = new FormationSystem(this.registry, this.eventBus, this.resourceSystem);
     this.damageCalculator = new DamageCalculator(this.registry, this.eventBus, this.resourceSystem, this.formationSystem, this.buffManager);
     this.movementSystem = new MovementSystem(this.registry, this.buffManager);
     this.projectileCalculator = new ProjectileCalculator(this.logger);
     this.dimensionSystem = new DimensionSystem(this.registry, this.eventBus);
-    this.skillResolver = new SkillResolver(this.registry, this.resourceSystem);
+    this.skillResolver = new SkillResolver(this.registry, this.resourceSystem, this.buffManager);
 
     this.turnManager = new TurnManager({
       registry: this.registry,
@@ -98,8 +100,10 @@ export class GameEngine {
     const p2Role = p2Config ? ROLE_DEFS[p2Config.roleId] : null;
     const p1Loadout = p1Config?.loadoutSkillIds || getDefaultLoadout(p1Class);
     const p2Loadout = p2Config?.loadoutSkillIds || getDefaultLoadout(p2Class);
-    const p1Allowed = p1Config ? buildAllowedSkillIds(p1Class, p1Config.roleId, p1Loadout) : null;
-    const p2Allowed = p2Config ? buildAllowedSkillIds(p2Class, p2Config.roleId, p2Loadout) : null;
+    const p1RoleLoadout = p1Config?.roleLoadoutSkillIds || getDefaultRoleLoadout(p1Config?.roleId);
+    const p2RoleLoadout = p2Config?.roleLoadoutSkillIds || getDefaultRoleLoadout(p2Config?.roleId);
+    const p1Allowed = p1Config ? buildAllowedSkillIds(p1Class, p1Config.roleId, p1Loadout, p1RoleLoadout) : null;
+    const p2Allowed = p2Config ? buildAllowedSkillIds(p2Class, p2Config.roleId, p2Loadout, p2RoleLoadout) : null;
 
     this.registry.register({
       id: p1Id, type: 'CHARACTER', name: p1Role?.name || (p1Class === '法师' ? '法师' : p1Class === '战士' ? '战士' : '射手'),
@@ -107,6 +111,7 @@ export class GameEngine {
       alive: true, ownerId: 'player1',
       roleId: p1Config?.roleId || null,
       loadoutSkillIds: p1Config ? [...p1Loadout] : null,
+      roleLoadoutSkillIds: p1Config ? [...p1RoleLoadout] : null,
       allowedSkillIds: p1Allowed,
     });
     this._playerClass.set(p1Id, p1Class);
@@ -117,6 +122,7 @@ export class GameEngine {
       alive: true, ownerId: 'player2',
       roleId: p2Config?.roleId || null,
       loadoutSkillIds: p2Config ? [...p2Loadout] : null,
+      roleLoadoutSkillIds: p2Config ? [...p2RoleLoadout] : null,
       allowedSkillIds: p2Allowed,
     });
     this._playerClass.set(p2Id, p2Class);
@@ -148,6 +154,14 @@ export class GameEngine {
       }
     }
     return result;
+  }
+
+  chooseAiAction(characterId, options = {}) {
+    return chooseAiActionForEngine(this, characterId, options);
+  }
+
+  submitAiAction(characterId, options = {}) {
+    return submitAiActionForEngine(this, characterId, options);
   }
 
   isBothSubmitted() {
@@ -183,6 +197,65 @@ export class GameEngine {
     }
   }
 
+  createSnapshot() {
+    return structuredClone({
+      version: 1,
+      registry: this.registry.serialize(),
+      resources: this.resourceSystem.serialize(),
+      buffs: this.buffManager.serialize(),
+      actionPoints: this.actionPointSystem.serialize(),
+      commandQueue: this.commandQueue.serialize(),
+      turnManager: this.turnManager.serialize(),
+      projectiles: this.projectileCalculator.serialize(),
+      dimensions: this.dimensionSystem.serialize(),
+      formations: this.formationSystem.serialize(),
+      logger: this.logger.serialize(),
+      submitted: [...this._submitted],
+      playerClass: [...this._playerClass.entries()],
+      galaxyQueue: structuredClone(this._galaxyQueue),
+    });
+  }
+
+  restoreSnapshot(snapshot) {
+    const data = structuredClone(snapshot);
+    this.registry.deserialize(data.registry);
+    this.resourceSystem.deserialize(data.resources);
+    this.commandQueue.deserialize(data.commandQueue);
+    this.buffManager.deserialize(data.buffs);
+    this.actionPointSystem.deserialize(data.actionPoints);
+    this.projectileCalculator.deserialize(data.projectiles);
+    this.dimensionSystem.deserialize(data.dimensions);
+    this.formationSystem.deserialize(data.formations);
+    this.turnManager.deserialize(data.turnManager);
+    this.logger.deserialize(data.logger);
+    this._submitted = new Set(data.submitted || []);
+    this._playerClass = new Map(data.playerClass || []);
+    this._galaxyQueue = structuredClone(data.galaxyQueue || []);
+    this._galaxyResolver = null;
+  }
+
+  async simulateTurnFromSnapshot(snapshot, actions = [], options = {}) {
+    const sim = new GameEngine();
+    sim.restoreSnapshot(snapshot);
+    const galaxyActions = options.galaxyActions || [];
+    sim._galaxyQueue.push(...galaxyActions);
+    if (options.skipGalaxyPrompts !== false) {
+      sim._galaxyQueue.push(...Array.from({ length: 20 }, () => null));
+    }
+    for (const action of actions) {
+      const result = sim.submitAction(action.characterId, action.skillId, action.targetPos ?? null);
+      if (!result.success) {
+        return { success: false, error: 'submit_failed', action, result, state: sim.getState(), snapshot: sim.createSnapshot() };
+      }
+    }
+    const result = await sim.executeTurn();
+    return {
+      ...result,
+      state: sim.getState(),
+      snapshot: sim.createSnapshot(),
+    };
+  }
+
   // --- Queries ---
   getState() {
     const entities = [];
@@ -201,10 +274,11 @@ export class GameEngine {
         position: { ...c.position }, alive: c.alive,
         resources: { ...this.resourceSystem.getAll(c.id) },
         buffs: this.buffManager.getActiveBuffs(c.id).map(b => ({
-          id: b.id, statusType: b.statusType, name: STATUS_DEFS[b.statusType]?.name || b.statusType, duration: b.duration, data: { ...b.data },
+          id: b.id, statusType: b.statusType, name: STATUS_DEFS[b.statusType]?.name || b.statusType, desc: STATUS_DEFS[b.statusType]?.desc || '', duration: b.duration, data: { ...b.data },
         })),
         traits: getRoleTraits(c.roleId),
         loadoutSkillIds: c.loadoutSkillIds ? [...c.loadoutSkillIds] : null,
+        roleLoadoutSkillIds: c.roleLoadoutSkillIds ? [...c.roleLoadoutSkillIds] : null,
         roleSkillIds: getRoleSkillIds(c.roleId),
         actionPoints: this.actionPointSystem.getState(c),
         skills: this._getVisibleSkillIdsForCharacter(c).map(sid => ({ id: sid })),
@@ -255,10 +329,10 @@ export class GameEngine {
   }
 
   _getVisibleSkillIdsForCharacter(character) {
-    if (!character.loadoutSkillIds) return SKILLS_BY_CLASS[character.class] || [];
+    if (!character.loadoutSkillIds && !character.roleLoadoutSkillIds) return SKILLS_BY_CLASS[character.class] || [];
     const result = [];
-    for (const sid of [...getRoleSkillIds(character.roleId), ...character.loadoutSkillIds]) {
-      if (!result.includes(sid)) result.push(sid);
+    for (const sid of [...(character.roleLoadoutSkillIds || []), ...(character.loadoutSkillIds || [])]) {
+      if (!result.includes(sid) && !SKILLS[sid]?.isTrait) result.push(sid);
     }
     return result;
   }

@@ -4,73 +4,22 @@
 import { SKILLS, SKILLS_BY_CLASS } from './SkillData.js';
 
 export const LOADOUT_SIZE = 8;
+export const ROLE_LOADOUT_SIZE = 2;
 
 export const ROLE_TRAITS = {
-  gunfighter_finesse: {
-    id: 'gunfighter_finesse',
-    name: '灵巧',
-    desc: '每回合可额外提交一个cost0行动，且不挤占付费主行动。',
-  },
-  gunfighter_rapid_fire: {
-    id: 'gunfighter_rapid_fire',
-    name: '速射',
-    desc: '围绕额外cost0行动压缩射手节奏。',
-  },
-  helldiver_laser_weapon: {
-    id: 'helldiver_laser_weapon',
-    name: '激光武器',
-    desc: '弹药会自动蓄能，且没有弹药上限。机制占位。',
-  },
-  helldiver_priority_ready: {
-    id: 'helldiver_priority_ready',
-    name: '优先战备',
-    desc: '呼叫技能冷却减少。机制占位。',
-  },
-  helldiver_fast_ready: {
-    id: 'helldiver_fast_ready',
-    name: '快速战备',
-    desc: '呼叫技能速度提高。机制占位。',
-  },
-  jimmy_breathing: {
-    id: 'jimmy_breathing',
-    name: '呼吸法',
-    desc: '奇数回合[吸]：怒气获得+1，攻击距离-1；偶数回合[呼]：攻击距离+1，怒气获得-1。',
-  },
-  jimmy_marrow: {
-    id: 'jimmy_marrow',
-    name: '易经洗髓酒',
-    desc: '被动：回合结束时若怒气达标(6/8/10/12)自动扣除怒气并获得永久强化，依次为怒气获得+1/攻击距离+1/移动距离+1/威力+100。',
-  },
-  mirror_slippery: {
-    id: 'mirror_slippery',
-    name: '脚底抹油',
-    desc: '次元之门不占用行动点。机制占位。',
-  },
-  mirror_dimension_child: {
-    id: 'mirror_dimension_child',
-    name: '次元之子',
-    desc: '独处于次元时获得次元token。机制占位。',
-  },
-  mirror_dimension_lord: {
-    id: 'mirror_dimension_lord',
-    name: '次元之主',
-    desc: '积累token后解锁次元系永久强化。机制占位。',
-  },
-  mirror_phase_sling: {
-    id: 'mirror_phase_sling',
-    name: '相位弹弓',
-    desc: '技能穿过次元门后加速并提高威力。机制占位。',
-  },
-  yan_death_wind: {
-    id: 'yan_death_wind',
-    name: '死亡如风',
-    desc: '每当对手发起攻击但没有命中时，立即执行一次上子弹（不占用行动）。',
-  },
-  placeholder_adapt: {
-    id: 'placeholder_adapt',
-    name: '预留特质',
-    desc: '用于占位角色的职业特质。机制占位。',
-  },
+  gunfighter_finesse:    { id: 'gunfighter_finesse',    name: '灵巧' },
+  gunfighter_strong:     { id: 'gunfighter_strong',     name: '强者' },
+  helldiver_laser_weapon:  { id: 'helldiver_laser_weapon',  name: '激光武器' },
+  helldiver_priority_ready:{ id: 'helldiver_priority_ready',name: '优先战备' },
+  helldiver_fast_ready:  { id: 'helldiver_fast_ready',  name: '快速战备' },
+  jimmy_breathing:       { id: 'jimmy_breathing',       name: '呼吸法' },
+  jimmy_marrow:          { id: 'jimmy_marrow',          name: '易经洗髓酒' },
+  mirror_slippery:       { id: 'mirror_slippery',       name: '脚底抹油' },
+  mirror_dimension_child:{ id: 'mirror_dimension_child',name: '次元之子' },
+  mirror_dimension_lord: { id: 'mirror_dimension_lord', name: '次元之主' },
+  mirror_phase_sling:    { id: 'mirror_phase_sling',    name: '相位弹弓' },
+  yan_death_wind:        { id: 'yan_death_wind',        name: '死亡如风' },
+  placeholder_adapt:     { id: 'placeholder_adapt',     name: '预留特质' },
 };
 
 export const ROLE_DEFS = {
@@ -110,10 +59,10 @@ export const ROLE_DEFS = {
     name: '吉米',
     class: '战士',
     portraitTheme: 'crimson',
-    traitIds: ['jimmy_breathing', 'jimmy_marrow'],
-    roleSkillIds: [],
-    description: '通过呼吸节奏和洗髓层数成长的战士角色。',
-    plannedMechanics: '呼吸法奇偶回合切换、洗髓四层永久成长(怒6/8/10/12触发)。',
+    traitIds: ['jimmy_breathing'],
+    roleSkillIds: ['role_jimmy_marrow_wine'],
+    description: '通过呼吸节奏和主动喝洗髓酒成长的战士角色。',
+    plannedMechanics: '呼吸法奇偶回合切换、洗髓五层主动突破(怒3/4/4/5/5)。',
   },
   warrior_duelist: {
     id: 'warrior_duelist',
@@ -141,9 +90,9 @@ export const ROLE_DEFS = {
     name: '枪侠',
     class: '射手',
     portraitTheme: 'copper',
-    traitIds: ['gunfighter_finesse', 'gunfighter_rapid_fire'],
+    traitIds: ['gunfighter_finesse', 'gunfighter_strong'],
     roleSkillIds: [],
-    description: '用灵巧行动和速射压缩射击节奏的射手角色。',
+    description: '用灵巧行动和强者被动压缩射击节奏的射手角色。',
     plannedMechanics: '每回合一个额外cost0行动点；残影多动和cost行动连发待后续扩展。',
   },
   shooter_helldiver: {
@@ -178,8 +127,28 @@ export function getDefaultRoleId(className) {
 
 export function getDefaultLoadout(className) {
   return (SKILLS_BY_CLASS[className] || [])
-    .filter(skillId => SKILLS[skillId] && !SKILLS[skillId].hidden)
+    .filter(skillId => SKILLS[skillId] && !SKILLS[skillId].hidden && !SKILLS[skillId].isTrait)
     .slice(0, LOADOUT_SIZE);
+}
+
+export function getDefaultRoleLoadout(roleId) {
+  const skillIds = getRoleSkillPool(roleId);
+  return skillIds.slice(0, ROLE_LOADOUT_SIZE);
+}
+
+// All selectable role skills (traits + active) for a given role
+export function getRoleSkillPool(roleId) {
+  const role = ROLE_DEFS[roleId];
+  if (!role) return [];
+  const pool = [];
+  for (const traitId of role.traitIds) {
+    const skillId = 'trait_' + traitId;
+    if (SKILLS[skillId]) pool.push(skillId);
+  }
+  for (const skillId of role.roleSkillIds) {
+    if (SKILLS[skillId] && !pool.includes(skillId)) pool.push(skillId);
+  }
+  return pool;
 }
 
 export function validateLoadout(className, skillIds, size = LOADOUT_SIZE) {
@@ -195,6 +164,25 @@ export function validateLoadout(className, skillIds, size = LOADOUT_SIZE) {
     if (!skill) return { ok: false, reason: 'unknown_skill', skillId };
     if (skill.hidden) return { ok: false, reason: 'hidden_skill', skillId };
     if (skill.class !== className) return { ok: false, reason: 'cross_class_skill', skillId };
+    if (skill.isTrait) return { ok: false, reason: 'trait_in_class_loadout', skillId };
+  }
+  return { ok: true };
+}
+
+export function validateRoleLoadout(roleId, skillIds, size = ROLE_LOADOUT_SIZE) {
+  if (!Array.isArray(skillIds)) return { ok: false, reason: 'loadout_not_array' };
+  if (skillIds.length > size) return { ok: false, reason: 'loadout_too_large' };
+
+  const pool = getRoleSkillPool(roleId);
+  const seen = new Set();
+  for (const skillId of skillIds) {
+    if (seen.has(skillId)) return { ok: false, reason: 'duplicate_skill', skillId };
+    seen.add(skillId);
+
+    const skill = SKILLS[skillId];
+    if (!skill) return { ok: false, reason: 'unknown_skill', skillId };
+    if (skill.hidden) return { ok: false, reason: 'hidden_skill', skillId };
+    if (!pool.includes(skillId)) return { ok: false, reason: 'skill_not_for_role', skillId };
   }
   return { ok: true };
 }
@@ -210,11 +198,18 @@ export function normalizePlayerConfig(config, fallbackPlayerId = 'player1') {
   const validation = validateLoadout(className, rawLoadout);
   const loadoutSkillIds = validation.ok ? [...rawLoadout] : getDefaultLoadout(className);
 
+  const rawRoleLoadout = Array.isArray(config?.roleLoadoutSkillIds)
+    ? config.roleLoadoutSkillIds
+    : getDefaultRoleLoadout(roleId);
+  const roleValidation = validateRoleLoadout(roleId, rawRoleLoadout);
+  const roleLoadoutSkillIds = roleValidation.ok ? [...rawRoleLoadout] : getDefaultRoleLoadout(roleId);
+
   return {
     playerId: config?.playerId || fallbackPlayerId,
     class: className,
     roleId,
     loadoutSkillIds,
+    roleLoadoutSkillIds,
     locked: Boolean(config?.locked),
   };
 }
@@ -222,21 +217,32 @@ export function normalizePlayerConfig(config, fallbackPlayerId = 'player1') {
 export function getRoleTraits(roleId) {
   const role = ROLE_DEFS[roleId];
   if (!role) return [];
-  return role.traitIds.map(id => ROLE_TRAITS[id]).filter(Boolean);
+  return role.traitIds.map(traitId => {
+    const base = ROLE_TRAITS[traitId];
+    if (!base) return null;
+    const skill = SKILLS['trait_' + traitId];
+    return { id: base.id, name: skill?.name || base.name, desc: skill?.desc || '' };
+  }).filter(Boolean);
 }
 
 export function getRoleSkillIds(roleId) {
   return ROLE_DEFS[roleId]?.roleSkillIds || [];
 }
 
-export function buildAllowedSkillIds(className, roleId, loadoutSkillIds) {
-  const allowed = new Set([...(loadoutSkillIds || []), ...getRoleSkillIds(roleId)]);
+export function buildAllowedSkillIds(className, roleId, loadoutSkillIds, roleLoadoutSkillIds) {
+  const allowed = new Set([...(loadoutSkillIds || []), ...(roleLoadoutSkillIds || [])]);
 
   // Hidden skills are internal follow-ups listed in the class pool, such as
-  // 丧钟·响 and 大荒星陨·坠. Passive role markers stay unavailable.
+  // 丧钟·响 and 大荒星陨·坠.
   for (const skillId of SKILLS_BY_CLASS[className] || []) {
     const skill = SKILLS[skillId];
     if (skill?.hidden) allowed.add(skillId);
   }
+
+  // Remove trait skills — they are passive markers, never submitted as actions
+  for (const skillId of [...allowed]) {
+    if (SKILLS[skillId]?.isTrait) allowed.delete(skillId);
+  }
+
   return [...allowed];
 }

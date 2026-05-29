@@ -137,6 +137,23 @@ async function test() {
       const btn = document.querySelector('#action-dock .skill-icon-btn');
       return !!btn?.getAttribute('title') && btn.getAttribute('title').length > 8;
     }));
+    check('Action skill selected state uses gold ring and dark rounded slot', await hostPage.evaluate(() => {
+      const btn = document.querySelector('#action-dock .skill-icon-btn');
+      if (!btn) return false;
+      btn.click();
+      const selected = document.querySelector('#action-dock .skill-icon-btn.selected');
+      if (!selected) return false;
+      const styles = getComputedStyle(selected);
+      const borderColor = styles.borderColor;
+      const radius = parseFloat(styles.borderTopLeftRadius);
+      const bg = styles.backgroundColor;
+      const shadow = styles.boxShadow;
+      selected.click();
+      return radius >= 8 &&
+        borderColor.includes('246, 198, 106') &&
+        shadow.includes('246, 198, 106') &&
+        !bg.includes('245, 239, 234');
+    }));
     await hostPage.locator('#action-dock .skill-icon-btn').first().hover();
     check('Action skill hover shows detail tooltip', await hostPage.locator('#skill-tooltip.visible').isVisible());
     check('Hover inspector does not show skill list', await hostPage.locator('#hover-inspector .info-skill-list').count() === 0);

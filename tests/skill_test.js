@@ -530,7 +530,7 @@ async function testWarriorSkills() {
   // --- warrior_dash: 踏前斩 ---
   h2('warrior_dash — 踏前斩');
   {
-    const { e, m, w } = freshEngine({ magePos: { q:0, r:-2 }, warriorPos: { q:0, r:2 } });
+    const { e, m, w } = freshEngine({ magePos: { q:0, r:-1 }, warriorPos: { q:0, r:2 } });
     await runTurns(e, m, w, 1, 'mage_gather', 'warrior_rage');
     // T2: dash toward mage (0,-2). Warrior at (0,2), dashes 1 hex → (0,1). Melee at (0,-2) — range 3, too far.
     await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_dash', target: { q:0, r:-2 } });
@@ -624,10 +624,10 @@ async function testWarriorSkills() {
   // --- warrior_hook: 无情铁手 ---
   h2('warrior_hook — 无情铁手');
   {
-    const { e, m, w } = freshEngine({ magePos: { q:0, r:-2 }, warriorPos: { q:0, r:2 } });
+    const { e, m, w } = freshEngine({ magePos: { q:0, r:-1 }, warriorPos: { q:0, r:2 } });
     await runTurns(e, m, w, 1, 'mage_gather', 'warrior_rage');
-    // T2: hook mage (0,-2) → pull toward warrior (0,2)
-    await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_hook', target: { q:0, r:-2 } });
+    // T2: hook target (0,-1) at range 3 — fan pulls mage toward warrior (0,2)
+    await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_hook', target: { q:0, r:-1 } });
     const mPos = e.registry.getPosition(m);
     const dist = hexDistance(mPos.q, mPos.r, 0, 2);
     const rooted = e.buffManager.hasStatus(m, 'IMMOBILIZED');
@@ -711,23 +711,6 @@ async function testWarriorSkills() {
     result('堪破阵眼法阵破碎', alives.length === 0, `alive formations: ${alives.length}`);
   }
 
-  // --- warrior_block_passive: 斩破(被动) ---
-  h2('warrior_block_passive — 斩破(被动)');
-  {
-    const { e, m, w } = freshEngine();
-    await runTurns(e, m, w, 5, 'mage_gather', 'warrior_rage');
-    // Mage has 5 qi. Warrior has 10 rage.
-    // T6: mage bigblast (400 power) at warrior
-    await doTurn(e, { id: m, skill: 'mage_bigblast', target: { q:0, r:2 } }, { id: w, skill: 'warrior_rage' });
-    // Warrior: 10 rage + 2 (T6) = 12 rage. 12 rage absorbs 600 max. 400 fully absorbed. Cost 8 rage → 4 left.
-    result('10+怒气完全吸收400威力', isAlive(e, w), `warrior alive=${isAlive(e, w)}, rage left=${e.resourceSystem.getRage(w)}`);
-
-    // T7: Another bigblast — mage has 5-3=2 qi + T6 pendingQi=+1 = 3 qi. Big blast costs 3 → ok.
-    await doTurn(e, { id: m, skill: 'mage_bigblast', target: { q:0, r:2 } }, { id: w, skill: 'warrior_rage' });
-    // Warrior had 4 rage + 2 (T7) = 6. 6 rage absorbs 300. Blast 400 → 100 passes → lethal!
-    // But rage passive save (斩破): 1 rage = 200 damage absorb. 6 rage × 200 = 1200 max → 100 absorbed, ~1 rage used.
-    result('斩破被动保命(怒气抵消致死伤害)', isAlive(e, w), `warrior alive=${isAlive(e, w)}, rage left=${e.resourceSystem.getRage(w)}`);
-  }
 }
 
 async function testShooterSkills() {

@@ -196,4 +196,21 @@ export class FormationSystem {
     }
     this.#formations.length = 0;
   }
+
+  serialize() {
+    return {
+      formations: structuredClone(this.#formations),
+    };
+  }
+
+  deserialize(data = {}) {
+    this.#formations.length = 0;
+    this.#formations.push(...structuredClone(data.formations || []));
+    let maxFormationId = 0;
+    for (const formation of this.#formations) {
+      const numericId = Number(String(formation.id).replace('formation_', ''));
+      if (Number.isFinite(numericId)) maxFormationId = Math.max(maxFormationId, numericId);
+    }
+    _formationId = Math.max(_formationId, maxFormationId);
+  }
 }

@@ -104,6 +104,19 @@ export class Registry {
   alive() { return [...this.#byId.values()].filter(e => e.alive !== false); }
   clear() { this.#byId.clear(); for (const s of this.#byType.values()) s.clear(); this.#byPos.clear(); this.#byDim.clear(); this.#byOwner.clear(); }
 
+  serialize() {
+    return {
+      entities: [...this.#byId.values()].map(e => structuredClone(e)),
+    };
+  }
+
+  deserialize(data = {}) {
+    this.clear();
+    for (const entity of data.entities || []) {
+      this.register(structuredClone(entity));
+    }
+  }
+
   _indexPosition(id, e) {
     if (!e.position) return;
     const dim = e.position.dim || e.dimension || 'real';

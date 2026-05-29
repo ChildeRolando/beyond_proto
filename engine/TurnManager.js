@@ -96,11 +96,11 @@ export class TurnManager {
     // the same actor stay in their original sequence order (important for
     // intra-sequence dependencies like ATTACK_MELEE before GAIN_RESOURCE ON_HIT).
     const groups = { 3: [], 2: [], 1: [], 0: [] };
-    const loggedActors = new Set();
+    const loggedSeqs = new Set();
     for (const { speed, command } of valid) {
       groups[speed].push(command);
-      if (command.skillId && !loggedActors.has(command.actorId)) {
-        loggedActors.add(command.actorId);
+      if (command.skillId && command.sequenceId && !loggedSeqs.has(command.sequenceId)) {
+        loggedSeqs.add(command.sequenceId);
         const char = this.#registry.get(command.actorId);
         const skillName = SKILLS[command.skillId]?.name || command.skillId;
         this.#logger?.log(`${char?.name || command.actorId} → ${skillName}`, 'action');
@@ -225,9 +225,7 @@ export class TurnManager {
       this.#canceledSequences.add(cmd.sequenceId);
       this.#buffManager.removeByType(cmd.actorId, 'YAN_EMPTY_GUN');
       this.#lastHitByActor.set(cmd.actorId, false);
-      const drained = this.#resourceSystem.drainAll(cmd.actorId);
-      const parts = []; for (const [res, val] of Object.entries(drained)) { if (val > 0) parts.push(`${res} ${val}`); }
-      this.#logger?.log(`我赌你的枪里没有子弹：攻击取消，费用不返还，剥夺全部资源${parts.length ? ' (' + parts.join(', ') + ')' : ''}`, 'warn');
+      this.#logger?.log('我赌你的枪里没有子弹：攻击取消，费用不返还', 'warn');
       return;
     }
 
@@ -290,11 +288,18 @@ export class TurnManager {
         case CmdType.BREAK_FORMATION:
           this._execBreakFormation(cmd);
           break;
+        case CmdType.MARROW_UPGRADE:
+          this._execMarrowUpgrade(cmd);
+          break;
         case CmdType.MULTI_CAST:
           this._execMultiCast(cmd);
           break;
         case CmdType.GALAXY_SUBTURN:
           this._execGalaxySubturn(cmd);
+          break;
+        case CmdType.ATTACK_AOE_TARGET:
+          this._execAttackAoeTarget(cmd);
+          this.#projectileAttackers.add(cmd.actorId);
           break;
         case CmdType.MOVE_PULL:
           this._execMovePull(cmd);
@@ -523,7 +528,7 @@ export class TurnManager {
     }
 
     const dist = hexDistance(originQ, originR, targetQ, targetR);
-    if (dist > (cmd.payload.range || 1)) {
+    if (dist > this.#buffManager.getEffectiveRange(cmd.actorId, cmd.payload.range || 1)) {
       this.#logger?.log('⚔ 距离过远，挥空', 's');
       return;
     }
@@ -610,6 +615,41 @@ export class TurnManager {
     }
 
     this.#lastHitByActor.set(cmd.actorId, false); // determined later on body contact
+  }
+
+  _execAttackAoeTarget(cmd) {
+    if (!cmd.targetPos) return;
+    const actor = this.#registry.get(cmd.actorId);
+    if (!actor) return;
+
+    const fromQ = actor.position.q, fromR = actor.position.r;
+    let toQ = cmd.targetPos.q, toR = cmd.targetPos.r;
+    let power = typeof cmd.payload.power === 'number'
+      ? this.#buffManager.getEffectivePower(cmd.actorId, cmd.payload.power)
+      : cmd.payload.power;
+
+    // SURE_HIT: redirect to target's current position
+    for (const e of this.#registry.characters()) {
+      if (e.alive === false || e.id === cmd.actorId) continue;
+      const acqCtx = this.#buffManager.dispatch(HookName.ON_TARGET_ACQUIRE, {
+        sourceId: cmd.actorId, targetId: e.id, forceHit: false,
+      });
+      if (acqCtx?.forceHit) {
+        toQ = e.position.q; toR = e.position.r;
+        break;
+      }
+    }
+
+    const effectiveSpeed = cmd.subSpeed ?? cmd.payload.projectileSpeed ?? 1;
+    const radius = cmd.payload.radius || 1;
+    const aoeFlag = radius === 1 ? 'AOE_RADIUS_1' : 'AOE_RADIUS_1';
+
+    if (this.#projectileCalculator) {
+      this.#projectileCalculator.createProjectile(cmd.actorId, fromQ, fromR, toQ, toR, power, effectiveSpeed, [aoeFlag]);
+    }
+
+    this.#lastHitByActor.set(cmd.actorId, false); // determined later on body contact
+    this.#logger?.log('💥 目标AOE！威' + power + ' 半径' + radius, 'rg');
   }
 
   _execAttackAoeSelf(cmd) {
@@ -1206,13 +1246,9 @@ export class TurnManager {
   _resolveRoleCleanupEffects() {
     for (const e of this.#registry.characters()) {
       if (e.alive === false) continue;
-      if (e.roleId === 'shooter_helldiver') {
+      if (e.roleId === 'shooter_helldiver' && this._hasTraitInLoadout(e, 'trait_helldiver_laser_weapon')) {
         this.#resourceSystem.add(e.id, 'ammo', 1);
         this.#logger?.log('绝地潜兵激光武器蓄能 +1弹药', 's');
-      }
-      // Jimmy 易经洗髓酒: passive auto-upgrade at rage thresholds
-      if (e.roleId === 'warrior_jimmy') {
-        this._checkJimmyMarrow(e);
       }
     }
   }
@@ -1224,62 +1260,90 @@ export class TurnManager {
 
       // Jimmy 呼吸法: toggle breathing status based on turn parity
       if (e.roleId === 'warrior_jimmy') {
-        // 易经洗髓酒: apply permanent marrow tracking on first call
-        if (!this.#buffManager.hasStatus(e.id, 'JIMMY_MARROW')) {
-          this.#buffManager.apply(e.id, 'JIMMY_MARROW', -1, e.id, { layer: 0 });
-          this.#logger?.log('吉米 易经洗髓酒：被动激活', 'rg');
+        if (this._hasTraitInLoadout(e, 'trait_jimmy_breathing')) {
+          const isOdd = this.#turnNumber % 2 === 1;
+          this.#buffManager.removeByType(e.id, 'JIMMY_BREATH_IN');
+          this.#buffManager.removeByType(e.id, 'JIMMY_BREATH_OUT');
+          if (isOdd) {
+            this.#buffManager.apply(e.id, 'JIMMY_BREATH_IN', -1, e.id);
+            this.#logger?.log('吉米 呼吸法·吸：怒气获得+1 攻击距离-1', 'rg');
+          } else {
+            this.#buffManager.apply(e.id, 'JIMMY_BREATH_OUT', -1, e.id);
+            this.#logger?.log('吉米 呼吸法·呼：攻击距离+1 怒气获得-1', 'rg');
+          }
         }
 
-        const isOdd = this.#turnNumber % 2 === 1;
-        this.#buffManager.removeByType(e.id, 'JIMMY_BREATH_IN');
-        this.#buffManager.removeByType(e.id, 'JIMMY_BREATH_OUT');
-        if (isOdd) {
-          this.#buffManager.apply(e.id, 'JIMMY_BREATH_IN', -1, e.id);
-          this.#logger?.log('吉米 呼吸法·吸：怒气获得+1 攻击距离-1', 'rg');
-        } else {
-          this.#buffManager.apply(e.id, 'JIMMY_BREATH_OUT', -1, e.id);
-          this.#logger?.log('吉米 呼吸法·呼：攻击距离+1 怒气获得-1', 'rg');
+        // 洗髓·气: turn start rage gain from marrow tiers
+        if (this.#buffManager.hasStatus(e.id, 'JIMMY_MARROW_QI')) {
+          this.#resourceSystem.add(e.id, 'rage', 1);
+          this.#logger?.log('吉米 洗髓·气：回合开始怒+1', 'rage');
+        }
+        if (this.#buffManager.hasStatus(e.id, 'JIMMY_MARROW_QI2')) {
+          this.#resourceSystem.add(e.id, 'rage', 1);
+          this.#logger?.log('吉米 洗髓·气II：回合开始怒+1', 'rage');
+        }
+      }
+
+      // Gunfighter finesse: apply readiness indicator when slot is available
+      if (e.roleId === 'shooter_gunfighter' && this._hasTraitInLoadout(e, 'trait_gunfighter_finesse')) {
+        if (this.#actionPointSystem?.isGunfighterReady(e.id)) {
+          if (!this.#buffManager.hasStatus(e.id, 'FINESSE_READY')) {
+            this.#buffManager.apply(e.id, 'FINESSE_READY', 1, e.id);
+          }
         }
       }
 
       // Yan 死亡如风: apply permanent passive once
-      if (e.roleId === 'shooter_yan' && !this.#buffManager.hasStatus(e.id, 'YAN_DEATH_WIND')) {
+      if (e.roleId === 'shooter_yan' && this._hasTraitInLoadout(e, 'trait_yan_death_wind') && !this.#buffManager.hasStatus(e.id, 'YAN_DEATH_WIND')) {
         this.#buffManager.apply(e.id, 'YAN_DEATH_WIND', -1, e.id);
         this.#logger?.log('燕双鹰 死亡如风：对手攻击落空时自动装填', 's');
       }
     }
   }
 
-  // Jimmy 易经洗髓酒: check rage thresholds and auto-upgrade
-  _checkJimmyMarrow(char) {
-    if (!this.#buffManager.hasStatus(char.id, 'JIMMY_MARROW')) return;
-    const buffs = this.#buffManager.getActiveBuffs(char.id);
+  // Check if a trait skill is in the character's role loadout.
+  // Returns true when roleLoadoutSkillIds is null (non-config battles) to preserve backward compat.
+  _hasTraitInLoadout(char, traitSkillId) {
+    if (!char.roleLoadoutSkillIds) return true;
+    return char.roleLoadoutSkillIds.includes(traitSkillId);
+  }
+
+  // Jimmy 易经洗髓酒: cost is paid via CONSUME_RESOURCE (injected by SkillResolver)
+  _execMarrowUpgrade(cmd) {
+    const actor = this.#registry.get(cmd.actorId);
+    if (!actor) return;
+
+    const rewards = ['JIMMY_MARROW_QI', 'JIMMY_MARROW_RANGE', 'JIMMY_MARROW_MOVE', 'JIMMY_MARROW_QI2', 'JIMMY_MARROW_POWER'];
+    const rewardNames = ['每回合怒+1', '攻击距离+1', '移动/易经洗髓酒视为灵巧', '每回合怒+1', '威力+100'];
+
+    // Apply JIMMY_MARROW tracker if not present
+    if (!this.#buffManager.hasStatus(actor.id, 'JIMMY_MARROW')) {
+      this.#buffManager.apply(actor.id, 'JIMMY_MARROW', -1, actor.id, { layer: 0 });
+    }
+
+    const buffs = this.#buffManager.getActiveBuffs(actor.id);
     const marrow = buffs.find(b => b.statusType === 'JIMMY_MARROW');
     if (!marrow) return;
 
     const layer = marrow.data.layer || 0;
-    const thresholds = [6, 8, 10, 12];
-    const rewards = ['JIMMY_MARROW_RAGE', 'JIMMY_MARROW_RANGE', 'JIMMY_MARROW_MOVE', 'JIMMY_MARROW_POWER'];
-    const rewardNames = ['怒气获得+1', '攻击距离+1', '移动距离+1', '威力+100'];
-
-    if (layer >= thresholds.length) return; // fully awakened
-
-    const threshold = thresholds[layer];
-    const currentRage = this.#resourceSystem.getRage(char.id);
-
-    if (currentRage >= threshold) {
-      this.#resourceSystem.consumeRage(char.id, threshold);
-      this.#buffManager.apply(char.id, rewards[layer], -1, char.id);
-      marrow.data.layer = layer + 1;
-      this.#logger?.log(`吉米 洗髓突破！消耗${threshold}怒 获得${rewardNames[layer]} (第${layer + 1}层)`, 'rg');
-      // Check if next threshold can also be triggered (edge case: gained enough rage in same turn)
-      this._checkJimmyMarrow(char);
+    if (layer >= rewards.length) {
+      this.#logger?.log('吉米 洗髓已满五层，无法继续突破', 'rg');
+      return;
     }
+
+    this.#buffManager.apply(actor.id, rewards[layer], -1, actor.id);
+    marrow.data.layer = layer + 1;
+    this.#logger?.log(`吉米 洗髓突破！获得${rewardNames[layer]} (第${layer + 1}层)`, 'rg');
   }
 
   _clearEndOfTurnRoleStatuses() {
     for (const e of this.#registry.characters()) {
-      this.#buffManager.removeByType(e.id, 'YAN_EMPTY_GUN');
+      if (this.#buffManager.hasStatus(e.id, 'YAN_EMPTY_GUN')) {
+        const drained = this.#resourceSystem.drainAll(e.id);
+        const parts = []; for (const [res, val] of Object.entries(drained)) { if (val > 0) parts.push(`${res} ${val}`); }
+        this.#logger?.log(`我赌你的枪里没有子弹：目标未发起攻击，剥夺全部资源${parts.length ? ' (' + parts.join(', ') + ')' : ''}`, 'warn');
+        this.#buffManager.removeByType(e.id, 'YAN_EMPTY_GUN');
+      }
     }
   }
 
@@ -1331,6 +1395,11 @@ export class TurnManager {
     const actionPoint = this.#actionPointSystem?.consume(actor, skillId);
     if (actionPoint && !actionPoint.ok) {
       return { success: false, error: actionPoint.reason };
+    }
+
+    // Remove finesse indicator when the finesse slot is consumed
+    if (actionPoint && (actionPoint.slot === 'finesse' || actionPoint.slot === 'main_reassign')) {
+      this.#buffManager.removeByType(actor.id, 'FINESSE_READY');
     }
 
     // Set current turn for buff timing checks
@@ -1403,5 +1472,41 @@ export class TurnManager {
     this.#speedGroups = null;
     this.#actionPointSystem?.resetTurn();
     this.#commandQueue.clearAll();
+  }
+
+  serialize() {
+    return {
+      turnNumber: this.#turnNumber,
+      phase: this.#phase,
+      delayedCommands: structuredClone(this.#delayedCommands),
+      pendingFlags: [...this.#pendingFlags.entries()].map(([id, flags]) => [id, { ...flags }]),
+      jumpReturns: [...this.#jumpReturns.entries()].map(([id, pos]) => [id, { ...pos }]),
+      lastHitByActor: [...this.#lastHitByActor.entries()],
+      shieldHitEntities: [...this.#shieldHitEntities],
+      submittedChars: [...this.#submittedChars],
+      resourceFailed: [...this.#resourceFailed],
+      canceledSequences: [...this.#canceledSequences],
+      projectileAttackers: [...this.#projectileAttackers],
+      currentAnimStep: this.#currentAnimStep,
+    };
+  }
+
+  deserialize(data = {}) {
+    this.#turnNumber = data.turnNumber || 1;
+    this.#phase = data.phase || TurnPhase.PLAN;
+    this.#delayedCommands = structuredClone(data.delayedCommands || []);
+    this.#pendingFlags.clear();
+    for (const [id, flags] of data.pendingFlags || []) this.#pendingFlags.set(id, { ...flags });
+    this.#jumpReturns.clear();
+    for (const [id, pos] of data.jumpReturns || []) this.#jumpReturns.set(id, { ...pos });
+    this.#lastHitByActor.clear();
+    for (const [id, hit] of data.lastHitByActor || []) this.#lastHitByActor.set(id, hit);
+    this.#shieldHitEntities = new Set(data.shieldHitEntities || []);
+    this.#submittedChars = new Set(data.submittedChars || []);
+    this.#resourceFailed = new Set(data.resourceFailed || []);
+    this.#canceledSequences = new Set(data.canceledSequences || []);
+    this.#projectileAttackers = new Set(data.projectileAttackers || []);
+    this.#currentAnimStep = data.currentAnimStep || 0;
+    this.#speedGroups = null;
   }
 }

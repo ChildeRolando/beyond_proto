@@ -60,4 +60,17 @@ export class CommandQueue {
 
   // Iterate commands in speed order (3→2→1→0)
   *speeds() { yield 3; yield 2; yield 1; yield 0; }
+
+  serialize() {
+    return {
+      queues: [...this.#queues.entries()].map(([speed, cmds]) => [speed, structuredClone(cmds)]),
+    };
+  }
+
+  deserialize(data = {}) {
+    this.clearAll();
+    for (const [speed, cmds] of data.queues || []) {
+      this.#queues.set(Number(speed), structuredClone(cmds));
+    }
+  }
 }

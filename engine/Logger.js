@@ -30,4 +30,17 @@ export class Logger {
     this.#entries.length = 0;
     this.#turnNumber = 1;
   }
+
+  serialize() {
+    return {
+      entries: structuredClone(this.#entries),
+      turnNumber: this.#turnNumber,
+    };
+  }
+
+  deserialize(data = {}) {
+    this.#entries.length = 0;
+    this.#entries.push(...structuredClone(data.entries || []));
+    this.#turnNumber = data.turnNumber || 1;
+  }
 }

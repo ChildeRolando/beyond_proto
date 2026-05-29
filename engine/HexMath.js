@@ -98,3 +98,70 @@ export function hexDirectionToDelta(dir) {
 export function deltaToHexDirection(dq, dr) {
   return HEX_DIRECTIONS.findIndex(([a, b]) => a === dq && b === dr);
 }
+
+// Fan/cone hexes from origin toward target, with linearly increasing width
+// Width(d) = d: distance 1→1 hex, distance 2→2 hexes, distance 3→3 hexes
+export function getFanHexes(ox, oy, tx, ty, maxRange) {
+  const line = hexLine(ox, oy, tx, ty);
+  const result = [];
+  for (let d = 1; d <= maxRange; d++) {
+    let center = null;
+    for (const h of line) {
+      if (hexDistance(ox, oy, h[0], h[1]) === d) { center = h; break; }
+    }
+    if (!center) center = line[Math.min(d, line.length - 1)];
+    if (!center) continue;
+    const ring = [];
+    for (let q = -BOARD_RADIUS; q <= BOARD_RADIUS; q++) {
+      for (let r = -BOARD_RADIUS; r <= BOARD_RADIUS; r++) {
+        if (!isOnBoard(q, r)) continue;
+        if (hexDistance(ox, oy, q, r) !== d) continue;
+        ring.push({ q, r, pd: hexDistance(q, r, center[0], center[1]) });
+      }
+    }
+    ring.sort((a, b) => a.pd - b.pd || a.q - b.q || a.r - b.r);
+    for (let i = 0; i < Math.min(d, ring.length); i++) {
+      result.push([ring[i].q, ring[i].r]);
+    }
+  }
+  return result;
+}
+
+function hexAngleDeg(oq, or, q, r) {
+  const dq = q - oq;
+  const dr = r - or;
+  const x = SQ3 * dq + (SQ3 / 2) * dr;
+  const y = (3 / 2) * dr;
+  let deg = Math.atan2(y, x) * 180 / Math.PI;
+  if (deg < 0) deg += 360;
+  return deg;
+}
+
+function sectorIndexForHex(oq, or, q, r) {
+  const angle = hexAngleDeg(oq, or, q, r);
+  return Math.floor(((angle + 30) % 360) / 60);
+}
+
+// 60-degree sector partition around origin. Each ring contributes exactly
+// distance cells, so six sectors cover the full hex radius without overlap.
+export function getSectorHexes(ox, oy, tx, ty, maxRange) {
+  if (ox === tx && oy === ty) return [];
+  const selectedSector = sectorIndexForHex(ox, oy, tx, ty);
+  const result = [];
+  for (let q = ox - maxRange; q <= ox + maxRange; q++) {
+    for (let r = oy - maxRange; r <= oy + maxRange; r++) {
+      if (!isOnBoard(q, r)) continue;
+      const dist = hexDistance(ox, oy, q, r);
+      if (dist < 1 || dist > maxRange) continue;
+      if (sectorIndexForHex(ox, oy, q, r) !== selectedSector) continue;
+      result.push([q, r]);
+    }
+  }
+  result.sort((a, b) =>
+    hexDistance(ox, oy, a[0], a[1]) - hexDistance(ox, oy, b[0], b[1]) ||
+    hexAngleDeg(ox, oy, a[0], a[1]) - hexAngleDeg(ox, oy, b[0], b[1]) ||
+    a[0] - b[0] ||
+    a[1] - b[1]
+  );
+  return result;
+}

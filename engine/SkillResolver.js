@@ -1,16 +1,17 @@
 // Translates SkillData effect arrays → CommandSequence objects
 import { SKILLS } from './SkillData.js';
 import { CmdType } from './CommandTypes.js';
-import { hexDistance, hexLine, deltaToHexDirection, isOnBoard } from './HexMath.js';
+import { hexDistance, hexLine, deltaToHexDirection, isOnBoard, getSectorHexes } from './HexMath.js';
 
 let _seqId = 0;
 function seqId() { return 'seq_' + (++_seqId); }
 function cmdId() { return 'cmd_' + (++_seqId); }
 
 export class SkillResolver {
-  constructor(registry, resourceSystem) {
+  constructor(registry, resourceSystem, buffManager = null) {
     this.registry = registry;
     this.resourceSystem = resourceSystem;
+    this.buffManager = buffManager;
   }
 
   resolve(skillId, actorId, targetPos, opts = {}) {
@@ -24,17 +25,36 @@ export class SkillResolver {
       return { success: false, error: 'skill_not_in_loadout' };
     }
 
+    // Effective cost: 易经洗髓酒 scales with marrow layer
+    let effectiveCost = { ...skill.cost };
+    if (skillId === 'role_jimmy_marrow_wine') {
+      const costs = [3, 4, 4, 5, 5];
+      const buffs = this.buffManager?.getActiveBuffs(actorId) || [];
+      const marrow = buffs.find(b => b.statusType === 'JIMMY_MARROW');
+      const layer = marrow?.data?.layer || 0;
+      const rageCost = layer < costs.length ? costs[layer] : 0;
+      effectiveCost = { rage: rageCost };
+    }
+
     // Validate cost (actual payment happens via CONSUME_RESOURCE commands during execution)
-    if (!opts.skipCostCheck && Object.keys(skill.cost).length > 0) {
-      if (!this.resourceSystem.canAfford(actorId, skill.cost)) {
+    if (!opts.skipCostCheck && Object.keys(effectiveCost).length > 0) {
+      if (!this.resourceSystem.canAfford(actorId, effectiveCost)) {
         return { success: false, error: 'insufficient_resources' };
       }
     }
 
     const sid = seqId();
 
-    // Translate effects to commands
+    // Translate effects to commands; prepend CONSUME_RESOURCE for dynamic-cost skills
     const commands = [];
+    if (skillId === 'role_jimmy_marrow_wine' && effectiveCost.rage > 0) {
+      commands.push({
+        id: cmdId(), actorId: actor.id, skillId: skill.id,
+        sequenceId: sid, speed: skill.speed, subSpeed: null,
+        type: CmdType.CONSUME_RESOURCE,
+        payload: { resource: 'rage', amount: effectiveCost.rage },
+      });
+    }
     for (const eff of skill.effects) {
       const result = this._translateEffect(eff, actor, targetPos, skill, sid);
       if (!result) continue;
@@ -237,6 +257,15 @@ export class SkillResolver {
           payload: { collectCasings: true, area: eff.area } };
 
       case 'MOVE_PULL':
+        if (eff.target === 'FAN_AREA' && targetPos) {
+          const baseRange = skill.targeting?.range || 3;
+          const effectiveRange = this.buffManager?.getEffectiveRange(actor.id, baseRange) ?? baseRange;
+          const sectorHexes = getSectorHexes(actor.position.q, actor.position.r, targetPos.q, targetPos.r, effectiveRange);
+          return sectorHexes.map(([q, r]) => ({
+            ...base, id: cmdId(), type: CmdType.MOVE_PULL,
+            targetPos: { q, r },
+          }));
+        }
         return { ...base, type: CmdType.MOVE_PULL,
           targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null };
 
@@ -275,6 +304,9 @@ export class SkillResolver {
       case 'BREAK_FORMATION':
         return { ...base, type: CmdType.BREAK_FORMATION,
           targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null };
+
+      case 'MARROW_UPGRADE':
+        return { ...base, type: CmdType.MARROW_UPGRADE, payload: {} };
 
       case 'PASS':
         return { ...base, type: CmdType.PASS,

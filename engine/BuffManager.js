@@ -330,15 +330,6 @@ export class BuffManager {
         });
         break;
 
-      case 'JIMMY_MARROW_RAGE':
-        this.registerHook(buffId, HookName.ON_RESOURCE_GAIN, (ctx) => {
-          if (ctx.entityId === entityId && ctx.resource === 'rage') {
-            return { ...ctx, amount: ctx.amount + 1 };
-          }
-          return ctx;
-        });
-        break;
-
       case 'JIMMY_MARROW_RANGE':
         this.registerHook(buffId, HookName.ON_RANGE_CALCULATE, (ctx) => {
           if (ctx.entityId === entityId) return { ...ctx, range: (ctx.range || 1) + 1 };
@@ -347,10 +338,7 @@ export class BuffManager {
         break;
 
       case 'JIMMY_MARROW_MOVE':
-        this.registerHook(buffId, HookName.ON_MOVE_RANGE_CALCULATE, (ctx) => {
-          if (ctx.entityId === entityId) return { ...ctx, range: (ctx.range || 1) + 1 };
-          return ctx;
-        });
+        // Marker buff — checked by ActionPointSystem for movement finesse
         break;
 
       case 'JIMMY_MARROW_POWER':
@@ -396,5 +384,30 @@ export class BuffManager {
     this.#buffs.clear();
     this.#buffsByEntity.clear();
     this.#hooks.clear();
+  }
+
+  serialize() {
+    return {
+      currentTurn: this.#currentTurn,
+      buffs: [...this.#buffs.values()].map(buff => structuredClone(buff)),
+    };
+  }
+
+  deserialize(data = {}) {
+    this.clear();
+    this.#currentTurn = data.currentTurn || 0;
+    let maxBuffId = 0;
+    for (const buff of data.buffs || []) {
+      const instance = structuredClone(buff);
+      this.#buffs.set(instance.id, instance);
+      if (!this.#buffsByEntity.has(instance.targetId)) {
+        this.#buffsByEntity.set(instance.targetId, new Set());
+      }
+      this.#buffsByEntity.get(instance.targetId).add(instance.id);
+      const numericId = Number(String(instance.id).replace('buff_', ''));
+      if (Number.isFinite(numericId)) maxBuffId = Math.max(maxBuffId, numericId);
+      this._registerHooks(instance, STATUS_DEFS[instance.statusType]);
+    }
+    _buffId = Math.max(_buffId, maxBuffId);
   }
 }

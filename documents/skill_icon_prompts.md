@@ -211,22 +211,22 @@
 **prompt:** A heavy anchor hooked into a dimensional portal frame, anchoring a gate open, chain and anchor securing a rift-tear in space, dark iron and violet palette, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast
 
 ### role_jimmy_marrow_wine — 易经洗髓酒
-**prompt:** A wine gourd pouring liquid that transforms into bone-marrow-renewal energy wisps, alchemical wine, drinking vessel with essence rising and spiraling into a body silhouette, amber and jade green palette, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast
+**prompt:** A wine gourd pouring amber liquid that rises into bone-renewal energy wisps around a body silhouette, alchemical wine, drinking vessel with essence spiraling upward, amber and jade green palette, game skill icon, flat vector style, minimalist, dark fantasy theme, bold silhouette, high contrast, no circular frame
 
 ### role_duelist_windstep — 逐风步
-**prompt:** Wind-current trails curling around a pair of nimble feet, wind-chasing footwork, swirling air currents under stepping boots, jade green and pale cyan palette, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast
+**prompt:** Wind-current trails curling around a pair of nimble feet, wind-chasing footwork, swirling air currents under stepping boots, jade green and pale cyan palette, game skill icon, flat vector style, minimalist, dark fantasy theme, bold silhouette, high contrast, no circular frame
 
 ### role_vanguard_breakline — 破阵线
-**prompt:** A shield-wall formation line being breached at a single point by a wedge-shaped charge, frontline breakthrough, formation line cracking with a bold arrow piercing through, dark iron and crimson palette, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast
+**prompt:** A shield-wall formation line being breached at a single point by a wedge-shaped charge, frontline breakthrough, formation line cracking with a bold arrow piercing through, dark iron and crimson palette, game skill icon, flat vector style, minimalist, dark fantasy theme, bold silhouette, high contrast, no circular frame
 
 ### role_gunfighter_quick_action — 灵巧行动
-**prompt:** A rapid multi-action hand: simultaneously reloading, aiming and firing, multiple action ghost-hands from one figure, swift multi-tasking, brass and jade green palette, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast
+**prompt:** A rapid multi-action hand with a classic western left revolver, simultaneously reloading, aiming, and firing, layered ghost-hands from one figure, swift multi-tasking, brass and jade green palette, game skill icon, flat vector style, minimalist, dark fantasy theme, bold silhouette, high contrast, no circular frame
 
 ### role_helldiver_supply_drop — 呼叫补给
-**prompt:** A supply crate parachuting down from above with ammo icons inside, airdrop resupply beacon, crate under parachute with bullet silhouettes visible, brass and olive green palette, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast
+**prompt:** A supply crate parachuting down from above with ammo icons inside, airdrop resupply beacon, crate under parachute with bullet silhouettes visible, brass and olive green palette, game skill icon, flat vector style, minimalist, dark fantasy theme, bold silhouette, high contrast, no circular frame
 
 ### role_helldiver_precision_strike — 精准轰炸
-**prompt:** A laser-designated target point with bomb silhouettes converging from above onto a 3x3 grid area, precision airstrike, crosshair target with falling ordnance, brass and crimson palette, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast
+**prompt:** A laser-designated target point with bomb silhouettes converging from above onto a 3x3 grid area, precision airstrike, crosshair target with falling ordnance, brass and crimson palette, game skill icon, flat vector style, minimalist, dark fantasy theme, bold silhouette, high contrast, no circular frame
 
 ### role_yan_empty_gun — 我赌你的枪里没有子弹
-**prompt:** A dramatic face-off: an empty gun cylinder exposed with the chamber visibly unloaded, a confident smirk implied by the composition, the gamble, revolver with open empty cylinder facing the viewer, brass and dark crimson palette, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast
+**prompt:** A dramatic face-off: a classic revolver cylinder exposed with the chambers visibly empty, the gamble, revolver with open empty cylinder facing the viewer, brass and dark crimson palette, game skill icon, flat vector style, minimalist, dark fantasy theme, bold silhouette, high contrast, no circular frame

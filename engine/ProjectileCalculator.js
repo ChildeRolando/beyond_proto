@@ -512,4 +512,36 @@ export class ProjectileCalculator {
     this.#lastInterceptions.length = 0;
     this.#lastHits.length = 0;
   }
+
+  serialize() {
+    return {
+      projectiles: structuredClone(this.#projectiles),
+      casings: [...this.#casings.entries()],
+      wildBullets: [...this.#wildBullets.entries()],
+      wildBulletsCollected: this.#wildBulletsCollected,
+      keyframes: structuredClone(this.#keyframes),
+      animEvents: structuredClone(this.#animEvents),
+      lastInterceptions: structuredClone(this.#lastInterceptions),
+      lastHits: structuredClone(this.#lastHits),
+    };
+  }
+
+  deserialize(data = {}) {
+    this.reset();
+    this.#projectiles.push(...structuredClone(data.projectiles || []));
+    this.#casings = new Map(data.casings || []);
+    this.#wildBullets = new Map(data.wildBullets || []);
+    this.#wildBulletsCollected = data.wildBulletsCollected || 0;
+    this.#keyframes.push(...structuredClone(data.keyframes || []));
+    this.#animEvents.push(...structuredClone(data.animEvents || []));
+    this.#lastInterceptions.push(...structuredClone(data.lastInterceptions || []));
+    this.#lastHits.push(...structuredClone(data.lastHits || []));
+
+    let maxProjectileId = 0;
+    for (const projectile of this.#projectiles) {
+      const numericId = Number(String(projectile.id).replace('proj_', ''));
+      if (Number.isFinite(numericId)) maxProjectileId = Math.max(maxProjectileId, numericId);
+    }
+    _projId = Math.max(_projId, maxProjectileId);
+  }
 }

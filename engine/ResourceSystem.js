@@ -196,4 +196,17 @@ export class ResourceSystem {
   }
 
   clear() { this.#pools.clear(); }
+
+  serialize() {
+    return {
+      pools: [...this.#pools.entries()].map(([entityId, pool]) => [entityId, { ...pool }]),
+    };
+  }
+
+  deserialize(data = {}) {
+    this.#pools.clear();
+    for (const [entityId, pool] of data.pools || []) {
+      this.#pools.set(entityId, { ...pool });
+    }
+  }
 }

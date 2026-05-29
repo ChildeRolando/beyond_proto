@@ -189,11 +189,6 @@
 ✅ 阵法已创建
 ✅ 堪破阵眼法阵破碎 — alive formations: 0
 
-### warrior_block_passive — 斩破(被动)
-
-✅ 10+怒气完全吸收400威力 — warrior alive=true, rage left=6
-✅ 斩破被动保命(怒气抵消致死伤害) — warrior alive=true, rage left=6
-
 ## 射手技能测试 (Shooter Skills)
 
 
@@ -207,7 +202,7 @@
 ✅ 必中弹体命中(护盾吸收100) — shield=200
 ✅ 必中追踪位移目标(无盾致死) — mage dead=true
 ✅ 必中弹体命中(怒气吸收100) — rage=0
-✅ 必中同速拦截(战士冲入弹道) — rage=0
+✅ 必中同速拦截(战士冲入弹道) — rage=1
 
 ### shooter_aim — 预瞄(SPEED_BOOST)
 
@@ -280,4 +275,4 @@
 
 ---
 
-**总计: 140 通过, 0 失败**
+**总计: 138 通过, 0 失败**

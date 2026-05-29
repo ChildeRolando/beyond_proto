@@ -139,4 +139,25 @@ export class DimensionSystem {
     this.#gates.length = 0;
     this.#alternateEntities.clear();
   }
+
+  serialize() {
+    return {
+      gates: structuredClone(this.#gates),
+      alternateEntities: [...this.#alternateEntities],
+    };
+  }
+
+  deserialize(data = {}) {
+    this.#gates.length = 0;
+    this.#gates.push(...structuredClone(data.gates || []));
+    this.#alternateEntities.clear();
+    for (const id of data.alternateEntities || []) this.#alternateEntities.add(id);
+
+    let maxGateId = 0;
+    for (const gate of this.#gates) {
+      const numericId = Number(String(gate.id).replace('gate_', ''));
+      if (Number.isFinite(numericId)) maxGateId = Math.max(maxGateId, numericId);
+    }
+    _gateId = Math.max(_gateId, maxGateId);
+  }
 }
