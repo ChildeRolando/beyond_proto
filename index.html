@@ -296,28 +296,8 @@ body {
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  padding: 0;
+  padding: 16px;
   display: flex;
-}
-.role-portrait {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top center;
-}
-.role-card-label {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 12px 16px;
-  background: linear-gradient(transparent, rgba(0,0,0,0.82));
-  z-index: 1;
-}
-.role-card-label h3 { color: var(--accent); font-family: var(--font-display); font-size: 16px; letter-spacing: 2px; margin-bottom: 2px; }
-.role-card-label span { color: var(--text-dim); font-size: 11px; }
   flex-direction: column;
   justify-content: flex-end;
   transition: transform 0.2s, border-color 0.2s, opacity 0.2s;
@@ -1768,11 +1748,8 @@ function renderRoleCards(cfg) {
   const visible = [-1, 0, 1].map(offset => roles[(selectedIndex + offset + roles.length) % roles.length]);
   document.getElementById('role-cards').innerHTML = visible.map((role, idx) => `
     <div class="role-card theme-${role.portraitTheme || 'steel'} ${idx === 1 ? 'center' : ''}" data-role="${role.id}">
-      <img class="role-portrait" src="${getRolePortrait(role.id)}" alt="${role.name}">
-      <div class="role-card-label">
-        <h3>${role.name}</h3>
-        <span>${role.class} · ${idx === 1 ? '当前选择' : '点击切换'}</span>
-      </div>
+      <h3>${role.name}</h3>
+      <span>${role.class} · ${idx === 1 ? '当前选择' : '点击切换'}</span>
     </div>
   `).join('');
 }
