@@ -1453,16 +1453,13 @@ export class TurnManager {
     const attacker = this.#registry.get(attackerId);
     if (!attacker || !this._hasTraitInLoadout(attacker, 'trait_duelist_minds_eye')) return;
     // Get weak point directions on target
+    const target = this.#registry.get(targetId);
+    if (!target) return;
     const wpBuffs = this.#buffManager.getActiveBuffs(targetId);
     const wp = wpBuffs.find(b => b.statusType === 'WEAK_POINT');
     if (!wp || !wp.data?.directions) return;
-    // Determine hit direction: use the hex direction from attacker to target
-    // The attacker moved to (toQ, toR) — hit direction = direction from target to attacker
+    // Check which of 6 hex directions from target the attacker hit from
     const dirs = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
-    const dq = toQ - target.position.q, dr = toR - target.position.r - target.position.q - toQ; // wrong, let me use hex math
-    // Simple approximation: check which of 6 directions from target the attacker is in
-    const target = this.#registry.get(targetId);
-    if (!target) return;
     const hitDirIdx = dirs.findIndex(([ddq, ddr]) =>
       toQ === target.position.q + ddq && toR === target.position.r + ddr
     );
