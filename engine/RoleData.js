@@ -66,13 +66,13 @@ export const ROLE_DEFS = {
   },
   warrior_duelist: {
     id: 'warrior_duelist',
-    name: '逐风剑客',
+    name: '逐风客',
     class: '战士',
     portraitTheme: 'amber',
     traitIds: ['duelist_minds_eye'],
     roleSkillIds: ['role_duelist_windstep'],
     description: '通过心眼弱点击破和疾风步穿梭斩击的高速近战角色。',
-    plannedMechanics: '弱点标记方向判断、疾风步位移自动索敌、破防双倍消耗。',
+    plannedMechanics: '弱点标记方向判断、疾风步位移自动索敌、弱点击破回怒减CD。',
   },
   warrior_vanguard: {
     id: 'warrior_vanguard',

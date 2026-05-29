@@ -791,9 +791,9 @@ export const SKILLS = {
     id: 'trait_duelist_minds_eye', name: '心眼', class: '战士', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
-      { cmd: 'PASS', placeholderMessage: '心眼：敌人总有2个方向生成弱点，弱点方向击中+1怒/疾风步CD-1/双倍破防' },
+      { cmd: 'PASS', placeholderMessage: '心眼：敌人总有2个方向生成弱点，弱点方向击中+1怒/疾风步CD-1' },
     ],
-    desc: '被动特质 | 所有敌人随机2个方向有弱点标记；弱点方向击中回复1怒、疾风步CD-1、双倍消耗护盾/怒气；命中后弱点刷新',
+    desc: '被动特质 | 所有敌人随机2个方向有弱点标记；弱点方向击中回复1怒、疾风步CD-1；命中后弱点刷新',
   },
   trait_placeholder_adapt: {
     id: 'trait_placeholder_adapt', name: '预留特质', class: '法师', type: '特质',
