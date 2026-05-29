@@ -34,9 +34,9 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
     for (const opponentAction of opponentCandidates) {
       const sim = await engine.simulateTurnFromSnapshot(snapshot, [ownAction, opponentAction], options.simulation || {});
       if (!sim.success) continue;
-      const actorValue = evaluateState(sim.state, actorOwner).total;
-      const opponentValue = evaluateState(sim.state, opponentOwner).total;
-      samples.push({ opponentAction, actorValue, opponentValue });
+      const actorEval = evaluateState(sim.state, actorOwner);
+      const opponentEval = evaluateState(sim.state, opponentOwner);
+      samples.push({ opponentAction, actorValue: actorEval.total, opponentValue: opponentEval.total, actorTerms: actorEval.terms, opponentTerms: opponentEval.terms });
     }
     if (samples.length === 0) continue;
 
@@ -47,11 +47,19 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
     });
     let expectedValue = 0;
     let worstValue = Infinity;
+    let expectedTerminal = 0, expectedResources = 0, expectedThreat = 0, expectedPosition = 0, expectedTempo = 0;
     for (let i = 0; i < samples.length; i++) {
       samples[i].probability = distribution[i].probability;
       samples[i].opponentUtility = distribution[i].utility;
       expectedValue += samples[i].actorValue * distribution[i].probability;
       worstValue = Math.min(worstValue, samples[i].actorValue);
+      if (samples[i].actorTerms) {
+        expectedTerminal += samples[i].actorTerms.terminal * distribution[i].probability;
+        expectedResources += samples[i].actorTerms.resources * distribution[i].probability;
+        expectedThreat += samples[i].actorTerms.threat * distribution[i].probability;
+        expectedPosition += samples[i].actorTerms.position * distribution[i].probability;
+        expectedTempo += samples[i].actorTerms.tempo * distribution[i].probability;
+      }
     }
 
     results.push({
@@ -59,6 +67,13 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
       expectedValue,
       worstValue,
       samples,
+      termBreakdown: {
+        terminal: expectedTerminal,
+        resources: expectedResources,
+        threat: expectedThreat,
+        position: expectedPosition,
+        tempo: expectedTempo,
+      },
     });
   }
 

@@ -39,10 +39,12 @@ export async function chooseAiAction(engine, characterId, options = {}) {
     topN.forEach((r, i) => {
       const name = SKILLS[r.action.skillId]?.name || r.action.skillId;
       const tgt = r.action.targetPos ? `(${r.action.targetPos.q},${r.action.targetPos.r})` : 'self';
-      engine.logger?.log(
-        `#${i + 1} ${name} → ${tgt}  EV=${r.expectedValue.toFixed(1)}  worst=${r.worstValue.toFixed(1)}  n=${r.samples.length}`,
-        'ai'
-      );
+      let line = `#${i + 1} ${name} → ${tgt}  EV=${r.expectedValue.toFixed(1)}  worst=${r.worstValue.toFixed(1)}  n=${r.samples.length}`;
+      if (r.termBreakdown) {
+        const tb = r.termBreakdown;
+        line += ` | T=${tb.terminal.toFixed(1)} R=${tb.resources.toFixed(1)} Th=${tb.threat.toFixed(1)} Pos=${tb.position.toFixed(1)} Tm=${tb.tempo.toFixed(1)}`;
+      }
+      engine.logger?.log(line, 'ai');
     });
 
     // Log predicted opponent top 5 by probability

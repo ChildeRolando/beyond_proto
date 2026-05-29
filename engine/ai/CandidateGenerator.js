@@ -1,6 +1,7 @@
 import { SKILLS } from '../SkillData.js';
 import { hexDistance, isOnBoard } from '../HexMath.js';
 import { getSkillPrimitiveProfile, PrimitiveTag } from './PrimitiveProfile.js';
+import { buildTacticalMap, getHexTacticalScore } from './TacticalMap.js';
 
 const DEFAULT_MAX_TARGETS_PER_SKILL = 12;
 
@@ -131,11 +132,20 @@ function rankTargets(engine, actor, targets, skill) {
     ? (skill.effects.find(e => e.cmd === 'COLLECT_CASINGS')?.area || 'ADJACENT')
     : null;
 
+  const tacticalMap = buildTacticalMap(engine, actor.id);
+  const profile = getSkillPrimitiveProfile(skill.id);
+  const isEscape = profile.tags.includes(PrimitiveTag.ESCAPE) && !profile.tags.includes(PrimitiveTag.PRESSURE);
+  const isPressure = profile.tags.includes(PrimitiveTag.PRESSURE);
+
   return targets
-    .map(target => ({
-      ...target,
-      score: targetScore(actor, target, enemies, groundResources, collectArea),
-    }))
+    .map(target => {
+      const baseScore = targetScore(actor, target, enemies, groundResources, collectArea);
+      const tactical = getHexTacticalScore(tacticalMap, target.q, target.r);
+      let blendScore = tactical.score;
+      if (isEscape) blendScore = tactical.opportunity - tactical.danger * 2;
+      else if (isPressure) blendScore = tactical.opportunity * 1.5 - tactical.danger;
+      return { ...target, score: baseScore + blendScore };
+    })
     .sort((a, b) => b.score - a.score || a.q - b.q || a.r - b.r);
 }
 
