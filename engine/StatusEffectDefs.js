@@ -124,6 +124,14 @@ export const STATUS_DEFS = {
     duration: 1,
     blocking: false,
   },
+  WEAK_POINT: {
+    id: 'WEAK_POINT',
+    name: '弱点',
+    desc: '心眼标记的弱点方向，此方向受击触发额外效果',
+    duration: -1,
+    blocking: false,
+    data: { directions: [] },
+  },
   ARMOR_BROKEN: {
     id: 'ARMOR_BROKEN',
     name: '破甲',

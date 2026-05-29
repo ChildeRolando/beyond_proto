@@ -21,6 +21,16 @@ export class SkillCooldowns {
     return this.getRemaining(characterId, skillId) <= 0;
   }
 
+  // Reduce a specific skill's remaining cooldown by N turns (min 0)
+  reduceCooldown(characterId, skillId, amount = 1) {
+    const map = this.#cooldowns.get(characterId);
+    if (!map) return;
+    const remaining = map.get(skillId);
+    if (remaining && remaining > 0) {
+      map.set(skillId, Math.max(0, remaining - amount));
+    }
+  }
+
   // Decrement all cooldowns for a character (call during CLEANUP)
   tick(characterId) {
     const map = this.#cooldowns.get(characterId);

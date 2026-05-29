@@ -33,6 +33,12 @@ export class ProjectileCalculator {
   get projectiles() { return this.#projectiles; }
   get activeCount() { return this.#projectiles.filter(p => p.alive).length; }
 
+  getProjectiles() { return this.#projectiles; }
+  destroyProjectile(id) {
+    const p = this.#projectiles.find(p => p.id === id);
+    if (p) p.alive = false;
+  }
+
   createProjectile(ownerId, fromQ, fromR, toQ, toR, power, speed, flags = []) {
     const path = hexLine(fromQ, fromR, toQ, toR);
     const isStationary = flags.includes('STATIONARY');

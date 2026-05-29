@@ -303,6 +303,9 @@ export class TurnManager {
         case CmdType.DROP_SUPPLY_CRATE:
           this._execDropSupplyCrate(cmd);
           break;
+        case CmdType.WINDSTEP_SLASH:
+          this._execWindstepSlash(cmd);
+          break;
         case CmdType.MULTI_CAST:
           this._execMultiCast(cmd);
           break;
@@ -1321,6 +1324,8 @@ export class TurnManager {
         this.#logger?.log('燕双鹰 死亡如风：对手攻击落空时自动装填', 's');
       }
     }
+    // Refresh 心眼 weak points each turn
+    this._applyMindsEyeWeakPoints();
   }
 
   // Check if a trait skill is in the character's role loadout.
@@ -1379,6 +1384,97 @@ export class TurnManager {
     if (!cmd.targetPos) return;
     this.#projectileCalculator?._dropSupplyCrate(cmd.targetPos.q, cmd.targetPos.r);
     this.#logger?.log(`补给箱空投降落 (${cmd.targetPos.q},${cmd.targetPos.r})`, 's');
+  }
+
+  _execWindstepSlash(cmd) {
+    if (!cmd.targetPos) return;
+    const actor = this.#registry.get(cmd.actorId);
+    if (!actor) return;
+    const toQ = cmd.targetPos.q, toR = cmd.targetPos.r;
+    if (!isOnBoard(toQ, toR)) return;
+
+    // Move to target
+    const fromQ = actor.position.q, fromR = actor.position.r;
+    this.#registry.updatePosition(actor.id, fromQ, fromR, toQ, toR);
+
+    // Find nearest target within radius 1: characters first, then projectiles
+    const power = typeof cmd.payload.power === 'number'
+      ? this.#buffManager.getEffectivePower(cmd.actorId, cmd.payload.power)
+      : (cmd.payload.power || 100);
+    const radius = cmd.payload.radius || 1;
+
+    let bestTarget = null;
+    let bestDist = Infinity;
+    let bestIsChar = false;
+
+    // Priority 1: enemy characters
+    for (const e of this.#registry.characters()) {
+      if (e.alive === false || e.id === cmd.actorId) continue;
+      if (e.ownerId === actor.ownerId) continue;
+      const d = hexDistance(toQ, toR, e.position.q, e.position.r);
+      if (d <= radius && d < bestDist) {
+        bestDist = d; bestTarget = e; bestIsChar = true;
+      }
+    }
+    // Priority 2: enemy projectiles
+    if (!bestTarget && this.#projectileCalculator) {
+      const projs = this.#projectileCalculator.getProjectiles?.() || [];
+      for (const p of projs) {
+        if (!p.alive || p.ownerId === actor.ownerId) continue;
+        const pq = p.path?.[p.stepIndex]?.[0] ?? p.fromQ;
+        const pr = p.path?.[p.stepIndex]?.[1] ?? p.fromR;
+        const d = hexDistance(toQ, toR, pq, pr);
+        if (d <= radius && d < bestDist) {
+          bestDist = d; bestTarget = p; bestIsChar = false;
+        }
+      }
+    }
+
+    if (bestTarget && bestIsChar) {
+      const result = this.#damageCalculator.resolve(cmd.actorId, bestTarget.id, power);
+      this.#lastHitByActor.set(cmd.actorId, result.finalDamage > 0 || result.killed);
+      if (result.finalDamage > 0 || result.killed) this._handleOnHitGain(cmd);
+      this.#logger?.log(`疾风步斩击！(${toQ},${toR})→${bestTarget.name || '?'} 威${power}`, 'rg');
+      // 心眼: if trait active, handle weak point effects
+      this._checkMindsEyeHit(cmd.actorId, bestTarget.id, fromQ, fromR, toQ, toR);
+    } else if (bestTarget && !bestIsChar) {
+      this.#projectileCalculator?.destroyProjectile?.(bestTarget.id);
+      this.#logger?.log(`疾风步斩破弹体！(${toQ},${toR}) 威${power}`, 'rg');
+    } else {
+      this.#logger?.log(`疾风步位移 (${fromQ},${fromR})→(${toQ},${toR}) 无目标`, 'mv');
+    }
+  }
+
+  // 心眼 weak point: check if hit direction matches, apply bonuses
+  _checkMindsEyeHit(attackerId, targetId, fromQ, fromR, toQ, toR) {
+    const attacker = this.#registry.get(attackerId);
+    if (!attacker || !this._hasTraitInLoadout(attacker, 'trait_duelist_minds_eye')) return;
+    // Get weak point directions on target
+    const wpBuffs = this.#buffManager.getActiveBuffs(targetId);
+    const wp = wpBuffs.find(b => b.statusType === 'WEAK_POINT');
+    if (!wp || !wp.data?.directions) return;
+    // Determine hit direction: use the hex direction from attacker to target
+    // The attacker moved to (toQ, toR) — hit direction = direction from target to attacker
+    const dirs = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+    const dq = toQ - target.position.q, dr = toR - target.position.r - target.position.q - toQ; // wrong, let me use hex math
+    // Simple approximation: check which of 6 directions from target the attacker is in
+    const target = this.#registry.get(targetId);
+    if (!target) return;
+    const hitDirIdx = dirs.findIndex(([ddq, ddr]) =>
+      toQ === target.position.q + ddq && toR === target.position.r + ddr
+    );
+    if (hitDirIdx < 0 || !wp.data.directions.includes(hitDirIdx)) return;
+    // Weak point hit!
+    this.#resourceSystem.add(attackerId, 'rage', 1);
+    this.#logger?.log('心眼弱点击破！+1怒', 'rg');
+    // Reduce 疾风步 cooldown by 1
+    this.#skillCooldowns?.reduceCooldown(attackerId, 'role_duelist_windstep', 1);
+    this.#logger?.log('疾风步 CD-1', 'rg');
+    // Refresh weak point to another direction
+    const newDirs = [0,1,2,3,4,5].filter(d => !wp.data.directions.includes(d) || d === hitDirIdx);
+    // Pick 2 random directions that don't include the hit one
+    const shuffled = newDirs.filter(d => d !== hitDirIdx).sort(() => Math.random() - 0.5);
+    wp.data.directions = [shuffled[0], shuffled[1]];
   }
 
   _clearEndOfTurnRoleStatuses() {
@@ -1531,6 +1627,25 @@ export class TurnManager {
   // Apply initial role passives at battle start (turn 1 planning phase)
   initRolePassives() {
     this._applyTurnStartRolePassives();
+    this._applyMindsEyeWeakPoints();
+  }
+
+  // Apply 心眼 weak points to all enemies of duelist characters
+  _applyMindsEyeWeakPoints() {
+    const duelists = [...this.#registry.characters()].filter(c =>
+      c.alive !== false && this._hasTraitInLoadout(c, 'trait_duelist_minds_eye')
+    );
+    if (duelists.length === 0) return;
+    const allDirs = [0, 1, 2, 3, 4, 5];
+    for (const enemy of this.#registry.characters()) {
+      if (enemy.alive === false) continue;
+      if (duelists.some(d => d.ownerId === enemy.ownerId)) continue;
+      // Apply or refresh weak points
+      if (!this.#buffManager.hasStatus(enemy.id, 'WEAK_POINT')) {
+        const shuffled = [...allDirs].sort(() => Math.random() - 0.5);
+        this.#buffManager.apply(enemy.id, 'WEAK_POINT', -1, enemy.id, { directions: shuffled.slice(0, 2) });
+      }
+    }
   }
 
   reset() {

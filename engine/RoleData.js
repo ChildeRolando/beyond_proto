@@ -69,10 +69,10 @@ export const ROLE_DEFS = {
     name: '逐风剑客',
     class: '战士',
     portraitTheme: 'amber',
-    traitIds: ['placeholder_adapt'],
+    traitIds: ['duelist_minds_eye'],
     roleSkillIds: ['role_duelist_windstep'],
-    description: '占位战士角色，用于后续高速近战设计。',
-    plannedMechanics: '连斩、闪避和追击。',
+    description: '通过心眼弱点击破和疾风步穿梭斩击的高速近战角色。',
+    plannedMechanics: '弱点标记方向判断、疾风步位移自动索敌、破防双倍消耗。',
   },
   warrior_vanguard: {
     id: 'warrior_vanguard',

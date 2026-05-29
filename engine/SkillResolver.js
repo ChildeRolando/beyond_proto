@@ -324,6 +324,11 @@ export class SkillResolver {
         return { ...base, type: CmdType.DROP_SUPPLY_CRATE,
           targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null };
 
+      case 'WINDSTEP_SLASH':
+        return { ...base, type: CmdType.WINDSTEP_SLASH,
+          targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null,
+          payload: { power: eff.power || 100, radius: eff.radius || 1 } };
+
       case 'PASS':
         return { ...base, type: CmdType.PASS,
           payload: { placeholderMessage: eff.placeholderMessage || null } };

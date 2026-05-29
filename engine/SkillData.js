@@ -623,12 +623,13 @@ export const SKILLS = {
     desc: '消耗怒气突破洗髓层数(3/4/4/5/5) 依次获得怒+1/距+1/移动与自身视为灵巧/怒+1/威力+100 | 速1',
   },
   role_duelist_windstep: {
-    id: 'role_duelist_windstep', name: '逐风步', class: '战士', type: '角色',
-    cost: {}, speed: 3, targeting: { shape: 'SELF' },
+    id: 'role_duelist_windstep', name: '疾风步', icon: 'assets/skill-icons/role/role_helldiver_supply_drop.png', class: '战士', type: '角色',
+    cost: { rage: 1 }, speed: 1, targeting: { shape: 'HEX', range: 2 }, cooldown: 3,
     effects: [
-      { cmd: 'PASS', placeholderMessage: '角色技能暂未实装：逐风步' },
+      { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 1 },
+      { cmd: 'WINDSTEP_SLASH', power: 100, radius: 1 },
     ],
-    desc: '占位角色技能。机制占位 | 速3 | cost0',
+    desc: '位移2格 终点半径1自动斩击(优先角色其次弹体) | 威力100 | 速1 | CD3 | cost1',
   },
   role_vanguard_breakline: {
     id: 'role_vanguard_breakline', name: '破阵线', class: '战士', type: '角色',
@@ -786,6 +787,14 @@ export const SKILLS = {
     ],
     desc: '被动特质 | 技能穿过次元门后加速并提高威力（机制占位）',
   },
+  trait_duelist_minds_eye: {
+    id: 'trait_duelist_minds_eye', name: '心眼', class: '战士', type: '特质',
+    isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
+    effects: [
+      { cmd: 'PASS', placeholderMessage: '心眼：敌人总有2个方向生成弱点，弱点方向击中+1怒/疾风步CD-1/双倍破防' },
+    ],
+    desc: '被动特质 | 所有敌人随机2个方向有弱点标记；弱点方向击中回复1怒、疾风步CD-1、双倍消耗护盾/怒气；命中后弱点刷新',
+  },
   trait_placeholder_adapt: {
     id: 'trait_placeholder_adapt', name: '预留特质', class: '法师', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
@@ -817,7 +826,8 @@ export const SKILLS_BY_CLASS = {
     'warrior_meteor', 'warrior_formation_break',
     'warrior_meteor_resolve',
     'warrior_realm_sweep', 'warrior_dimension_slash',
-    'trait_jimmy_breathing', 'trait_jimmy_marrow',
+    'trait_jimmy_breathing', 'trait_jimmy_marrow', 'trait_duelist_minds_eye',
+    'role_duelist_windstep',
   ],
   '射手': [
     'shooter_attack', 'shooter_reload', 'shooter_roll',
