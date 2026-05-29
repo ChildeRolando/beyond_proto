@@ -64,6 +64,12 @@ export class TurnManager {
     this.#eventBus.on(EvtType.SHIELD_ABSORBED, (data) => {
       if (data.targetId) this.#shieldHitEntities.add(data.targetId);
     });
+    // 心眼 weak point: check on every damage event
+    this.#eventBus.on(EvtType.DAMAGE_DEALT, (data) => {
+      if (data.sourceId && data.targetId) {
+        this._checkMindsEyeOnDamage(data.sourceId, data.targetId);
+      }
+    });
   }
 
   get turnNumber() { return this.#turnNumber; }
@@ -1435,10 +1441,12 @@ export class TurnManager {
 
     if (bestTarget && bestIsChar) {
       const result = this.#damageCalculator.resolve(cmd.actorId, bestTarget.id, power);
-      this.#lastHitByActor.set(cmd.actorId, result.finalDamage > 0 || result.killed);
-      if (result.finalDamage > 0 || result.killed) this._handleOnHitGain(cmd);
+      // Count as hit even if damage absorbed by rage/shield (defenses consumed)
+      const hitLanded = result.finalDamage > 0 || result.killed || result.breakdown?.some(b => b.absorbed > 0);
+      this.#lastHitByActor.set(cmd.actorId, hitLanded);
+      if (hitLanded) this._handleOnHitGain(cmd);
       this.#logger?.log(`疾风步斩击！(${toQ},${toR})→${bestTarget.name || '?'} 威${power}`, 'rg');
-      // 心眼: if trait active, handle weak point effects
+      // 心眼: check regardless of damage outcome
       this._checkMindsEyeHit(cmd.actorId, bestTarget.id, fromQ, fromR, toQ, toR);
     } else if (bestTarget && !bestIsChar) {
       this.#projectileCalculator?.destroyProjectile?.(bestTarget.id);
@@ -1446,6 +1454,16 @@ export class TurnManager {
     } else {
       this.#logger?.log(`疾风步位移 (${fromQ},${fromR})→(${toQ},${toR}) 无目标`, 'mv');
     }
+  }
+
+  // 心眼 weak point: triggered by any damage event (melee, projectile, AOE, windstep)
+  _checkMindsEyeOnDamage(attackerId, targetId) {
+    const attacker = this.#registry.get(attackerId);
+    const target = this.#registry.get(targetId);
+    if (!attacker || !target) return;
+    const fromQ = attacker.position.q, fromR = attacker.position.r;
+    const toQ = target.position.q, toR = target.position.r;
+    this._checkMindsEyeHit(attackerId, targetId, fromQ, fromR, toQ, toR);
   }
 
   // 心眼 weak point: check if hit direction matches, apply bonuses
@@ -1458,11 +1476,16 @@ export class TurnManager {
     const wpBuffs = this.#buffManager.getActiveBuffs(targetId);
     const wp = wpBuffs.find(b => b.statusType === 'WEAK_POINT');
     if (!wp || !wp.data?.directions) return;
-    // Check which of 6 hex directions from target the attacker hit from
+    // Determine which hex direction from target the attacker hit from
     const dirs = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
-    const hitDirIdx = dirs.findIndex(([ddq, ddr]) =>
-      toQ === target.position.q + ddq && toR === target.position.r + ddr
-    );
+    const dq = toQ - target.position.q, dr = toR - target.position.r;
+    let hitDirIdx = -1;
+    if (dq === 0 && dr === 0) {
+      // Same hex: hits all directions — weak point triggers from any marked direction
+      hitDirIdx = wp.data.directions[0];
+    } else {
+      hitDirIdx = dirs.findIndex(([ddq, ddr]) => dq === ddq && dr === ddr);
+    }
     if (hitDirIdx < 0 || !wp.data.directions.includes(hitDirIdx)) return;
     // Weak point hit!
     this.#resourceSystem.add(attackerId, 'rage', 1);
