@@ -9,6 +9,7 @@ import { getSkillPrimitiveProfile, PrimitiveTag } from '../engine/ai/PrimitivePr
 import { buildTacticalMap, getHexTacticalScore } from '../engine/ai/TacticalMap.js';
 import { chooseAiAction } from '../engine/ai/AiController.js';
 import { SKILLS, SKILLS_BY_CLASS } from '../engine/SkillData.js';
+import { isOnBoard, hexDistance } from '../engine/HexMath.js';
 
 let passed = 0;
 let failed = 0;
@@ -214,7 +215,7 @@ console.log('\n[5] Danger avoidance in target ranking');
   // Build tactical map and check that enemy-threatened hexes have higher danger
   const tacticalMap = buildTacticalMap(engine, ids.player1Id);
   const dangerNearEnemy = getHexTacticalScore(tacticalMap, 0, 1); // near enemy
-  const dangerFarAway = getHexTacticalScore(tacticalMap, -3, -3); // far from enemy
+  const dangerFarAway = getHexTacticalScore(tacticalMap, 3, -3); // far from enemy (on-board)
 
   check('Danger near enemy > 0', dangerNearEnemy.danger > 0,
     `danger@(0,1)=${dangerNearEnemy.danger}`);
@@ -270,6 +271,156 @@ console.log('\n[6] TacticalMap smoke test');
   const allReasons = [...tacticalMap.reasonByHex.values()].flat();
   const hasEnemyThreat = allReasons.some(r => r.startsWith('enemy_'));
   check('Reasons include enemy threat', hasEnemyThreat, `sample reasons: ${[...new Set(allReasons)].slice(0,5).join(', ')}`);
+}
+
+// ─── 7. Melee proximity opportunity for warrior ───
+console.log('\n[7] TacticalMap melee proximity');
+{
+  const warriorSkills = ['warrior_rage', 'warrior_slash', 'warrior_move', 'warrior_dash',
+    'warrior_sheathe', 'warrior_feint', 'warrior_swallow', 'warrior_iaido'];
+  const mageSkills = (SKILLS_BY_CLASS['法师'] || []).filter(sid => {
+    const s = SKILLS[sid];
+    return s && !s.hidden && !s.isTrait;
+  }).slice(0, 8);
+
+  const { engine, ids } = initBattleWithPlayers(
+    { class: '战士', roleId: 'warrior_duelist', loadout: warriorSkills, roleLoadout: [] },
+    { class: '法师', roleId: 'mage_mirror', loadout: mageSkills, roleLoadout: ['trait_mirror_slippery'] },
+    { p1: { q: 0, r: -1 }, p2: { q: 0, r: 1 } },
+  );
+
+  const tacticalMap = buildTacticalMap(engine, ids.player1Id);
+
+  // A hex adjacent to the enemy should have melee_proximity opportunity for a warrior
+  const adjacentToEnemy = getHexTacticalScore(tacticalMap, 0, 0); // between (-1) and (1)
+  check('Melee-proximity opp for warrior near enemy',
+    adjacentToEnemy.reasons.includes('melee_proximity'),
+    `reasons=${adjacentToEnemy.reasons.join(',')} opp=${adjacentToEnemy.opportunity}`);
+
+  // At least one hex on the board should have melee_proximity
+  let foundMeleeOpp = false;
+  for (const reasons of tacticalMap.reasonByHex.values()) {
+    if (reasons.includes('melee_proximity')) { foundMeleeOpp = true; break; }
+  }
+  check('Some hex has melee_proximity reason', foundMeleeOpp);
+}
+
+// ─── 8. Off-board hexes excluded from TacticalMap ───
+console.log('\n[8] Off-board hex filtering');
+{
+  const warriorSkills = ['warrior_rage', 'warrior_slash', 'warrior_move', 'warrior_dash',
+    'warrior_sheathe', 'warrior_feint', 'warrior_swallow', 'warrior_iaido'];
+  const mageSkills = (SKILLS_BY_CLASS['法师'] || []).filter(sid => {
+    const s = SKILLS[sid];
+    return s && !s.hidden && !s.isTrait;
+  }).slice(0, 8);
+
+  const { engine, ids } = initBattleWithPlayers(
+    { class: '战士', roleId: 'warrior_duelist', loadout: warriorSkills, roleLoadout: [] },
+    { class: '法师', roleId: 'mage_mirror', loadout: mageSkills, roleLoadout: ['trait_mirror_slippery'] },
+    { p1: { q: 0, r: -1 }, p2: { q: 0, r: 1 } },
+  );
+
+  const tacticalMap = buildTacticalMap(engine, ids.player1Id);
+
+  function allKeysOnBoard(map) {
+    for (const key of map.keys()) {
+      const [q, r] = key.split(',').map(Number);
+      if (!isOnBoard(q, r)) return false;
+    }
+    return true;
+  }
+
+  check('All dangerByHex keys on board', allKeysOnBoard(tacticalMap.dangerByHex));
+  check('All opportunityByHex keys on board', allKeysOnBoard(tacticalMap.opportunityByHex));
+  check('All reasonByHex keys on board', allKeysOnBoard(tacticalMap.reasonByHex));
+}
+
+// ─── 9. Non-negative danger values ───
+console.log('\n[9] Non-negative danger values');
+{
+  const warriorSkills = ['warrior_rage', 'warrior_slash', 'warrior_move', 'warrior_dash',
+    'warrior_sheathe', 'warrior_feint', 'warrior_swallow', 'warrior_iaido'];
+  const mageSkills = (SKILLS_BY_CLASS['法师'] || []).filter(sid => {
+    const s = SKILLS[sid];
+    return s && !s.hidden && !s.isTrait;
+  }).slice(0, 8);
+
+  const { engine, ids } = initBattleWithPlayers(
+    { class: '战士', roleId: 'warrior_duelist', loadout: warriorSkills, roleLoadout: [] },
+    { class: '法师', roleId: 'mage_mirror', loadout: mageSkills, roleLoadout: ['trait_mirror_slippery'] },
+    { p1: { q: 0, r: -1 }, p2: { q: 0, r: 1 } },
+  );
+
+  const tacticalMap = buildTacticalMap(engine, ids.player1Id);
+  const allDangerNonNegative = [...tacticalMap.dangerByHex.values()].every(v => v >= 0);
+  check('All danger values >= 0', allDangerNonNegative);
+
+  const allOppNonNegative = [...tacticalMap.opportunityByHex.values()].every(v => v >= 0);
+  check('All opportunity values >= 0', allOppNonNegative);
+}
+
+// ─── 10. Friendly projectile not treated as danger ───
+console.log('\n[10] Friendly projectile safety');
+{
+  // Note: creating and resolving a friendly projectile requires a full turn
+  // execution which is heavyweight for a unit test. This test verifies that
+  // the actor's own ownerId is correctly excluded from hostile checks.
+  // The hostile check uses: owner?.ownerId !== actor.ownerId
+  // which correctly filters out friendly (same owner) projectiles.
+  const warriorSkills = ['warrior_rage', 'warrior_slash', 'warrior_move', 'warrior_dash',
+    'warrior_sheathe', 'warrior_feint', 'warrior_swallow', 'warrior_iaido'];
+  const mageSkills = (SKILLS_BY_CLASS['法师'] || []).filter(sid => {
+    const s = SKILLS[sid];
+    return s && !s.hidden && !s.isTrait;
+  }).slice(0, 8);
+
+  const { engine, ids } = initBattleWithPlayers(
+    { class: '战士', roleId: 'warrior_duelist', loadout: warriorSkills, roleLoadout: [] },
+    { class: '法师', roleId: 'mage_mirror', loadout: mageSkills, roleLoadout: ['trait_mirror_slippery'] },
+    { p1: { q: 0, r: -1 }, p2: { q: 0, r: 1 } },
+  );
+
+  // Create a friendly projectile owned by the actor
+  const proj = engine.projectileCalculator.createProjectile(
+    ids.player1Id, 0, -1, 0, 1, 100, 2, []
+  );
+  check('Friendly projectile created', proj !== null && proj.alive);
+
+  if (proj) {
+    const tacticalMap = buildTacticalMap(engine, ids.player1Id);
+    // The friendly projectile path should NOT add active_projectile danger
+    let friendlyDangerOnPath = false;
+    for (let i = proj.stepIndex; i < proj.path.length; i++) {
+      const [pq, pr] = proj.path[i];
+      const key = `${pq},${pr}`;
+      const reasons = tacticalMap.reasonByHex.get(key) || [];
+      if (reasons.includes('active_projectile')) {
+        friendlyDangerOnPath = true;
+        break;
+      }
+    }
+    check('Friendly projectile path has no active_projectile danger', !friendlyDangerOnPath);
+  }
+
+  // Now create a hostile projectile (different owner)
+  const enemyProj = engine.projectileCalculator.createProjectile(
+    ids.player2Id, 0, 1, 0, -1, 100, 2, []
+  );
+  if (enemyProj) {
+    const tacticalMap2 = buildTacticalMap(engine, ids.player1Id);
+    let hostileDangerOnPath = false;
+    for (let i = enemyProj.stepIndex; i < enemyProj.path.length; i++) {
+      const [pq, pr] = enemyProj.path[i];
+      const key = `${pq},${pr}`;
+      const reasons = tacticalMap2.reasonByHex.get(key) || [];
+      if (reasons.includes('active_projectile')) {
+        hostileDangerOnPath = true;
+        break;
+      }
+    }
+    check('Hostile projectile path HAS active_projectile danger', hostileDangerOnPath);
+  }
 }
 
 // ─── Summary ───
