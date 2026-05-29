@@ -1776,14 +1776,19 @@ function renderRoleDetail(role) {
     document.getElementById('role-detail').innerHTML = '';
     return;
   }
-  const traits = getRoleTraits(role.id);
-  const skills = role.roleSkillIds.map(id => SKILLS[id]).filter(Boolean);
+  const poolIds = getRoleSkillPool(role.id);
+  const poolSkills = poolIds.map(id => SKILLS[id]).filter(Boolean);
+  const pillsHTML = poolSkills.map(s =>
+    `<span class="trait-pill">${s.name}${s.isTrait ? ' <span class="trait-badge">被动</span>' : ''}</span>`
+  ).join(' ');
+  const descsHTML = poolSkills.map(s =>
+    `${s.name}: ${s.desc || ''}`
+  ).join('<br>');
   document.getElementById('role-detail').innerHTML = `
     <h2>${role.name}</h2>
     <p>${role.description || ''}</p>
-    <div>${traits.map(t => `<span class="trait-pill">${t.name}</span>`).join('')}</div>
-    <p>${traits.map(t => `${t.name}: ${t.desc}`).join('<br>')}</p>
-    <p>${skills.map(s => `专属主动：${s.name} — ${s.desc || ''}`).join('<br>')}</p>
+    <div>${pillsHTML}</div>
+    <p>${descsHTML}</p>
     <p>${role.plannedMechanics || ''}</p>
   `;
 }
