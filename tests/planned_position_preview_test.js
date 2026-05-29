@@ -32,7 +32,7 @@ console.log('=== Planned Position Preview Tests ===\n');
     { q: 0, r: -1 },
     [{ charId: 'gunfighter', skillId: 'shooter_roll', targetPos: { q: 1, r: -1 } }],
     'gunfighter',
-    'shooter_block'
+    'shooter_aim'
   );
   check('Same-speed later skill previews from already planned movement',
     origin.q === 1 && origin.r === -1,

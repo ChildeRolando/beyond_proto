@@ -63,7 +63,7 @@ console.log('[1] Jimmy breathing');
   check('Jimmy marrow not applied (not in role loadout)', !hasBuff(engine, 'player1', 'JIMMY_MARROW'));
 
   const p1Result = engine.submitAction(ids.player1Id, 'warrior_rage', null);
-  const p2Result = engine.submitAction(ids.player2Id, 'shooter_block', null);
+  const p2Result = engine.submitAction(ids.player2Id, 'shooter_roll', null);
   check('Jimmy rage skill submitted', p1Result.success, p1Result.error);
   check('Opponent filler action submitted', p2Result.success, p2Result.error);
 
@@ -85,7 +85,7 @@ console.log('\n[2] Jimmy marrow');
   engine.resourceSystem.add(ids.player1Id, 'rage', 3);
   const p1Result = engine.submitAction(ids.player1Id, 'role_jimmy_marrow_wine', null);
   check('Jimmy marrow wine submitted', p1Result.success, p1Result.error);
-  engine.submitAction(ids.player2Id, 'shooter_block', null);
+  engine.submitAction(ids.player2Id, 'shooter_roll', null);
   await engine.executeTurn();
   const p1 = character(engine, 'player1');
   // 3 rage added - 3 consumed = 0, + 1 from turn-2 QI passive = 1
@@ -136,12 +136,12 @@ console.log('\n[3] Gunfighter finesse');
   );
 
   // Finesse is every 2 turns; turn 1 cooldown=1, need to advance to turn 2
-  engine.submitAction(ids.player1Id, 'shooter_block', null);
+  engine.submitAction(ids.player1Id, 'shooter_roll', null);
   engine.submitAction(ids.player2Id, 'warrior_rage', null);
   await engine.executeTurn();
 
   engine.resourceSystem.add(ids.player1Id, 'ammo', 1);
-  const freeFirst = engine.submitAction(ids.player1Id, 'shooter_block', null);
+  const freeFirst = engine.submitAction(ids.player1Id, 'shooter_roll', null);
   const paidAfterFree = engine.submitAction(ids.player1Id, 'shooter_attack', { q: 0, r: 1 });
   check('Gunfighter can spend finesse before paid main action', freeFirst.success && paidAfterFree.success, `${freeFirst.error || ''} ${paidAfterFree.error || ''}`);
 }
@@ -153,7 +153,7 @@ console.log('\n[3] Gunfighter finesse');
   );
 
   // Finesse is every 2 turns; turn 1 cooldown=1, need to advance to turn 2
-  engine.submitAction(ids.player1Id, 'shooter_block', null);
+  engine.submitAction(ids.player1Id, 'shooter_roll', null);
   engine.submitAction(ids.player2Id, 'warrior_rage', null);
   await engine.executeTurn();
 
@@ -212,7 +212,7 @@ console.log('\n[4] Helldiver');
   engine.submitAction(ids.player2Id, 'shooter_aim', null);
   await engine.executeTurn();
   // Bombardment fires next turn — target should be hit after two turns
-  engine.submitAction(ids.player1Id, 'shooter_block', null);
+  engine.submitAction(ids.player1Id, 'shooter_roll', null);
   engine.submitAction(ids.player2Id, 'shooter_aim', null);
   await engine.executeTurn();
   const p2 = character(engine, 'player2');

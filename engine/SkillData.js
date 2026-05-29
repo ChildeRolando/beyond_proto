@@ -465,15 +465,6 @@ export const SKILLS = {
     desc: '位移1-2格 捡起周围弹壳 | 速3 | cost0',
   },
 
-  shooter_block: {
-    id: 'shooter_block', name: '格挡', icon: 'assets/skill-icons/shooter/shooter_block.png', class: '射手', type: '防御',
-    cost: {}, speed: 3, targeting: { shape: 'SELF' },
-    effects: [
-      { cmd: 'APPLY_STATUS', status: 'BLOCKING', target: 'SELF' },
-    ],
-    desc: '格挡 不会损耗 | 威力300 | 速3 | cost0',
-  },
-
   shooter_bell: {
     id: 'shooter_bell', name: '丧钟为你而鸣', icon: 'assets/skill-icons/shooter/shooter_bell.png', class: '射手', type: '攻击',
     cost: {}, speed: 1, targeting: { shape: 'HEX', range: 6 },
@@ -829,7 +820,7 @@ export const SKILLS_BY_CLASS = {
     'trait_jimmy_breathing', 'trait_jimmy_marrow',
   ],
   '射手': [
-    'shooter_attack', 'shooter_reload', 'shooter_roll', 'shooter_block',
+    'shooter_attack', 'shooter_reload', 'shooter_roll',
     'shooter_bell', 'shooter_aim', 'shooter_predict', 'shooter_hook',
     'shooter_slow_shot', 'shooter_armor_pierce', 'shooter_cover_fire',
     'shooter_gun_dance', 'shooter_causality', 'shooter_bell_resolve',

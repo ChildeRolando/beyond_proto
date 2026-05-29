@@ -32,7 +32,7 @@ console.log('=== AI Opponent Model Tests ===\n');
 
 {
   const distribution = estimateActionDistribution([
-    { characterId: 'enemy', skillId: 'shooter_block', targetPos: null },
+    { characterId: 'enemy', skillId: 'shooter_roll', targetPos: null },
     { characterId: 'enemy', skillId: 'shooter_roll', targetPos: { q: 1, r: 0 } },
     { characterId: 'enemy', skillId: 'shooter_reload', targetPos: null },
   ], {
@@ -41,7 +41,7 @@ console.log('=== AI Opponent Model Tests ===\n');
   });
 
   check('opponent model favors projectile answers over resource build under projectile threat',
-    probabilityOf(distribution, 'shooter_block') > probabilityOf(distribution, 'shooter_reload') &&
+    probabilityOf(distribution, 'shooter_roll') > probabilityOf(distribution, 'shooter_reload') &&
     probabilityOf(distribution, 'shooter_roll') > probabilityOf(distribution, 'shooter_reload'),
     distribution.map(entry => `${entry.action.skillId}:${entry.probability.toFixed(3)}`).join(','));
 }

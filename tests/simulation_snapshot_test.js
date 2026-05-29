@@ -85,7 +85,7 @@ console.log('=== Simulation Snapshot Tests ===\n');
         playerId: 'player1',
         class: '射手',
         roleId: 'shooter_gunfighter',
-        loadoutSkillIds: ['shooter_attack', 'shooter_roll', 'shooter_reload', 'shooter_block', 'shooter_aim', 'shooter_predict', 'shooter_hook', 'shooter_iaido'],
+        loadoutSkillIds: ['shooter_attack', 'shooter_roll', 'shooter_reload', 'shooter_slow_shot', 'shooter_aim', 'shooter_predict', 'shooter_hook', 'shooter_iaido'],
         roleLoadoutSkillIds: ['trait_gunfighter_finesse', 'trait_gunfighter_strong'],
       },
       {
