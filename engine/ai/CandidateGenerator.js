@@ -15,10 +15,15 @@ export function generateCandidateActions(engine, characterId, options = {}) {
     ? [forcedSkillId]
     : getVisibleSkillIds(engine, actor);
 
+  const isForced = forcedSkillId !== undefined;
   const actions = [];
   for (const skillId of skillIds) {
     const skill = SKILLS[skillId];
-    if (!isCandidateSkill(engine, actor, skillId, skill, options)) continue;
+    if (isForced) {
+      if (!skill) continue;
+    } else {
+      if (!isCandidateSkill(engine, actor, skillId, skill, options)) continue;
+    }
 
     const targets = getCandidateTargets(engine, actor, skill, options);
     for (const targetPos of targets) {
