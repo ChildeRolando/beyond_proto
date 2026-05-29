@@ -12,6 +12,7 @@ export const ROLE_TRAITS = {
   helldiver_laser_weapon:  { id: 'helldiver_laser_weapon',  name: '激光武器' },
   helldiver_priority_ready:{ id: 'helldiver_priority_ready',name: '优先战备' },
   helldiver_fast_ready:  { id: 'helldiver_fast_ready',  name: '快速战备' },
+  helldiver_speed_draw:  { id: 'helldiver_speed_draw',  name: '全凭手速' },
   jimmy_breathing:       { id: 'jimmy_breathing',       name: '呼吸法' },
   jimmy_marrow:          { id: 'jimmy_marrow',          name: '易经洗髓酒' },
   mirror_slippery:       { id: 'mirror_slippery',       name: '脚底抹油' },
@@ -19,6 +20,7 @@ export const ROLE_TRAITS = {
   mirror_dimension_lord: { id: 'mirror_dimension_lord', name: '次元之主' },
   mirror_phase_sling:    { id: 'mirror_phase_sling',    name: '相位弹弓' },
   yan_death_wind:        { id: 'yan_death_wind',        name: '死亡如风' },
+  duelist_minds_eye:     { id: 'duelist_minds_eye',     name: '心眼' },
   placeholder_adapt:     { id: 'placeholder_adapt',     name: '预留特质' },
 };
 
