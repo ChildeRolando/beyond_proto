@@ -1835,8 +1835,14 @@ function renderLoadout(cfg) {
     return `<button class="loadout-slot role-slot" data-slot="${i}" data-pool="role">${i + 1}. ${label}</button>`;
   }).join('');
 
-  // Class skill pool (exclude traits)
-  const classPool = (SKILLS_BY_CLASS[cfg.class] || []).filter(id => SKILLS[id] && !SKILLS[id].hidden && !SKILLS[id].isTrait);
+  // Class skill pool: exclude traits + role skills from other roles
+  const rolePool = getRoleSkillPool(cfg.roleId);
+  const classPool = (SKILLS_BY_CLASS[cfg.class] || []).filter(id => {
+    const skill = SKILLS[id];
+    if (!skill || skill.hidden || skill.isTrait) return false;
+    if (skill.type === '角色' && !rolePool.includes(id)) return false;
+    return true;
+  });
   document.getElementById('skill-pool').innerHTML = classPool.map(id => `
     <button class="pool-skill ${cfg.loadoutSkillIds.includes(id) ? 'selected' : ''}" data-skill="${id}" data-pool="class" title="${SKILLS[id].desc || ''}">
       ${SKILLS[id].name}
@@ -1844,7 +1850,6 @@ function renderLoadout(cfg) {
   `).join('');
 
   // Role skill pool (traits + active role skills)
-  const rolePool = getRoleSkillPool(cfg.roleId);
   document.getElementById('role-skill-pool').innerHTML = rolePool.map(id => `
     <button class="pool-skill ${(cfg.roleLoadoutSkillIds || []).includes(id) ? 'selected' : ''} ${SKILLS[id].isTrait ? 'pool-trait' : ''}" data-skill="${id}" data-pool="role" title="${SKILLS[id].desc || ''}">
       ${SKILLS[id].name}${SKILLS[id].isTrait ? ' <span class="trait-badge">被动</span>' : ''}
