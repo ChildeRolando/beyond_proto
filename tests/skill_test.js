@@ -532,11 +532,11 @@ async function testWarriorSkills() {
   {
     const { e, m, w } = freshEngine({ magePos: { q:0, r:-1 }, warriorPos: { q:0, r:2 } });
     await runTurns(e, m, w, 1, 'mage_gather', 'warrior_rage');
-    // T2: dash toward mage (0,-2). Warrior at (0,2), dashes 1 hex → (0,1). Melee at (0,-2) — range 3, too far.
-    await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_dash', target: { q:0, r:-2 } });
+    // T2: Warrior at (0,2), dash 1 hex to (0,1). Slash radius 1 covers (0,0),(0,2) — mage at (0,-1) is range 2, too far.
+    await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_dash', target: { q:0, r:1 } });
     const wPos = e.registry.getPosition(w);
     result('踏前斩位移', wPos.q === 0 && wPos.r === 1, `warrior@(${wPos.q},${wPos.r})`);
-    result('未命中(距离尚远)', isAlive(e, m), `distance=${hexDistance(wPos.q, wPos.r, 0, -2)}`);
+    result('未命中(距离尚远)', isAlive(e, m), `distance=${hexDistance(wPos.q, wPos.r, 0, -1)}`);
   }
 
   {

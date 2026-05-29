@@ -622,7 +622,7 @@ export const SKILLS = {
     desc: '消耗怒气突破洗髓层数(3/4/4/5/5) 依次获得怒+1/距+1/移动与自身视为灵巧/怒+1/威力+100 | 速1',
   },
   role_duelist_windstep: {
-    id: 'role_duelist_windstep', name: '疾风步', icon: 'assets/skill-icons/role/role_helldiver_supply_drop.png', class: '战士', type: '角色',
+    id: 'role_duelist_windstep', name: '逐风步', icon: 'assets/skill-icons/role/role_duelist_windstep.png', class: '战士', type: '角色',
     cost: { rage: 1 }, speed: 1, targeting: { shape: 'HEX', range: 2 }, cooldown: 3,
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 1 },
@@ -791,9 +791,9 @@ export const SKILLS = {
     id: 'trait_duelist_minds_eye', name: '心眼', class: '战士', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
-      { cmd: 'PASS', placeholderMessage: '心眼：敌人总有2个方向生成弱点，弱点方向击中+1怒/疾风步CD-1' },
+      { cmd: 'PASS', placeholderMessage: '心眼：敌人总有2个方向生成弱点，弱点方向击中+1怒/逐风步CD-1' },
     ],
-    desc: '被动特质 | 所有敌人随机2个方向有弱点标记；弱点方向击中回复1怒、疾风步CD-1；命中后弱点刷新',
+    desc: '被动特质 | 所有敌人随机2个方向有弱点标记；弱点方向击中回复1怒、逐风步CD-1；命中后弱点刷新',
   },
   trait_placeholder_adapt: {
     id: 'trait_placeholder_adapt', name: '预留特质', class: '法师', type: '特质',
@@ -827,7 +827,6 @@ export const SKILLS_BY_CLASS = {
     'warrior_meteor_resolve',
     'warrior_realm_sweep', 'warrior_dimension_slash',
     'trait_jimmy_breathing', 'trait_jimmy_marrow', 'trait_duelist_minds_eye',
-    'role_duelist_windstep',
   ],
   '射手': [
     'shooter_attack', 'shooter_reload', 'shooter_roll',
@@ -838,6 +837,6 @@ export const SKILLS_BY_CLASS = {
     'trait_gunfighter_finesse', 'trait_gunfighter_strong',
     'trait_yan_death_wind',
     'trait_helldiver_laser_weapon', 'trait_helldiver_priority_ready', 'trait_helldiver_fast_ready', 'trait_helldiver_speed_draw',
-    'role_helldiver_supply_drop', 'role_helldiver_bombardment', 'role_helldiver_bombardment_resolve',
+    'role_helldiver_bombardment_resolve',
   ],
 };

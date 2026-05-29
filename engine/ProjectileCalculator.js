@@ -40,9 +40,17 @@ export class ProjectileCalculator {
   }
 
   createProjectile(ownerId, fromQ, fromR, toQ, toR, power, speed, flags = []) {
-    const path = hexLine(fromQ, fromR, toQ, toR);
+    let path = hexLine(fromQ, fromR, toQ, toR);
     const isStationary = flags.includes('STATIONARY');
-    if (path.length < 2 && !isStationary) return null;
+    const isMelee = flags.includes('MELEE');
+    if (path.length < 2 && !isStationary) {
+      // Same-hex melee: duplicate the hex so the projectile advances and triggers body contact
+      if (isMelee && path.length === 1) {
+        path = [[path[0][0], path[0][1]], [path[0][0], path[0][1]]];
+      } else {
+        return null;
+      }
+    }
 
     const proj = {
       id: 'proj_' + (++_projId),
@@ -50,7 +58,7 @@ export class ProjectileCalculator {
       path,
       stepIndex: 0,
       power,
-      speed: speed || 1,
+      speed: speed ?? 1,
       flags,
       alive: true,
       fromQ, fromR,
@@ -127,11 +135,19 @@ export class ProjectileCalculator {
           projectileId: proj.id, step: proj.stepIndex, q, r,
           event: 'step', speedTier,
         });
+      }
 
+      // --- Check crossing collisions BEFORE body contact (melee-melee swaps annihilate) ---
+      this._checkCrossings();
+
+      // --- Body contact for projectiles that survived crossing check ---
+      for (const proj of active) {
+        if (!proj.alive) continue;
+        const [q, r] = proj.path[proj.stepIndex];
         this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager);
       }
 
-      // After all projectiles advanced one step: check same-hex collisions (mutual annihilation)
+      // --- Same-hex collisions AFTER body contact (melee hits target before stationary collision) ---
       this._checkCollisions();
 
       // Remove dead projectiles from active set
@@ -196,7 +212,6 @@ export class ProjectileCalculator {
         if (!projs[i].alive || destroyed.has(projs[i].id)) continue;
         for (let j = i + 1; j < projs.length; j++) {
           if (!projs[j].alive || destroyed.has(projs[j].id)) continue;
-          // Friendly projectiles (same owner) do NOT annihilate each other
           if (projs[i].ownerId === projs[j].ownerId) continue;
 
           const strong = projs[i], weak = projs[j];
@@ -213,6 +228,40 @@ export class ProjectileCalculator {
             weak.alive = false;
             destroyed.add(weak.id);
             const tag = (strongMelee || weakMelee) ? '⚔💥 斩击贯穿！' : '💥 弹体贯穿！';
+            this.#logger?.log(`${tag}余威${strong.power}(不降威)`, 'sh');
+          }
+        }
+      }
+    }
+  }
+
+  // Check projectiles that swapped positions in this step (crossing annihilation, e.g. melee-melee)
+  _checkCrossings() {
+    const destroyed = new Set();
+    for (let i = 0; i < this.#projectiles.length; i++) {
+      const a = this.#projectiles[i];
+      if (!a.alive || destroyed.has(a.id) || a.stepIndex < 1) continue;
+      const [aCurQ, aCurR] = a.path[a.stepIndex];
+      const [aPrevQ, aPrevR] = a.path[a.stepIndex - 1];
+      for (let j = i + 1; j < this.#projectiles.length; j++) {
+        const b = this.#projectiles[j];
+        if (!b.alive || destroyed.has(b.id) || b.stepIndex < 1) continue;
+        if (a.ownerId === b.ownerId) continue;
+        const [bCurQ, bCurR] = b.path[b.stepIndex];
+        const [bPrevQ, bPrevR] = b.path[b.stepIndex - 1];
+        if (aCurQ === bPrevQ && aCurR === bPrevR && bCurQ === aPrevQ && bCurR === aPrevR) {
+          if (a.power === b.power) {
+            a.alive = false; b.alive = false;
+            destroyed.add(a.id); destroyed.add(b.id);
+            const tag = (a.flags.includes('MELEE') || b.flags.includes('MELEE')) ? '⚔💥 斩击相杀！' : '💥 弹体交错！';
+            this.#logger?.log(`${tag}威${a.power} vs 威${b.power}`, 'die');
+          } else {
+            const strong = a.power > b.power ? a : b;
+            const weak = a.power > b.power ? b : a;
+            weak.alive = false;
+            destroyed.add(weak.id);
+            const strongMelee = strong.flags.includes('MELEE') || weak.flags.includes('MELEE');
+            const tag = strongMelee ? '⚔💥 斩击贯穿！' : '💥 弹体贯穿！';
             this.#logger?.log(`${tag}余威${strong.power}(不降威)`, 'sh');
           }
         }
@@ -250,8 +299,9 @@ export class ProjectileCalculator {
           proj.alive = false;
           // If interceptor has SHEATHED buff, upgrade it to permanent
           buffManager.lockSheathed(entity.id);
+          const ownerName = registry.get(proj.ownerId)?.name || proj.ownerId;
           const meleeTag = proj.flags.includes('MELEE') ? '斩击' : '弹体';
-          this.#logger?.log(`⚔ 拦截！威${ip}斩破${meleeTag}威${proj.power}`, 'rg');
+          this.#logger?.log(`${entity.name || entity.id} ⚔ 拦截(${ownerName})！威${ip}斩破${meleeTag}威${proj.power}`, 'rg');
           this.#keyframes.push({
             projectileId: proj.id, event: 'intercepted', q, r, interceptorId: entity.id,
           });
@@ -259,7 +309,7 @@ export class ProjectileCalculator {
         } else {
           proj.power -= ip;
           const meleeTag = proj.flags.includes('MELEE') ? '斩击' : '弹体';
-          this.#logger?.log(`⚔ 拦截！${meleeTag}削弱至威${proj.power}`, 'rg');
+          this.#logger?.log(`${entity.name || entity.id} ⚔ 拦截削弱！${meleeTag}降至威${proj.power}`, 'rg');
         }
         intercepted = true;
         break;
@@ -287,7 +337,8 @@ export class ProjectileCalculator {
           }
         }
         proj.alive = false;
-        this.#logger?.log(`💥 弹体爆裂AOE！威${proj.power}`, 'sh');
+        const aoeOwnerName = registry.get(proj.ownerId)?.name || proj.ownerId;
+        this.#logger?.log(`${aoeOwnerName} 💥 弹体爆裂AOE！威${proj.power}`, 'sh');
         this.#keyframes.push({
           projectileId: proj.id, event: 'aoe_explosion', q, r, hit,
         });
@@ -308,13 +359,16 @@ export class ProjectileCalculator {
         hit = true;
         targetId = e.id;
         proj.alive = false;
+        const atkName = registry.get(proj.ownerId)?.name || proj.ownerId;
+        const tgtName = e.name || e.id;
         const isMeleeHit = proj.flags.includes('MELEE');
         if (result.killed) {
-          this.#logger?.log((isMeleeHit ? '⚔ 斩击击杀！威' : '🔮 弹体击杀！威') + proj.power, 'die');
+          this.#logger?.log(`${atkName} ${isMeleeHit ? '⚔' : '🔮'}→${tgtName} 击杀！威${proj.power}`, 'die');
         } else if (result.finalDamage > 0) {
-          this.#logger?.log((isMeleeHit ? '⚔ 斩击命中！威' : '🔮 弹体命中！威') + proj.power, 'sh');
+          this.#logger?.log(`${atkName} ${isMeleeHit ? '⚔' : '🔮'}→${tgtName} 命中 ${result.finalDamage}伤害 威${proj.power}`, 'sh');
         } else {
-          this.#logger?.log((isMeleeHit ? '⚔ 斩击(被防御吸收) 威' : '🔮 弹体命中(被防御吸收) 威') + proj.power, 'sh');
+          const absLayers = (result.breakdown || []).filter(b => b.absorbed > 0).map(b => b.layer).join('+');
+          this.#logger?.log(`${atkName} ${isMeleeHit ? '⚔' : '🔮'}→${tgtName} 被${absLayers || '防御'}吸收 威${proj.power}`, 'sh');
         }
         this.#keyframes.push({
           projectileId: proj.id, event: 'body_contact', q, r, targetId: e.id, hit,

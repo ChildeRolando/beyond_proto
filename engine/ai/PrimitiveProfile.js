@@ -161,6 +161,13 @@ function applyEffect(profile, effect, skill) {
     addTag(profile, PrimitiveTag.INVEST);
     addTag(profile, PrimitiveTag.SCALING_THREAT);
   }
+  if (effect.cmd === 'MARROW_UPGRADE') {
+    addTag(profile, PrimitiveTag.BUILD);
+    addTag(profile, PrimitiveTag.INVEST);
+    addTag(profile, PrimitiveTag.SCALING_THREAT);
+    // Each layer provides permanent bonuses (rage/range/power)
+    addDelta(profile, 'rage', 1);
+  }
 }
 
 function applyAttackEffect(profile, effect, skill) {

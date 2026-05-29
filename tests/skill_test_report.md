@@ -139,7 +139,7 @@
 ### warrior_dash — 踏前斩
 
 ✅ 踏前斩位移 — warrior@(0,1)
-✅ 未命中(距离尚远) — distance=3
+✅ 未命中(距离尚远) — distance=2
 ✅ 踏前斩冲刺+斩击(盾吸收) — warrior@(0,0), mage dead=false
 
 ### warrior_sheathe — 纳刀

@@ -214,7 +214,7 @@
 **prompt:** A wine gourd pouring amber liquid that rises into bone-renewal energy wisps around a body silhouette, alchemical wine, drinking vessel with essence spiraling upward, amber and jade green palette, game skill icon, flat vector style, minimalist, dark fantasy theme, bold silhouette, high contrast, no circular frame
 
 ### role_duelist_windstep — 逐风步
-**prompt:** Wind-current trails curling around a pair of nimble feet, wind-chasing footwork, swirling air currents under stepping boots, jade green and pale cyan palette, game skill icon, flat vector style, minimalist, dark fantasy theme, bold silhouette, high contrast, no circular frame
+**prompt:** A figure dissolving into wind streaks at one position and rematerializing at another with a diagonal sword slash cutting through the arrival point, teleport-behind-slash, wind-blur between origin and destination with a sharp blade gleam at impact, jade green and crimson palette, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast
 
 ### role_vanguard_breakline — 破阵线
 **prompt:** A shield-wall formation line being breached at a single point by a wedge-shaped charge, frontline breakthrough, formation line cracking with a bold arrow piercing through, dark iron and crimson palette, game skill icon, flat vector style, minimalist, dark fantasy theme, bold silhouette, high contrast, no circular frame

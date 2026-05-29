@@ -369,6 +369,7 @@ export class TurnManager {
       CmdType.ATTACK_AOE_PATH,
       CmdType.ATTACK_AOE_TARGET,
       CmdType.SPAWN_STATIONARY_AOE,
+      CmdType.WINDSTEP_SLASH,
     ].includes(cmd.type);
   }
 
@@ -377,6 +378,7 @@ export class TurnManager {
       CmdType.ATTACK_MELEE,
       CmdType.ATTACK_AOE_SELF,
       CmdType.ATTACK_AOE_PATH,
+      CmdType.WINDSTEP_SLASH,
     ].includes(cmd.type);
   }
 
@@ -563,7 +565,7 @@ export class TurnManager {
 
     const dist = hexDistance(originQ, originR, targetQ, targetR);
     if (dist > this.#buffManager.getEffectiveRange(cmd.actorId, cmd.payload.range || 1)) {
-      this.#logger?.log('⚔ 距离过远，挥空', 's');
+      this.#logger?.log(`${actor?.name || cmd.actorId} ⚔ 距离过远，挥空`, 's');
       return;
     }
 
@@ -579,27 +581,10 @@ export class TurnManager {
       cmd.payload.range = 2; // enhanced range
       // Refund the rage cost (cost becomes 0)
       this.#resourceSystem?.add(cmd.actorId, 'rage', 3);
-      this.#logger?.log('纳刀解放！居合斩强化', 'rg');
+      this.#logger?.log(`${actor?.name || cmd.actorId} 纳刀解放！居合斩强化`, 'rg');
     }
 
-    // Same-hex melee: resolve directly (projectile path would be empty)
-    if (targetQ === originQ && targetR === originR) {
-      const entities = this.#registry.getAt(targetQ, targetR);
-      let hit = false;
-      for (const e of entities) {
-        if (e.type === 'CHARACTER' && e.id !== cmd.actorId && e.alive !== false) {
-          const result = this.#damageCalculator.resolve(cmd.actorId, e.id, power, 'PHYSICAL', {});
-          if (result.killed || result.finalDamage > 0) hit = true;
-          this.#logger?.log('⚔ 斩击命中！威' + power, 'rg');
-        }
-      }
-      this.#lastHitByActor.set(cmd.actorId, hit);
-      if (!hit) this.#logger?.log('⚔ 挥空', 's');
-      return;
-    }
-
-    // Create melee projectile — travels along path, can collide with enemy projectiles,
-    // resolves body contact when reaching target hex.
+    // Create melee projectile — handles same-hex and ranged via body-contact system
     if (this.#projectileCalculator) {
       const effectiveSpeed = cmd.subSpeed ?? 1;
       const flags = forceHit ? ['MELEE', 'SURE_HIT'] : ['MELEE'];
@@ -609,7 +594,7 @@ export class TurnManager {
     }
 
     this.#lastHitByActor.set(cmd.actorId, false); // determined on body contact
-    this.#logger?.log('⚔ 斩击！威' + power, 'rg');
+    this.#logger?.log(`${actor?.name || cmd.actorId} ⚔ 斩击！威${power}`, 'rg');
   }
 
   _execAttackProjectile(cmd) {
@@ -683,7 +668,7 @@ export class TurnManager {
     }
 
     this.#lastHitByActor.set(cmd.actorId, false); // determined later on body contact
-    this.#logger?.log('💥 目标AOE！威' + power + ' 半径' + radius, 'rg');
+    this.#logger?.log(`${actor?.name || cmd.actorId} 💥 目标AOE！威${power} 半径${radius}`, 'rg');
   }
 
   _execAttackAoeSelf(cmd) {
@@ -1440,17 +1425,20 @@ export class TurnManager {
     }
 
     if (bestTarget && bestIsChar) {
-      const result = this.#damageCalculator.resolve(cmd.actorId, bestTarget.id, power);
-      // Count as hit even if damage absorbed by rage/shield (defenses consumed)
-      const hitLanded = result.finalDamage > 0 || result.killed || result.breakdown?.some(b => b.absorbed > 0);
-      this.#lastHitByActor.set(cmd.actorId, hitLanded);
-      if (hitLanded) this._handleOnHitGain(cmd);
-      this.#logger?.log(`疾风步斩击！(${toQ},${toR})→${bestTarget.name || '?'} 威${power}`, 'rg');
+      // Fire melee projectile from post-teleport position — goes through body-contact
+      // system so 纳刀 interception and 心眼 direction check work correctly
+      this.#lastHitByActor.set(cmd.actorId, false); // determined on body contact
+      this.#projectileCalculator?.createProjectile(
+        cmd.actorId, toQ, toR, bestTarget.position.q, bestTarget.position.r,
+        power, 1, ['MELEE']
+      );
+      const skillName = SKILLS[cmd.skillId]?.name || '风步';
+      this.#logger?.log(`${actor?.name || cmd.actorId} ${skillName}(${toQ},${toR})→${bestTarget.name || '?'} 威${power}`, 'rg');
     } else if (bestTarget && !bestIsChar) {
       this.#projectileCalculator?.destroyProjectile?.(bestTarget.id);
-      this.#logger?.log(`疾风步斩破弹体！(${toQ},${toR}) 威${power}`, 'rg');
+      this.#logger?.log(`${actor?.name || cmd.actorId} ${SKILLS[cmd.skillId]?.name || '风步'}斩破弹体(${toQ},${toR}) 威${power}`, 'rg');
     } else {
-      this.#logger?.log(`疾风步位移 (${fromQ},${fromR})→(${toQ},${toR}) 无目标`, 'mv');
+      this.#logger?.log(`${actor?.name || cmd.actorId} ${SKILLS[cmd.skillId]?.name || '风步'}位移(${fromQ},${fromR})→(${toQ},${toR}) 无目标`, 'mv');
     }
   }
 
@@ -1476,7 +1464,7 @@ export class TurnManager {
     if (!wp || !wp.data?.directions) return;
     // Determine which hex direction from target the attacker hit from
     const dirs = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
-    const dq = toQ - target.position.q, dr = toR - target.position.r;
+    const dq = fromQ - target.position.q, dr = fromR - target.position.r;
     let hitDirIdx = -1;
     if (dq === 0 && dr === 0) {
       // Same hex: hits all directions — weak point triggers from any marked direction
@@ -1487,15 +1475,14 @@ export class TurnManager {
     if (hitDirIdx < 0 || !wp.data.directions.includes(hitDirIdx)) return;
     // Weak point hit!
     this.#resourceSystem.add(attackerId, 'rage', 1);
-    this.#logger?.log('心眼弱点击破！+1怒', 'rg');
-    // Reduce 疾风步 cooldown by 1
+    this.#logger?.log(`${attacker?.name || attackerId} 心眼弱点击破→${target?.name || targetId} +1怒`, 'rg');
+    // Reduce 逐风步 cooldown by 1
     this.#skillCooldowns?.reduceCooldown(attackerId, 'role_duelist_windstep', 1);
-    this.#logger?.log('疾风步 CD-1', 'rg');
-    // Refresh weak point to another direction
-    const newDirs = [0,1,2,3,4,5].filter(d => !wp.data.directions.includes(d) || d === hitDirIdx);
-    // Pick 2 random directions that don't include the hit one
-    const shuffled = newDirs.filter(d => d !== hitDirIdx).sort(() => Math.random() - 0.5);
-    wp.data.directions = [shuffled[0], shuffled[1]];
+    this.#logger?.log(`${attacker?.name || attackerId} 逐风步 CD-1`, 'rg');
+    // Remove hit direction immediately, restore at start of next-next turn
+    wp.data.directions = wp.data.directions.filter(d => d !== hitDirIdx);
+    if (!wp.data.pendingRefresh) wp.data.pendingRefresh = {};
+    wp.data.pendingRefresh[hitDirIdx] = 2;
   }
 
   _clearEndOfTurnRoleStatuses() {
@@ -1666,6 +1653,24 @@ export class TurnManager {
       if (!this.#buffManager.hasStatus(enemy.id, 'WEAK_POINT')) {
         const shuffled = [...allDirs].sort(() => Math.random() - 0.5);
         this.#buffManager.apply(enemy.id, 'WEAK_POINT', -1, enemy.id, { directions: shuffled.slice(0, 2) });
+      }
+      // Process delayed weak point restorations
+      const wpBuffs2 = this.#buffManager.getActiveBuffs(enemy.id);
+      const wpEntry = wpBuffs2.find(b => b.statusType === 'WEAK_POINT');
+      if (wpEntry?.data?.pendingRefresh) {
+        const refresh = wpEntry.data.pendingRefresh;
+        for (const dirStr of Object.keys(refresh)) {
+          refresh[dirStr]--;
+          if (refresh[dirStr] <= 0) {
+            const candidates = allDirs.filter(d => !wpEntry.data.directions.includes(d));
+            if (candidates.length > 0) {
+              const newDir = candidates[Math.floor(Math.random() * candidates.length)];
+              wpEntry.data.directions.push(newDir);
+            }
+            delete refresh[dirStr];
+          }
+        }
+        if (Object.keys(refresh).length === 0) delete wpEntry.data.pendingRefresh;
       }
     }
   }
