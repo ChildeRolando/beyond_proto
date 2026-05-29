@@ -276,7 +276,13 @@ export class GameEngine {
         buffs: this.buffManager.getActiveBuffs(c.id).map(b => ({
           id: b.id, statusType: b.statusType, name: STATUS_DEFS[b.statusType]?.name || b.statusType, desc: STATUS_DEFS[b.statusType]?.desc || '', duration: b.duration, data: { ...b.data },
         })),
-        traits: getRoleTraits(c.roleId),
+        traits: getRoleTraits(c.roleId).filter(t => {
+          // Only show traits that are actually active (gated by role loadout)
+          if (c.roleLoadoutSkillIds) return c.roleLoadoutSkillIds.includes('trait_' + t.id);
+          // Backward compat: only default traits are active
+          const defaults = c.roleId ? getDefaultRoleLoadout(c.roleId) : [];
+          return defaults.includes('trait_' + t.id);
+        }),
         loadoutSkillIds: c.loadoutSkillIds ? [...c.loadoutSkillIds] : null,
         roleLoadoutSkillIds: c.roleLoadoutSkillIds ? [...c.roleLoadoutSkillIds] : null,
         roleSkillIds: getRoleSkillIds(c.roleId),

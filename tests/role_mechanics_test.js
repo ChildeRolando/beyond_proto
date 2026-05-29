@@ -252,6 +252,10 @@ console.log('\n[6] Trait gating');
   await engine.executeTurn();
   const p1 = character(engine, 'player1');
   check('Laser weapon active when selected', p1.resources.backpackAmmo === 1, `backpack=${p1.resources.backpackAmmo}`);
+  // Display: only selected traits shown in panel
+  const stateTraits1 = engine.getState().characters.find(c => c.ownerId === 'player1').traits;
+  check('State traits only show selected (1 trait)', stateTraits1.length === 1 && stateTraits1[0].id === 'helldiver_laser_weapon',
+    `traits in state: ${stateTraits1.map(t => t.id).join(', ')}`);
   const hasFastReady = engine.turnManager._hasTraitInLoadout(
     engine.registry.get(ids.player1Id), 'trait_helldiver_fast_ready');
   const hasSpeedDraw = engine.turnManager._hasTraitInLoadout(
@@ -288,6 +292,13 @@ console.log('\n[6] Trait gating');
   check('Default traits include priority ready', hasPriority);
   check('Default traits do NOT include fast ready', !hasFastDef);
   check('Laser weapon fires in default (backpack +1)', p1.resources.backpackAmmo === 1, `backpack=${p1.resources.backpackAmmo}`);
+  // Display: getState().traits should only show active traits (2 defaults, not all 4)
+  const stateTraits = engine.getState().characters.find(c => c.ownerId === 'player1').traits;
+  const traitIds = stateTraits.map(t => t.id);
+  check('State traits only show default active traits (2, not all 4)', traitIds.length === 2 &&
+    traitIds.includes('helldiver_laser_weapon') && traitIds.includes('helldiver_priority_ready') &&
+    !traitIds.includes('helldiver_fast_ready') && !traitIds.includes('helldiver_speed_draw'),
+    `traits in state: ${traitIds.join(', ')}`);
 }
 
 {
@@ -301,6 +312,10 @@ console.log('\n[6] Trait gating');
   await engine.executeTurn();
   const p1 = character(engine, 'player1');
   check('Empty loadout: no laser weapon active', p1.resources.backpackAmmo === 0, `backpack=${p1.resources.backpackAmmo}`);
+  // Display: empty traits list in panel
+  const stateTraits0 = engine.getState().characters.find(c => c.ownerId === 'player1').traits;
+  check('State traits empty when no traits selected', stateTraits0.length === 0,
+    `traits in state: ${stateTraits0.map(t => t.id).join(', ')}`);
 }
 
 console.log(`\n=== Result: ${passed} passed, ${failed} failed ===`);
