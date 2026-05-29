@@ -101,11 +101,25 @@ function emptyProfile(skillId) {
 
 function applyEffect(profile, effect, skill) {
   if (ATTACK_EFFECTS.has(effect.cmd)) applyAttackEffect(profile, effect, skill);
-  if (MOVE_EFFECTS.has(effect.cmd)) applyMoveEffect(profile, effect);
+  if (MOVE_EFFECTS.has(effect.cmd)) {
+    // 折返跃迁: temporary dodge, not real repositioning
+    const isJumpReturn = (skill.effects || []).some(e => e.cmd === 'SET_FLAG' && e.flag === 'jumpReturn');
+    if (isJumpReturn) {
+      addTag(profile, PrimitiveTag.DEFEND);
+      addTag(profile, PrimitiveTag.AVOID_PROJECTILE);
+      // Don't tag ESCAPE / AVOID_MELEE / ANSWER_AREA — net position unchanged
+    } else {
+      applyMoveEffect(profile, effect);
+    }
+  }
 
   if (effect.cmd === 'GAIN_RESOURCE') {
     addTag(profile, PrimitiveTag.BUILD);
     addDelta(profile, effect.resource, numeric(effect.amount));
+  }
+  if (effect.cmd === 'SET_FLAG' && effect.flag === 'pendingQi') {
+    addTag(profile, PrimitiveTag.BUILD);
+    addDelta(profile, 'qi', 1);
   }
   if (effect.cmd === 'CONSUME_RESOURCE') {
     addDelta(profile, effect.resource, -numeric(effect.amount));

@@ -2949,7 +2949,7 @@ async function submitAiAndExecutePveTurn() {
   try {
     const aiResult = await engine.submitAiAction(aiId, {
       opponentId: getMyCharacterIds()[0],
-      policy: { maxOwnActions: 10, maxOpponentActions: 10, opponentTemperature: 50 },
+      policy: { maxOwnActions: 10, maxOpponentActions: 16, opponentTemperature: 50 },
     });
     if (aiResult.success) {
       localSubmittedSet.add(aiId);
