@@ -117,6 +117,12 @@ function applyEffect(profile, effect, skill) {
     addTag(profile, PrimitiveTag.BUILD);
     addDelta(profile, effect.resource, numeric(effect.amount));
   }
+  // 翻滚/钩锁 pick up casings — shooter's actual gathering actions
+  if (effect.cmd === 'COLLECT_CASINGS') {
+    addTag(profile, PrimitiveTag.BUILD);
+    const estimated = effect.area === 'PATH' ? 2 : 1;
+    addDelta(profile, 'backpackAmmo', estimated);
+  }
   if (effect.cmd === 'SET_FLAG' && effect.flag === 'pendingQi') {
     addTag(profile, PrimitiveTag.BUILD);
     addDelta(profile, 'qi', 1);
