@@ -1,6 +1,6 @@
 // Speed-tiered command queue with validation
 export class CommandQueue {
-  #queues = new Map([[0, []], [1, []], [2, []], [3, []]]);
+  #queues = new Map([[0, []], [1, []], [2, []], [3, []], [4, []]]);
   #eventBus;
 
   constructor(eventBus) { this.#eventBus = eventBus; }
@@ -59,7 +59,7 @@ export class CommandQueue {
   clearAll() { for (const k of this.#queues.keys()) this.#queues.set(k, []); }
 
   // Iterate commands in speed order (3→2→1→0)
-  *speeds() { yield 3; yield 2; yield 1; yield 0; }
+  *speeds() { yield 4; yield 3; yield 2; yield 1; yield 0; }
 
   serialize() {
     return {

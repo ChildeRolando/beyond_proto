@@ -98,7 +98,7 @@ export class TurnManager {
     // to guarantee P2P lockstep regardless of submission order. Commands from
     // the same actor stay in their original sequence order (important for
     // intra-sequence dependencies like ATTACK_MELEE before GAIN_RESOURCE ON_HIT).
-    const groups = { 3: [], 2: [], 1: [], 0: [] };
+    const groups = { 4: [], 3: [], 2: [], 1: [], 0: [] };
     const loggedSeqs = new Set();
     for (const { speed, command } of valid) {
       groups[speed].push(command);
@@ -109,7 +109,7 @@ export class TurnManager {
         this.#logger?.log(`${char?.name || command.actorId} → ${skillName}`, 'action');
       }
     }
-    for (const spd of [3, 2, 1, 0]) {
+    for (const spd of [4, 3, 2, 1, 0]) {
       groups[spd].sort((a, b) => (a.actorId || '').localeCompare(b.actorId || ''));
     }
     this.#speedGroups = groups;
@@ -119,7 +119,7 @@ export class TurnManager {
     this._processDelayedCommands();
 
     // --- RESOLVE: Execute by speed tier 3→2→1→0 ---
-    for (const spd of [3, 2, 1, 0]) {
+    for (const spd of [4, 3, 2, 1, 0]) {
       if (this.#phase === TurnPhase.BATTLE_END) break;
       this.#currentAnimStep = 3 - spd;
       this.#eventBus.emit(EvtType.SPEED_TIER_START, { speed: spd });
@@ -933,8 +933,8 @@ export class TurnManager {
         this.#commandQueue.cancelByActor(e.id, cmd.speed);
         // Also cancel from current turn's speed groups (already built before tier loop)
         if (this.#speedGroups) {
-          for (const spd of [0, 1]) {
-            if (cmd.speed >= 0 && spd >= cmd.speed) continue;
+          for (const spd of [0, 1, 2]) {
+            if (spd >= cmd.speed) continue;
             this.#speedGroups[spd] = this.#speedGroups[spd].filter(c => c.actorId !== e.id);
           }
         }

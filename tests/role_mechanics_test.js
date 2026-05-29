@@ -307,7 +307,7 @@ console.log('\n[6] Trait gating');
     { class: '射手', roleId: 'shooter_helldiver', roleLoadout: [] },
     { class: '战士', roleId: 'warrior_jimmy', roleLoadout: ['trait_jimmy_breathing'] },
   );
-  engine.submitAction(ids.player1Id, 'shooter_roll', { q: 1, r: -1 });
+  engine.submitAction(ids.player1Id, 'shooter_aim', null);
   engine.submitAction(ids.player2Id, 'warrior_rage', null);
   await engine.executeTurn();
   const p1 = character(engine, 'player1');
