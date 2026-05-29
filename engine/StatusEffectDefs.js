@@ -120,10 +120,9 @@ export const STATUS_DEFS = {
   BOMBARDMENT_PENDING: {
     id: 'BOMBARDMENT_PENDING',
     name: '轰炸待发',
-    desc: '下回合速1自动发射轰炸弹体',
+    desc: '下回合自动发射轰炸弹体（脱手，不占用行动）',
     duration: 1,
     blocking: false,
-    forcedSkillId: 'role_helldiver_bombardment_resolve',
   },
   ARMOR_BROKEN: {
     id: 'ARMOR_BROKEN',
