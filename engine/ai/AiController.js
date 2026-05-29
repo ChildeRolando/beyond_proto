@@ -39,7 +39,19 @@ export async function chooseAiAction(engine, characterId, options = {}) {
     };
   }
 
-  const fallback = generateCandidateActions(engine, characterId, options.candidates || {})[0];
+  // Fallback: no valid one-ply candidates, use heuristic ordering
+  const candidates = generateCandidateActions(engine, characterId, options.candidates || {});
+  const topN = candidates.slice(0, 5);
+  if (topN.length > 0) {
+    engine.logger?.log(`── AI ${actor.name} 候选TOP5 (fallback) ──`, 'ai');
+    topN.forEach((a, i) => {
+      const name = SKILLS[a.skillId]?.name || a.skillId;
+      const tgt = a.targetPos ? `(${a.targetPos.q},${a.targetPos.r})` : 'self';
+      engine.logger?.log(`  #${i + 1} ${name} → ${tgt}`, 'ai');
+    });
+  }
+
+  const fallback = candidates[0];
   if (!fallback) return { success: false, error: 'no_candidate_actions' };
   return {
     success: true,
