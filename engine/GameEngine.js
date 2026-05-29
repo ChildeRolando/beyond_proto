@@ -357,6 +357,10 @@ export class GameEngine {
     const character = this.registry.get(characterId);
     if (!character) return { ok: false, canSubmit: false, reason: 'unknown_actor' };
     if (skillId) {
+      // Check skill cooldown
+      if (this.skillCooldowns && !this.skillCooldowns.isReady(characterId, skillId)) {
+        return { ok: false, canSubmit: false, reason: 'skill_on_cooldown' };
+      }
       const result = this.actionPointSystem.canSubmit(character, skillId);
       return { ...result, canSubmit: result.ok };
     }

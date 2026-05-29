@@ -2965,6 +2965,13 @@ function submitAction(charId, skillId, targetPos) {
     if (isPveMode() && areMyRequiredActionsReady() && !hasAnyMyOptionalActionAvailable()) {
       void submitAiAndExecutePveTurn();
     }
+  } else {
+    // Submission failed — reset selection and show error
+    selectedSkill = null;
+    validTargets = [];
+    hoverEffectArea = [];
+    hoveredHex = null;
+    document.getElementById('submit-status').textContent = result.error || '提交失败';
   }
   renderAll();
 }
