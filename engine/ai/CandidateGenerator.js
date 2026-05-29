@@ -18,7 +18,7 @@ export function generateCandidateActions(engine, characterId, options = {}) {
   const actions = [];
   for (const skillId of skillIds) {
     const skill = SKILLS[skillId];
-    if (!isCandidateSkill(engine, actor, skillId, skill)) continue;
+    if (!isCandidateSkill(engine, actor, skillId, skill, options)) continue;
 
     const targets = getCandidateTargets(engine, actor, skill, options);
     for (const targetPos of targets) {
@@ -35,10 +35,12 @@ function getVisibleSkillIds(engine, actor) {
   return actor.allowedSkillIds || [];
 }
 
-function isCandidateSkill(engine, actor, skillId, skill) {
+function isCandidateSkill(engine, actor, skillId, skill, options = {}) {
   if (!skill || skill.hidden || skill.isTrait) return false;
-  const ap = engine.canSubmitAction(actor.id, skillId);
-  if (!ap.ok) return false;
+  if (!options.skipActionCheck) {
+    const ap = engine.canSubmitAction(actor.id, skillId);
+    if (!ap.ok) return false;
+  }
   return engine.resourceSystem.canAfford(actor.id, skill.cost || {});
 }
 

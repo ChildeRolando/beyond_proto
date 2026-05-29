@@ -19,7 +19,7 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
     generateCandidateActions(engine, actorId, candidateOptions)
   ).slice(0, options.maxOwnActions ?? 16);
   const opponentCandidates = orderedCandidates(
-    generateCandidateActions(engine, opponentId, candidateOptions)
+    generateCandidateActions(engine, opponentId, { ...candidateOptions, skipActionCheck: true })
   ).slice(0, options.maxOpponentActions ?? 16);
 
   const results = [];

@@ -237,6 +237,10 @@ export class GameEngine {
   async simulateTurnFromSnapshot(snapshot, actions = [], options = {}) {
     const sim = new GameEngine();
     sim.restoreSnapshot(snapshot);
+    // Reset action points + command queue so both sides can submit fresh actions
+    sim.actionPointSystem.resetTurn();
+    sim.commandQueue.clearAll();
+    sim._submitted.clear();
     const galaxyActions = options.galaxyActions || [];
     sim._galaxyQueue.push(...galaxyActions);
     if (options.skipGalaxyPrompts !== false) {
