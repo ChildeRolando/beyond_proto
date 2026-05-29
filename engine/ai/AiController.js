@@ -16,15 +16,33 @@ export async function chooseAiAction(engine, characterId, options = {}) {
   const ranked = await rankActionsOnePly(engine, characterId, opponentId, options.policy || {});
   if (ranked.length > 0) {
     const best = ranked[0];
+    const oppName = engine.registry.get(opponentId)?.name || '对手';
 
-    // Log top 5 as separate entries for readable display
+    // Log AI's own top 5 actions
     const topN = ranked.slice(0, 5);
-    engine.logger?.log(`── AI ${actor.name} 候选TOP5 ──`, 'ai');
+    engine.logger?.log(`── AI ${actor.name} 行动TOP5 ──`, 'ai');
     topN.forEach((r, i) => {
       const name = SKILLS[r.action.skillId]?.name || r.action.skillId;
       const tgt = r.action.targetPos ? `(${r.action.targetPos.q},${r.action.targetPos.r})` : 'self';
       engine.logger?.log(
         `#${i + 1} ${name} → ${tgt}  EV=${r.expectedValue.toFixed(1)}  worst=${r.worstValue.toFixed(1)}  n=${r.samples.length}`,
+        'ai'
+      );
+    });
+
+    // Log predicted opponent top 5 by probability
+    const oppSamples = [...best.samples]
+      .sort((a, b) => b.probability - a.probability)
+      .slice(0, 5);
+    engine.logger?.log(`── 预测 ${oppName} 行动TOP5 ──`, 'ai');
+    oppSamples.forEach((s, i) => {
+      const name = SKILLS[s.opponentAction.skillId]?.name || s.opponentAction.skillId;
+      const tgt = s.opponentAction.targetPos
+        ? `(${s.opponentAction.targetPos.q},${s.opponentAction.targetPos.r})`
+        : 'self';
+      const pct = (s.probability * 100).toFixed(1);
+      engine.logger?.log(
+        `#${i + 1} ${name} → ${tgt}  P=${pct}%  U=${s.opponentUtility?.toFixed(1) || '-'}`,
         'ai'
       );
     });
