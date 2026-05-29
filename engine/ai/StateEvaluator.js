@@ -119,8 +119,14 @@ function canAfford(char, cost) {
 
 function skillCanReach(actor, profile, enemy) {
   const dist = hexDistance(actor.position.q, actor.position.r, enemy.position.q, enemy.position.r);
+  // Self-centered AOE: reach = areaRadius, not range
   if (profile.tags.includes(PrimitiveTag.AREA_THREAT) && profile.range === 0) {
     return dist <= profile.areaRadius;
+  }
+  // Point-target AOE (e.g. 如来神掌): max reach = range + areaRadius
+  if (profile.tags.includes(PrimitiveTag.AREA_THREAT) && profile.areaRadius > 0) {
+    const maxReach = (profile.range === 99 ? 6 : profile.range) + profile.areaRadius;
+    return dist <= maxReach;
   }
   return profile.range === 99 || dist <= profile.range;
 }
