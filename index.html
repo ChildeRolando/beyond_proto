@@ -3422,6 +3422,34 @@ function renderBoard(animStep = -1, subT = 0) {
     }
   }
 
+  // --- Draw weak point indicators (心眼) ---
+  const dirVectors = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+  for (const e of state.characters) {
+    if (e.alive === false) continue;
+    const wp = e.buffs.find(b => b.statusType === 'WEAK_POINT');
+    if (!wp || !wp.data?.directions) continue;
+    const [cx, cy] = hexCenter(e.position.q, e.position.r);
+    for (const d of wp.data.directions) {
+      const [dq, dr] = dirVectors[d];
+      const [nx, ny] = hexCenter(e.position.q + dq, e.position.r + dr);
+      const ang = Math.atan2(cy - ny, cx - nx); // arrow points inward (from neighbor toward char)
+      const dist = 19;
+      const sx = cx + dist * Math.cos(ang);
+      const sy = cy + dist * Math.sin(ang);
+      // Arrowhead points toward character center
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx - 7 * Math.cos(ang + 0.5), sy - 7 * Math.sin(ang + 0.5));
+      ctx.lineTo(sx - 7 * Math.cos(ang - 0.5), sy - 7 * Math.sin(ang - 0.5));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(220,60,60,0.85)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(180,30,30,0.9)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
   // --- Draw projectiles (non-melee) ---
   for (const [projId, pos] of projPositions) {
     if (!pos.alive || pos.isMelee) continue;
