@@ -1,7 +1,9 @@
+import { hexDistance } from '../HexMath.js';
 import { generateCandidateActions } from './CandidateGenerator.js';
 import { evaluateState } from './StateEvaluator.js';
 import { getSkillPrimitiveProfile, PrimitiveTag } from './PrimitiveProfile.js';
 import { estimateActionDistribution } from './OpponentModel.js';
+import { evaluateRoleStrategy, estimateAttackPotential } from './RoleStrategyEvaluator.js';
 
 const DEFAULT_TEMPERATURE = 60;
 
@@ -21,12 +23,36 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
   const oppActor = engine.registry.get(opponentId);
   const ownSkills = engine.getState().characters.find(c => c.id === actorId)?.skills || [];
   const oppSkills = engine.getState().characters.find(c => c.id === opponentId)?.skills || [];
-  const ownCandidates = orderedCandidates(
-    generateCandidateActions(engine, actorId, candidateOptions), ownSkills, ownResources
-  ).slice(0, options.maxOwnActions ?? 16);
+
+  const rawCandidates = generateCandidateActions(engine, actorId, candidateOptions);
+  const stateActor = engine.getState().characters.find(c => c.id === actorId);
+  const enemies = getAliveEnemies(engine, ownActor);
+
+  let ownCandidates;
+  if (options.preserveSkillCoverage) {
+    ownCandidates = selectRepresentativeCandidates(rawCandidates, ownSkills, ownResources, {
+      maxActions: options.maxOwnActions ?? 12,
+      preserveSkillCoverage: true,
+      roleId: ownActor.roleId,
+    });
+  } else {
+    ownCandidates = orderedCandidates(rawCandidates, ownSkills, ownResources)
+      .slice(0, options.maxOwnActions ?? 16);
+  }
+
   const opponentCandidates = orderedCandidates(
     generateCandidateActions(engine, opponentId, { ...candidateOptions, skipActionCheck: true }), oppSkills, oppResources
   ).slice(0, options.maxOpponentActions ?? 16);
+
+  // Pre-compute context shared across own actions
+  const sharedContext = {
+    turn: engine.getTurnNumber?.() ?? 1,
+    actor: ownActor,
+    stateActor,
+    enemies,
+    isUnderThreat: checkUnderThreat(engine, actorId, stateActor, enemies),
+    hasImmediateLethal: checkImmediateLethal(engine, actorId, stateActor, enemies, ownSkills),
+  };
 
   const results = [];
   for (const ownAction of ownCandidates) {
@@ -47,7 +73,7 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
     });
     let expectedValue = 0;
     let worstValue = Infinity;
-    let expectedTerminal = 0, expectedResources = 0, expectedThreat = 0, expectedPosition = 0, expectedTempo = 0;
+    let expectedTerminal = 0, expectedResources = 0, expectedThreat = 0, expectedPosition = 0, expectedTempo = 0, expectedStrategy = 0;
     for (let i = 0; i < samples.length; i++) {
       samples[i].probability = distribution[i].probability;
       samples[i].opponentUtility = distribution[i].utility;
@@ -59,8 +85,19 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
         expectedThreat += samples[i].actorTerms.threat * distribution[i].probability;
         expectedPosition += samples[i].actorTerms.position * distribution[i].probability;
         expectedTempo += samples[i].actorTerms.tempo * distribution[i].probability;
+        if (samples[i].actorTerms.strategy !== undefined) {
+          expectedStrategy += samples[i].actorTerms.strategy * distribution[i].probability;
+        }
       }
     }
+
+    // Strategy bias on the action itself
+    const profile = getSkillPrimitiveProfile(ownAction.skillId);
+    const stratResult = evaluateRoleStrategy(engine, actorId, ownAction, {
+      ...sharedContext,
+      profile,
+    });
+    const strategyBias = stratResult.scoreDelta;
 
     results.push({
       action: ownAction,
@@ -73,15 +110,89 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
         threat: expectedThreat,
         position: expectedPosition,
         tempo: expectedTempo,
+        strategy: expectedStrategy,
       },
+      strategyBias,
+      strategyReasons: stratResult.reasons,
+      finalValue: expectedValue + strategyBias,
     });
   }
 
   return results.sort((a, b) =>
+    b.finalValue - a.finalValue ||
     b.expectedValue - a.expectedValue ||
     b.worstValue - a.worstValue ||
     actionHeuristic(b.action) - actionHeuristic(a.action)
   );
+}
+
+export function selectRepresentativeCandidates(actions, actorSkills, resources, options = {}) {
+  const maxActions = options.maxActions ?? 12;
+  const roleId = options.roleId || '';
+
+  // Group by skillId, keep orderedCandidates ranking within each group
+  const ordered = orderedCandidates(actions, actorSkills, resources);
+
+  // Build groups preserving order
+  const groups = new Map();
+  const groupOrder = [];
+  for (const action of ordered) {
+    if (!groups.has(action.skillId)) {
+      groups.set(action.skillId, []);
+      groupOrder.push(action.skillId);
+    }
+    groups.get(action.skillId).push(action);
+  }
+
+  const representatives = [];
+  const nonRepresentatives = [];
+  for (const skillId of groupOrder) {
+    const group = groups.get(skillId);
+    representatives.push(group[0]); // best per skill
+    for (let i = 1; i < group.length; i++) {
+      nonRepresentatives.push(group[i]);
+    }
+  }
+
+  // Score representatives with core skill bonus
+  const scoredReps = representatives.map(action => {
+    const profile = getSkillPrimitiveProfile(action.skillId);
+    let score = actionHeuristic(action, actorSkills, resources);
+    // Core skill bonus
+    if (isCoreSkill(action.skillId, roleId)) score += 15;
+    if (profile.tags.includes(PrimitiveTag.SCALING_THREAT)) score += 8;
+    if (profile.tags.includes(PrimitiveTag.INVEST)) score += 6;
+    if (profile.tags.includes(PrimitiveTag.PRESSURE)) score += 4;
+    if (profile.tags.includes(PrimitiveTag.DEFEND)) score += 3;
+    return { action, score };
+  }).sort((a, b) => b.score - a.score);
+
+  const pool = [];
+  const seen = new Set();
+
+  // Representatives first
+  for (const { action } of scoredReps) {
+    if (pool.length >= maxActions) break;
+    const key = `${action.skillId}:${action.targetPos?.q ?? 'self'},${action.targetPos?.r ?? 'self'}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    pool.push(action);
+  }
+
+  // Fill remaining budget from non-representatives (re-ordered by heuristic)
+  const remainingNonReps = nonRepresentatives
+    .map(action => ({ action, score: actionHeuristic(action, actorSkills, resources) }))
+    .sort((a, b) => b.score - a.score);
+
+  for (const { action } of remainingNonReps) {
+    if (pool.length >= maxActions) break;
+    const key = `${action.skillId}:${action.targetPos?.q ?? 'self'},${action.targetPos?.r ?? 'self'}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    pool.push(action);
+  }
+
+  return pool;
 }
 
 export function orderedCandidates(actions, actorSkills = null, resources = null) {
@@ -109,7 +220,6 @@ function actionHeuristic(action, actorSkills = null, resources = null) {
   if (profile.tags.includes(PrimitiveTag.DEFEND)) score += 10;
   if (profile.tags.includes(PrimitiveTag.ESCAPE)) score += 6;
 
-  // SETUP value = proportional to follow-up attack potential
   if (profile.tags.includes(PrimitiveTag.SETUP) && !profile.tags.includes(PrimitiveTag.PRESSURE)) {
     if (actorSkills && resources) {
       score += followUpPotential(actorSkills, resources) * 0.5;
@@ -120,7 +230,6 @@ function actionHeuristic(action, actorSkills = null, resources = null) {
   return score;
 }
 
-// Sum the heuristic value of all affordable PRESSURE skills — the "attack potential"
 function followUpPotential(actorSkills, resources) {
   let total = 0;
   for (const skillRef of actorSkills) {
@@ -146,3 +255,56 @@ function resourceBuildHeuristic(resourceDelta) {
   value += Math.max(0, resourceDelta.shield || 0) * 0.04;
   return value;
 }
+
+function isCoreSkill(skillId, roleId) {
+  if (!roleId) return false;
+  return skillId.startsWith('role_') || skillId.startsWith('trait_');
+}
+
+function getAliveEnemies(engine, actor) {
+  return [...engine.registry.characters()].filter(c =>
+    c.alive !== false &&
+    c.ownerId !== actor.ownerId &&
+    (c.position?.dim || 'real') === (actor.position?.dim || 'real')
+  );
+}
+
+function checkUnderThreat(engine, actorId, stateActor, enemies) {
+  if (!stateActor || enemies.length === 0) return false;
+  for (const enemy of enemies) {
+    if (!enemy.skills) continue;
+    for (const sr of enemy.skills) {
+      const p = getSkillPrimitiveProfile(sr.id);
+      if (!p.tags.includes(PrimitiveTag.PRESSURE)) continue;
+      let affordable = true;
+      for (const [res, amt] of Object.entries(p.cost)) {
+        if ((enemy.resources?.[res] || 0) < amt) { affordable = false; break; }
+      }
+      if (!affordable) continue;
+      const d = hexDistance(stateActor.position.q, stateActor.position.r, enemy.position.q, enemy.position.r);
+      if (d <= (p.range === 99 ? 6 : p.range) + p.areaRadius) return true;
+    }
+  }
+  return false;
+}
+
+function checkImmediateLethal(engine, actorId, stateActor, enemies, ownSkills) {
+  if (!stateActor || enemies.length === 0) return false;
+  for (const sr of ownSkills) {
+    const p = getSkillPrimitiveProfile(sr.id);
+    if (!p.tags.includes(PrimitiveTag.PRESSURE)) continue;
+    let affordable = true;
+    for (const [res, amt] of Object.entries(p.cost)) {
+      if ((engine.resourceSystem.get(actorId, res) || 0) < amt) { affordable = false; break; }
+    }
+    if (!affordable) continue;
+    for (const enemy of enemies) {
+      const d = hexDistance(stateActor.position.q, stateActor.position.r, enemy.position.q, enemy.position.r);
+      if (d <= (p.range === 99 ? 6 : p.range) + p.areaRadius) {
+        if (p.tags.includes(PrimitiveTag.KILL) || p.maxPower >= 300) return true;
+      }
+    }
+  }
+  return false;
+}
+

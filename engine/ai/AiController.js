@@ -39,10 +39,13 @@ export async function chooseAiAction(engine, characterId, options = {}) {
     topN.forEach((r, i) => {
       const name = SKILLS[r.action.skillId]?.name || r.action.skillId;
       const tgt = r.action.targetPos ? `(${r.action.targetPos.q},${r.action.targetPos.r})` : 'self';
-      let line = `#${i + 1} ${name} → ${tgt}  EV=${r.expectedValue.toFixed(1)}  worst=${r.worstValue.toFixed(1)}  n=${r.samples.length}`;
+      let line = `#${i + 1} ${name} → ${tgt}  FV=${r.finalValue?.toFixed(1) ?? r.expectedValue.toFixed(1)} EV=${r.expectedValue.toFixed(1)} SB=${r.strategyBias?.toFixed(1) ?? '0.0'} worst=${r.worstValue.toFixed(1)}  n=${r.samples.length}`;
       if (r.termBreakdown) {
         const tb = r.termBreakdown;
-        line += ` | T=${tb.terminal.toFixed(1)} R=${tb.resources.toFixed(1)} Th=${tb.threat.toFixed(1)} Pos=${tb.position.toFixed(1)} Tm=${tb.tempo.toFixed(1)}`;
+        line += ` | T=${tb.terminal.toFixed(1)} R=${tb.resources.toFixed(1)} Th=${tb.threat.toFixed(1)} Pos=${tb.position.toFixed(1)} Tm=${tb.tempo.toFixed(1)} S=${tb.strategy?.toFixed(1) ?? '0.0'}`;
+      }
+      if (r.strategyReasons && r.strategyReasons.length > 0) {
+        line += ` | ${r.strategyReasons.slice(0, 2).join(',')}`;
       }
       engine.logger?.log(line, 'ai');
     });

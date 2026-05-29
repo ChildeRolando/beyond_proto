@@ -3010,7 +3010,7 @@ async function submitAiAndExecutePveTurn() {
     const aiResult = await Promise.race([
       engine.submitAiAction(aiId, {
         opponentId: getMyCharacterIds()[0],
-        policy: { maxOwnActions: 8, maxOpponentActions: 8, maxTargetsPerSkill: 1, opponentTemperature: 50 },
+        policy: { maxOwnActions: 12, maxOpponentActions: 8, maxTargetsPerSkill: 1, opponentTemperature: 50, preserveSkillCoverage: true },
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('ai_timeout')), 15000))
     ]);
@@ -3020,7 +3020,7 @@ async function submitAiAndExecutePveTurn() {
       if (hasOptionalActionAvailable(aiId)) {
         const fResult = await engine.submitAiAction(aiId, {
           opponentId: getMyCharacterIds()[0],
-          policy: { maxOwnActions: 8, maxOpponentActions: 4, maxTargetsPerSkill: 1, opponentTemperature: 50 },
+          policy: { maxOwnActions: 8, maxOpponentActions: 4, maxTargetsPerSkill: 1, opponentTemperature: 50, preserveSkillCoverage: true },
           candidates: { excludeSkillIds: aiResult.action ? [aiResult.action.skillId] : [] },
         });
         if (fResult.success) localSubmittedSet.add(aiId);

@@ -1,5 +1,6 @@
 import { hexDistance } from '../HexMath.js';
 import { getSkillPrimitiveProfile, PrimitiveTag } from './PrimitiveProfile.js';
+import { evaluateStrategicState } from './RoleStrategyEvaluator.js';
 
 const TERMINAL_SCORE = 1000;
 
@@ -14,12 +15,15 @@ const RESOURCE_WEIGHTS = Object.freeze({
 export function evaluateState(state, ownerId) {
   const self = liveCharacters(state).filter(c => c.ownerId === ownerId);
   const enemies = liveCharacters(state).filter(c => c.ownerId !== ownerId);
+  const selfStrategy = evaluateStrategicState(state, ownerId).total;
+  const enemyStrategy = evaluateStrategicStateForEnemies(state, ownerId);
   const terms = {
     terminal: terminalValue(self, enemies),
     resources: resourceValue(self) - resourceValue(enemies),
     threat: threatValue(self, enemies) - threatValue(enemies, self),
     position: positionValue(self, enemies) - positionValue(enemies, self),
     tempo: tempoValue(self) - tempoValue(enemies),
+    strategy: selfStrategy - enemyStrategy,
   };
 
   return {
@@ -115,6 +119,15 @@ function canAfford(char, cost) {
     if ((char.resources?.[resource] || 0) < amount) return false;
   }
   return true;
+}
+
+function evaluateStrategicStateForEnemies(state, ownerId) {
+  const enemies = (state.characters || []).filter(c => c.alive !== false && c.ownerId !== ownerId);
+  let total = 0;
+  for (const enemy of enemies) {
+    total += evaluateStrategicState(state, enemy.ownerId).total;
+  }
+  return total;
 }
 
 function skillCanReach(actor, profile, enemy) {
