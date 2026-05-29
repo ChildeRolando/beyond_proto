@@ -1446,8 +1446,6 @@ export class TurnManager {
       this.#lastHitByActor.set(cmd.actorId, hitLanded);
       if (hitLanded) this._handleOnHitGain(cmd);
       this.#logger?.log(`疾风步斩击！(${toQ},${toR})→${bestTarget.name || '?'} 威${power}`, 'rg');
-      // 心眼: check regardless of damage outcome
-      this._checkMindsEyeHit(cmd.actorId, bestTarget.id, fromQ, fromR, toQ, toR);
     } else if (bestTarget && !bestIsChar) {
       this.#projectileCalculator?.destroyProjectile?.(bestTarget.id);
       this.#logger?.log(`疾风步斩破弹体！(${toQ},${toR}) 威${power}`, 'rg');
