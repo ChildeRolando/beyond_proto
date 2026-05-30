@@ -142,13 +142,7 @@ function setRoute(route) {
 
 function showConfigScreen(mode) {
   configMode = mode || configMode || 'local';
-  battleSession.battleEnded = false;
-  battleSession.battleActive = false;
-  battleSession.selectedSkill = null;
-  battleSession.viewingSkill = null;
-  battleSession.validTargets = [];
-  battleSession.hoverEffectArea = [];
-  battleSession.hoveredHex = null;
+  battleSession.resetForConfigScreen();
   if (configMode === 'p2p' && networkManager?.myPlayerId) {
     currentConfigPlayer = networkManager.myPlayerId;
   }
@@ -283,9 +277,7 @@ function getBattlePlayerConfigs() {
 
 const startBattleFromConfigs = (seed = Date.now(), players = getBattlePlayerConfigs()) => {
   battleConfigs = players.map(cloneConfig);
-  const p1 = players.find(p => p.playerId === 'player1') || players[0];
-  const p2 = players.find(p => p.playerId === 'player2') || players[1];
-  battleSession.initGame(p1.class, p2.class, seed, players);
+  battleSession.startBattleFromConfigs(seed, players);
   document.getElementById('btn-execute').disabled = true;
   document.getElementById('submit-status').textContent = '等待提交...';
   document.getElementById('log').innerHTML = '';
@@ -320,24 +312,16 @@ function maybeStartP2PBattle() {
 // --- Galaxy sub-phase (state moved to BattleSessionController) ---
 
 engine.eventBus.on('GALAXY_SUBPHASE_START', (data) => {
-  const myCharId = data.charIds.find(id => battleSession.isMyCharacter(id));
-  if (!myCharId) return;
-  battleSession.galaxyActive = true;
-  battleSession.galaxyCharId = myCharId;
-  battleSession.galaxySelectedSkill = null;
+  const started = battleSession.startGalaxySubphase(data.charIds);
+  if (!started) return;
 });
 
 engine.eventBus.on('GALAXY_ACTION_PROMPT', (data) => {
-  if (!battleSession.galaxyActive || data.charId !== battleSession.galaxyCharId) return;
-  battleSession.galaxyActionIndex = data.index;
-  battleSession.galaxyActionTotal = data.total;
-  showGalaxyPanel();
+  if (battleSession.promptGalaxyAction(data)) showGalaxyPanel();
 });
 
 engine.eventBus.on('GALAXY_SUBPHASE_END', () => {
-  battleSession.galaxyActive = false;
-  battleSession.galaxyCharId = null;
-  battleSession.galaxySelectedSkill = null;
+  battleSession.endGalaxySubphase();
   hideGalaxyPanel();
 });
 
@@ -364,7 +348,7 @@ function showGalaxyPanel() {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#galaxy-skills .skill-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
-      battleSession.galaxySelectedSkill = btn.dataset.skill;
+      battleSession.selectGalaxySkill(btn.dataset.skill);
       document.getElementById('btn-galaxy-confirm').disabled = false;
     });
   });
@@ -381,41 +365,22 @@ document.getElementById('btn-galaxy-confirm').addEventListener('click', () => {
   const skill = SKILLS[battleSession.galaxySelectedSkill];
   if (!skill) return;
 
-  if (skill.targeting.shape === 'SELF' || skill.targeting.shape === 'AOE_SELF') {
-    // Self-targeting: submit immediately, panel stays hidden until next prompt
-    engine.submitGalaxyAction(battleSession.galaxySelectedSkill, null);
-    if (networkManager && networkManager.mode !== 'local') {
-      networkManager.sendGalaxyAction(battleSession.galaxyCharId, battleSession.galaxySelectedSkill, null);
-    }
-    battleSession.galaxySelectedSkill = null;
+  const targetingType = battleSession.prepareGalaxyTargeting(battleSession.galaxySelectedSkill);
+
+  if (targetingType === 'self') {
+    // Self-targeting: submit immediately
+    battleSession.submitGalaxyTarget(null, networkManager);
     hideGalaxyPanel();
   } else {
     // Needs target: hide panel, show valid hexes on board
     hideGalaxyPanel();
     document.getElementById('submit-status').textContent = `银河远征: 点击棋盘选择 ${skill.name} 的目标`;
-
-    const char = engine.registry.get(battleSession.galaxyCharId);
-    const range = engine.getEffectiveRange(battleSession.galaxyCharId, skill.targeting.range ?? 99);
-    battleSession.validTargets = [];
-    battleSession.hoverEffectArea = [];
-    battleSession.hoveredHex = null;
-    if (char) {
-      for (let q = -3; q <= 3; q++) {
-        for (let r = -3; r <= 3; r++) {
-          if (!isOnBoard(q, r)) continue;
-          if (q === char.position.q && r === char.position.r) continue;
-          if (hexDistance(char.position.q, char.position.r, q, r) > range) continue;
-          battleSession.validTargets.push({ q, r });
-        }
-      }
-    }
     renderAll();
   }
 });
 
 document.getElementById('btn-galaxy-skip').addEventListener('click', () => {
-  engine.submitGalaxyAction(null, null);
-  battleSession.galaxySelectedSkill = null;
+  battleSession.skipGalaxyAction(networkManager);
   hideGalaxyPanel();
 });
 
@@ -456,12 +421,12 @@ const startLobbyUi = initStartLobbyController({
     onBackStart() { if (networkManager) { networkManager.disconnect(); networkManager = null; } },
     async onCreateRoom({ serverAddr, ui }) {
       const signalingUrl = serverAddr.match(/^wss?:\/\//) ? serverAddr : (isNgrok ? `wss://${serverAddr}` : `ws://${serverAddr}`);
-      const nm = new NetworkManager({ onStatusChange: (s) => { if (s.roomCode) { ui.showRoomCode(s.roomCode); ui.updateHostStatus('connecting', '等待对手加入...'); } if (s.status === 'connected') { ui.updateHostStatus('connected', '已连接！'); startP2PGame(nm); } if (s.error) { ui.setRoomError(s.error); ui.updateHostStatus('disconnected', '错误'); nm.disconnect(); } }, onDisconnect: (reason) => showDisconnect(reason), onRemoteSubmitted: (action) => handleRemoteAction(nm, action), onRemoteReady: () => battleSession.updateSubmitStatus(nm), onReady: () => executeP2PTurn(nm), onClassPick: () => {}, onGalaxyAction: (charId, skillId, targetPos) => { engine.submitGalaxyAction(skillId, targetPos); }, onMessage: (payload) => handleNetworkMessage(payload), }, signalingUrl);
+      const nm = new NetworkManager({ onStatusChange: (s) => { if (s.roomCode) { ui.showRoomCode(s.roomCode); ui.updateHostStatus('connecting', '等待对手加入...'); } if (s.status === 'connected') { ui.updateHostStatus('connected', '已连接！'); startP2PGame(nm); } if (s.error) { ui.setRoomError(s.error); ui.updateHostStatus('disconnected', '错误'); nm.disconnect(); } }, onDisconnect: (reason) => showDisconnect(reason), onRemoteSubmitted: (action) => battleSession.handleRemoteAction(nm, action), onRemoteReady: () => battleSession.updateSubmitStatus(nm), onReady: () => battleSession.executeP2PTurn(nm, { animateTurn }), onClassPick: () => {}, onGalaxyAction: (charId, skillId, targetPos) => { engine.submitGalaxyAction(skillId, targetPos); }, onMessage: (payload) => handleNetworkMessage(payload), }, signalingUrl);
       networkManager = nm; try { await nm.createRoom(); } catch (e) { ui.setRoomError('连接服务器失败'); ui.updateHostStatus('disconnected', '连接失败'); networkManager = null; }
     },
     async onJoinRoom({ roomCode, serverAddr, ui }) {
       const signalingUrl = serverAddr.match(/^wss?:\/\//) ? serverAddr : (isNgrok ? `wss://${serverAddr}` : `ws://${serverAddr}`);
-      const nm = new NetworkManager({ onStatusChange: (s) => { if (s.status === 'connected') { ui.updateJoinStatus('connected', '已连接！'); startP2PGame(nm); } if (s.error) { ui.setRoomError(s.error); ui.updateJoinStatus('disconnected', '错误'); nm.disconnect(); } }, onDisconnect: (reason) => showDisconnect(reason), onRemoteSubmitted: (action) => handleRemoteAction(nm, action), onRemoteReady: () => battleSession.updateSubmitStatus(nm), onReady: () => executeP2PTurn(nm), onClassPick: () => {}, onGalaxyAction: (charId, skillId, targetPos) => { engine.submitGalaxyAction(skillId, targetPos); }, onMessage: (payload) => handleNetworkMessage(payload), }, signalingUrl);
+      const nm = new NetworkManager({ onStatusChange: (s) => { if (s.status === 'connected') { ui.updateJoinStatus('connected', '已连接！'); startP2PGame(nm); } if (s.error) { ui.setRoomError(s.error); ui.updateJoinStatus('disconnected', '错误'); nm.disconnect(); } }, onDisconnect: (reason) => showDisconnect(reason), onRemoteSubmitted: (action) => battleSession.handleRemoteAction(nm, action), onRemoteReady: () => battleSession.updateSubmitStatus(nm), onReady: () => battleSession.executeP2PTurn(nm, { animateTurn }), onClassPick: () => {}, onGalaxyAction: (charId, skillId, targetPos) => { engine.submitGalaxyAction(skillId, targetPos); }, onMessage: (payload) => handleNetworkMessage(payload), }, signalingUrl);
       networkManager = nm; try { await nm.joinRoom(roomCode); } catch (e) { ui.setRoomError('连接服务器失败'); ui.updateJoinStatus('disconnected', '连接失败'); networkManager = null; }
     },
   },
@@ -509,7 +474,7 @@ document.getElementById('btn-config-back').addEventListener('click', () => {
 
 function startP2PGame(nm) {
   document.getElementById('gameover-panel').classList.remove('show');
-  battleSession.battleEnded = false;
+  battleSession.resetForConfigScreen();
   configMode = 'p2p';
   currentConfigPlayer = nm.myPlayerId;
   // Reset all rematch/class-pick state for fresh connection
@@ -528,9 +493,6 @@ function startP2PGame(nm) {
   document.getElementById('btn-execute').disabled = true;
   document.getElementById('submit-status').textContent = '等待配置...';
   document.getElementById('log').innerHTML = '';
-  battleSession.localSubmittedSet.clear();
-  battleSession.remoteSubmittedSet.clear();
-  battleSession.clearPlannedActions();
   showConfigScreen('p2p');
 }
 
@@ -579,36 +541,6 @@ function tryInitWithClasses(nm, myClass) {
   battleSession.startTurnTimeout();
 }
 
-const handleRemoteAction = (nm, action) => {
-  // Apply opponent's action to our local engine
-  engine.submitAction(action.charId, action.skillId, action.targetPos ?? null);
-  if (battleSession.isRequiredActionReady(action.charId)) battleSession.remoteSubmittedSet.add(action.charId);
-  battleSession.updateSubmitStatus(nm);
-  renderAll();
-};
-
-const executeP2PTurn = async (nm) => {
-  battleSession.clearTurnTimeout();
-  const result = await engine.executeTurn();
-  if (!result.success) return;
-
-  battleSession.localSubmittedSet.clear();
-  battleSession.remoteSubmittedSet.clear();
-  battleSession.clearPlannedActions();
-  nm.clearTurn();
-  document.getElementById('submit-status').textContent = '等待双方提交...';
-  if (result.battleEnded) {
-    renderAll();
-    return;
-  }
-
-  animateTurn().then(() => {
-    engine.projectileCalculator.clearKeyframes();
-    renderAll();
-    battleSession.startTurnTimeout();
-  });
-};
-
 function showDisconnect(reason) {
   document.getElementById('disconnect-reason').textContent =
     reason === 'peer_left' ? '对手离开了游戏' :
@@ -617,9 +549,8 @@ function showDisconnect(reason) {
   document.getElementById('disconnect-overlay').classList.add('show');
 }
 
-window.returnToStart = function() {
-  battleSession.clearTurnTimeout();
-  battleSession.battleActive = false;
+function returnToStart() {
+  battleSession.resetForReturnToStart();
   remoteClassPick = null;
   pendingRemoteRematchClass = null;
   opponentReadyForRematch = false;
@@ -633,17 +564,9 @@ window.returnToStart = function() {
   document.getElementById('room-host-section').style.display = 'block';
   document.getElementById('room-join-section').style.display = 'block';
   document.getElementById('conn-indicator').style.display = 'none';
-  battleSession.localSubmittedSet.clear();
-  battleSession.remoteSubmittedSet.clear();
-  battleSession.clearPlannedActions();
-  battleSession.selectedSkill = null;
-  battleSession.viewingSkill = null;
-  battleSession.validTargets = [];
-  battleSession.hoverEffectArea = [];
-  battleSession.hoveredHex = null;
-  battleSession.battleEnded = false;
   startLobbyUi.resetConnectionUI();
-};
+}
+window.returnToStart = returnToStart;
 
 function updateRematchButton() {
   const btn = document.getElementById('btn-rematch');
@@ -676,13 +599,10 @@ document.getElementById('btn-rematch').addEventListener('click', () => {
   const isP2P = networkManager && networkManager.mode !== 'local';
   const wasPve = isPveMode();
   document.getElementById('gameover-panel').classList.remove('show');
-  battleSession.battleEnded = false;
+  battleSession.resetForConfigScreen();
   document.getElementById('btn-execute').disabled = true;
   document.getElementById('submit-status').textContent = '等待配置...';
   document.getElementById('log').innerHTML = '';
-  battleSession.localSubmittedSet.clear();
-  battleSession.remoteSubmittedSet.clear();
-  battleSession.clearPlannedActions();
   battleSession.clearTurnTimeout();
   showConfigScreen(isP2P ? 'p2p' : (wasPve ? 'pve' : 'local'));
 });
@@ -902,14 +822,7 @@ canvas.addEventListener('click', (e) => {
   if (battleSession.galaxyActive && battleSession.galaxySelectedSkill && !document.getElementById('galaxy-overlay').classList.contains('show')) {
     const skill = SKILLS[battleSession.galaxySelectedSkill];
     if (skill && skill.targeting.shape !== 'SELF' && skill.targeting.shape !== 'AOE_SELF') {
-      engine.submitGalaxyAction(battleSession.galaxySelectedSkill, { q: hq, r: hr });
-      if (networkManager && networkManager.mode !== 'local') {
-        networkManager.sendGalaxyAction(battleSession.galaxyCharId, battleSession.galaxySelectedSkill, { q: hq, r: hr });
-      }
-      battleSession.galaxySelectedSkill = null;
-      battleSession.validTargets = [];
-      battleSession.hoverEffectArea = [];
-      battleSession.hoveredHex = null;
+      battleSession.submitGalaxyTarget({ q: hq, r: hr }, networkManager);
       document.getElementById('submit-status').textContent = '等待双方提交...';
       return;
     }
@@ -917,11 +830,8 @@ canvas.addEventListener('click', (e) => {
 
   // If only viewing opponent skill, clicking a hex clears the view
   if (battleSession.viewingSkill && !battleSession.selectedSkill) {
-    battleSession.viewingSkill = null;
-    battleSession.validTargets = [];
-    battleSession.hoverEffectArea = [];
-    battleSession.hoveredHex = null;
-    if (clickedChar) battleSession.selectedCharacterId = clickedChar.id;
+    battleSession.clearSelection();
+    if (clickedChar) battleSession.setSelectedCharacterId(clickedChar.id);
     renderAll();
     return;
   }
@@ -933,11 +843,9 @@ canvas.addEventListener('click', (e) => {
       if (hexChars.length > 1 && hexChars.some(c => c.id === battleSession.selectedCharacterId)) {
         const curIdx = hexChars.findIndex(c => c.id === battleSession.selectedCharacterId);
         const next = hexChars[(curIdx + 1) % hexChars.length];
-        battleSession.selectedCharacterId = next.id;
-        battleSession.lastHoveredCharacterId = next.id;
+        battleSession.setSelectedCharacterId(next.id);
       } else {
-        battleSession.selectedCharacterId = clickedChar.id;
-        battleSession.lastHoveredCharacterId = clickedChar.id;
+        battleSession.setSelectedCharacterId(clickedChar.id);
       }
       renderAll();
     }
@@ -954,11 +862,7 @@ canvas.addEventListener('click', (e) => {
 
   // Click on invalid hex cancels selection
   if (!battleSession.validTargets.some(t => t.q === hq && t.r === hr)) {
-    battleSession.selectedSkill = null;
-    battleSession.validTargets = [];
-    battleSession.hoverEffectArea = [];
-    battleSession.hoveredHex = null;
-    renderAll();
+    battleSession.handleInvalidTargetClick();
     return;
   }
 
@@ -1811,12 +1715,7 @@ document.addEventListener('keydown', (e) => {
 
   // Escape: clear selection
   if (e.key === 'Escape') {
-    battleSession.selectedSkill = null;
-    battleSession.viewingSkill = null;
-    battleSession.validTargets = [];
-    battleSession.hoverEffectArea = [];
-    battleSession.hoveredHex = null;
-    renderAll();
+    battleSession.cancelCurrentSelection();
   }
 });
 
@@ -1889,14 +1788,15 @@ document.addEventListener('click', (e) => {
 canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  battleSession.hoveredHex = pixelToHex(mx, my);
-  if (!isOnBoard(battleSession.hoveredHex[0], battleSession.hoveredHex[1])) battleSession.hoveredHex = null;
-  if (battleSession.hoveredHex) {
-    const hoverChar = getCharacterAtHex(battleSession.hoveredHex[0], battleSession.hoveredHex[1]);
-    if (hoverChar) battleSession.lastHoveredCharacterId = hoverChar.id;
+  const [hq, hr] = pixelToHex(mx, my);
+  if (!isOnBoard(hq, hr)) {
+    battleSession.setHoveredHex(null, null);
+  } else {
+    const hoverChar = getCharacterAtHex(hq, hr);
+    battleSession.setHoveredHex(hq, hr, hoverChar?.id);
   }
 
-  battleSession.hoverEffectArea = [];
+  battleSession.clearTargetPreview();
   if (battleSession.selectedSkill || battleSession.viewingSkill) {
     const sel = battleSession.selectedSkill || battleSession.viewingSkill;
     const skill = SKILLS[sel.skillId];
@@ -1910,12 +1810,12 @@ canvas.addEventListener('mousemove', (e) => {
         : engine.getEffectiveRange(sel.charId, skill.targeting?.range ?? 99);
       const shape = skill.targeting.shape;
       if (shape === 'SELF' || shape === 'AOE_SELF') {
-        battleSession.hoverEffectArea = computeEffectArea(skill, origin, origin, effectiveRange);
+        battleSession.setHoverEffectArea(computeEffectArea(skill, origin, origin, effectiveRange));
       } else if (shape === 'FAN' && battleSession.hoveredHex && battleSession.validTargets.some(t => t.q === battleSession.hoveredHex[0] && t.r === battleSession.hoveredHex[1])) {
-        battleSession.hoverEffectArea = getSectorHexes(origin.q, origin.r, battleSession.hoveredHex[0], battleSession.hoveredHex[1], effectiveRange)
-          .map(([q, r]) => ({ q, r }));
+        battleSession.setHoverEffectArea(getSectorHexes(origin.q, origin.r, battleSession.hoveredHex[0], battleSession.hoveredHex[1], effectiveRange)
+          .map(([q, r]) => ({ q, r })));
       } else if (battleSession.hoveredHex && battleSession.validTargets.some(t => t.q === battleSession.hoveredHex[0] && t.r === battleSession.hoveredHex[1])) {
-        battleSession.hoverEffectArea = computeEffectArea(skill, origin, { q: battleSession.hoveredHex[0], r: battleSession.hoveredHex[1] }, effectiveRange);
+        battleSession.setHoverEffectArea(computeEffectArea(skill, origin, { q: battleSession.hoveredHex[0], r: battleSession.hoveredHex[1] }, effectiveRange));
       }
     }
   } else if (battleSession.galaxyActive && battleSession.galaxySelectedSkill && !document.getElementById('galaxy-overlay').classList.contains('show')) {
@@ -1924,7 +1824,7 @@ canvas.addEventListener('mousemove', (e) => {
     const char = engine.registry.get(battleSession.galaxyCharId);
     if (skill && char) {
       if (battleSession.hoveredHex && battleSession.validTargets.some(t => t.q === battleSession.hoveredHex[0] && t.r === battleSession.hoveredHex[1])) {
-        battleSession.hoverEffectArea = computeEffectArea(skill, char.position, { q: battleSession.hoveredHex[0], r: battleSession.hoveredHex[1] });
+        battleSession.setHoverEffectArea(computeEffectArea(skill, char.position, { q: battleSession.hoveredHex[0], r: battleSession.hoveredHex[1] }));
       }
     }
   }

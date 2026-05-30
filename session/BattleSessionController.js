@@ -449,6 +449,139 @@ export class BattleSessionController {
   }
 
   // ═══════════════════════════════════════════════════
+  // Encapsulation methods — main.js must use these, not direct field mutations
+  // ═══════════════════════════════════════════════════
+
+  clearTargetPreview() {
+    this.validTargets = [];
+    this.hoverEffectArea = [];
+    this.hoveredHex = null;
+  }
+
+  resetSubmissions() {
+    this.localSubmittedSet.clear();
+    this.remoteSubmittedSet.clear();
+    this.clearPlannedActions();
+  }
+
+  resetForConfigScreen() {
+    this.battleEnded = false;
+    this.battleActive = false;
+    this.clearSelection();
+    this.selectedCharacterId = null;
+    this.lastHoveredCharacterId = null;
+    this.galaxyActive = false;
+    this.galaxyCharId = null;
+    this.galaxySelectedSkill = null;
+    this.galaxyTargetPos = null;
+  }
+
+  resetForReturnToStart() {
+    this.clearTurnTimeout();
+    this.battleActive = false;
+    this.battleEnded = false;
+    this.pveAiRunning = false;
+    this.resetSubmissions();
+    this.clearSelection();
+    this.selectedCharacterId = null;
+    this.lastHoveredCharacterId = null;
+    this.galaxyActive = false;
+    this.galaxyCharId = null;
+    this.galaxySelectedSkill = null;
+    this.galaxyTargetPos = null;
+    this.galaxyActionIndex = 0;
+    this.galaxyActionTotal = 0;
+  }
+
+  setSelectedCharacterId(charId) {
+    this.selectedCharacterId = charId;
+    this.lastHoveredCharacterId = charId;
+  }
+
+  setLastHoveredCharacterId(charId) {
+    this.lastHoveredCharacterId = charId;
+  }
+
+  cancelCurrentSelection() {
+    this.clearSelection();
+    this._callbacks.renderAll();
+  }
+
+  handleInvalidTargetClick() {
+    this.clearSelection();
+    this._callbacks.renderAll();
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Galaxy sub-phase methods
+  // ═══════════════════════════════════════════════════
+
+  startGalaxySubphase(charIds) {
+    const myCharId = charIds.find(id => this.isMyCharacter(id));
+    if (!myCharId) return false;
+    this.galaxyActive = true;
+    this.galaxyCharId = myCharId;
+    this.galaxySelectedSkill = null;
+    return true;
+  }
+
+  promptGalaxyAction(data) {
+    if (!this.galaxyActive || data.charId !== this.galaxyCharId) return false;
+    this.galaxyActionIndex = data.index;
+    this.galaxyActionTotal = data.total;
+    return true;
+  }
+
+  endGalaxySubphase() {
+    this.galaxyActive = false;
+    this.galaxyCharId = null;
+    this.galaxySelectedSkill = null;
+  }
+
+  selectGalaxySkill(skillId) {
+    this.galaxySelectedSkill = skillId;
+  }
+
+  clearGalaxySelection() {
+    this.galaxySelectedSkill = null;
+    this.clearTargetPreview();
+  }
+
+  prepareGalaxyTargeting(skillId) {
+    this.galaxySelectedSkill = skillId;
+    const skill = SKILLS[skillId];
+    if (skill && skill.targeting.shape !== 'SELF' && skill.targeting.shape !== 'AOE_SELF') {
+      // Populate validTargets for FAN targeting
+      this.validTargets = [];
+      for (let q = -3; q <= 3; q++) {
+        for (let r = -3; r <= 3; r++) {
+          if (!isOnBoard(q, r)) continue;
+          this.validTargets.push({ q, r });
+        }
+      }
+      return 'target';
+    }
+    return 'self';
+  }
+
+  submitGalaxyTarget(targetPos, nm) {
+    const skillId = this.galaxySelectedSkill;
+    this.engine.submitGalaxyAction(skillId, targetPos);
+    if (nm && nm.mode !== 'local') {
+      nm.sendGalaxyAction(this.galaxyCharId, skillId, targetPos);
+    }
+    this.clearGalaxySelection();
+  }
+
+  skipGalaxyAction(nm) {
+    this.engine.submitGalaxyAction(this.galaxySelectedSkill, null);
+    if (nm && nm.mode !== 'local') {
+      nm.sendGalaxyAction(this.galaxyCharId, this.galaxySelectedSkill, null);
+    }
+    this.clearGalaxySelection();
+  }
+
+  // ═══════════════════════════════════════════════════
   // Action submission
   // ═══════════════════════════════════════════════════
 
@@ -564,18 +697,19 @@ export class BattleSessionController {
     this._callbacks.renderAll();
   }
 
-  async executeP2PTurn(nm) {
+  async executeP2PTurn(nm, options = {}) {
     this.clearTurnTimeout();
     const result = await this.engine.executeTurn();
-    this.localSubmittedSet.clear();
-    this.remoteSubmittedSet.clear();
-    this.clearPlannedActions();
+    if (!result.success) return result;
+    this.resetSubmissions();
     nm.clearTurn();
     if (result.battleEnded) {
       this._callbacks.renderAll();
       return result;
     }
     this._callbacks.setSubmitStatus('等待双方提交...');
+    if (options.animateTurn) await options.animateTurn();
+    this.engine.projectileCalculator.clearKeyframes?.();
     this._callbacks.renderAll();
     this.startTurnTimeout();
     this.updateSubmitStatus(nm);
