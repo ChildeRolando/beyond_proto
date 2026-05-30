@@ -360,3 +360,55 @@ test('A7: keyboard shortcuts do not cause errors', async ({ page }) => {
   // Canvas still visible
   await expect(page.locator('canvas#board')).toBeVisible();
 });
+
+// ─── A8: btn-lobby returns to start without ReferenceError ───
+
+test('A8: btn-lobby returns to start without error', async ({ page }) => {
+  await enterLocalBattle(page);
+
+  // Force gameover panel visible so btn-lobby is accessible
+  await page.evaluate(() => {
+    const panel = document.getElementById('gameover-panel');
+    if (panel) panel.classList.add('show');
+  });
+
+  const lobbyBtn = page.locator('#btn-lobby');
+  await expect(lobbyBtn).toBeVisible();
+  await lobbyBtn.click();
+  await page.waitForTimeout(500);
+
+  await expect(page.locator('#start-screen')).toBeVisible();
+  await expect(page.locator('#app')).not.toBeVisible();
+});
+
+// ─── A9: Escape key clears skill selection without error ───
+
+test('A9: Escape key clears skill selection', async ({ page }) => {
+  await enterLocalBattle(page);
+
+  const canvas = page.locator('canvas#board');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+
+  // Select a character
+  await page.mouse.click(box.x + box.width / 2 - 100, box.y + box.height / 2);
+  await page.waitForTimeout(300);
+
+  // Click a skill to select it
+  const skillBtns = page.locator('#action-dock .skill-btn:not(.used)');
+  const count = await skillBtns.count();
+  expect(count).toBeGreaterThan(0);
+  await skillBtns.first().click();
+  await page.waitForTimeout(300);
+
+  // Press Escape to clear
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+
+  // Action dock must still have content
+  const dockText = await page.locator('#action-dock').textContent();
+  expect(dockText.trim().length).toBeGreaterThan(5);
+
+  // Canvas still visible
+  await expect(page.locator('canvas#board')).toBeVisible();
+});

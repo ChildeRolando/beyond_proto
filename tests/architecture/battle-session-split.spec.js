@@ -133,3 +133,137 @@ for (const methodName of REQUIRED_METHODS) {
     expect(bscSrc).toMatch(new RegExp(methodName + '\\s*\\('));
   });
 }
+
+// ─── NEW: Ban arrow-function wrappers of moved functions ───
+
+test('main.js does NOT define const handleRemoteAction', () => {
+  expect(mainSrc).not.toMatch(/(?:const|let|var)\s+handleRemoteAction\s*=\s*/);
+});
+
+test('main.js does NOT define const executeP2PTurn', () => {
+  expect(mainSrc).not.toMatch(/(?:const|let|var)\s+executeP2PTurn\s*=\s*/);
+});
+
+test('main.js does NOT define const startBattleFromConfigs', () => {
+  expect(mainSrc).not.toMatch(/(?:const|let|var)\s+startBattleFromConfigs\s*=\s*/);
+});
+
+// ─── NEW: Ban direct engine.submitAction / engine.executeTurn in main.js ───
+
+test('main.js does NOT call engine.submitAction', () => {
+  expect(mainSrc).not.toMatch(/engine\.submitAction\s*\(/);
+});
+
+test('main.js does NOT call engine.executeTurn', () => {
+  expect(mainSrc).not.toMatch(/engine\.executeTurn\s*\(/);
+});
+
+// ─── NEW: Ban direct battleSession field assignments ───
+
+test('main.js does NOT assign battleSession.selectedSkill', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.selectedSkill\s*=/);
+});
+
+test('main.js does NOT assign battleSession.viewingSkill', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.viewingSkill\s*=/);
+});
+
+test('main.js does NOT assign battleSession.validTargets', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.validTargets\s*=/);
+});
+
+test('main.js does NOT assign battleSession.hoverEffectArea', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.hoverEffectArea\s*=/);
+});
+
+test('main.js does NOT assign battleSession.hoveredHex', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.hoveredHex\s*=/);
+});
+
+test('main.js does NOT assign battleSession.battleEnded', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.battleEnded\s*=/);
+});
+
+test('main.js does NOT assign battleSession.battleActive', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.battleActive\s*=/);
+});
+
+test('main.js does NOT assign battleSession.galaxyActive', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.galaxyActive\s*=/);
+});
+
+test('main.js does NOT assign battleSession.galaxyCharId', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.galaxyCharId\s*=/);
+});
+
+test('main.js does NOT assign battleSession.galaxySelectedSkill', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.galaxySelectedSkill\s*=/);
+});
+
+test('main.js does NOT assign battleSession.galaxyActionIndex', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.galaxyActionIndex\s*=/);
+});
+
+test('main.js does NOT assign battleSession.galaxyActionTotal', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.galaxyActionTotal\s*=/);
+});
+
+test('main.js does NOT assign battleSession.selectedCharacterId', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.selectedCharacterId\s*=/);
+});
+
+test('main.js does NOT assign battleSession.lastHoveredCharacterId', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.lastHoveredCharacterId\s*=/);
+});
+
+// ─── NEW: Ban direct battleSession set operations in main.js ───
+
+test('main.js does NOT call battleSession.localSubmittedSet.clear', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.localSubmittedSet\.(clear|add)\s*\(/);
+});
+
+test('main.js does NOT call battleSession.remoteSubmittedSet.clear', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.remoteSubmittedSet\.(clear|add)\s*\(/);
+});
+
+test('main.js does NOT call battleSession.clearPlannedActions', () => {
+  expect(mainSrc).not.toMatch(/battleSession\.clearPlannedActions\s*\(\s*\)/);
+});
+
+// ─── NEW: Ban bare returnToStart() call in main.js ───
+
+test('main.js does NOT call bare returnToStart() without function/window prefix', () => {
+  // Find all returnToStart() calls. They must be preceded by 'function ' or 'window.'
+  const lines = mainSrc.split('\n');
+  for (const line of lines) {
+    if (/returnToStart\s*\(\s*\)/.test(line)) {
+      // Allow: function returnToStart, window.returnToStart
+      expect(line).toMatch(/(?:function\s+returnToStart|window\.returnToStart|returnToStart\s*=\s*function)/);
+    }
+  }
+});
+
+// ─── NEW: Required encapsulation methods in BattleSessionController ───
+
+const ENCAPSULATION_METHODS = [
+  'resetForConfigScreen',
+  'resetForReturnToStart',
+  'resetSubmissions',
+  'clearTargetPreview',
+  'setSelectedCharacterId',
+  'setLastHoveredCharacterId',
+  'cancelCurrentSelection',
+  'startGalaxySubphase',
+  'promptGalaxyAction',
+  'endGalaxySubphase',
+  'selectGalaxySkill',
+  'clearGalaxySelection',
+  'submitGalaxyTarget',
+  'skipGalaxyAction',
+];
+
+for (const methodName of ENCAPSULATION_METHODS) {
+  test(`BattleSessionController.js has ${methodName} method`, () => {
+    expect(bscSrc).toMatch(new RegExp(methodName + '\\s*\\('));
+  });
+}
