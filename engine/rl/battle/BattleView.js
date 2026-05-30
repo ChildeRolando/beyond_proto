@@ -29,7 +29,9 @@ export class BattleView {
   }
 
   getOpponentKey(playerKey) {
-    return playerKey === 'player1' ? 'player2' : 'player1';
+    if (playerKey === 'player1') return 'player2';
+    if (playerKey === 'player2') return 'player1';
+    throw new Error(`invalid playerKey: ${playerKey}`);
   }
 
   getOpponentActor(playerKey) {

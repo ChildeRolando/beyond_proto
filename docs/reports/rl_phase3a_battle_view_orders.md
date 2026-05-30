@@ -23,7 +23,7 @@ Read-only wrapper over `GameEngine`. Provides playerKey-based access:
 - `getProjectiles()`, `getCasings()`, `getWildBullets()`
 - `isTerminal()`, `getRawEngineForDebug()`
 
-Throws on invalid playerKey.
+Throws on invalid playerKey (both `getActor` and `getOpponentKey`).
 
 ### BattleOrder.js
 
@@ -50,7 +50,8 @@ Imports HexIndex directly for hex lookups. Mirrors ActionMask.js internal helper
 
 - `orderToAction(order, encoder, battleView, options)` → actionIndex
 - `actionToOrder(actionIndex, encoder, battleView, playerKey, options)` → BattleOrder
-- `strict: true` → throws on invalid; `strict: false` → returns null
+- `strict: true` → throws on invalid (including decodable-but-not-valid-order); `strict: false` → returns null
+- Validates against `getValidOrders()` when checking strictness — an actionIndex that decodes successfully but isn't in the valid order set is rejected
 
 ### ActionMask.js (additions)
 
@@ -60,15 +61,32 @@ Imports HexIndex directly for hex lookups. Mirrors ActionMask.js internal helper
 
 For both player1 and player2, `buildActionMaskFromOrders(getValidOrders(...))` produces byte-identical masks to the original `buildActionMask()`. Proven by test 7.
 
+## Acceptance Fix (post-review)
+
+### Blocking: actionToOrder strict didn't validate against validOrders
+
+Original code only checked decode-to-game-action validity, not whether the action was actually a legal order. Fixed by importing `getValidOrders` and verifying the actionIndex is in the computed valid set before returning a BattleOrder.
+
+### Non-blocking: getOpponentKey didn't validate playerKey
+
+Original code used fallthrough `playerKey === 'player1' ? 'player2' : 'player1'` — any invalid key silently returned `'player1'`. Fixed with explicit validation and throw.
+
+### New tests added
+
+- `invalid playerKey throws on getOpponentKey` — verifies BattleView.getOpponentKey throws on bad key
+- `illegal actionIndex is decodable (>0)` — confirms mage_gather@board-target encodes successfully
+- `strict actionToOrder rejects decodable but invalid order` — strict mode throws for decode-OK but not-in-validOrders
+- `non-strict invalid order returns null` — non-strict mode returns null instead of throwing
+
 ## Files Changed
 
 ```
-engine/rl/battle/BattleView.js            — NEW (77 lines)
+engine/rl/battle/BattleView.js            — NEW (79 lines)
 engine/rl/actions/BattleOrder.js          — NEW (44 lines)
 engine/rl/actions/LegalOrderProvider.js   — NEW (115 lines)
-engine/rl/actions/OrderActionMapper.js    — NEW (42 lines)
+engine/rl/actions/OrderActionMapper.js    — NEW (56 lines)
 engine/rl/actions/ActionMask.js           — MODIFIED: +buildActionMaskFromOrders export
-tests/rl_battle_order_test.js             — NEW (34 tests)
+tests/rl_battle_order_test.js             — NEW (38 tests)
 docs/reports/rl_phase3a_battle_view_orders.md — NEW (this report)
 ```
 
@@ -78,7 +96,7 @@ No files outside allowed scope modified.
 
 | Test file | Result |
 |---|---|
-| `rl_battle_order_test.js` | **34/34** |
+| `rl_battle_order_test.js` | **38/38** |
 | `rl_benchmark_test.js` | **18/18** |
 | `rl_determinism_test.js` | **16/16** |
 | `rl_rollout_test.js` | **12/12** |
@@ -89,13 +107,17 @@ No files outside allowed scope modified.
 | `role_mechanics_test.js` | **38/38** |
 | `role_loadout_test.js` | **55/55** |
 | `skill_test.js` | **138/138** |
-| `test_signaling.js` | **12/12** |
 
-Total: 612 passed, 0 failed.
+Total: 604 passed, 0 failed.
 
 ## Remaining Issues
 
-None. All spec requirements met. ActionMask integration is equivalence-verified but old buildActionMask is preserved; full replacement deferred to next phase.
+None. All spec requirements met including strict OrderActionMapper validation against validOrders. ActionMask integration is equivalence-verified but old buildActionMask is preserved; full replacement deferred to next phase.
+
+## Known Minor Items (non-blocking, deferred)
+
+1. **LegalOrderProvider duplicates ActionMask helper logic** — cost/filter helpers are copied. Next phase should extract into shared legality utility to prevent rule drift.
+2. **LegalOrderProvider imports engine/ai/PrimitiveProfile.js** — only for `_isPureReposition()`. Long-term, skill semantic tags should move to `engine/skill/SkillSemantics.js`.
 
 ## Commit
 

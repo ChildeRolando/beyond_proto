@@ -57,7 +57,11 @@ console.log('[1] BattleView basic queries');
 
   let threw = false;
   try { view.getActor('bad_key'); } catch (e) { threw = true; }
-  check('invalid playerKey throws', threw);
+  check('invalid playerKey throws on getActor', threw);
+
+  threw = false;
+  try { view.getOpponentKey('bad_key'); } catch (e) { threw = true; }
+  check('invalid playerKey throws on getOpponentKey', threw);
 
   env.close();
 }
@@ -236,6 +240,31 @@ console.log('\n[6] OrderActionMapper roundtrip');
   // non-strict: returns null
   const nonStrict = orderToAction(null, encoder, view, { strict: false });
   check('non-strict returns null for invalid', nonStrict === null);
+
+  // strict: decodable but not in validOrders should throw
+  // mage_gather is a SELF skill — encoding with board target is decodable but illegal
+  const p1Skills = view.getAvailableSkills('player1');
+  let gatherSlot = -1;
+  for (let i = 0; i < p1Skills.length; i++) {
+    if (p1Skills[i].id === 'mage_gather') { gatherSlot = i; break; }
+  }
+  if (gatherSlot >= 0) {
+    const illegalButDecodable = encoder.encode({ skillSlot: gatherSlot, targetIndex: 0 });
+    check('illegal actionIndex is decodable (>0)', illegalButDecodable >= 0);
+
+    let strictThrew2 = false;
+    try {
+      actionToOrder(illegalButDecodable, encoder, view, 'player1', { strict: true });
+    } catch (e) {
+      strictThrew2 = true;
+    }
+    check('strict actionToOrder rejects decodable but invalid order', strictThrew2);
+
+    const nonStrictResult = actionToOrder(illegalButDecodable, encoder, view, 'player1', { strict: false });
+    check('non-strict invalid order returns null', nonStrictResult === null);
+  } else {
+    check('SKIP: mage_gather not found (not a mage scenario?)', false, 'no gather slot');
+  }
 
   env.close();
 }

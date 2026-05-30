@@ -2,6 +2,7 @@
 // Uses ActionEncoder for encoding/decoding, BattleView for actor context.
 
 import { BattleOrder } from './BattleOrder.js';
+import { getValidOrders } from './LegalOrderProvider.js';
 
 export function orderToAction(order, actionEncoder, battleView, options = {}) {
   if (!order || !('skillSlot' in order) || order.skillSlot < 0 || order.targetIndex < 0) {
@@ -29,6 +30,21 @@ export function actionToOrder(actionIndex, actionEncoder, battleView, playerKey,
 
   if (!decoded.valid || !decoded.skillId) {
     if (options.strict) throw new Error(`invalid action: ${decoded.reason || 'unknown'}`);
+    return null;
+  }
+
+  // Validate against actual legal orders (cost, range, targeting constraints)
+  const validOrders = options.validOrders ||
+    getValidOrders(battleView, playerKey, { actionEncoder });
+  const validActionIndices = new Set(
+    validOrders.map(o => actionEncoder.encode({
+      skillSlot: o.skillSlot,
+      targetIndex: o.targetIndex,
+    }))
+  );
+
+  if (!validActionIndices.has(actionIndex)) {
+    if (options.strict) throw new Error(`actionIndex is not a valid order: ${actionIndex}`);
     return null;
   }
 
