@@ -21,7 +21,7 @@ export const ROLE_TRAITS = {
   mirror_phase_sling:    { id: 'mirror_phase_sling',    name: '相位弹弓' },
   yan_death_wind:        { id: 'yan_death_wind',        name: '死亡如风' },
   duelist_minds_eye:     { id: 'duelist_minds_eye',     name: '心眼' },
-  placeholder_adapt:     { id: 'placeholder_adapt',     name: '预留特质' },
+  placeholder_adapt:     { id: 'placeholder_adapt',     name: '适应性' },
 };
 
 export const ROLE_DEFS = {
@@ -32,7 +32,7 @@ export const ROLE_DEFS = {
     portraitTheme: 'violet',
     traitIds: ['mirror_slippery', 'mirror_dimension_child', 'mirror_dimension_lord', 'mirror_phase_sling'],
     roleSkillIds: ['role_mirror_return_jump', 'role_mirror_phase_sync'],
-    description: '围绕次元门、token和相位攻击成长的法师角色。',
+    description: '以镜面次元折叠战场，通过相位穿梭与次元门实现空间支配。',
     plannedMechanics: '次元token、无行动穿越、次元免疫、相位加速。',
   },
   mage_stargazer: {
@@ -42,7 +42,7 @@ export const ROLE_DEFS = {
     portraitTheme: 'indigo',
     traitIds: ['placeholder_adapt'],
     roleSkillIds: ['role_stargazer_orbit'],
-    description: '占位法师角色，用于验证角色轮播容量。',
+    description: '观测星轨并预判战场落点，通过延迟打击压缩敌方走位空间。',
     plannedMechanics: '星象蓄力和延迟落点。',
   },
   mage_gatekeeper: {
@@ -52,7 +52,7 @@ export const ROLE_DEFS = {
     portraitTheme: 'cyan',
     traitIds: ['placeholder_adapt'],
     roleSkillIds: ['role_gatekeeper_anchor'],
-    description: '占位法师角色，用于后续空间控制设计。',
+    description: '以门锚固定空间节点，擅长换位、封路和阵地控制。',
     plannedMechanics: '门锚、换位和空间标记。',
   },
 
@@ -83,7 +83,7 @@ export const ROLE_DEFS = {
     portraitTheme: 'steel',
     traitIds: ['placeholder_adapt'],
     roleSkillIds: ['role_vanguard_breakline'],
-    description: '占位战士角色，用于后续破阵抗压设计。',
+    description: '以破阵冲锋撕开敌方防线，承担前排压制与抗伤职责。',
     plannedMechanics: '阵法压制和前排减伤。',
   },
 

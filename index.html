@@ -20,6 +20,25 @@
   --amber: #d4943a;
   --amber-glow: rgba(212,148,58,0.25);
   --jade: #5a9e7e;
+
+  /* Config screen palette */
+  --cfg-bg: #080811;
+  --cfg-surface: rgba(18,18,30,0.82);
+  --cfg-surface-2: rgba(28,26,42,0.88);
+  --cfg-surface-3: rgba(42,38,60,0.82);
+  --cfg-border-soft: rgba(255,255,255,0.08);
+  --cfg-border-strong: rgba(230,189,131,0.45);
+  --cfg-gold: #e6bd83;
+  --cfg-mage: #a879ff;
+  --cfg-warrior: #e05f5f;
+  --cfg-shooter: #d4943a;
+  --cfg-cyan: #49c7d8;
+  --cfg-text: #eee8f5;
+  --cfg-text-dim: #8f879d;
+  --cfg-text-muted: #625c70;
+  --cfg-glow-mage: rgba(168,121,255,0.3);
+  --cfg-glow-gold: rgba(230,189,131,0.25);
+
   --font-display: 'KaiTi', 'STKaiti', '楷体', 'FangSong', '仿宋', serif;
   --font-body: 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
 }
@@ -178,261 +197,295 @@ body {
   display: none;
   width: 100vw;
   height: 100vh;
-  padding: 18px 24px;
-  grid-template-rows: auto auto 1fr auto;
-  gap: 14px;
-  background:
-    linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.05)),
-    var(--bg);
+  background: var(--cfg-bg);
+  background-image:
+    radial-gradient(ellipse at 50% 30%, rgba(168,121,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse at 75% 60%, rgba(230,189,131,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(73,199,216,0.04) 0%, transparent 50%);
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 240px 1fr 280px;
+  gap: 0;
+  overflow: hidden;
 }
-.config-top {
+.config-topbar {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 44px;
+  gap: 16px;
+  padding: 10px 24px;
+  background: var(--cfg-surface);
+  border-bottom: 1px solid var(--cfg-border-soft);
+  min-height: 52px;
+  backdrop-filter: blur(12px);
 }
-.config-top h1 {
+.config-topbar h1 {
   font-family: var(--font-display);
-  color: var(--accent);
-  font-size: 22px;
+  font-size: 20px;
+  color: var(--cfg-gold);
   letter-spacing: 4px;
   margin-right: auto;
 }
-.config-status { color: var(--text-dim); font-size: 13px; }
-.config-player-switch {
-  display: flex;
-  gap: 6px;
-}
-.config-player-switch button,
-.class-tabs button,
-.config-action {
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  border-radius: 4px;
-  padding: 7px 14px;
-  cursor: pointer;
-  font-family: var(--font-display);
-  letter-spacing: 1px;
-}
-.config-player-switch button.active,
-.class-tabs button.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(221,187,153,0.08);
-}
-.class-tabs {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-}
-.role-stage {
-  display: grid;
-  grid-template-columns: 280px 1fr 280px;
-  gap: 16px;
-  min-height: 0;
-  align-items: stretch;
-}
-.role-detail,
-.peer-config-card {
-  background: rgba(0,0,0,0.16);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 14px;
-  overflow: auto;
-}
-.role-detail h2,
-.peer-config-card h2 {
-  color: var(--accent);
-  font-family: var(--font-display);
-  font-size: 18px;
-  letter-spacing: 2px;
-  margin-bottom: 8px;
-}
-.role-detail p,
-.peer-config-card p {
-  color: var(--text-dim);
-  font-size: 12px;
-  line-height: 1.55;
-  margin-bottom: 8px;
-}
-.trait-pill {
-  display: inline-block;
-  border: 1px solid rgba(221,187,153,0.35);
-  color: var(--accent);
-  padding: 3px 7px;
-  border-radius: 3px;
+.config-mode-badge {
   font-size: 11px;
-  margin: 0 4px 4px 0;
+  padding: 3px 10px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  color: var(--cfg-text-dim);
+  border: 1px solid var(--cfg-border-soft);
+  background: var(--cfg-surface-2);
 }
-.role-carousel {
-  display: grid;
-  grid-template-columns: 46px 1fr 46px;
+.config-player-badges { display: flex; gap: 6px; }
+.config-player-badge {
+  padding: 4px 14px;
+  border: 1px solid var(--cfg-border-soft);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--cfg-text-dim);
+  background: var(--cfg-surface-2);
+  transition: all 0.2s;
+}
+.config-player-badge.active {
+  border-color: var(--cfg-gold);
+  color: var(--cfg-gold);
+  background: rgba(230,189,131,0.1);
+  box-shadow: 0 0 12px var(--cfg-glow-gold);
+}
+.config-player-badge:hover { border-color: var(--cfg-gold); color: var(--cfg-text); }
+.config-topbar .config-action {
+  border: 1px solid var(--cfg-border-soft);
+  background: var(--cfg-surface-2);
+  color: var(--cfg-text-dim);
+  border-radius: 4px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.config-topbar .config-action:hover { border-color: var(--cfg-border-strong); color: var(--cfg-gold); }
+.config-left-sidebar {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--cfg-border-soft);
+  background: var(--cfg-surface);
+}
+.config-class-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 8px 6px;
+  flex-shrink: 0;
+}
+.config-class-tab {
+  flex: 1;
+  padding: 8px 2px;
+  border: 1px solid var(--cfg-border-soft);
+  border-radius: 4px;
+  background: var(--cfg-surface-2);
+  color: var(--cfg-text-dim);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-align: center;
+  transition: all 0.2s;
+}
+.config-class-tab.active {
+  border-color: var(--cfg-gold);
+  color: var(--cfg-gold);
+  background: rgba(230,189,131,0.08);
+}
+.config-class-tab:hover:not(.active) { border-color: var(--cfg-border-strong); color: var(--cfg-text); }
+.config-class-tab:disabled { opacity: 0.35; cursor: not-allowed; }
+.config-role-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.config-role-list-item {
+  display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0;
-}
-.role-nav {
-  height: 120px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.04);
-  color: var(--accent);
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 28px;
-}
-.role-cards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(150px, 1fr));
-  gap: 14px;
-  align-items: center;
-}
-.role-card {
-  height: min(58vh, 470px);
-  min-height: 330px;
-  border: 1px solid var(--border);
+  padding: 8px 10px;
+  border: 1px solid var(--cfg-border-soft);
   border-radius: 6px;
-  background: linear-gradient(160deg, #3e3d54, #25242d);
+  background: var(--cfg-surface-2);
   cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  padding: 0;
-  display: flex;
-  transition: transform 0.2s, border-color 0.2s, opacity 0.2s;
-  opacity: 0.72;
+  transition: all 0.2s;
 }
-.role-portrait {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top center;
+.config-role-list-item:hover { border-color: var(--cfg-border-strong); background: var(--cfg-surface-3); }
+.config-role-list-item.active {
+  border-color: var(--cfg-gold);
+  background: rgba(230,189,131,0.06);
+  box-shadow: 0 0 8px var(--cfg-glow-gold);
 }
-.role-card-label {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 12px 16px;
-  background: linear-gradient(transparent, rgba(0,0,0,0.82));
+.config-role-list-thumb {
+  width: 40px; height: 40px; border-radius: 4px;
+  object-fit: cover; object-position: top center;
+  flex-shrink: 0; background: var(--cfg-surface-3);
+}
+.config-role-list-info { flex: 1; min-width: 0; }
+.config-role-list-name {
+  font-family: var(--font-display); font-size: 14px;
+  letter-spacing: 1px; color: var(--cfg-text);
+}
+.config-role-list-class { font-size: 11px; color: var(--cfg-text-muted); }
+.config-hero-stage {
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.config-hero-glow {
+  position: absolute; inset: 0; opacity: 0.55;
+  pointer-events: none; transition: background 0.5s;
+}
+.config-hero-glow.theme-violet { background: radial-gradient(ellipse at center, rgba(139,92,246,0.28) 0%, transparent 70%); }
+.config-hero-glow.theme-indigo { background: radial-gradient(ellipse at center, rgba(99,79,178,0.28) 0%, transparent 70%); }
+.config-hero-glow.theme-cyan { background: radial-gradient(ellipse at center, rgba(73,199,216,0.22) 0%, transparent 70%); }
+.config-hero-glow.theme-crimson { background: radial-gradient(ellipse at center, rgba(224,95,95,0.28) 0%, transparent 70%); }
+.config-hero-glow.theme-amber { background: radial-gradient(ellipse at center, rgba(212,148,58,0.28) 0%, transparent 70%); }
+.config-hero-glow.theme-steel { background: radial-gradient(ellipse at center, rgba(150,160,180,0.18) 0%, transparent 70%); }
+.config-hero-glow.theme-copper { background: radial-gradient(ellipse at center, rgba(184,134,80,0.28) 0%, transparent 70%); }
+.config-hero-glow.theme-olive { background: radial-gradient(ellipse at center, rgba(140,160,80,0.22) 0%, transparent 70%); }
+.config-hero-glow.theme-navy { background: radial-gradient(ellipse at center, rgba(60,90,150,0.28) 0%, transparent 70%); }
+.config-hero-portrait {
+  max-height: 78vh; max-width: 90%;
+  object-fit: contain; object-position: center;
   z-index: 1;
+  filter: drop-shadow(0 0 36px rgba(230,189,131,0.12));
+  transition: opacity 0.3s;
 }
-.role-card-label h3 { color: var(--accent); font-family: var(--font-display); font-size: 16px; letter-spacing: 2px; margin-bottom: 2px; }
-.role-card-label span { color: var(--text-dim); font-size: 11px; }
-.role-card::before {
-  content: '';
-  position: absolute;
-  inset: 18px 28px 86px;
-  border-radius: 999px 999px 12px 12px;
-  background: rgba(255,255,255,0.12);
-  clip-path: polygon(50% 0%, 78% 22%, 86% 62%, 64% 100%, 36% 100%, 14% 62%, 22% 22%);
+.config-hero-nameplate {
+  position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+  z-index: 2; text-align: center;
+  padding: 10px 36px;
+  background: var(--cfg-surface);
+  border: 1px solid var(--cfg-border-soft);
+  border-radius: 6px;
+  backdrop-filter: blur(16px);
 }
-.role-card.center {
-  transform: scale(1.04);
-  border-color: var(--accent);
-  opacity: 1;
+.config-hero-nameplate h2 {
+  font-family: var(--font-display); font-size: 26px;
+  letter-spacing: 4px; color: var(--cfg-gold);
+  margin-bottom: 2px;
 }
-.role-card.theme-violet { background: linear-gradient(160deg, #5b4b8a, #25242d); }
-.role-card.theme-indigo { background: linear-gradient(160deg, #3f4f88, #25242d); }
-.role-card.theme-cyan { background: linear-gradient(160deg, #2f6b72, #25242d); }
-.role-card.theme-crimson { background: linear-gradient(160deg, #7c343d, #25242d); }
-.role-card.theme-amber { background: linear-gradient(160deg, #7a5a2f, #25242d); }
-.role-card.theme-steel { background: linear-gradient(160deg, #56606d, #25242d); }
-.role-card.theme-copper { background: linear-gradient(160deg, #80563b, #25242d); }
-.role-card.theme-olive { background: linear-gradient(160deg, #596b3a, #25242d); }
-.role-card.theme-navy { background: linear-gradient(160deg, #30476d, #25242d); }
-.role-card h3 {
-  position: relative;
-  font-family: var(--font-display);
-  color: #fff;
-  font-size: 24px;
-  letter-spacing: 3px;
+.config-hero-nameplate span { font-size: 12px; color: var(--cfg-text-dim); letter-spacing: 2px; }
+.config-right-sidebar {
+  display: flex; flex-direction: column;
+  gap: 8px; padding: 10px; overflow-y: auto;
+  border-left: 1px solid var(--cfg-border-soft);
+  background: var(--cfg-surface);
 }
-.role-card span {
-  position: relative;
-  color: rgba(255,255,255,0.76);
-  font-size: 12px;
-  margin-top: 4px;
+.config-role-detail-card, .config-team-status {
+  background: var(--cfg-surface-2);
+  border: 1px solid var(--cfg-border-soft);
+  border-radius: 6px; padding: 14px;
 }
-.loadout-panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 10px 14px;
+.config-role-detail-card h3, .config-team-status h3 {
+  font-family: var(--font-display); font-size: 15px;
+  letter-spacing: 2px; color: var(--cfg-gold); margin-bottom: 8px;
 }
-.loadout-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.config-role-detail-card .desc {
+  color: var(--cfg-text-dim); font-size: 12px;
+  line-height: 1.6; margin-bottom: 8px;
 }
-.loadout-header h2 {
-  color: var(--accent);
-  font-family: var(--font-display);
-  font-size: 17px;
-  letter-spacing: 2px;
-  margin-right: auto;
+.config-role-detail-card .mechanics {
+  color: var(--cfg-text-muted); font-size: 11px;
+  line-height: 1.5; font-style: italic;
+  border-top: 1px solid var(--cfg-border-soft);
+  padding-top: 8px; margin-top: 6px;
 }
-.loadout-body {
-  display: none;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 10px;
+.config-trait-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.config-trait-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid rgba(230,189,131,0.3); color: var(--cfg-gold);
+  background: rgba(230,189,131,0.06); padding: 3px 8px;
+  border-radius: 3px; font-size: 11px;
 }
-.loadout-body.open { display: grid; }
-.loadout-slots,
-.skill-pool {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-content: flex-start;
+.config-trait-badge {
+  font-size: 9px; padding: 1px 4px; border-radius: 2px;
+  background: rgba(230,189,131,0.12);
 }
-.loadout-slot,
-.pool-skill {
-  border: 1px solid var(--border);
-  background: rgba(0,0,0,0.12);
-  color: var(--text);
-  border-radius: 4px;
-  min-height: 34px;
-  padding: 6px 8px;
-  font-size: 12px;
-  cursor: pointer;
+.config-team-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 0; font-size: 12px; color: var(--cfg-text-dim);
+  border-bottom: 1px solid var(--cfg-border-soft);
 }
-.loadout-slot { min-width: 112px; }
-.pool-skill.selected {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(221,187,153,0.08);
+.config-team-row:last-child { border-bottom: none; }
+.config-team-dot {
+  display: inline-block; width: 8px; height: 8px;
+  border-radius: 50%; margin-right: 6px;
 }
-.pool-skill.pool-trait {
-  font-style: italic;
+.config-team-dot.ready { background: var(--cfg-gold); box-shadow: 0 0 6px var(--cfg-glow-gold); }
+.config-team-dot.waiting { background: var(--cfg-text-muted); }
+.config-bottom-dock {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--cfg-border-soft);
+  background: var(--cfg-surface);
+  padding: 10px 16px;
+  display: flex; flex-direction: column; gap: 6px;
+  min-height: 90px;
+  backdrop-filter: blur(12px);
 }
-.trait-badge {
-  font-size: 9px;
-  font-style: normal;
-  padding: 1px 4px;
-  border-radius: 3px;
-  background: rgba(221,187,153,0.12);
-  color: var(--accent);
-  margin-left: 3px;
-  vertical-align: middle;
+.config-dock-header { display: flex; align-items: center; gap: 12px; }
+.config-dock-header h2 {
+  font-family: var(--font-display); font-size: 14px;
+  letter-spacing: 2px; color: var(--cfg-gold); margin-right: auto;
 }
-.config-footer {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
+.config-loadout-slots-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.config-loadout-slot-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--cfg-border-soft);
+  border-radius: 4px; background: var(--cfg-surface-2);
+  color: var(--cfg-text); cursor: pointer;
+  font-size: 12px; min-width: 90px; text-align: left;
+  transition: all 0.2s;
 }
-.config-action.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--bg);
-  font-weight: 700;
+.config-loadout-slot-btn:hover { border-color: var(--cfg-border-strong); background: var(--cfg-surface-3); }
+.config-loadout-slot-btn.empty { color: var(--cfg-text-muted); font-style: italic; }
+.config-skill-drawer {
+  display: none; border-top: 1px solid var(--cfg-border-soft);
+  padding-top: 8px; gap: 14px;
 }
-.config-action:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.config-skill-drawer.open { display: flex; }
+.config-skill-pool-col { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.config-skill-pool-label { font-size: 11px; color: var(--cfg-text-muted); letter-spacing: 1px; margin-bottom: 4px; }
+.config-skill-pool-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.config-pool-skill-btn {
+  padding: 4px 10px; border: 1px solid var(--cfg-border-soft);
+  border-radius: 3px; background: var(--cfg-surface-2);
+  color: var(--cfg-text-dim); cursor: pointer;
+  font-size: 11px; transition: all 0.2s;
 }
+.config-pool-skill-btn:hover { border-color: var(--cfg-border-strong); color: var(--cfg-text); }
+.config-pool-skill-btn.selected {
+  border-color: var(--cfg-gold); color: var(--cfg-gold);
+  background: rgba(230,189,131,0.1);
+}
+.config-pool-skill-btn.trait-btn { font-style: italic; }
+.config-cta-row {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 12px; padding-top: 6px;
+}
+.config-cta-status { font-size: 12px; color: var(--cfg-text-dim); margin-right: auto; }
+.config-cta-btn {
+  padding: 8px 24px; border: 1px solid var(--cfg-border-soft);
+  border-radius: 4px; background: var(--cfg-surface-2);
+  color: var(--cfg-text); cursor: pointer;
+  font-family: var(--font-display); font-size: 14px;
+  letter-spacing: 2px; transition: all 0.2s;
+}
+.config-cta-btn:hover { border-color: var(--cfg-gold); color: var(--cfg-gold); }
+.config-cta-btn.primary { background: var(--cfg-gold); border-color: var(--cfg-gold); color: var(--cfg-bg); font-weight: 700; }
+.config-cta-btn.primary:hover { background: #d4b076; box-shadow: 0 0 18px var(--cfg-glow-gold); transform: translateY(-1px); }
+.config-cta-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* --- Game screen --- */
 #app {
@@ -1277,54 +1330,57 @@ select:focus { outline: none; border-color: var(--accent); }
 
 <!-- Config screen -->
 <div id="config-screen">
-  <div class="config-top">
+  <div class="config-topbar">
     <h1>出战配置</h1>
-    <span class="config-status" id="config-mode-label">本地配置</span>
-    <div class="config-player-switch" id="config-player-switch">
-      <button data-player="player1" class="active">P1</button>
-      <button data-player="player2">P2</button>
+    <span class="config-mode-badge" id="config-mode-label">本地配置</span>
+    <div class="config-player-badges" id="config-player-switch">
+      <button class="config-player-badge active" data-player="player1">P1</button>
+      <button class="config-player-badge" data-player="player2">P2</button>
     </div>
     <button class="config-action" id="btn-config-back">返回</button>
   </div>
-  <div class="class-tabs" id="config-class-tabs"></div>
-  <div class="role-stage">
-    <div class="role-detail" id="role-detail"></div>
-    <div class="role-carousel">
-      <button class="role-nav" id="role-prev">‹</button>
-      <div class="role-cards" id="role-cards"></div>
-      <button class="role-nav" id="role-next">›</button>
-    </div>
-    <div class="peer-config-card" id="peer-config-card"></div>
+  <div class="config-left-sidebar">
+    <div class="config-class-tabs" id="config-class-tabs"></div>
+    <div class="config-role-list" id="config-role-list"></div>
   </div>
-  <div class="loadout-panel">
-    <div class="loadout-header">
+  <div class="config-hero-stage" id="config-hero-stage">
+    <div class="config-hero-glow" id="config-hero-glow"></div>
+    <img class="config-hero-portrait" id="config-hero-portrait" src="" alt="">
+    <div class="config-hero-nameplate" id="config-hero-nameplate">
+      <h2 id="config-hero-name"></h2>
+      <span id="config-hero-class"></span>
+    </div>
+  </div>
+  <div class="config-right-sidebar">
+    <div class="config-role-detail-card" id="role-detail"></div>
+    <div class="config-team-status" id="team-status"></div>
+  </div>
+  <div class="config-bottom-dock">
+    <div class="config-dock-header">
       <h2>技能带入</h2>
-      <span class="config-status" id="loadout-count"></span>
-      <button class="config-action" id="btn-toggle-loadout">展开配置</button>
+      <span class="config-cta-status" id="loadout-count"></span>
+      <button class="config-cta-btn" id="btn-toggle-loadout">展开配置</button>
     </div>
-    <div class="loadout-body" id="loadout-body">
-      <div>
-        <div class="config-status" style="margin-bottom:6px;">带入槽</div>
-        <div class="loadout-slots" id="loadout-slots"></div>
+    <div class="config-loadout-slots-row">
+      <div class="loadout-slots" id="loadout-slots" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      <span class="config-skill-pool-label" style="align-self:center;margin:0 8px;">角色</span>
+      <div class="loadout-slots" id="role-loadout-slots" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    </div>
+    <div class="config-skill-drawer" id="config-skill-drawer">
+      <div class="config-skill-pool-col">
+        <div class="config-skill-pool-label">职业技能池</div>
+        <div class="config-skill-pool-grid" id="skill-pool"></div>
       </div>
-      <div>
-        <div class="config-status" style="margin-bottom:6px;">角色带入槽 (2)</div>
-        <div class="loadout-slots" id="role-loadout-slots"></div>
-      </div>
-      <div>
-        <div class="config-status" style="margin-bottom:6px;">职业技能池</div>
-        <div class="skill-pool" id="skill-pool"></div>
-      </div>
-      <div>
-        <div class="config-status" style="margin-bottom:6px;">角色技能池</div>
-        <div class="skill-pool" id="role-skill-pool"></div>
+      <div class="config-skill-pool-col">
+        <div class="config-skill-pool-label">角色技能池</div>
+        <div class="config-skill-pool-grid" id="role-skill-pool"></div>
       </div>
     </div>
-  </div>
-  <div class="config-footer">
-    <span class="config-status" id="config-ready-status"></span>
-    <button class="config-action primary" id="btn-config-lock">锁定配置</button>
-    <button class="config-action primary" id="btn-config-start" style="display:none;">开始战斗</button>
+    <div class="config-cta-row">
+      <span class="config-cta-status" id="config-ready-status"></span>
+      <button class="config-cta-btn primary" id="btn-config-lock">锁定配置</button>
+      <button class="config-cta-btn primary" id="btn-config-start" style="display:none;">开始战斗</button>
+    </div>
   </div>
 </div>
 
@@ -1728,25 +1784,17 @@ function renderConfigScreen() {
   const cfg = activeConfig();
   const editable = isConfigEditable();
   const role = ROLE_DEFS[hoverRoleId] || ROLE_DEFS[cfg.roleId];
-  document.getElementById('config-mode-label').textContent = configMode === 'local' ? '本地配置' : `联机配置 ${networkManager?.roomCode || ''}`;
-  document.getElementById('config-player-switch').style.display = configMode === 'local' ? 'flex' : 'none';
-
-  if (configMode === 'pve') {
-    document.getElementById('config-mode-label').textContent = 'PVE 配置';
-    document.getElementById('config-player-switch').style.display = 'flex';
-  }
-
+  document.getElementById('config-mode-label').textContent = configMode === 'local' ? '本地配置' : configMode === 'pve' ? 'PVE 配置' : `联机配置 ${networkManager?.roomCode || ''}`;
+  document.getElementById('config-player-switch').style.display = (configMode === 'p2p') ? 'none' : 'flex';
   document.querySelectorAll('#config-player-switch button').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.player === currentConfigPlayer);
   });
-
   document.getElementById('config-class-tabs').innerHTML = CLASSES.map(cls =>
-    `<button data-class="${cls}" class="${cfg.class === cls ? 'active' : ''}"${(!editable || cfg.locked) ? ' disabled' : ''}>${cls}</button>`
+    `<button class="config-class-tab ${cfg.class === cls ? 'active' : ''}" data-class="${cls}"${(!editable || cfg.locked) ? ' disabled' : ''}>${cls}</button>`
   ).join('');
-
-  renderRoleCards(cfg);
+  renderRoleList(cfg, editable);
   renderRoleDetail(role);
-  renderPeerConfig();
+  renderTeamStatus();
   renderLoadout(cfg);
   renderConfigFooter();
   wireConfigEvents();
@@ -1756,86 +1804,89 @@ function getRolePortrait(roleId) {
   return `assets/character-portraits/${roleId}.webp?v=${PORTRAIT_CACHE_VERSION}`;
 }
 
-function renderRoleCards(cfg) {
+function renderRoleList(cfg, editable) {
   const roles = getRolesByClass(cfg.class);
-  const selectedIndex = Math.max(0, roles.findIndex(r => r.id === cfg.roleId));
-  const visible = [-1, 0, 1].map(offset => roles[(selectedIndex + offset + roles.length) % roles.length]);
-  document.getElementById('role-cards').innerHTML = visible.map((role, idx) => `
-    <div class="role-card theme-${role.portraitTheme || 'steel'} ${idx === 1 ? 'center' : ''}" data-role="${role.id}">
-      <img class="role-portrait" src="${getRolePortrait(role.id)}" alt="${role.name}">
-      <div class="role-card-label">
-        <h3>${role.name}</h3>
-        <span>${role.class} · ${idx === 1 ? '当前选择' : '点击切换'}</span>
+  document.getElementById('config-role-list').innerHTML = roles.map(role => {
+    const isActive = role.id === cfg.roleId;
+    return `<div class="config-role-list-item ${isActive ? 'active' : ''}" data-role="${role.id}">
+      <img class="config-role-list-thumb" src="${getRolePortrait(role.id)}" alt="${role.name}">
+      <div class="config-role-list-info">
+        <div class="config-role-list-name">${role.name}</div>
+        <div class="config-role-list-class">${role.class}</div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+  const activeRole = roles.find(r => r.id === cfg.roleId) || roles[0];
+  if (activeRole) renderRoleHero(activeRole);
+}
+
+function renderRoleHero(role) {
+  if (!role) return;
+  document.getElementById('config-hero-glow').className = `config-hero-glow theme-${role.portraitTheme || 'steel'}`;
+  document.getElementById('config-hero-portrait').src = getRolePortrait(role.id);
+  document.getElementById('config-hero-portrait').alt = role.name;
+  document.getElementById('config-hero-name').textContent = role.name;
+  document.getElementById('config-hero-class').textContent = role.class;
 }
 
 function renderRoleDetail(role) {
-  if (!role) {
-    document.getElementById('role-detail').innerHTML = '';
-    return;
-  }
+  const el = document.getElementById('role-detail');
+  if (!role) { el.innerHTML = ''; return; }
   const poolIds = getRoleSkillPool(role.id);
   const poolSkills = poolIds.map(id => SKILLS[id]).filter(Boolean);
+  const traits = poolSkills.filter(s => s.isTrait);
+  const actives = poolSkills.filter(s => !s.isTrait);
   const pillsHTML = poolSkills.map(s =>
-    `<span class="trait-pill">${s.name}${s.isTrait ? ' <span class="trait-badge">被动</span>' : ''}</span>`
-  ).join(' ');
-  const descsHTML = poolSkills.map(s =>
-    `${s.name}: ${s.desc || ''}`
-  ).join('<br>');
-  document.getElementById('role-detail').innerHTML = `
-    <h2>${role.name}</h2>
-    <p>${role.description || ''}</p>
-    <div>${pillsHTML}</div>
-    <p>${descsHTML}</p>
-    <p>${role.plannedMechanics || ''}</p>
+    `<span class="config-trait-pill">${s.name}${s.isTrait ? ' <span class="config-trait-badge">被动</span>' : ''}</span>`
+  ).join('');
+  el.innerHTML = `
+    <h3>${role.name}</h3>
+    <div class="config-trait-pills">${pillsHTML}</div>
+    <div class="desc">${role.description || ''}</div>
+    <div class="mechanics">${role.plannedMechanics || ''}</div>
   `;
 }
 
-function renderPeerConfig() {
-  const myId = currentConfigPlayer;
-  const peerId = configMode === 'local' || configMode === 'pve'
-    ? getOpponentPlayerId(myId)
-    : getOpponentPlayerId(networkManager?.myPlayerId || myId);
-  const peer = configPlayers[peerId];
-  const peerRole = ROLE_DEFS[peer.roleId];
-  const my = configPlayers[myId];
-  const peerTitle = configMode === 'local' || configMode === 'pve' ? '另一名玩家' : '对手配置';
-  document.getElementById('peer-config-card').innerHTML = `
-    <h2>${peerTitle}</h2>
-    <p>${peerId.toUpperCase()}: ${peer.class} / ${peerRole?.name || '未选择'}</p>
-    <p>带入: ${peer.loadoutSkillIds.map(id => SKILLS[id]?.name || id).join('、')}</p>
-    <p>状态: ${peer.locked ? '已锁定' : '配置中'}</p>
-    <h2 style="margin-top:14px;">当前编辑</h2>
-    <p>${my.playerId.toUpperCase()}: ${my.class} / ${ROLE_DEFS[my.roleId]?.name || '未选择'}</p>
-    <p>${isConfigEditable(my.playerId) ? '可编辑' : '只读'} · ${my.locked ? '已锁定' : '未锁定'}</p>
+function renderTeamStatus() {
+  const p1 = configPlayers.player1;
+  const p2 = configPlayers.player2;
+  const title = configMode === 'p2p' ? '联机队伍' : '队伍状态';
+  document.getElementById('team-status').innerHTML = `
+    <h3>${title}</h3>
+    <div class="config-team-row">
+      <span><span class="config-team-dot ${p1.locked ? 'ready' : 'waiting'}"></span>P1: ${ROLE_DEFS[p1.roleId]?.name || '未选择'} · ${p1.class}</span>
+      <span>${p1.locked ? '已锁定' : '配置中'}</span>
+    </div>
+    <div class="config-team-row">
+      <span><span class="config-team-dot ${p2.locked ? 'ready' : 'waiting'}"></span>P2: ${ROLE_DEFS[p2.roleId]?.name || '未选择'} · ${p2.class}</span>
+      <span>${p2.locked ? '已锁定' : '配置中'}</span>
+    </div>
   `;
 }
+
+// DEPRECATED: replaced by renderTeamStatus() + renderRoleList()
+function renderPeerConfig() {}
 
 function renderLoadout(cfg) {
   const validation = validateLoadout(cfg.class, cfg.loadoutSkillIds);
   const roleValidation = validateRoleLoadout(cfg.roleId, cfg.roleLoadoutSkillIds || []);
   document.getElementById('loadout-count').textContent =
-    `职业 ${cfg.loadoutSkillIds.length}/${LOADOUT_SIZE} · 角色 ${(cfg.roleLoadoutSkillIds || []).length}/${ROLE_LOADOUT_SIZE}${validation.ok && roleValidation.ok ? '' : '· 配置无效'}`;
-  document.getElementById('loadout-body').classList.toggle('open', configLoadoutOpen);
+    `职业 ${cfg.loadoutSkillIds.length}/${LOADOUT_SIZE} · 角色 ${(cfg.roleLoadoutSkillIds || []).length}/${ROLE_LOADOUT_SIZE}${validation.ok && roleValidation.ok ? '' : ' · 无效'}`;
+  document.getElementById('config-skill-drawer').classList.toggle('open', configLoadoutOpen);
   document.getElementById('btn-toggle-loadout').textContent = configLoadoutOpen ? '收起配置' : '展开配置';
 
-  // Class loadout slots
   document.getElementById('loadout-slots').innerHTML = Array.from({ length: LOADOUT_SIZE }, (_, i) => {
     const sid = cfg.loadoutSkillIds[i];
     const label = sid ? SKILLS[sid]?.name || sid : '空槽';
-    return `<button class="loadout-slot" data-slot="${i}" data-pool="class">${i + 1}. ${label}</button>`;
+    return `<button class="config-loadout-slot-btn ${sid ? '' : 'empty'}" data-slot="${i}" data-pool="class">${i + 1}. ${label}</button>`;
   }).join('');
 
-  // Role loadout slots
   document.getElementById('role-loadout-slots').innerHTML = Array.from({ length: ROLE_LOADOUT_SIZE }, (_, i) => {
     const sid = (cfg.roleLoadoutSkillIds || [])[i];
     const label = sid ? SKILLS[sid]?.name || sid : '空槽';
-    return `<button class="loadout-slot role-slot" data-slot="${i}" data-pool="role">${i + 1}. ${label}</button>`;
+    return `<button class="config-loadout-slot-btn ${sid ? '' : 'empty'}" data-slot="${i}" data-pool="role">${i + 1}. ${label}</button>`;
   }).join('');
 
-  // Class skill pool: exclude traits + role skills from other roles
   const rolePool = getRoleSkillPool(cfg.roleId);
   const classPool = (SKILLS_BY_CLASS[cfg.class] || []).filter(id => {
     const skill = SKILLS[id];
@@ -1844,16 +1895,11 @@ function renderLoadout(cfg) {
     return true;
   });
   document.getElementById('skill-pool').innerHTML = classPool.map(id => `
-    <button class="pool-skill ${cfg.loadoutSkillIds.includes(id) ? 'selected' : ''}" data-skill="${id}" data-pool="class" title="${SKILLS[id].desc || ''}">
-      ${SKILLS[id].name}
-    </button>
+    <button class="config-pool-skill-btn ${cfg.loadoutSkillIds.includes(id) ? 'selected' : ''}" data-skill="${id}" data-pool="class" title="${SKILLS[id].desc || ''}">${SKILLS[id].name}</button>
   `).join('');
 
-  // Role skill pool (traits + active role skills)
   document.getElementById('role-skill-pool').innerHTML = rolePool.map(id => `
-    <button class="pool-skill ${(cfg.roleLoadoutSkillIds || []).includes(id) ? 'selected' : ''} ${SKILLS[id].isTrait ? 'pool-trait' : ''}" data-skill="${id}" data-pool="role" title="${SKILLS[id].desc || ''}">
-      ${SKILLS[id].name}${SKILLS[id].isTrait ? ' <span class="trait-badge">被动</span>' : ''}
-    </button>
+    <button class="config-pool-skill-btn ${(cfg.roleLoadoutSkillIds || []).includes(id) ? 'selected' : ''} ${SKILLS[id].isTrait ? 'trait-btn' : ''}" data-skill="${id}" data-pool="role" title="${SKILLS[id].desc || ''}">${SKILLS[id].name}${SKILLS[id].isTrait ? ' <span class="config-trait-badge">被动</span>' : ''}</button>
   `).join('');
 }
 
@@ -1885,17 +1931,20 @@ function renderConfigFooter() {
 }
 
 function wireConfigEvents() {
-  document.querySelectorAll('#config-class-tabs button').forEach(btn => {
+  document.querySelectorAll('#config-class-tabs .config-class-tab').forEach(btn => {
     btn.onclick = () => setActiveClass(btn.dataset.class);
   });
-  document.querySelectorAll('.role-card').forEach(card => {
-    card.onmouseenter = () => { hoverRoleId = card.dataset.role; renderRoleDetail(ROLE_DEFS[hoverRoleId]); };
-    card.onclick = () => setActiveRole(card.dataset.role);
+  document.querySelectorAll('.config-role-list-item').forEach(item => {
+    item.onclick = () => { hoverRoleId = null; setActiveRole(item.dataset.role); };
+    item.onmouseenter = () => {
+      hoverRoleId = item.dataset.role;
+      if (hoverRoleId) { renderRoleDetail(ROLE_DEFS[hoverRoleId]); renderRoleHero(ROLE_DEFS[hoverRoleId]); }
+    };
   });
-  document.querySelectorAll('.pool-skill').forEach(btn => {
+  document.querySelectorAll('.config-pool-skill-btn').forEach(btn => {
     btn.onclick = () => toggleLoadoutSkill(btn.dataset.skill, btn.dataset.pool || 'class');
   });
-  document.querySelectorAll('.loadout-slot').forEach(btn => {
+  document.querySelectorAll('.config-loadout-slot-btn').forEach(btn => {
     btn.onclick = () => removeLoadoutAt(Number(btn.dataset.slot), btn.dataset.pool || 'class');
   });
 }
@@ -2232,8 +2281,7 @@ document.querySelectorAll('#config-player-switch button').forEach(btn => {
   });
 });
 
-document.getElementById('role-prev').addEventListener('click', () => shiftRole(-1));
-document.getElementById('role-next').addEventListener('click', () => shiftRole(1));
+// role-prev / role-next removed — replaced by vertical role list
 document.getElementById('btn-toggle-loadout').addEventListener('click', () => {
   configLoadoutOpen = !configLoadoutOpen;
   renderConfigScreen();
