@@ -9,7 +9,7 @@ import { WinLossReward } from '../rewards/WinLossReward.js';
 export class BattleEnv {
   constructor(config = {}) {
     this._scenario = config.scenario;
-    this._maxTurns = config.maxTurns ?? 30;
+    this._maxTurns = config.maxTurns ?? config.scenario?.maxTurns ?? 30;
     this._discount = config.discount ?? 1;
     this._actionEncoder = config.actionEncoder || new ActionEncoder();
     this._observationEncoder = config.observationEncoder || new ObservationEncoder();
@@ -27,6 +27,7 @@ export class BattleEnv {
 
   reset(configOverride = {}) {
     const scenario = { ...this._scenario, ...configOverride };
+    this._maxTurns = configOverride.maxTurns ?? this._maxTurns;
     this._engine = new GameEngine();
     const ids = this._engine.initBattle(scenario);
     this._player1Id = ids.player1Id;
@@ -132,4 +133,15 @@ export class BattleEnv {
       player2: this._observationEncoder.encode(this._engine, this._engine.getCharacterOwner(this._player2Id), masks.player2),
     };
   }
+
+  // Public accessors for SingleAgentBattleEnv
+  getActionMasks() { return this._buildActionMasks(); }
+  getObservation(playerKey) {
+    const id = playerKey === 'player1' ? this._player1Id : this._player2Id;
+    const masks = this._buildActionMasks();
+    return this._observationEncoder.encode(this._engine, this._engine.getCharacterOwner(id), masks[playerKey]);
+  }
+  getPlayerId(playerKey) { return playerKey === 'player1' ? this._player1Id : this._player2Id; }
+  getEngineForDebug() { return this._engine; }
+  getActionEncoder() { return this._actionEncoder; }
 }

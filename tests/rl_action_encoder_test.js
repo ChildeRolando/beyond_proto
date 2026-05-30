@@ -154,7 +154,7 @@ console.log('\n[9] HEX skills prohibit SELF target');
 console.log('\n[10] Mask=1 actions are legally submittable');
 {
   const { engine: e2, ids: ids2 } = initBattle();
-  engine.resourceSystem.add(ids2.player1Id, 'qi', 5);
+  e2.resourceSystem.add(ids2.player1Id, 'qi', 5);
   const mask = buildActionMask(e2, ids2.player1Id, encoder);
   let checked = 0, allValid = true;
   for (let i = 0; i < mask.length && checked < 20; i++) {
@@ -187,5 +187,134 @@ console.log('\n[11] Unaffordable skills mask=0');
   }
 }
 
-console.log(`\n=== Result: ${passed} passed, ${failed} failed ===`);
-process.exitCode = failed > 0 ? 1 : 0;
+// ─── 12. CONSUME_RESOURCE amount:'ALL' — shooter_bell ammo=0 ───
+console.log('\n[12] CONSUME_RESOURCE amount:ALL (shooter_bell ammo=0)');
+{
+  const { engine: e2, ids: ids2 } = initBattle({
+    player1: { class: '射手', roleId: 'shooter_gunfighter' },
+    player2: { class: '法师', roleId: 'mage_mirror' },
+  });
+  e2.resourceSystem.set(ids2.player1Id, 'ammo', 0);
+  const mask = buildActionMask(e2, ids2.player1Id, encoder);
+  const state = e2.getState();
+  const p1Skills = state.characters.find(c => c.id === ids2.player1Id)?.skills || [];
+  const bellSlot = p1Skills.findIndex(s => s.id === 'shooter_bell');
+  check('shooter_bell exists in loadout', bellSlot >= 0);
+  if (bellSlot >= 0) {
+    let bellIdx = -1;
+    for (let ti = 0; ti < 37; ti++) {
+      const idx = encoder.encode({ skillSlot: bellSlot, targetIndex: ti });
+      if (mask[idx] === 1) bellIdx = idx;
+    }
+    check('shooter_bell all targets mask=0 when ammo=0', bellIdx === -1,
+      `found mask=1 at actionIndex=${bellIdx}`);
+  }
+}
+
+// ─── 13. CONSUME_RESOURCE amount:'ALL' — shooter_bell ammo>0 ───
+console.log('\n[13] CONSUME_RESOURCE amount:ALL (shooter_bell ammo>0)');
+{
+  const { engine: e2, ids: ids2 } = initBattle({
+    player1: { class: '射手', roleId: 'shooter_gunfighter' },
+    player2: { class: '法师', roleId: 'mage_mirror' },
+  });
+  e2.resourceSystem.set(ids2.player1Id, 'ammo', 2);
+  const mask = buildActionMask(e2, ids2.player1Id, encoder);
+  const state = e2.getState();
+  const p1Skills = state.characters.find(c => c.id === ids2.player1Id)?.skills || [];
+  const bellSlot = p1Skills.findIndex(s => s.id === 'shooter_bell');
+  if (bellSlot >= 0) {
+    let bellValid = 0;
+    for (let ti = 0; ti < 37; ti++) {
+      const idx = encoder.encode({ skillSlot: bellSlot, targetIndex: ti });
+      if (mask[idx] === 1) bellValid++;
+    }
+    check('shooter_bell has mask=1 targets when ammo>0', bellValid > 0,
+      `valid targets: ${bellValid}`);
+  }
+}
+
+// ─── 14. Jimmy dynamic cost — layer 0 ───
+console.log('\n[14] Jimmy dynamic cost layer 0');
+{
+  const { engine: e2, ids: ids2 } = initBattle({
+    player1: { class: '战士', roleId: 'warrior_jimmy', roleLoadoutSkillIds: ['role_jimmy_marrow_wine'] },
+    player2: { class: '法师', roleId: 'mage_mirror' },
+  });
+  e2.buffManager.apply(ids2.player1Id, 'JIMMY_MARROW', -1, ids2.player1Id, { layer: 0 });
+  const state = e2.getState();
+  const p1Skills = state.characters.find(c => c.id === ids2.player1Id)?.skills || [];
+  const wineSlot = p1Skills.findIndex(s => s.id === 'role_jimmy_marrow_wine');
+  check('role_jimmy_marrow_wine exists', wineSlot >= 0);
+  if (wineSlot >= 0) {
+    const wineIdx = encoder.encode({ skillSlot: wineSlot, targetIndex: 37 });
+    e2.resourceSystem.set(ids2.player1Id, 'rage', 2);
+    const mask2 = buildActionMask(e2, ids2.player1Id, encoder);
+    check('layer0 rage=2 -> mask=0', mask2[wineIdx] === 0,
+      'got mask=' + mask2[wineIdx]);
+    e2.resourceSystem.set(ids2.player1Id, 'rage', 3);
+    const mask3 = buildActionMask(e2, ids2.player1Id, encoder);
+    check('layer0 rage=3 -> mask=1', mask3[wineIdx] === 1,
+      'got mask=' + mask3[wineIdx]);
+  }
+}
+
+// ─── 15. Jimmy dynamic cost — layer 1 ───
+console.log('\n[15] Jimmy dynamic cost layer 1');
+{
+  const { engine: e2, ids: ids2 } = initBattle({
+    player1: { class: '战士', roleId: 'warrior_jimmy', roleLoadoutSkillIds: ['role_jimmy_marrow_wine'] },
+    player2: { class: '法师', roleId: 'mage_mirror' },
+  });
+  e2.buffManager.apply(ids2.player1Id, 'JIMMY_MARROW', -1, ids2.player1Id, { layer: 1 });
+  const state = e2.getState();
+  const p1Skills = state.characters.find(c => c.id === ids2.player1Id)?.skills || [];
+  const wineSlot = p1Skills.findIndex(s => s.id === 'role_jimmy_marrow_wine');
+  if (wineSlot >= 0) {
+    const wineIdx = encoder.encode({ skillSlot: wineSlot, targetIndex: 37 });
+    e2.resourceSystem.set(ids2.player1Id, 'rage', 3);
+    const mask3 = buildActionMask(e2, ids2.player1Id, encoder);
+    check('layer1 rage=3 -> mask=0', mask3[wineIdx] === 0,
+      'got mask=' + mask3[wineIdx]);
+    e2.resourceSystem.set(ids2.player1Id, 'rage', 4);
+    const mask4 = buildActionMask(e2, ids2.player1Id, encoder);
+    check('layer1 rage=4 -> mask=1', mask4[wineIdx] === 1,
+      'got mask=' + mask4[wineIdx]);
+  }
+}
+
+// ─── 16. All mask=1 actions decode sanity ───
+console.log('\n[16] All mask=1 actions decode sanity');
+{
+  const { engine: e2, ids: ids2 } = initBattle();
+  e2.resourceSystem.add(ids2.player1Id, 'qi', 5);
+  const mask = buildActionMask(e2, ids2.player1Id, encoder);
+  const state = e2.getState();
+  let checked = 0, allValid = true, firstError = '';
+  for (let i = 0; i < mask.length && checked < 30; i++) {
+    if (mask[i] !== 1) continue;
+    checked++;
+    const action = encoder.decodeToGameAction(i, state, ids2.player1Id);
+    if (!action.valid || !action.skillId) {
+      allValid = false; firstError = 'actionIndex ' + i + ': invalid decode';
+      break;
+    }
+    const skill = SKILLS[action.skillId];
+    if (!skill || skill.hidden || skill.isTrait) {
+      allValid = false; firstError = 'actionIndex ' + i + ': hidden/trait skill ' + action.skillId;
+      break;
+    }
+    const apResult = e2.canSubmitAction(ids2.player1Id, action.skillId);
+    if (!apResult.ok) {
+      allValid = false; firstError = 'actionIndex ' + i + ': cannot submit ' + action.skillId;
+      break;
+    }
+  }
+  check('All sampled mask=1 actions decode + canSubmitAction pass', allValid,
+    firstError);
+  check('Sampled at least 1 action', checked > 0,
+    'checked=' + checked);
+}
+
+	console.log(`\n=== Result: ${passed} passed, ${failed} failed ===`);
+	process.exitCode = failed > 0 ? 1 : 0;

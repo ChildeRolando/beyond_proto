@@ -43,19 +43,15 @@ export class SingleAgentBattleEnv {
   }
 
   async step(actionIndex) {
-    const actionMasks = this._battleEnv._buildActionMasks();
+    const actionMasks = this._battleEnv.getActionMasks();
 
     // Validate controlled player action
-    if (actionIndex < 0 || actionIndex >= this._battleEnv._actionEncoder.actionCount() || actionMasks[this._controlledPlayer][actionIndex] !== 1) {
+    if (actionIndex < 0 || actionIndex >= this._battleEnv.getActionEncoder().actionCount() || actionMasks[this._controlledPlayer][actionIndex] !== 1) {
       throw new Error(`illegal action: ${actionIndex}`);
     }
 
     // Opponent chooses via policy
-    const opponentObs = this._battleEnv._observationEncoder.encode(
-      this._battleEnv._engine,
-      this._battleEnv._engine.getCharacterOwner(this._battleEnv[`_${this._otherPlayer}Id`]),
-      actionMasks[this._otherPlayer]
-    );
+    const opponentObs = this._battleEnv.getObservation(this._otherPlayer);
     const opponentAction = this._opponentPolicy.act(opponentObs, actionMasks[this._otherPlayer]);
 
     const jointAction = {};
