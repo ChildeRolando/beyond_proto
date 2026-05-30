@@ -7,15 +7,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const mainJsPath = resolve(__dirname, '../../main.js');
 let mainSrc = '';
 try { mainSrc = readFileSync(mainJsPath, 'utf-8'); } catch (e) { console.error('Cannot read main.js:', e.message); }
+const appRuntimePath = resolve(__dirname, '../../app/AppRuntime.js');
+let appSrc = '';
+try { appSrc = readFileSync(appRuntimePath, 'utf-8'); } catch (e) { console.error('Cannot read AppRuntime.js:', e.message); }
 
 // ─── Positive assertions (these FAIL before refactor, PASS after) ───
 
-test('main.js imports BattleSessionController', () => {
-  expect(mainSrc).toMatch(/import\s+\{[^}]*BattleSessionController[^}]*\}\s+from\s+['"]\.\/session\/BattleSessionController\.js['"]/);
+test('AppRuntime.js imports BattleSessionController', () => {
+  expect(appSrc).toMatch(/import\s+\{[^}]*BattleSessionController[^}]*\}\s+from\s+['"]\.\.\/session\/BattleSessionController\.js['"]/);
 });
 
-test('main.js instantiates BattleSessionController', () => {
-  expect(mainSrc).toMatch(/new\s+BattleSessionController\s*\(/);
+test('AppRuntime.js instantiates BattleSessionController', () => {
+  expect(appSrc).toMatch(/new\s+BattleSessionController\s*\(/);
 });
 
 // ─── Negative: must NOT import GameEngine directly ───
@@ -147,10 +150,9 @@ test('main.js does NOT define const executeP2PTurn', () => {
 // startBattleFromConfigs is allowed as a const thin adapter in main.js
 // because it wraps DOM operations (execute button, submit status, log) around
 // battleSession.startBattleFromConfigs(). This is documented technical debt.
-test('main.js startBattleFromConfigs is a thin DOM adapter only', () => {
-  // If it exists as a const, it must call battleSession.startBattleFromConfigs
-  if (mainSrc.match(/(?:const|let|var)\s+startBattleFromConfigs\s*=\s*/)) {
-    expect(mainSrc).toMatch(/battleSession\.startBattleFromConfigs\s*\(/);
+test('AppRuntime.js startBattleFromConfigs is a thin DOM adapter only', () => {
+  if (appSrc.match(/(?:const|let|var)\s+startBattleFromConfigs\s*=\s*/)) {
+    expect(appSrc).toMatch(/battleSession\.startBattleFromConfigs\s*\(/);
   }
 });
 
@@ -238,10 +240,9 @@ test('main.js does NOT call battleSession.clearPlannedActions', () => {
 
 // ─── NEW: Ban bare returnToStart() call in main.js ───
 
-test('main.js returnToStart has lexical binding (function declaration exists)', () => {
-  // If bare returnToStart() is called anywhere, there must be a function returnToStart declaration
-  const hasDeclaration = /function\s+returnToStart\s*\(/.test(mainSrc);
-  const hasWindowAssign = /window\.returnToStart\s*=/.test(mainSrc);
+test('AppRuntime.js returnToStart has lexical binding (function declaration exists)', () => {
+  const hasDeclaration = /function\s+returnToStart\s*\(/.test(appSrc);
+  const hasWindowAssign = /window\.returnToStart\s*=/.test(appSrc);
   expect(hasDeclaration).toBe(true);
   expect(hasWindowAssign).toBe(true);
 });

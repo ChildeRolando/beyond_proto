@@ -7,6 +7,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const mainJsPath = resolve(__dirname, '../../main.js');
 let mainSrc = '';
 try { mainSrc = readFileSync(mainJsPath, 'utf-8'); } catch (e) { console.error('Cannot read main.js:', e.message); }
+const appRuntimePath = resolve(__dirname, '../../app/AppRuntime.js');
+let appSrc = '';
+try { appSrc = readFileSync(appRuntimePath, 'utf-8'); } catch (e) { console.error('Cannot read AppRuntime.js:', e.message); }
 
 const bicPath = resolve(__dirname, '../../ui/battle/BattleInputController.js');
 let bicSrc = '';
@@ -14,12 +17,12 @@ try { bicSrc = readFileSync(bicPath, 'utf-8'); } catch (e) { /* file may not exi
 
 // ─── Positive: main.js imports and calls BattleInputController ───
 
-test('main.js imports initBattleInputController', () => {
-  expect(mainSrc).toMatch(/import\s+\{[^}]*initBattleInputController[^}]*\}\s+from\s+['"]\.\/ui\/battle\/BattleInputController\.js['"]/);
+test('AppRuntime.js imports initBattleInputController', () => {
+  expect(appSrc).toMatch(/import\s+\{[^}]*initBattleInputController[^}]*\}\s+from\s+['"]\.\.\/ui\/battle\/BattleInputController\.js['"]/);
 });
 
-test('main.js calls initBattleInputController', () => {
-  expect(mainSrc).toMatch(/initBattleInputController\s*\(/);
+test('AppRuntime.js calls initBattleInputController', () => {
+  expect(appSrc).toMatch(/initBattleInputController\s*\(/);
 });
 
 // ─── Negative: main.js must NOT contain raw event listeners ───

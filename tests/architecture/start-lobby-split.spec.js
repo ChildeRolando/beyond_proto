@@ -7,13 +7,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const mainJsPath = resolve(__dirname, '../../main.js');
 let src = '';
 try { src = readFileSync(mainJsPath, 'utf-8'); } catch (e) { console.error('Cannot read main.js:', e.message); }
+const appRuntimePath = resolve(__dirname, '../../app/AppRuntime.js');
+let appSrc = '';
+try { appSrc = readFileSync(appRuntimePath, 'utf-8'); } catch (e) { console.error('Cannot read AppRuntime.js:', e.message); }
 
 // Positive assertions
-test('main.js imports initStartLobbyController', () => {
-  expect(src).toMatch(/import\s+\{[^}]*initStartLobbyController[^}]*\}\s+from\s+['"]\.\/ui\/start\/StartLobbyController\.js['"]/);
+test('AppRuntime.js imports initStartLobbyController', () => {
+  expect(appSrc).toMatch(/import\s+\{[^}]*initStartLobbyController[^}]*\}\s+from\s+['"]\.\.\/ui\/start\/StartLobbyController\.js['"]/);
 });
-test('main.js calls initStartLobbyController', () => {
-  expect(src).toMatch(/initStartLobbyController\s*\(/);
+test('AppRuntime.js calls initStartLobbyController', () => {
+  expect(appSrc).toMatch(/initStartLobbyController\s*\(/);
 });
 
 // Negative: must NOT define these functions directly

@@ -7,6 +7,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const mainJsPath = resolve(__dirname, '../../main.js');
 let mainSrc = '';
 try { mainSrc = readFileSync(mainJsPath, 'utf-8'); } catch (e) { console.error('Cannot read main.js:', e.message); }
+const appRuntimePath = resolve(__dirname, '../../app/AppRuntime.js');
+let appSrc = '';
+try { appSrc = readFileSync(appRuntimePath, 'utf-8'); } catch (e) { console.error('Cannot read AppRuntime.js:', e.message); }
 
 const galaxyPath = resolve(__dirname, '../../ui/battle/GalaxyOverlayController.js');
 let galaxySrc = '';
@@ -18,20 +21,20 @@ try { gameoverSrc = readFileSync(gameoverPath, 'utf-8'); } catch (e) { /* file m
 
 // ─── Positive: main.js imports and calls controllers ───
 
-test('main.js imports initGalaxyOverlayController', () => {
-  expect(mainSrc).toMatch(/import\s+\{[^}]*initGalaxyOverlayController[^}]*\}\s+from\s+['"]\.\/ui\/battle\/GalaxyOverlayController\.js['"]/);
+test('AppRuntime.js imports initGalaxyOverlayController', () => {
+  expect(appSrc).toMatch(/import\s+\{[^}]*initGalaxyOverlayController[^}]*\}\s+from\s+['"]\.\.\/ui\/battle\/GalaxyOverlayController\.js['"]/);
 });
 
-test('main.js calls initGalaxyOverlayController', () => {
-  expect(mainSrc).toMatch(/initGalaxyOverlayController\s*\(/);
+test('AppRuntime.js calls initGalaxyOverlayController', () => {
+  expect(appSrc).toMatch(/initGalaxyOverlayController\s*\(/);
 });
 
-test('main.js imports initGameOverController', () => {
-  expect(mainSrc).toMatch(/import\s+\{[^}]*initGameOverController[^}]*\}\s+from\s+['"]\.\/ui\/battle\/GameOverController\.js['"]/);
+test('AppRuntime.js imports initGameOverController', () => {
+  expect(appSrc).toMatch(/import\s+\{[^}]*initGameOverController[^}]*\}\s+from\s+['"]\.\.\/ui\/battle\/GameOverController\.js['"]/);
 });
 
-test('main.js calls initGameOverController', () => {
-  expect(mainSrc).toMatch(/initGameOverController\s*\(/);
+test('AppRuntime.js calls initGameOverController', () => {
+  expect(appSrc).toMatch(/initGameOverController\s*\(/);
 });
 
 // ─── Negative: main.js must NOT define galaxy/gameover DOM functions ───

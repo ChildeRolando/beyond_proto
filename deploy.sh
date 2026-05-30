@@ -20,7 +20,7 @@ for arg in "$@"; do
 done
 
 echo "=== Deploying combat-engine to $SERVER ==="
-echo "Code files: engine/ server/ ui/ session/ index.html package.json main.js styles/"
+echo "Code files: engine/ server/ ui/ session/ app/ index.html package.json main.js styles/"
 if $PUSH_ASSETS; then
   echo "Assets:     assets/ (included)"
 else
@@ -28,7 +28,7 @@ else
 fi
 
 # Always push code files (small, change frequently)
-scp $SSH_OPTS -r engine server ui session index.html package.json main.js styles "$SERVER:$REMOTE_DIR/" 2>&1
+scp $SSH_OPTS -r engine server ui session app index.html package.json main.js styles "$SERVER:$REMOTE_DIR/" 2>&1
 
 # Assets are large images that rarely change — only push when asked
 if $PUSH_ASSETS; then

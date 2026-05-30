@@ -7,17 +7,20 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const mainJsPath = resolve(__dirname, '../../main.js');
 let mainSrc = '';
 try { mainSrc = readFileSync(mainJsPath, 'utf-8'); } catch (e) { console.error('Cannot read main.js:', e.message); }
+const appRuntimePath = resolve(__dirname, '../../app/AppRuntime.js');
+let appSrc = '';
+try { appSrc = readFileSync(appRuntimePath, 'utf-8'); } catch (e) { console.error('Cannot read AppRuntime.js:', e.message); }
 
 const chatPath = resolve(__dirname, '../../ui/battle/ChatController.js');
 let chatSrc = '';
 try { chatSrc = readFileSync(chatPath, 'utf-8'); } catch (e) { /* file may not exist yet */ }
 
-test('main.js imports initChatController', () => {
-  expect(mainSrc).toMatch(/import\s+\{[^}]*initChatController[^}]*\}\s+from\s+['"]\.\/ui\/battle\/ChatController\.js['"]/);
+test('AppRuntime.js imports initChatController', () => {
+  expect(appSrc).toMatch(/import\s+\{[^}]*initChatController[^}]*\}\s+from\s+['"]\.\.\/ui\/battle\/ChatController\.js['"]/);
 });
 
-test('main.js calls initChatController', () => {
-  expect(mainSrc).toMatch(/initChatController\s*\(/);
+test('AppRuntime.js calls initChatController', () => {
+  expect(appSrc).toMatch(/initChatController\s*\(/);
 });
 
 test('main.js does NOT contain chat-input addEventListener', () => {
