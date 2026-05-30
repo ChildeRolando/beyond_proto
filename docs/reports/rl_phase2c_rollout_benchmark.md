@@ -65,6 +65,29 @@ docs/reports/rl_phase2c_rollout_benchmark.md — NEW (this report)
 
 Total: 566 passed, 0 failed.
 
+## Baseline Benchmark (1000 episodes)
+
+Ran 2026-05-30 on Node.js v24.15.0, Windows 11:
+
+```
+node benchmarks/rollout_benchmark.js --episodes 1000 --scenario mage_vs_warrior_basic --seed 123 --determinism true
+```
+
+| Metric | Value |
+|---|---|
+| episodes/sec | **280.46** |
+| turns/sec | **7699.26** |
+| avg turns/episode | **27.5** |
+| avg legal actions/player/turn | **13.9** |
+| memory delta MB | **16.0** |
+| determinism | **pass** |
+
+Raw JSON:
+
+```json
+{"episodes":1000,"turns":27452,"episodesPerSec":280.46,"turnsPerSec":7699.26,"avgTurns":27.5,"avgLegalActions":13.9,"memoryDeltaMB":16,"determinism":"pass"}
+```
+
 ## Remaining Issues
 
 None. All spec requirements met.
