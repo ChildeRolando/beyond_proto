@@ -85,6 +85,32 @@ All business logic + canvas rendering: `visibleSkillsForChar`, `isMyCharacter`, 
 
 None. All tests pass.
 
+## Regression Fix (2026-05-30)
+
+**Symptom:** After BattlePanelsView extraction, battle panels rendered blank. `#hover-inspector`, `#action-dock` innerHTML were empty strings.
+
+**Root cause:** `visibleSkillsForChar()` was accidentally deleted from `main.js` during the `sed 2223,2577d` removal. This function was defined at line 2381 (old numbering), inside the removed range. It was on the "keep" list but the sed range was too broad.
+
+The function is referenced by:
+1. `main.js` → `renderPanels()` → `ctx.helpers.visibleSkillsForChar`
+2. `BattlePanelsView.js` → `renderInfoPanel()` → `h.visibleSkillsForChar(char)`
+3. `BattlePanelsView.js` → `renderActionDock()` → `h.visibleSkillsForChar(actor)`
+
+Without it, calling `h.visibleSkillsForChar(char)` threw `TypeError: h.visibleSkillsForChar is not a function`, causing all panel rendering to abort silently (caught by the new try/catch wrapper).
+
+**Fix:** Restored `visibleSkillsForChar` function definition in `main.js` before `renderPanels()`.
+
+**Additional improvements:**
+1. Simplified `ctx.helpers` — removed round-trip pure helpers (`classPanelKey`, `renderResourceHTML`, etc.). `BattlePanelsView` now calls its own local helpers directly.
+2. Added `try/catch` diagnostic wrapper in `renderPanels()`.
+3. Strengthened E2E tests to fail on blank panels (text content length assertion, skill button count, dock sub-panel visibility).
+
+**Test results after fix:**
+- Architecture: 9/9 pass
+- Battle panels: 6/6 pass
+- Full E2E: 23/23 pass
+- Engine: 138 + 38 pass
+
 ## Future Work
 
 - Split canvas rendering (`renderBoard`) into `ui/battle/CanvasRenderer.js`

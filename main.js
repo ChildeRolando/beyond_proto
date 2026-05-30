@@ -2221,65 +2221,78 @@ function drawGrappleLine(fromQ, fromR, toQ, toR, progress) {
 }
 
 
-function renderPanels() {
-  const state = engine.getState();
-  renderBattlePanelsView({
-    state,
-    selectedCharacterId,
-    selectedSkill,
-    viewingSkill,
-    lastHoveredCharacterId,
-    activeSidebarTab,
-    battleEnded,
-    galaxyActive,
-    skillPages,
-    skillsPerPage,
-    helpers: {
-      isMyCharacter,
-      canSubmitForChar,
-      hasOptionalActionAvailable,
-      visibleSkillsForChar,
-      classPanelKey,
-      renderResourceHTML,
-      renderTraitHTML,
-      renderBuffHTML,
-      skillCostLabel,
-      skillGlyph,
-      getForcedSkillId: (charId) => engine.getForcedSkillId(charId),
-      getPendingResourceGains: (charId) => engine.getPendingResourceGains?.(charId) || {},
-    },
-    callbacks: {
-      onCloseSelectedUnit: () => {
-        selectedCharacterId = null;
-        viewingSkill = null;
-        validTargets = [];
-        hoverEffectArea = [];
-        hoveredHex = null;
-        renderAll();
-      },
-      onViewOpponentSkill: (charId, skillId) => {
-        viewOpponentSkill(charId, skillId);
-      },
-      onSkillPageChange: (charId, direction) => {
-        const cur = skillPages.get(charId) || 0;
-        skillPages.set(charId, direction === 'next' ? cur + 1 : cur - 1);
-        renderAll();
-      },
-      onSelectSkill: (charId, skillId) => {
-        selectSkill(charId, skillId);
-      },
-      onExecuteTurn: () => {
-        document.getElementById('btn-execute')?.click();
-      },
-      onSidebarTabChange: (tab) => {
-        activeSidebarTab = tab;
-        renderPanels();
-      },
-      onAutoSubmitForcedSelfSkill: (charId, skillId) => {
-        submitAction(charId, skillId, null);
-      },
-    },
+function visibleSkillsForChar(char) {
+  const forcedId = engine.getForcedSkillId(char.id);
+  return (char.skills || []).filter(s => {
+    const skill = SKILLS[s.id];
+    if (!skill) return false;
+    if (forcedId !== undefined) return s.id === forcedId;
+    return !skill.hidden;
+  }).sort((a, b) => {
+    const costA = Object.values(SKILLS[a.id]?.cost || {}).reduce((sum, v) => sum + v, 0);
+    const costB = Object.values(SKILLS[b.id]?.cost || {}).reduce((sum, v) => sum + v, 0);
+    return costA - costB;
   });
+}
+
+function renderPanels() {
+  try {
+    const state = engine.getState();
+    renderBattlePanelsView({
+      state,
+      selectedCharacterId,
+      selectedSkill,
+      viewingSkill,
+      lastHoveredCharacterId,
+      activeSidebarTab,
+      battleEnded,
+      galaxyActive,
+      skillPages,
+      skillsPerPage,
+      helpers: {
+        isMyCharacter,
+        canSubmitForChar,
+        hasOptionalActionAvailable,
+        visibleSkillsForChar,
+        getForcedSkillId: (charId) => engine.getForcedSkillId(charId),
+        getPendingResourceGains: (charId) => engine.getPendingResourceGains?.(charId) || {},
+      },
+      callbacks: {
+        onCloseSelectedUnit: () => {
+          selectedCharacterId = null;
+          viewingSkill = null;
+          validTargets = [];
+          hoverEffectArea = [];
+          hoveredHex = null;
+          renderAll();
+        },
+        onViewOpponentSkill: (charId, skillId) => {
+          viewOpponentSkill(charId, skillId);
+        },
+        onSkillPageChange: (charId, direction) => {
+          const cur = skillPages.get(charId) || 0;
+          skillPages.set(charId, direction === 'next' ? cur + 1 : cur - 1);
+          renderAll();
+        },
+        onSelectSkill: (charId, skillId) => {
+          selectSkill(charId, skillId);
+        },
+        onExecuteTurn: () => {
+          document.getElementById('btn-execute')?.click();
+        },
+        onSidebarTabChange: (tab) => {
+          activeSidebarTab = tab;
+          renderPanels();
+        },
+        onAutoSubmitForcedSelfSkill: (charId, skillId) => {
+          submitAction(charId, skillId, null);
+        },
+      },
+    });
+  } catch (err) {
+    console.error('[renderPanels] renderBattlePanelsView failed:', err);
+    throw err;
+  }
 }
 
 function renderLog() {

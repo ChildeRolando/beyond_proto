@@ -4,7 +4,7 @@
 
 import { SKILLS } from '../../engine/SkillData.js';
 
-// ─── Pure DOM helpers (no ctx needed) ───
+// ─── Pure DOM helpers ───
 
 export function classPanelKey(className) {
   if (className === '法师') return 'mage';
@@ -79,13 +79,13 @@ export function hideSkillTooltip() {
   document.getElementById('skill-tooltip')?.classList.remove('visible');
 }
 
-// ─── Panel renderers (ctx-based) ───
+// ─── Private panel renderers (use local helpers, business helpers from ctx) ───
 
 function renderInfoPanel(char, title, ctx, options = {}) {
   if (!char) return `<div class="inspector-empty">将指针停留在角色上查看状态。</div>`;
   const h = ctx.helpers;
-  const shortCls = h.classPanelKey(char.class);
-  const traitsHTML = h.renderTraitHTML(char);
+  const shortCls = classPanelKey(char.class);
+  const traitsHTML = renderTraitHTML(char);
   const showSkills = options.showSkills !== false;
   const skillRows = h.visibleSkillsForChar(char).map(s => {
     const skill = SKILLS[s.id];
@@ -101,9 +101,9 @@ function renderInfoPanel(char, title, ctx, options = {}) {
         ${options.closable ? '<button class="drawer-close" id="selected-unit-close" title="关闭">×</button>' : ''}
       </div>
       <div class="panel-title">${char.name}</div>
-      <div class="resources">${h.renderResourceHTML(char)}</div>
+      <div class="resources">${renderResourceHTML(char)}</div>
       ${traitsHTML ? `<div class="buffs">${traitsHTML}</div>` : ''}
-      <div class="buffs">${h.renderBuffHTML(char)}</div>
+      <div class="buffs">${renderBuffHTML(char)}</div>
       ${showSkills ? '<div class="hud-section-label">技能列表</div>' : ''}
       ${showSkills ? `<div class="info-skill-list">${skillRows || '<div class="drawer-empty">无可见技能</div>'}</div>` : ''}
     </div>`;
@@ -125,8 +125,9 @@ function renderSelectedUnitDrawer(ctx) {
 function renderHoverInspector(ctx) {
   const el = document.getElementById('hover-inspector');
   if (!el) return;
+  const h = ctx.helpers;
   const char = ctx.state.characters.find(c => c.id === ctx.lastHoveredCharacterId && c.alive !== false) ||
-    ctx.state.characters.find(c => c.alive !== false && !ctx.helpers.isMyCharacter(c.id)) ||
+    ctx.state.characters.find(c => c.alive !== false && !h.isMyCharacter(c.id)) ||
     ctx.state.characters.find(c => c.alive !== false);
   el.innerHTML = renderInfoPanel(char, char?.id === ctx.lastHoveredCharacterId ? '悬停角色' : '战场目标', ctx, { showSkills: false });
 }
@@ -184,8 +185,8 @@ function renderActionDock(ctx) {
     const used = !h.canSubmitForChar(actor.id, s.id) ? ' used' : '';
     const noAfford = !canAfford(skill) ? ' unaffordable' : '';
     return `<button class="skill-btn skill-icon-btn${sel}${used}${noAfford}" data-skill="${s.id}" data-char="${actor.id}" title="${skill.name}: ${skill.desc || ''}" data-tooltip-title="${skill.name}" data-tooltip="${skill.desc || ''}">
-      <div class="skill-glyph">${h.skillGlyph(skill)}</div>
-      <div class="skill-meta"><span>${h.skillCostLabel(skill, actor)}</span><span>S${skill.speed ?? '-'}</span></div>
+      <div class="skill-glyph">${skillGlyph(skill)}</div>
+      <div class="skill-meta"><span>${skillCostLabel(skill, actor)}</span><span>S${skill.speed ?? '-'}</span></div>
     </button>`;
   }).join('');
 
@@ -204,9 +205,9 @@ function renderActionDock(ctx) {
     <div class="dock-actor">
       <div class="dock-actor-label">当前行动</div>
       <div class="dock-actor-name">${actor.name}</div>
-      <div class="resources">${h.renderResourceHTML(actor)}</div>
-      <div class="buffs">${h.renderTraitHTML(actor) || '—'}</div>
-      <div class="buffs">${h.renderBuffHTML(actor)}</div>
+      <div class="resources">${renderResourceHTML(actor)}</div>
+      <div class="buffs">${renderTraitHTML(actor) || '—'}</div>
+      <div class="buffs">${renderBuffHTML(actor)}</div>
     </div>
     <div class="dock-skills">
       <div class="hud-section-label">技能</div>
