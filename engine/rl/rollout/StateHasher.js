@@ -1,10 +1,11 @@
 // Stable state canonicalization and hashing for determinism checks.
-// Strips volatile/debug fields before hashing so hash depends on game-significant fields only.
+// Strips volatile/debug fields and buff instance IDs (sequential counters that differ between engine instances).
+//
+// Skill IDs (skills[].id), character IDs, ownerId, statusType etc. are preserved
+// because they are either deterministic or game-significant.
 
-// Volatile keys to exclude before hash.
-// 'id' excludes instance entity IDs (character, projectile, buff IDs) that differ between engine instances.
-// 'logs'/'keyframes' are presentation-layer fields.
-const EXCLUDE_KEYS = new Set(['id', 'logs', 'keyframes', 'animation', 'debug']);
+// Fields to unconditionally exclude at any path level
+const EXCLUDE_KEYS = new Set(['logs', 'keyframes', 'animation', 'debug']);
 
 // djb2 hash — small, stable, no dependencies
 function djb2(str) {
@@ -16,11 +17,11 @@ function djb2(str) {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
-export function canonicalizeStateForHash(state) {
+export function canonicalizeStateForHash(state, _path = '') {
   if (state === null || state === undefined) return null;
   if (typeof state !== 'object') return state;
   if (Array.isArray(state)) {
-    return state.map(canonicalizeStateForHash);
+    return state.map((item, i) => canonicalizeStateForHash(item, _path + '[' + i + ']'));
   }
   const result = {};
   const keys = Object.keys(state).sort();
@@ -28,9 +29,35 @@ export function canonicalizeStateForHash(state) {
     if (EXCLUDE_KEYS.has(key)) continue;
     const val = state[key];
     if (typeof val === 'function') continue;
-    result[key] = canonicalizeStateForHash(val);
+    const childPath = _path ? _path + '.' + key : key;
+    // Strip buff instance IDs — sequential counters that differ between engine instances
+    if (key === 'id' && _isBuffItemPath(_path)) continue;
+    result[key] = canonicalizeStateForHash(val, childPath);
   }
   return result;
+}
+
+// A path ending in buffs[N] means we're inside a buff entry — strip its id.
+// Pattern: ...buffs[0], ...buffs[1], etc.
+function _isBuffItemPath(path) {
+  if (!path) return false;
+  // Match path segments ending in 'buffs[N]' where N is a digit
+  const segments = path.split('.');
+  const last = segments[segments.length - 1];
+  // Check if last segment is 'buffs[N]' where parent was a 'buffs' array
+  const m = last.match(/^buffs\[(\d+)\]$/);
+  if (m) return true;
+  // Also check if the current segment is a grandchild of buffs: buffs[N].id
+  // In this case, path would be like 'characters[0].buffs[0]' and we're checking key='id'
+  if (segments.length >= 2) {
+    const parent = segments[segments.length - 1];
+    if (parent.match(/^buffs\[\d+\]$/)) return true;
+  }
+  // Simpler: check if path contains a buffs[N] segment
+  for (const seg of segments) {
+    if (seg.match(/^buffs\[\d+\]$/)) return true;
+  }
+  return false;
 }
 
 export function stableStateHash(state) {

@@ -61,11 +61,11 @@ Backward compatible: recorder is optional, Phase 2A API unchanged.
 ## Files Changed
 
 ```
-engine/rl/rollout/StateHasher.js        — NEW (45 lines)
+engine/rl/rollout/StateHasher.js        — NEW (67 lines, path-aware id exclusion)
 engine/rl/rollout/ReplayRecorder.js     — NEW (65 lines)
 engine/rl/rollout/DeterminismChecker.js — NEW (90 lines)
 engine/rl/rollout/RolloutRunner.js      — MODIFIED: recorder integration
-tests/rl_determinism_test.js            — NEW (15 tests)
+tests/rl_determinism_test.js            — NEW (16 tests, incl skill-id hash)
 docs/reports/rl_phase2b_determinism.md  — NEW (this report)
 ```
 
@@ -91,7 +91,9 @@ All-tests: 558 passed, 1 pre-existing failure.
 
 ## StateHash Notes
 
-`id` fields are excluded from canonicalization because entity instance IDs (character IDs, buff IDs, projectile IDs) are generated per-engine and differ even with identical seeds. The hash captures semantically meaningful state (positions, resources, buff types, alive flags, etc.) while ignoring instance identity.
+`canonicalizeStateForHash` uses path-aware field exclusion. Only buff instance IDs (`characters[*].buffs[*].id`) are stripped — these use sequential counters that differ between engine instances. All other `id` fields are preserved: character IDs (deterministic, role+player based), skill IDs (`skills[].id` — game-significant), ownerId, statusType, etc.
+
+Excluded unconditionally: `logs`, `keyframes`, `animation`, `debug`.
 
 ## Remaining Issues
 

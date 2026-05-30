@@ -58,6 +58,15 @@ console.log('[1] StateHasher stability');
   stateE.characters[0].alive = false;
   const hashE = stableStateHash(stateE);
   check('different state -> different hash', hashA !== hashE);
+
+  // Different skill ids must produce different hashes
+  const stateF = {
+    characters: [{ skills: [{ id: 'mage_blast' }] }],
+  };
+  const stateG = {
+    characters: [{ skills: [{ id: 'mage_burst' }] }],
+  };
+  check('different skill ids -> different hash', stableStateHash(stateF) !== stableStateHash(stateG));
 }
 
 // ─── 2. ReplayRecorder records complete episode ───
@@ -124,8 +133,8 @@ console.log('\n[3] Same seed deterministic');
   }
 }
 
-// ─── 4. Different seeds complete without errors ───
-console.log('\n[4] Different seeds complete');
+// ─── 4. runPair completes without errors ───
+console.log('\n[4] runPair completes without errors');
 {
   function makeEnv() {
     return new BattleEnv({
