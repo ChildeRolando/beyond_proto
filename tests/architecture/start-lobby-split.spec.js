@@ -35,6 +35,12 @@ const FORBIDDEN_BTN = [
   'btn-create-room', 'btn-join-room',
 ];
 for (const id of FORBIDDEN_BTN) {
-  const re = new RegExp("getElementById\('" + id + "'\)\.addEventListener");
-  test("main.js does NOT bind " + id + " directly", () => { expect(src).not.toMatch(re); });
+  const re = new RegExp("getElementById\\('" + id + "'\\)\\.addEventListener");
+  test('main.js does NOT bind ' + id + ' directly', () => { expect(src).not.toMatch(re); });
 }
+
+// Negative: must NOT call resetConnectionUI() without startLobbyUi. prefix
+test('main.js does NOT call bare resetConnectionUI()', () => {
+  // Match resetConnectionUI() that is NOT preceded by startLobbyUi.
+  expect(src).not.toMatch(/(?<!startLobbyUi\.)resetConnectionUI\s*\(/);
+});

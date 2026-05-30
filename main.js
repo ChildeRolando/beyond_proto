@@ -651,7 +651,7 @@ window.returnToStart = function() {
   hoverEffectArea = [];
   hoveredHex = null;
   battleEnded = false;
-  resetConnectionUI();
+  startLobbyUi.resetConnectionUI();
 };
 
 function updateRematchButton() {
