@@ -19,18 +19,7 @@ import {
 } from './engine/RoleData.js';
 import { isOnBoard, hexCenter, hexCorners, pixelToHex, hexDistance, hexLine, hexSpiral, setCanvasSize, getSectorHexes } from './engine/HexMath.js';
 import { renderConfigScreenView } from './ui/config/ConfigScreenView.js';
-import {
-  renderBattlePanelsView,
-  classPanelKey,
-  renderResourceHTML,
-  renderBuffHTML,
-  renderTraitHTML,
-  skillCostLabel,
-  skillGlyph,
-  showSkillTooltip,
-  positionSkillTooltip,
-  hideSkillTooltip,
-} from './ui/battle/BattlePanelsView.js';
+import { renderBattlePanelsView } from './ui/battle/BattlePanelsView.js';
 
 const PORTRAIT_CACHE_VERSION = '2';
 
