@@ -20,6 +20,7 @@ import {
 import { isOnBoard, hexCenter, hexCorners, pixelToHex, hexDistance, hexLine, hexSpiral, setCanvasSize, getSectorHexes } from './engine/HexMath.js';
 import { renderConfigScreenView } from './ui/config/ConfigScreenView.js';
 import {
+  renderBattlePanelsView,
   classPanelKey,
   renderResourceHTML,
   renderBuffHTML,
@@ -2219,369 +2220,66 @@ function drawGrappleLine(fromQ, fromR, toQ, toR, progress) {
   ctx.restore();
 }
 
-function renderLegacyPanels() {
-  const state = engine.getState();
-  const leftEl = document.getElementById('panels-left');
-  const rightEl = document.getElementById('panels-right');
-  if (!leftEl || !rightEl) return;
-
-  const chars = state.characters.filter(c => c.alive !== false);
-  const leftChars = chars.slice(0, 1);
-  const rightChars = chars.slice(1, 2);
-  const PER_PAGE = skillsPerPage;
-
-  function renderCharPanel(char) {
-    const r = char.resources;
-    const cls = char.class;
-    const shortCls = cls === '法师' ? 'mage' : cls === '战士' ? 'warrior' : 'shooter';
-    const isMine = isMyCharacter(char.id);
-    const isP2P = networkManager && networkManager.mode !== 'local';
-    const opponentClass = !isMine && isP2P ? ' opponent-panel' : '';
-
-    let resHTML = '';
-    if (cls === '法师') resHTML = `气:${r.qi || 0} | 盾:${r.shield || 0}${r.shieldActive ? ' [开]' : ''}`;
-    else if (cls === '战士') resHTML = `怒:${r.rage || 0}`;
-    else if (cls === '射手') resHTML = `弹:${r.ammo || 0}/${r.ammoMax || 6} | 背:${r.backpackAmmo || 0}${r.blockActive !== false ? ' [格挡]' : ''}`;
-    const buffsHTML = char.buffs.map(b => {
-      const d = b.duration === -1 ? '∞' : b.duration;
-      const title = b.desc ? `title="${b.desc}"` : '';
-      return `<span class="buff" ${title}>${b.name}(${d})</span>`;
-    }).join(' ') || '—';
-    const traitsHTML = (char.traits || []).map(t =>
-      `<span class="buff" title="${t.desc || ''}">${t.name}</span>`
-    ).join(' ');
-
-    const forcedId = engine.getForcedSkillId(char.id);
-    let forcedActive = false;
-    let forcedHTML = '';
-    if (forcedId !== undefined) {
-      forcedActive = true;
-      const fSkill = SKILLS[forcedId];
-      const fName = fSkill ? fSkill.name : (forcedId || '强制待机');
-      forcedHTML = `<div class="buffs"><span class="buff" style="background:#e94560;color:#fff;font-weight:700;">强制: ${fName}</span></div>`;
-    }
-    const allSkills = char.skills.filter(s => {
-      const skill = SKILLS[s.id];
-      if (!skill) return false;
-      if (forcedActive) return s.id === forcedId;
-      return !skill.hidden;
-    }).sort((a, b) => {
-      const costA = Object.values(SKILLS[a.id]?.cost || {}).reduce((sum, v) => sum + v, 0);
-      const costB = Object.values(SKILLS[b.id]?.cost || {}).reduce((sum, v) => sum + v, 0);
-      return costA - costB;
-    });
-
-    const totalPages = Math.max(1, Math.ceil(allSkills.length / PER_PAGE));
-    let page = skillPages.get(char.id) || 0;
-    if (page >= totalPages) page = 0;
-    skillPages.set(char.id, page);
-
-    const pageSkills = allSkills.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
-
-    function canAfford(skill) {
-      const cost = skill.cost || {};
-      for (const [res, amount] of Object.entries(cost)) {
-        if ((r[res] || 0) < amount) return false;
-      }
-      return true;
-    }
-
-    const skillsHTML = pageSkills.map(s => {
-      const skill = SKILLS[s.id];
-      const sel = (selectedSkill?.charId === char.id && selectedSkill?.skillId === s.id) ||
-                 (viewingSkill?.charId === char.id && viewingSkill?.skillId === s.id) ? ' selected' : '';
-      const used = isMine && !canSubmitForChar(char.id, s.id) ? ' used' : '';
-      const opp = !isMine && isP2P ? ' opponent' : '';
-      const noAfford = isMine && !canAfford(skill) ? ' unaffordable' : '';
-      return `<button class="skill-btn${sel}${used}${opp}${noAfford}" data-skill="${s.id}" data-char="${char.id}">
-        <div class="skill-name">${skill.name}</div>
-        <div class="skill-desc">${skill.desc || ''}</div>
-      </button>`;
-    }).join('');
-
-    const pageNav = `
-      <div class="skill-page-nav">
-        <button class="skill-page-btn" data-char="${char.id}" data-page-dir="prev"${page === 0 ? ' disabled' : ''}>◀</button>
-        <span class="skill-page-indicator">${page + 1}/${totalPages}</span>
-        <button class="skill-page-btn" data-char="${char.id}" data-page-dir="next"${page >= totalPages - 1 ? ' disabled' : ''}>▶</button>
-      </div>`;
-
-    return `
-      <div class="char-panel ${shortCls}${opponentClass}">
-        <div class="panel-title">${char.name}${!isMine && isP2P ? ' (对手)' : ''}</div>
-        <div class="resources">${resHTML}</div>
-        ${traitsHTML ? `<div class="buffs">${traitsHTML}</div>` : ''}
-        <div class="buffs">${buffsHTML}</div>
-        ${forcedHTML}
-        <div class="skill-grid">${skillsHTML}</div>
-        ${pageNav}
-      </div>`;
-  }
-
-  leftEl.innerHTML = leftChars.map(c => renderCharPanel(c)).join('');
-  rightEl.innerHTML = rightChars.map(c => renderCharPanel(c)).join('');
-
-  // Auto-submit SELF-targeted forced skills (only if battle not ended)
-  if (!battleEnded) {
-    for (const c of chars) {
-      if (!isMyCharacter(c.id)) continue;
-      if (!canSubmitForChar(c.id)) continue;
-      const forcedId = engine.getForcedSkillId(c.id);
-      if (forcedId !== undefined) {
-        const fSkill = SKILLS[forcedId];
-        if (fSkill && fSkill.targeting.shape === 'SELF') {
-          submitAction(c.id, forcedId, null);
-        }
-      }
-    }
-  }
-
-  // Wire page nav buttons
-  document.querySelectorAll('.skill-page-btn:not(:disabled)').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const charId = btn.dataset.char;
-      const dir = btn.dataset.pageDir;
-      const cur = skillPages.get(charId) || 0;
-      skillPages.set(charId, dir === 'next' ? cur + 1 : cur - 1);
-      renderPanels();
-    });
-  });
-
-  // Wire skill button click handlers
-  document.querySelectorAll('.skill-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const skillId = btn.dataset.skill;
-      const charId = btn.dataset.char;
-      if (btn.classList.contains('opponent')) {
-        viewOpponentSkill(charId, skillId);
-      } else if (btn.classList.contains('used')) {
-        return; // own character already submitted, do nothing
-      } else {
-        selectSkill(charId, skillId);
-      }
-    });
-  });
-}
-
-// Battle helpers moved to ui/battle/BattlePanelsView.js
-
-function visibleSkillsForChar(char) {
-  const forcedId = engine.getForcedSkillId(char.id);
-  return (char.skills || []).filter(s => {
-    const skill = SKILLS[s.id];
-    if (!skill) return false;
-    if (forcedId !== undefined) return s.id === forcedId;
-    return !skill.hidden;
-  }).sort((a, b) => {
-    const costA = Object.values(SKILLS[a.id]?.cost || {}).reduce((sum, v) => sum + v, 0);
-    const costB = Object.values(SKILLS[b.id]?.cost || {}).reduce((sum, v) => sum + v, 0);
-    return costA - costB;
-  });
-}
-
-// skillCostLabel, skillGlyph moved to ui/battle/BattlePanelsView.js
-
-function renderInfoPanel(char, title, options = {}) {
-  if (!char) return `<div class="inspector-empty">将指针停留在角色上查看状态。</div>`;
-  const shortCls = classPanelKey(char.class);
-  const traitsHTML = renderTraitHTML(char);
-  const showSkills = options.showSkills !== false;
-  const skillRows = visibleSkillsForChar(char).map(s => {
-    const skill = SKILLS[s.id];
-    const selected = viewingSkill?.charId === char.id && viewingSkill?.skillId === s.id ? ' selected' : '';
-    return `<button class="drawer-skill-btn${selected}" data-skill="${s.id}" data-char="${char.id}" title="${skill.desc || ''}">
-      <span>${skill.name}</span><small>${skill.desc || ''}</small>
-    </button>`;
-  }).join('');
-  return `
-    <div class="char-panel info-only ${shortCls}">
-      <div class="drawer-header">
-        <div class="hud-section-label">${title}</div>
-        ${options.closable ? '<button class="drawer-close" id="selected-unit-close" title="关闭">×</button>' : ''}
-      </div>
-      <div class="panel-title">${char.name}</div>
-      <div class="resources">${renderResourceHTML(char)}</div>
-      ${traitsHTML ? `<div class="buffs">${traitsHTML}</div>` : ''}
-      <div class="buffs">${renderBuffHTML(char)}</div>
-      ${showSkills ? '<div class="hud-section-label">技能列表</div>' : ''}
-      ${showSkills ? `<div class="info-skill-list">${skillRows || '<div class="drawer-empty">无可见技能</div>'}</div>` : ''}
-    </div>`;
-}
-
-function renderSelectedUnitDrawer(state) {
-  const drawer = document.getElementById('selected-unit-drawer');
-  const char = state.characters.find(c => c.id === selectedCharacterId && c.alive !== false);
-  if (!drawer) return;
-  if (!char) {
-    drawer.classList.remove('open');
-    drawer.innerHTML = '';
-    return;
-  }
-  drawer.classList.add('open');
-  drawer.innerHTML = renderInfoPanel(char, '角色详情', { closable: true, showSkills: true });
-}
-
-function renderHoverInspector(state) {
-  const el = document.getElementById('hover-inspector');
-  if (!el) return;
-  const char = state.characters.find(c => c.id === lastHoveredCharacterId && c.alive !== false) ||
-    state.characters.find(c => c.alive !== false && !isMyCharacter(c.id)) ||
-    state.characters.find(c => c.alive !== false);
-  el.innerHTML = renderInfoPanel(char, char?.id === lastHoveredCharacterId ? '悬停角色' : '战场目标', { showSkills: false });
-}
-
-function renderActionDock(state) {
-  const dock = document.getElementById('action-dock');
-  if (!dock) return;
-  const chars = state.characters.filter(c => c.alive !== false && isMyCharacter(c.id));
-  const selectedMine = chars.find(c => c.id === selectedCharacterId);
-  const pendingMine = chars.find(c => canSubmitForChar(c.id));
-  const actor = selectedSkill
-    ? chars.find(c => c.id === selectedSkill.charId)
-    : (selectedMine && canSubmitForChar(selectedMine.id) ? selectedMine : pendingMine || selectedMine || chars[0]);
-
-  if (!actor) {
-    dock.innerHTML = '<div class="drawer-empty">没有可操作角色。</div>';
-    return;
-  }
-
-  const forcedId = engine.getForcedSkillId(actor.id);
-  const forcedSkill = forcedId !== undefined ? SKILLS[forcedId] : null;
-  if (!battleEnded && forcedSkill && forcedSkill.targeting.shape === 'SELF' && canSubmitForChar(actor.id, forcedId)) {
-    submitAction(actor.id, forcedId, null);
-    return;
-  }
-
-  const allSkills = visibleSkillsForChar(actor);
-  const totalPages = Math.max(1, Math.ceil(allSkills.length / skillsPerPage));
-  let page = skillPages.get(actor.id) || 0;
-  if (page >= totalPages) page = 0;
-  skillPages.set(actor.id, page);
-  const pageSkills = allSkills.slice(page * skillsPerPage, (page + 1) * skillsPerPage);
-
-  function canAfford(skill) {
-    let cost = { ...(skill.cost || {}) };
-    if (skill.id === 'role_jimmy_marrow_wine') {
-      const costs = [3, 4, 4, 5, 5];
-      const buffs = actor.buffs || [];
-      const marrow = buffs.find(b => b.statusType === 'JIMMY_MARROW');
-      const layer = marrow?.data?.layer || 0;
-      cost = { rage: layer < costs.length ? costs[layer] : costs[costs.length - 1] };
-    }
-    // Factor in pending resource gains from already-submitted actions
-    const pending = engine.getPendingResourceGains?.(actor.id) || {};
-    for (const [res, amount] of Object.entries(cost)) {
-      const available = (actor.resources?.[res] || 0) + (pending[res] || 0);
-      if (available < amount) return false;
-    }
-    return true;
-  }
-
-  const skillsHTML = pageSkills.map(s => {
-    const skill = SKILLS[s.id];
-    const sel = selectedSkill?.charId === actor.id && selectedSkill?.skillId === s.id ? ' selected' : '';
-    const used = !canSubmitForChar(actor.id, s.id) ? ' used' : '';
-    const noAfford = !canAfford(skill) ? ' unaffordable' : '';
-    return `<button class="skill-btn skill-icon-btn${sel}${used}${noAfford}" data-skill="${s.id}" data-char="${actor.id}" title="${skill.name}: ${skill.desc || ''}" data-tooltip-title="${skill.name}" data-tooltip="${skill.desc || ''}">
-      <div class="skill-glyph">${skillGlyph(skill)}</div>
-      <div class="skill-meta"><span>${skillCostLabel(skill, actor)}</span><span>S${skill.speed ?? '-'}</span></div>
-    </button>`;
-  }).join('');
-
-  const pageNav = `
-    <div class="skill-page-nav">
-      <button class="skill-page-btn" data-char="${actor.id}" data-page-dir="prev"${page === 0 ? ' disabled' : ''}>◀</button>
-      <span class="skill-page-indicator">${page + 1}/${totalPages}</span>
-      <button class="skill-page-btn" data-char="${actor.id}" data-page-dir="next"${page >= totalPages - 1 ? ' disabled' : ''}>▶</button>
-    </div>`;
-  const hint = selectedSkill?.charId === actor.id
-    ? `选择 <span class="target-skill-name">${SKILLS[selectedSkill.skillId]?.name || '技能'}</span> 的目标格`
-    : (hasOptionalActionAvailable(actor.id) ? '可追加灵巧行动，或执行回合' : (canSubmitForChar(actor.id) ? '选择技能后在棋盘指定目标' : '该角色已提交行动'));
-  const executeBtn = document.getElementById('btn-execute');
-
-  dock.innerHTML = `
-    <div class="dock-actor">
-      <div class="dock-actor-label">当前行动</div>
-      <div class="dock-actor-name">${actor.name}</div>
-      <div class="resources">${renderResourceHTML(actor)}</div>
-      <div class="buffs">${renderTraitHTML(actor) || '—'}</div>
-      <div class="buffs">${renderBuffHTML(actor)}</div>
-    </div>
-    <div class="dock-skills">
-      <div class="hud-section-label">技能</div>
-      <div class="skill-grid">${skillsHTML || '<span class="drawer-empty">无可用技能</span>'}</div>
-      ${pageNav}
-    </div>
-    <div class="dock-control">
-      <div>
-        <div class="hud-section-label">目标提示</div>
-        <div class="target-hint">${hint}</div>
-      </div>
-      <button class="dock-execute-proxy" id="dock-execute" ${executeBtn?.disabled ? 'disabled' : ''}>执行回合</button>
-    </div>`;
-}
-
-function renderRightSidebarTabs() {
-  document.querySelectorAll('#right-sidebar-tabs button').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === activeSidebarTab);
-    btn.onclick = () => {
-      activeSidebarTab = btn.dataset.tab;
-      renderRightSidebarTabs();
-    };
-  });
-  document.getElementById('log')?.classList.toggle('active', activeSidebarTab === 'log');
-  document.getElementById('chat-box')?.classList.toggle('active', activeSidebarTab === 'chat');
-}
-
-function wireActionDock() {
-  document.getElementById('selected-unit-close')?.addEventListener('click', () => {
-    selectedCharacterId = null;
-    viewingSkill = null;
-    validTargets = [];
-    hoverEffectArea = [];
-    hoveredHex = null;
-    renderAll();
-  });
-  document.querySelectorAll('#selected-unit-drawer .drawer-skill-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      btn.classList.add('selected');
-      viewOpponentSkill(btn.dataset.char, btn.dataset.skill);
-    });
-  });
-  document.querySelectorAll('#action-dock .skill-page-btn:not(:disabled)').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const charId = btn.dataset.char;
-      const dir = btn.dataset.pageDir;
-      const cur = skillPages.get(charId) || 0;
-      skillPages.set(charId, dir === 'next' ? cur + 1 : cur - 1);
-      renderAll();
-    });
-  });
-  document.querySelectorAll('#action-dock .skill-btn').forEach(btn => {
-    btn.addEventListener('mouseenter', (e) => showSkillTooltip(e, btn));
-    btn.addEventListener('mousemove', (e) => positionSkillTooltip(e));
-    btn.addEventListener('mouseleave', hideSkillTooltip);
-    btn.addEventListener('click', () => {
-      const charId = btn.dataset.char;
-      const skillId = btn.dataset.skill;
-      if (btn.classList.contains('used')) return;
-      selectSkill(charId, skillId);
-    });
-  });
-  document.getElementById('dock-execute')?.addEventListener('click', () => {
-    document.getElementById('btn-execute')?.click();
-  });
-}
-
-// showSkillTooltip, positionSkillTooltip, hideSkillTooltip moved to ui/battle/BattlePanelsView.js
 
 function renderPanels() {
   const state = engine.getState();
-  renderSelectedUnitDrawer(state);
-  renderHoverInspector(state);
-  renderActionDock(state);
-  renderRightSidebarTabs();
-  wireActionDock();
+  renderBattlePanelsView({
+    state,
+    selectedCharacterId,
+    selectedSkill,
+    viewingSkill,
+    lastHoveredCharacterId,
+    activeSidebarTab,
+    battleEnded,
+    galaxyActive,
+    skillPages,
+    skillsPerPage,
+    helpers: {
+      isMyCharacter,
+      canSubmitForChar,
+      hasOptionalActionAvailable,
+      visibleSkillsForChar,
+      classPanelKey,
+      renderResourceHTML,
+      renderTraitHTML,
+      renderBuffHTML,
+      skillCostLabel,
+      skillGlyph,
+      getForcedSkillId: (charId) => engine.getForcedSkillId(charId),
+      getPendingResourceGains: (charId) => engine.getPendingResourceGains?.(charId) || {},
+    },
+    callbacks: {
+      onCloseSelectedUnit: () => {
+        selectedCharacterId = null;
+        viewingSkill = null;
+        validTargets = [];
+        hoverEffectArea = [];
+        hoveredHex = null;
+        renderAll();
+      },
+      onViewOpponentSkill: (charId, skillId) => {
+        viewOpponentSkill(charId, skillId);
+      },
+      onSkillPageChange: (charId, direction) => {
+        const cur = skillPages.get(charId) || 0;
+        skillPages.set(charId, direction === 'next' ? cur + 1 : cur - 1);
+        renderAll();
+      },
+      onSelectSkill: (charId, skillId) => {
+        selectSkill(charId, skillId);
+      },
+      onExecuteTurn: () => {
+        document.getElementById('btn-execute')?.click();
+      },
+      onSidebarTabChange: (tab) => {
+        activeSidebarTab = tab;
+        renderPanels();
+      },
+      onAutoSubmitForcedSelfSkill: (charId, skillId) => {
+        submitAction(charId, skillId, null);
+      },
+    },
+  });
 }
 
 function renderLog() {
