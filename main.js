@@ -22,6 +22,8 @@ import { renderConfigScreenView } from './ui/config/ConfigScreenView.js';
 import { renderBattlePanelsView } from './ui/battle/BattlePanelsView.js';
 import { initStartLobbyController } from './ui/start/StartLobbyController.js';
 import { initBattleInputController } from './ui/battle/BattleInputController.js';
+import { initGalaxyOverlayController } from './ui/battle/GalaxyOverlayController.js';
+import { initGameOverController } from './ui/battle/GameOverController.js';
 
 const PORTRAIT_CACHE_VERSION = '2';
 
@@ -41,6 +43,7 @@ const PORTRAIT_CACHE_VERSION = '2';
 
 // --- Init ---
 let networkManager = null;  // null in local mode, NetworkManager in P2P mode
+let gameOverController = null;  // initialized after battleSession
 
 // --- BattleSessionController (holds all battle state + lifecycle) ---
 const battleSession = new BattleSessionController({
@@ -50,8 +53,8 @@ const battleSession = new BattleSessionController({
   clearLog: () => { document.getElementById('log').innerHTML = ''; },
   setSubmitStatus: (text) => { document.getElementById('submit-status').textContent = text; },
   setExecuteDisabled: (disabled) => { document.getElementById('btn-execute').disabled = disabled; },
-  showGameOverPanel: (winnerId) => showGameOver(winnerId),
-  hideGameOverPanel: () => { document.getElementById('gameover-panel').classList.remove('show'); },
+  showGameOverPanel: (winnerId) => { if (gameOverController) gameOverController.show(winnerId); },
+  hideGameOverPanel: () => { if (gameOverController) gameOverController.hide(); },
   showDisconnect: (reason) => showDisconnect(reason),
   getNetworkManager: () => networkManager,
   getConfigMode: () => configMode,
@@ -150,7 +153,7 @@ function showConfigScreen(mode) {
   for (const pid of ['player1', 'player2']) {
     configPlayers[pid].locked = false;
   }
-  document.getElementById('gameover-panel').classList.remove('show');
+  if (gameOverController) gameOverController.hide();
   setRoute('config');
   renderConfigScreen();
   sendConfigUpdate();
@@ -310,80 +313,7 @@ function maybeStartP2PBattle() {
 
 // BATTLE_END listener moved to BattleSessionController (calls showGameOverPanel callback)
 
-// --- Galaxy sub-phase (state moved to BattleSessionController) ---
-
-engine.eventBus.on('GALAXY_SUBPHASE_START', (data) => {
-  const started = battleSession.startGalaxySubphase(data.charIds);
-  if (!started) return;
-});
-
-engine.eventBus.on('GALAXY_ACTION_PROMPT', (data) => {
-  if (battleSession.promptGalaxyAction(data)) showGalaxyPanel();
-});
-
-engine.eventBus.on('GALAXY_SUBPHASE_END', () => {
-  battleSession.endGalaxySubphase();
-  hideGalaxyPanel();
-});
-
-function showGalaxyPanel() {
-  if (!battleSession.galaxyCharId) return;
-  const char = engine.registry.get(battleSession.galaxyCharId);
-  if (!char) return;
-
-  document.getElementById('galaxy-hint').textContent =
-    `行动 ${battleSession.galaxyActionIndex + 1}/${battleSession.galaxyActionTotal}`;
-  const stateChar = engine.getState().characters.find(c => c.id === battleSession.galaxyCharId);
-  const skillIds = stateChar?.skills?.map(s => s.id) || SKILLS_BY_CLASS[char.class] || [];
-  const skills = skillIds.filter(sid => {
-    const skill = SKILLS[sid];
-    return skill && !skill.hidden;
-  }).map(sid => {
-    const skill = SKILLS[sid];
-    return `<button class="skill-btn" data-skill="${sid}" title="${skill.desc || ''}">${skill.name}</button>`;
-  }).join('');
-  document.getElementById('galaxy-skills').innerHTML = skills || '<span style="color:#888">无可用技能</span>';
-  document.getElementById('btn-galaxy-confirm').disabled = true;
-
-  document.querySelectorAll('#galaxy-skills .skill-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#galaxy-skills .skill-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      battleSession.selectGalaxySkill(btn.dataset.skill);
-      document.getElementById('btn-galaxy-confirm').disabled = false;
-    });
-  });
-
-  document.getElementById('galaxy-overlay').classList.add('show');
-}
-
-function hideGalaxyPanel() {
-  document.getElementById('galaxy-overlay').classList.remove('show');
-}
-
-document.getElementById('btn-galaxy-confirm').addEventListener('click', () => {
-  if (!battleSession.galaxySelectedSkill) return;
-  const skill = SKILLS[battleSession.galaxySelectedSkill];
-  if (!skill) return;
-
-  const targetingType = battleSession.prepareGalaxyTargeting(battleSession.galaxySelectedSkill);
-
-  if (targetingType === 'self') {
-    // Self-targeting: submit immediately
-    battleSession.submitGalaxyTarget(null, networkManager);
-    hideGalaxyPanel();
-  } else {
-    // Needs target: hide panel, show valid hexes on board
-    hideGalaxyPanel();
-    document.getElementById('submit-status').textContent = `银河远征: 点击棋盘选择 ${skill.name} 的目标`;
-    renderAll();
-  }
-});
-
-document.getElementById('btn-galaxy-skip').addEventListener('click', () => {
-  battleSession.skipGalaxyAction(networkManager);
-  hideGalaxyPanel();
-});
+// Galaxy sub-phase (state in BattleSessionController, DOM in GalaxyOverlayController)
 
 // --- Start screen / lobby / tutorial — managed by ui/start/StartLobbyController.js ---
 // Old button bindings, showTutorial, hideTutorial, updateHostStatus, updateJoinStatus,
@@ -474,14 +404,14 @@ document.getElementById('btn-config-back').addEventListener('click', () => {
 });
 
 function startP2PGame(nm) {
-  document.getElementById('gameover-panel').classList.remove('show');
+  if (gameOverController) gameOverController.hide();
   battleSession.resetForConfigScreen();
   configMode = 'p2p';
   currentConfigPlayer = nm.myPlayerId;
   // Reset all rematch/class-pick state for fresh connection
   remoteClassPick = null;
   pendingRemoteRematchClass = null;
-  opponentReadyForRematch = false;
+  if (gameOverController) gameOverController.setOpponentReadyForRematch(false);
   pendingMyClass = null;
   document.getElementById('mode-badge').textContent = '联机 ' + (nm.roomCode || '');
   document.getElementById('mode-badge').className = 'online';
@@ -501,7 +431,6 @@ let remoteClassPick = null;
 let battleSeed = 0;         // host generates from Date.now(), shared via CLASS_PICK
 let pendingMyClass = null; // for rematch: stored myClass when waiting for opponent
 let pendingRemoteRematchClass = null; // CLASS_PICK from opponent that arrived while our game still active
-let opponentReadyForRematch = false; // true when opponent already clicked rematch (shown in gameover UI)
 
 function onClassPick(nm, remoteClass, seed = 0) {
   const gameoverShown = document.getElementById('gameover-panel').classList.contains('show');
@@ -514,8 +443,7 @@ function onClassPick(nm, remoteClass, seed = 0) {
   if (seed) battleSeed = seed;
   // Opponent clicked first while we're in game-over screen — show indicator
   if (gameoverShown && !pendingMyClass) {
-    opponentReadyForRematch = true;
-    updateRematchButton();
+    if (gameOverController) gameOverController.setOpponentReadyForRematch(true);
     return;
   }
   // Both sides have clicked: start the game
@@ -526,7 +454,7 @@ function onClassPick(nm, remoteClass, seed = 0) {
     nm.sendClassPick(myClass, battleSeed);
   }
   pendingMyClass = null;
-  opponentReadyForRematch = false;
+  if (gameOverController) gameOverController.setOpponentReadyForRematch(false);
   tryInitWithClasses(nm, myClass);
 }
 
@@ -554,10 +482,10 @@ function returnToStart() {
   battleSession.resetForReturnToStart();
   remoteClassPick = null;
   pendingRemoteRematchClass = null;
-  opponentReadyForRematch = false;
+  if (gameOverController) gameOverController.setOpponentReadyForRematch(false);
   if (networkManager) { networkManager.disconnect(); networkManager = null; }
   document.getElementById('disconnect-overlay').classList.remove('show');
-  document.getElementById('gameover-panel').classList.remove('show');
+  if (gameOverController) gameOverController.hide();
   setRoute('start');
   document.getElementById('room-setup').style.display = 'none';
   document.getElementById('room-code-text').style.display = 'none';
@@ -569,50 +497,7 @@ function returnToStart() {
 }
 window.returnToStart = returnToStart;
 
-function updateRematchButton() {
-  const btn = document.getElementById('btn-rematch');
-  if (opponentReadyForRematch) {
-    btn.textContent = '对手已准备，重新开始';
-  } else {
-    btn.textContent = '重新开始';
-  }
-}
-
-function showGameOver(winner) {
-  battleSession.clearTurnTimeout();
-  document.getElementById('btn-execute').disabled = true;
-  document.getElementById('submit-status').textContent = '战斗已结束';
-  const winnerText = winner === 'player1' ? '玩家1' : winner === 'player2' ? '玩家2' : '平局';
-  document.getElementById('gameover-winner').textContent = `胜者: ${winnerText}`;
-  document.getElementById('rematch-class-p1').value = battleSession.player1Class;
-  document.getElementById('rematch-class-p2').value = battleSession.player2Class;
-  document.getElementById('btn-rematch').disabled = false;
-  updateRematchButton();
-
-  document.getElementById('go-p1-pick').style.display = 'none';
-  document.getElementById('go-p2-pick').style.display = 'none';
-
-  document.getElementById('gameover-panel').classList.add('show');
-}
-
-// Rematch button
-document.getElementById('btn-rematch').addEventListener('click', () => {
-  const isP2P = networkManager && networkManager.mode !== 'local';
-  const wasPve = isPveMode();
-  document.getElementById('gameover-panel').classList.remove('show');
-  battleSession.resetForConfigScreen();
-  document.getElementById('btn-execute').disabled = true;
-  document.getElementById('submit-status').textContent = '等待配置...';
-  document.getElementById('log').innerHTML = '';
-  battleSession.clearTurnTimeout();
-  showConfigScreen(isP2P ? 'p2p' : (wasPve ? 'pve' : 'local'));
-});
-
-// Return to lobby button
-document.getElementById('btn-lobby').addEventListener('click', () => {
-  document.getElementById('gameover-panel').classList.remove('show');
-  returnToStart();
-});
+// showGameOver, updateRematchButton, btn-rematch, btn-lobby → GameOverController
 
 // [moved to BattleSessionController] battleSession.startTurnTimeout
 
@@ -1691,6 +1576,44 @@ initBattleInputController({
     executeButtonClick: () => { document.getElementById('btn-execute')?.click(); },
     setSubmitStatus: (text) => { document.getElementById('submit-status').textContent = text; },
     computeEffectArea,
+  },
+});
+
+// --- Galaxy overlay controller (DOM, event listeners, panel show/hide) ---
+initGalaxyOverlayController({
+  battleSession,
+  getEngine: () => engine,
+  getNetworkManager: () => networkManager,
+  callbacks: {
+    renderAll,
+    setSubmitStatus: (text) => { document.getElementById('submit-status').textContent = text; },
+  },
+});
+
+// --- Game over controller (panel, rematch, lobby buttons) ---
+gameOverController = initGameOverController({
+  battleSession,
+  getNetworkManager: () => networkManager,
+  isPveMode,
+  startLobbyUi,
+  callbacks: {
+    setRoute,
+    showConfigScreen,
+    startBattleFromConfigs,
+    resetNetworkState: () => {
+      remoteClassPick = null;
+      pendingRemoteRematchClass = null;
+      if (gameOverController) gameOverController.setOpponentReadyForRematch(false);
+      if (networkManager) { networkManager.disconnect(); networkManager = null; }
+      document.getElementById('disconnect-overlay').classList.remove('show');
+      document.getElementById('room-setup').style.display = 'none';
+      document.getElementById('room-code-text').style.display = 'none';
+      document.getElementById('p2p-class-pick').style.display = 'none';
+      document.getElementById('room-host-section').style.display = 'block';
+      document.getElementById('room-join-section').style.display = 'block';
+      document.getElementById('conn-indicator').style.display = 'none';
+    },
+    getBattlePlayerConfigs,
   },
 });
 
