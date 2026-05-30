@@ -18,6 +18,7 @@ import {
   validateRoleLoadout,
 } from './engine/RoleData.js';
 import { isOnBoard, hexCenter, hexCorners, pixelToHex, hexDistance, hexLine, hexSpiral, setCanvasSize, getSectorHexes } from './engine/HexMath.js';
+import { renderConfigScreenView } from './ui/config/ConfigScreenView.js';
 
 const PORTRAIT_CACHE_VERSION = '2';
 
@@ -241,170 +242,36 @@ function renderConfigScreen() {
   const cfg = activeConfig();
   const editable = isConfigEditable();
   const role = ROLE_DEFS[hoverRoleId] || ROLE_DEFS[cfg.roleId];
-  document.getElementById('config-mode-label').textContent = configMode === 'local' ? '本地配置' : configMode === 'pve' ? 'PVE 配置' : `联机配置 ${networkManager?.roomCode || ''}`;
-  document.getElementById('config-player-switch').style.display = (configMode === 'p2p') ? 'none' : 'flex';
-  document.querySelectorAll('#config-player-switch button').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.player === currentConfigPlayer);
-  });
-  document.getElementById('config-class-tabs').innerHTML = CLASSES.map(cls =>
-    `<button class="config-class-tab ${cfg.class === cls ? 'active' : ''}" data-class="${cls}"${(!editable || cfg.locked) ? ' disabled' : ''}>${cls}</button>`
-  ).join('');
-  renderRoleList(cfg, editable);
-  renderRoleDetail(role);
-  renderTeamStatus();
-  renderLoadout(cfg);
-  renderConfigFooter();
-  wireConfigEvents();
-}
 
-function getRolePortrait(roleId) {
-  return `assets/character-portraits/${roleId}.webp?v=${PORTRAIT_CACHE_VERSION}`;
-}
-
-function renderRoleList(cfg, editable) {
-  const roles = getRolesByClass(cfg.class);
-  document.getElementById('config-role-list').innerHTML = roles.map(role => {
-    const isActive = role.id === cfg.roleId;
-    return `<div class="config-role-list-item ${isActive ? 'active' : ''}" data-role="${role.id}">
-      <img class="config-role-list-thumb" src="${getRolePortrait(role.id)}" alt="${role.name}">
-      <div class="config-role-list-info">
-        <div class="config-role-list-name">${role.name}</div>
-        <div class="config-role-list-class">${role.class}</div>
-      </div>
-    </div>`;
-  }).join('');
-  const activeRole = roles.find(r => r.id === cfg.roleId) || roles[0];
-  if (activeRole) renderRoleHero(activeRole);
-}
-
-function renderRoleHero(role) {
-  if (!role) return;
-  document.getElementById('config-hero-glow').className = `config-hero-glow theme-${role.portraitTheme || 'steel'}`;
-  document.getElementById('config-hero-portrait').src = getRolePortrait(role.id);
-  document.getElementById('config-hero-portrait').alt = role.name;
-  document.getElementById('config-hero-name').textContent = role.name;
-  document.getElementById('config-hero-class').textContent = role.class;
-}
-
-function renderRoleDetail(role) {
-  const el = document.getElementById('role-detail');
-  if (!role) { el.innerHTML = ''; return; }
-  const poolIds = getRoleSkillPool(role.id);
-  const poolSkills = poolIds.map(id => SKILLS[id]).filter(Boolean);
-  const traits = poolSkills.filter(s => s.isTrait);
-  const actives = poolSkills.filter(s => !s.isTrait);
-  const pillsHTML = poolSkills.map(s =>
-    `<span class="config-trait-pill">${s.name}${s.isTrait ? ' <span class="config-trait-badge">被动</span>' : ''}</span>`
-  ).join('');
-  el.innerHTML = `
-    <h3>${role.name}</h3>
-    <div class="config-trait-pills">${pillsHTML}</div>
-    <div class="desc">${role.description || ''}</div>
-    <div class="mechanics">${role.plannedMechanics || ''}</div>
-  `;
-}
-
-function renderTeamStatus() {
-  const p1 = configPlayers.player1;
-  const p2 = configPlayers.player2;
-  const title = configMode === 'p2p' ? '联机队伍' : '队伍状态';
-  document.getElementById('team-status').innerHTML = `
-    <h3>${title}</h3>
-    <div class="config-team-row">
-      <span><span class="config-team-dot ${p1.locked ? 'ready' : 'waiting'}"></span>P1: ${ROLE_DEFS[p1.roleId]?.name || '未选择'} · ${p1.class}</span>
-      <span>${p1.locked ? '已锁定' : '配置中'}</span>
-    </div>
-    <div class="config-team-row">
-      <span><span class="config-team-dot ${p2.locked ? 'ready' : 'waiting'}"></span>P2: ${ROLE_DEFS[p2.roleId]?.name || '未选择'} · ${p2.class}</span>
-      <span>${p2.locked ? '已锁定' : '配置中'}</span>
-    </div>
-  `;
-}
-
-// DEPRECATED: replaced by renderTeamStatus() + renderRoleList()
-function renderPeerConfig() {}
-
-function renderLoadout(cfg) {
-  const validation = validateLoadout(cfg.class, cfg.loadoutSkillIds);
-  const roleValidation = validateRoleLoadout(cfg.roleId, cfg.roleLoadoutSkillIds || []);
-  document.getElementById('loadout-count').textContent =
-    `职业 ${cfg.loadoutSkillIds.length}/${LOADOUT_SIZE} · 角色 ${(cfg.roleLoadoutSkillIds || []).length}/${ROLE_LOADOUT_SIZE}${validation.ok && roleValidation.ok ? '' : ' · 无效'}`;
-  document.getElementById('config-skill-drawer').classList.toggle('open', configLoadoutOpen);
-  document.getElementById('btn-toggle-loadout').textContent = configLoadoutOpen ? '收起配置' : '展开配置';
-
-  document.getElementById('loadout-slots').innerHTML = Array.from({ length: LOADOUT_SIZE }, (_, i) => {
-    const sid = cfg.loadoutSkillIds[i];
-    const label = sid ? SKILLS[sid]?.name || sid : '空槽';
-    return `<button class="config-loadout-slot-btn ${sid ? '' : 'empty'}" data-slot="${i}" data-pool="class">${i + 1}. ${label}</button>`;
-  }).join('');
-
-  document.getElementById('role-loadout-slots').innerHTML = Array.from({ length: ROLE_LOADOUT_SIZE }, (_, i) => {
-    const sid = (cfg.roleLoadoutSkillIds || [])[i];
-    const label = sid ? SKILLS[sid]?.name || sid : '空槽';
-    return `<button class="config-loadout-slot-btn ${sid ? '' : 'empty'}" data-slot="${i}" data-pool="role">${i + 1}. ${label}</button>`;
-  }).join('');
-
-  const rolePool = getRoleSkillPool(cfg.roleId);
-  const classPool = (SKILLS_BY_CLASS[cfg.class] || []).filter(id => {
-    const skill = SKILLS[id];
-    if (!skill || skill.hidden || skill.isTrait) return false;
-    if (skill.type === '角色' && !rolePool.includes(id)) return false;
-    return true;
-  });
-  document.getElementById('skill-pool').innerHTML = classPool.map(id => `
-    <button class="config-pool-skill-btn ${cfg.loadoutSkillIds.includes(id) ? 'selected' : ''}" data-skill="${id}" data-pool="class" title="${SKILLS[id].desc || ''}">${SKILLS[id].name}</button>
-  `).join('');
-
-  document.getElementById('role-skill-pool').innerHTML = rolePool.map(id => `
-    <button class="config-pool-skill-btn ${(cfg.roleLoadoutSkillIds || []).includes(id) ? 'selected' : ''} ${SKILLS[id].isTrait ? 'trait-btn' : ''}" data-skill="${id}" data-pool="role" title="${SKILLS[id].desc || ''}">${SKILLS[id].name}${SKILLS[id].isTrait ? ' <span class="config-trait-badge">被动</span>' : ''}</button>
-  `).join('');
-}
-
-function renderConfigFooter() {
-  const p1ClassOk = validateLoadout(configPlayers.player1.class, configPlayers.player1.loadoutSkillIds).ok &&
-    configPlayers.player1.loadoutSkillIds.length === LOADOUT_SIZE;
-  const p1RoleOk = validateRoleLoadout(configPlayers.player1.roleId, configPlayers.player1.roleLoadoutSkillIds || []).ok &&
-    (configPlayers.player1.roleLoadoutSkillIds || []).length === ROLE_LOADOUT_SIZE;
-  const p1Ok = p1ClassOk && p1RoleOk;
-  const p2ClassOk = validateLoadout(configPlayers.player2.class, configPlayers.player2.loadoutSkillIds).ok &&
-    configPlayers.player2.loadoutSkillIds.length === LOADOUT_SIZE;
-  const p2RoleOk = validateRoleLoadout(configPlayers.player2.roleId, configPlayers.player2.roleLoadoutSkillIds || []).ok &&
-    (configPlayers.player2.roleLoadoutSkillIds || []).length === ROLE_LOADOUT_SIZE;
-  const p2Ok = p2ClassOk && p2RoleOk;
-  const bothLocked = configMode === 'pve'
-    ? configPlayers.player1.locked
-    : configPlayers.player1.locked && configPlayers.player2.locked;
-  const cfg = activeConfig();
-  document.getElementById('config-ready-status').textContent =
-    `P1 ${configPlayers.player1.locked ? '已锁定' : '配置中'} / P2 ${configPlayers.player2.locked ? '已锁定' : '配置中'}`;
-  const lockBtn = document.getElementById('btn-config-lock');
-  lockBtn.style.display = isConfigEditable() ? '' : 'none';
-  lockBtn.textContent = cfg.locked ? '修改配置' : '锁定配置';
-  const ownClassOk = validateLoadout(cfg.class, cfg.loadoutSkillIds).ok && cfg.loadoutSkillIds.length === LOADOUT_SIZE;
-  const ownRoleOk = validateRoleLoadout(cfg.roleId, cfg.roleLoadoutSkillIds || []).ok && (cfg.roleLoadoutSkillIds || []).length === ROLE_LOADOUT_SIZE;
-  lockBtn.disabled = !(ownClassOk && ownRoleOk);
-  document.getElementById('btn-config-start').style.display = (configMode === 'local' || configMode === 'pve') ? '' : 'none';
-  document.getElementById('btn-config-start').disabled = !(p1Ok && p2Ok && bothLocked);
-}
-
-function wireConfigEvents() {
-  document.querySelectorAll('#config-class-tabs .config-class-tab').forEach(btn => {
-    btn.onclick = () => setActiveClass(btn.dataset.class);
-  });
-  document.querySelectorAll('.config-role-list-item').forEach(item => {
-    item.onclick = () => { hoverRoleId = null; setActiveRole(item.dataset.role); };
-    item.onmouseenter = () => {
-      hoverRoleId = item.dataset.role;
-      if (hoverRoleId) { renderRoleDetail(ROLE_DEFS[hoverRoleId]); renderRoleHero(ROLE_DEFS[hoverRoleId]); }
-    };
-  });
-  document.querySelectorAll('.config-pool-skill-btn').forEach(btn => {
-    btn.onclick = () => toggleLoadoutSkill(btn.dataset.skill, btn.dataset.pool || 'class');
-  });
-  document.querySelectorAll('.config-loadout-slot-btn').forEach(btn => {
-    btn.onclick = () => removeLoadoutAt(Number(btn.dataset.slot), btn.dataset.pool || 'class');
+  renderConfigScreenView({
+    classes: CLASSES,
+    cfg,
+    role,
+    configMode,
+    roomCode: networkManager?.roomCode || '',
+    currentConfigPlayer,
+    configPlayers,
+    configLoadoutOpen,
+    editable,
+    portraitCacheVersion: PORTRAIT_CACHE_VERSION,
+    callbacks: {
+      onClassSelect: setActiveClass,
+      onRoleSelect: (roleId) => {
+        hoverRoleId = null;
+        setActiveRole(roleId);
+      },
+      onRoleHover: (roleId) => {
+        hoverRoleId = roleId;
+        renderConfigScreen();
+      },
+      onSkillToggle: toggleLoadoutSkill,
+      onSlotRemove: removeLoadoutAt,
+    },
   });
 }
+
+// Config screen view functions moved to ui/config/ConfigScreenView.js.
+// getRolePortrait kept here for preloader use.
 
 function getBattlePlayerConfigs() {
   return [cloneConfig(configPlayers.player1), cloneConfig(configPlayers.player2)];
