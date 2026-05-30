@@ -24,6 +24,7 @@ import { initStartLobbyController } from './ui/start/StartLobbyController.js';
 import { initBattleInputController } from './ui/battle/BattleInputController.js';
 import { initGalaxyOverlayController } from './ui/battle/GalaxyOverlayController.js';
 import { initGameOverController } from './ui/battle/GameOverController.js';
+import { initChatController } from './ui/battle/ChatController.js';
 
 const PORTRAIT_CACHE_VERSION = '2';
 
@@ -44,6 +45,7 @@ const PORTRAIT_CACHE_VERSION = '2';
 // --- Init ---
 let networkManager = null;  // null in local mode, NetworkManager in P2P mode
 let gameOverController = null;  // initialized after battleSession
+let chatController = null;     // initialized after battleSession
 
 // --- BattleSessionController (holds all battle state + lifecycle) ---
 const battleSession = new BattleSessionController({
@@ -60,7 +62,7 @@ const battleSession = new BattleSessionController({
   getConfigMode: () => configMode,
   isPveMode: () => isPveMode(),
   setRoute: (route) => setRoute(route),
-  appendChatMessage: (sender, text) => appendChatMessage(sender, text),
+  appendChatMessage: (sender, text) => { if (chatController) chatController.appendMessage(sender, text); },
   resizeCanvas: () => resizeCanvas(),
 });
 
@@ -1497,31 +1499,11 @@ function renderLog() {
 
 // Keyboard shortcuts moved to ui/battle/BattleInputController.js
 
-// Chat
-document.getElementById('chat-input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    const msg = e.target.value.trim();
-    if (!msg) return;
-    e.target.value = '';
-    appendChatMessage('我', msg);
-    if (networkManager && networkManager.mode !== 'local') {
-      networkManager.sendMessage({ type: 'CHAT', text: msg });
-    }
-  }
-});
-
-function appendChatMessage(sender, text) {
-  const msgs = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.style.marginBottom = '2px';
-  div.innerHTML = `<b>${sender}:</b> ${text}`;
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-}
+// Chat input + message rendering → ChatController
 
 function handleNetworkMessage(payload) {
   if (payload.type === 'CHAT') {
-    appendChatMessage('对手', payload.text);
+    if (chatController) chatController.appendMessage('对手', payload.text);
   } else if (payload.type === 'CONFIG_UPDATE') {
     const cfg = payload.config;
     if (cfg?.playerId && cfg.playerId !== networkManager?.myPlayerId) {
@@ -1614,6 +1596,17 @@ gameOverController = initGameOverController({
       document.getElementById('conn-indicator').style.display = 'none';
     },
     getBattlePlayerConfigs,
+  },
+});
+
+// --- Chat controller (input binding + message DOM) ---
+chatController = initChatController({
+  callbacks: {
+    sendChat: (text) => {
+      if (networkManager && networkManager.mode !== 'local') {
+        networkManager.sendMessage({ type: 'CHAT', text });
+      }
+    },
   },
 });
 
