@@ -93,6 +93,10 @@ const { engine, ids } = initBattle();
 const obsEncoder = new ObservationEncoder();
 const actionEncoder = new ActionEncoder();
 
+// Resolve player IDs from character IDs — encode() expects owner/player ID, not character entity ID
+const player1Owner = engine.getCharacterOwner(ids.player1Id);
+const player2Owner = engine.getCharacterOwner(ids.player2Id);
+
 // 7. observationSpec
 console.log('[7] observationSpec');
 const spec = obsEncoder.observationSpec();
@@ -103,7 +107,7 @@ check('Has actionMask', !!spec.actionMask);
 // 8. encode returns correct types
 console.log('[8] encode types');
 const mask = buildActionMask(engine, ids.player1Id, actionEncoder);
-const obs = obsEncoder.encode(engine, ids.player1Id, mask);
+const obs = obsEncoder.encode(engine, player1Owner, mask);
 check('spatial is Float32Array', obs.spatial instanceof Float32Array);
 check('scalar is Float32Array', obs.scalar instanceof Float32Array);
 check('actionMask is Uint8Array', obs.actionMask instanceof Uint8Array);
@@ -119,7 +123,7 @@ check('actionMask length matches spec', obs.actionMask.length === spec.actionMas
 
 // 10. Deterministic
 console.log('[10] Deterministic encoding');
-const obs2 = obsEncoder.encode(engine, ids.player1Id, mask);
+const obs2 = obsEncoder.encode(engine, player1Owner, mask);
 let sameSpatial = true, sameScalar = true;
 for (let i = 0; i < obs.spatial.length; i++) {
   if (obs.spatial[i] !== obs2.spatial[i]) { sameSpatial = false; break; }
@@ -130,20 +134,60 @@ for (let i = 0; i < obs.scalar.length; i++) {
 check('Spatial deterministic', sameSpatial);
 check('Scalar deterministic', sameScalar);
 
-// 11. Player1 vs Player2 perspective
-console.log('[11] Player perspective swap');
-const maskP2 = buildActionMask(engine, ids.player2Id, actionEncoder);
-const obsP1 = obsEncoder.encode(engine, ids.player1Id, mask);
-const obsP2 = obsEncoder.encode(engine, ids.player2Id, maskP2);
-// own_unit channel for p1 should match enemy_unit channel for p2 at p1's position
+// 11. valid_board channel: 1 for on-board hexes, 0 for padding
+console.log('[11] valid_board channel semantics');
+const mask2 = buildActionMask(engine, ids.player1Id, actionEncoder);
+const obs3 = obsEncoder.encode(engine, player1Owner, mask2);
+const CH = 7; // channels
+const GR = 7; // grid dim
+function spatialAt(ch, q, r) { return obs3.spatial[ch * GR * GR + (q + 3) * GR + (r + 3)]; }
+let validOk = true, paddingOk = true;
+for (let q = -3; q <= 3; q++) {
+  for (let r = -3; r <= 3; r++) {
+    const v = spatialAt(0, q, r);
+    if (isOnBoard(q, r)) {
+      if (v !== 1) { validOk = false; break; }
+    } else {
+      if (v !== 0) { paddingOk = false; break; }
+    }
+  }
+}
+check('valid_board = 1 for all on-board hexes', validOk);
+check('valid_board = 0 for all padding hexes', paddingOk);
+
+// 12. own/enemy channel position correctness
+console.log('\n[12] Own/enemy channel positions correct');
 const p1Pos = engine.getState().characters.find(c => c.id === ids.player1Id)?.position;
 const p2Pos = engine.getState().characters.find(c => c.id === ids.player2Id)?.position;
 if (p1Pos && p2Pos) {
-  check('P1 own_unit at p1 position > 0', obsP1.spatial[0] !== undefined,
-    'spatial should have data');
-  check('P2 enemy_unit at p1 position > 0', obsP2.spatial[0] !== undefined,
-    'spatial should have data');
+  const maskP2 = buildActionMask(engine, ids.player2Id, actionEncoder);
+  const obsP1 = obsEncoder.encode(engine, player1Owner, mask2);
+  const obsP2 = obsEncoder.encode(engine, player2Owner, maskP2);
+  function p1At(ch, q, r) { return obsP1.spatial[ch * GR * GR + (q + 3) * GR + (r + 3)]; }
+  function p2At(ch, q, r) { return obsP2.spatial[ch * GR * GR + (q + 3) * GR + (r + 3)]; }
+  check('P1 own_unit at (0,-2) = 1', p1At(1, p1Pos.q, p1Pos.r) === 1,
+    `got ${p1At(1, p1Pos.q, p1Pos.r)}`);
+  check('P1 enemy_unit at (0,2) = 1', p1At(2, p2Pos.q, p2Pos.r) === 1,
+    `got ${p1At(2, p2Pos.q, p2Pos.r)}`);
+  check('P2 own_unit at (0,2) = 1', p2At(1, p2Pos.q, p2Pos.r) === 1,
+    `got ${p2At(1, p2Pos.q, p2Pos.r)}`);
+  check('P2 enemy_unit at (0,-2) = 1', p2At(2, p1Pos.q, p1Pos.r) === 1,
+    `got ${p2At(2, p1Pos.q, p1Pos.r)}`);
 }
+
+// 13. Padding positions all zero
+console.log('\n[13] Padding positions all zero');
+let paddingAllZero = true;
+for (let q = -3; q <= 3; q++) {
+  for (let r = -3; r <= 3; r++) {
+    if (isOnBoard(q, r)) continue;
+    for (let c = 0; c < CH; c++) {
+      if (spatialAt(c, q, r) !== 0) { paddingAllZero = false; break; }
+    }
+    if (!paddingAllZero) break;
+  }
+}
+check('All padding positions are 0 in all channels', paddingAllZero);
 
 console.log(`\n=== Result: ${passed} passed, ${failed} failed ===`);
 process.exitCode = failed > 0 ? 1 : 0;

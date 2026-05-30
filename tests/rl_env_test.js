@@ -102,7 +102,7 @@ for (const [name, scenario] of Object.entries(DEFAULT_RL_SCENARIOS)) {
   check(`${name}: both alive`, p1Alive && p2Alive);
 
   const m = buildActionMask(eng, ids.player1Id, actEnc);
-  const obs = obsEnc.encode(eng, ids.player1Id, m);
+  const obs = obsEnc.encode(eng, eng.getCharacterOwner(ids.player1Id), m);
   check(`${name}: can encode observation`, obs && obs.spatial && obs.scalar);
 
   const validCount = m.reduce((s, v) => s + v, 0);
@@ -118,7 +118,7 @@ const policy = new RandomPolicy(42);
 {
   const { engine: eng, ids } = initTestBattle();
   const mask = buildActionMask(eng, ids.player1Id, actEnc);
-  const obs = obsEnc.encode(eng, ids.player1Id, mask);
+  const obs = obsEnc.encode(eng, eng.getCharacterOwner(ids.player1Id), mask);
 
   const action = policy.act(obs, mask);
   check('RandomPolicy selects valid action', mask[action] === 1,

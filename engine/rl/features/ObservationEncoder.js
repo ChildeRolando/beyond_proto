@@ -8,6 +8,12 @@ const GRID_DIM = 7;                // (-3..3)
 const SPATIAL_CHANNELS = 7;
 const SCALAR_SIZE = 13;
 
+const PLANE_SIZE = GRID_DIM * GRID_DIM;
+
+function spatialOffset(channel, q, r) {
+  return channel * PLANE_SIZE + (q + BOARD_RADIUS) * GRID_DIM + (r + BOARD_RADIUS);
+}
+
 export class ObservationEncoder {
   constructor(options = {}) {
     this._hexIndex = options.hexIndex || new HexIndex();
@@ -34,49 +40,43 @@ export class ObservationEncoder {
     const casings     = state.casings || [];
     const wildBullets = state.wildBullets || [];
 
-    // Fill spatial channels
+    // Fill spatial channels — [C, qIdx, rIdx] grid layout
+    // Channel 0: valid_board (mark all on-board hexes)
     for (const hex of this._hexIndex.allHexes()) {
-      const idx = this._hexIndex.hexToIndex(hex.q, hex.r);
-      if (idx < 0) continue;
-      const offset = idx * SPATIAL_CHANNELS;
+      spatial[spatialOffset(0, hex.q, hex.r)] = 1;
+    }
 
-      // Channel 0: valid_board (always 1 for valid hexes)
-      spatial[offset + 0] = 1;
+    // Channel 1: own_character
+    for (const c of ownChars) {
+      spatial[spatialOffset(1, c.position.q, c.position.r)] = 1;
+    }
+    // Channel 2: enemy_character
+    for (const c of enemyChars) {
+      spatial[spatialOffset(2, c.position.q, c.position.r)] = 1;
+    }
 
-      // Channel 1: own_character
-      for (const c of ownChars) {
-        if (c.position.q === hex.q && c.position.r === hex.r) { spatial[offset + 1] = 1; break; }
-      }
-      // Channel 2: enemy_character
-      for (const c of enemyChars) {
-        if (c.position.q === hex.q && c.position.r === hex.r) { spatial[offset + 2] = 1; break; }
-      }
-      // Channel 3: own_projectile
-      for (const p of projectiles) {
-        if (!p.alive) continue;
-        const [pq, pr] = p.path?.[p.stepIndex] || [p.fromQ, p.fromR];
-        if (pq === hex.q && pr === hex.r) {
-          const owner = engine.registry?.get?.(p.ownerId);
-          if (owner?.ownerId === playerId) spatial[offset + 3] = 1;
-        }
-      }
-      // Channel 4: enemy_projectile
-      for (const p of projectiles) {
-        if (!p.alive) continue;
-        const [pq, pr] = p.path?.[p.stepIndex] || [p.fromQ, p.fromR];
-        if (pq === hex.q && pr === hex.r) {
-          const owner = engine.registry?.get?.(p.ownerId);
-          if (owner?.ownerId !== playerId) spatial[offset + 4] = 1;
-        }
-      }
-      // Channel 5: casing
-      for (const c of casings) {
-        if (c.q === hex.q && c.r === hex.r) { spatial[offset + 5] = (c.count || 1) / 5; break; }
-      }
-      // Channel 6: wild_bullet
-      for (const wb of wildBullets) {
-        if (wb.q === hex.q && wb.r === hex.r) { spatial[offset + 6] = (wb.count || 1) / 5; break; }
-      }
+    // Channel 3: own_projectile
+    for (const p of projectiles) {
+      if (!p.alive) continue;
+      const [pq, pr] = p.path?.[p.stepIndex] || [p.fromQ, p.fromR];
+      const owner = engine.registry?.get?.(p.ownerId);
+      if (owner?.ownerId === playerId) spatial[spatialOffset(3, pq, pr)] = 1;
+    }
+    // Channel 4: enemy_projectile
+    for (const p of projectiles) {
+      if (!p.alive) continue;
+      const [pq, pr] = p.path?.[p.stepIndex] || [p.fromQ, p.fromR];
+      const owner = engine.registry?.get?.(p.ownerId);
+      if (owner?.ownerId !== playerId) spatial[spatialOffset(4, pq, pr)] = 1;
+    }
+
+    // Channel 5: casing
+    for (const c of casings) {
+      spatial[spatialOffset(5, c.q, c.r)] = (c.count || 1) / 5;
+    }
+    // Channel 6: wild_bullet
+    for (const wb of wildBullets) {
+      spatial[spatialOffset(6, wb.q, wb.r)] = (wb.count || 1) / 5;
     }
 
     // Scalar features
