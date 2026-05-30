@@ -21,6 +21,7 @@ import { isOnBoard, hexCenter, hexCorners, pixelToHex, hexDistance, hexLine, hex
 import { renderConfigScreenView } from './ui/config/ConfigScreenView.js';
 import { renderBattlePanelsView } from './ui/battle/BattlePanelsView.js';
 import { initStartLobbyController } from './ui/start/StartLobbyController.js';
+import { initBattleInputController } from './ui/battle/BattleInputController.js';
 
 const PORTRAIT_CACHE_VERSION = '2';
 
@@ -808,66 +809,7 @@ function getCharacterAtHex(q, r) {
   return chars[0] || null;
 }
 
-// --- Canvas click ---
-canvas.addEventListener('click', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  const [hq, hr] = pixelToHex(mx, my);
-
-  if (!isOnBoard(hq, hr)) return;
-
-  const clickedChar = getCharacterAtHex(hq, hr);
-
-  // Galaxy sub-phase target selection (panel hidden, waiting for hex click)
-  if (battleSession.galaxyActive && battleSession.galaxySelectedSkill && !document.getElementById('galaxy-overlay').classList.contains('show')) {
-    const skill = SKILLS[battleSession.galaxySelectedSkill];
-    if (skill && skill.targeting.shape !== 'SELF' && skill.targeting.shape !== 'AOE_SELF') {
-      battleSession.submitGalaxyTarget({ q: hq, r: hr }, networkManager);
-      document.getElementById('submit-status').textContent = '等待双方提交...';
-      return;
-    }
-  }
-
-  // If only viewing opponent skill, clicking a hex clears the view
-  if (battleSession.viewingSkill && !battleSession.selectedSkill) {
-    battleSession.clearSelection();
-    if (clickedChar) battleSession.setSelectedCharacterId(clickedChar.id);
-    renderAll();
-    return;
-  }
-
-  if (!battleSession.selectedSkill) {
-    if (clickedChar) {
-      // Cycle through chars on same hex on repeated clicks
-      const hexChars = getCharactersAtHex(hq, hr);
-      if (hexChars.length > 1 && hexChars.some(c => c.id === battleSession.selectedCharacterId)) {
-        const curIdx = hexChars.findIndex(c => c.id === battleSession.selectedCharacterId);
-        const next = hexChars[(curIdx + 1) % hexChars.length];
-        battleSession.setSelectedCharacterId(next.id);
-      } else {
-        battleSession.setSelectedCharacterId(clickedChar.id);
-      }
-      renderAll();
-    }
-    return;
-  }
-
-  const charId = battleSession.selectedSkill.charId;
-  const skill = SKILLS[battleSession.selectedSkill.skillId];
-
-  if (skill.targeting.shape === 'SELF' || skill.targeting.shape === 'AOE_SELF') {
-    battleSession.submitAction(charId, battleSession.selectedSkill.skillId, null);
-    return;
-  }
-
-  // Click on invalid hex cancels selection
-  if (!battleSession.validTargets.some(t => t.q === hq && t.r === hr)) {
-    battleSession.handleInvalidTargetClick();
-    return;
-  }
-
-  battleSession.submitAction(charId, battleSession.selectedSkill.skillId, { q: hq, r: hr });
-});
+// Canvas click handler moved to ui/battle/BattleInputController.js
 
 // [moved to BattleSessionController] battleSession.submitAction
 
@@ -1668,48 +1610,7 @@ function renderLog() {
   logEl.scrollTop = logEl.scrollHeight;
 }
 
-// Keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-  if (battleSession.battleEnded) return;
-  if (battleSession.galaxyActive) return; // Don't interfere with galaxy sub-phase
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-
-  // Keys 1-4: select visible skills on current page
-  const key = parseInt(e.key);
-  if (key >= 1 && key <= 4) {
-    e.preventDefault();
-    const myChars = battleSession.getMyCharacterIds();
-    for (const charId of myChars) {
-      if (!battleSession.canSubmitForChar(charId)) continue;
-      const stateChar = battleSession.getCharacterState(charId);
-      if (!stateChar) continue;
-      const allSkills = battleSession.visibleSkillsForChar(stateChar);
-      const page = battleSession.skillPages.get(charId) || 0;
-      const pageSkills = allSkills.slice(page * battleSession.skillsPerPage, (page + 1) * battleSession.skillsPerPage);
-      if (key <= pageSkills.length) {
-        const s = pageSkills[key - 1];
-        battleSession.selectSkill(charId, s.id);
-        if (SKILLS[s.id]?.targeting.shape === 'SELF') {
-          battleSession.submitAction(charId, s.id, null);
-        }
-      }
-      break;
-    }
-    return;
-  }
-
-  // Space: execute turn in local mode
-  if (e.key === ' ' && (!networkManager || networkManager.mode === 'local')) {
-    e.preventDefault();
-    const btn = document.getElementById('btn-execute');
-    if (!btn.disabled) btn.click();
-  }
-
-  // Escape: clear selection
-  if (e.key === 'Escape') {
-    battleSession.cancelCurrentSelection();
-  }
-});
+// Keyboard shortcuts moved to ui/battle/BattleInputController.js
 
 // Chat
 document.getElementById('chat-input').addEventListener('keydown', (e) => {
@@ -1776,53 +1677,24 @@ document.addEventListener('click', (e) => {
   ripple.addEventListener('animationend', () => ripple.remove());
 });
 
-// Canvas hover
-canvas.addEventListener('mousemove', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  const [hq, hr] = pixelToHex(mx, my);
-  if (!isOnBoard(hq, hr)) {
-    battleSession.setHoveredHex(null, null);
-  } else {
-    const hoverChar = getCharacterAtHex(hq, hr);
-    battleSession.setHoveredHex(hq, hr, hoverChar?.id);
-  }
-
-  battleSession.clearTargetPreview();
-  if (battleSession.selectedSkill || battleSession.viewingSkill) {
-    const sel = battleSession.selectedSkill || battleSession.viewingSkill;
-    const skill = SKILLS[sel.skillId];
-    const char = engine.registry.get(sel.charId);
-    if (skill && char) {
-      const origin = battleSession.selectedSkill
-        ? (battleSession.getPreviewOrigin(sel.charId, sel.skillId) || char.position)
-        : char.position;
-      const effectiveRange = skill.type === '移动'
-        ? engine.getEffectiveMoveRange(sel.charId, skill.targeting?.range ?? 99)
-        : engine.getEffectiveRange(sel.charId, skill.targeting?.range ?? 99);
-      const shape = skill.targeting.shape;
-      if (shape === 'SELF' || shape === 'AOE_SELF') {
-        battleSession.setHoverEffectArea(computeEffectArea(skill, origin, origin, effectiveRange));
-      } else if (shape === 'FAN' && battleSession.hoveredHex && battleSession.validTargets.some(t => t.q === battleSession.hoveredHex[0] && t.r === battleSession.hoveredHex[1])) {
-        battleSession.setHoverEffectArea(getSectorHexes(origin.q, origin.r, battleSession.hoveredHex[0], battleSession.hoveredHex[1], effectiveRange)
-          .map(([q, r]) => ({ q, r })));
-      } else if (battleSession.hoveredHex && battleSession.validTargets.some(t => t.q === battleSession.hoveredHex[0] && t.r === battleSession.hoveredHex[1])) {
-        battleSession.setHoverEffectArea(computeEffectArea(skill, origin, { q: battleSession.hoveredHex[0], r: battleSession.hoveredHex[1] }, effectiveRange));
-      }
-    }
-  } else if (battleSession.galaxyActive && battleSession.galaxySelectedSkill && !document.getElementById('galaxy-overlay').classList.contains('show')) {
-    // Galaxy target selection hover
-    const skill = SKILLS[battleSession.galaxySelectedSkill];
-    const char = engine.registry.get(battleSession.galaxyCharId);
-    if (skill && char) {
-      if (battleSession.hoveredHex && battleSession.validTargets.some(t => t.q === battleSession.hoveredHex[0] && t.r === battleSession.hoveredHex[1])) {
-        battleSession.setHoverEffectArea(computeEffectArea(skill, char.position, { q: battleSession.hoveredHex[0], r: battleSession.hoveredHex[1] }));
-      }
-    }
-  }
-
-  renderAll();
+// --- Battle input controller (canvas click/mousemove, keyboard shortcuts) ---
+initBattleInputController({
+  canvas,
+  battleSession,
+  getNetworkManager: () => networkManager,
+  isPveMode,
+  getEngine: () => engine,
+  geometry: { pixelToHex, isOnBoard, hexDistance, hexLine, hexSpiral, getSectorHexes },
+  selectors: { getCharacterAtHex, getCharactersAtHex },
+  callbacks: {
+    renderAll,
+    executeButtonClick: () => { document.getElementById('btn-execute')?.click(); },
+    setSubmitStatus: (text) => { document.getElementById('submit-status').textContent = text; },
+    computeEffectArea,
+  },
 });
+
+// Canvas mousemove handler moved to ui/battle/BattleInputController.js
 
 // --- Local mode: class selection + start ---
 document.getElementById('btn-start').addEventListener('click', () => {
