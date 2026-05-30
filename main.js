@@ -439,7 +439,7 @@ document.getElementById('btn-galaxy-skip').addEventListener('click', () => {
 
 // join-room handler migrated to StartLobbyController
 
-initStartLobbyController({
+const startLobbyUi = initStartLobbyController({
   defaultAddr: isNgrok ? window.location.host : '120.77.178.15:8088',
   callbacks: {
     onStartLocal() {
@@ -512,8 +512,8 @@ document.getElementById('btn-config-start').addEventListener('click', () => {
 document.getElementById('btn-config-back').addEventListener('click', () => {
   if (networkManager) { networkManager.disconnect(); networkManager = null; }
   setRoute('start');
-  document.getElementById('room-setup').style.display = 'none';
-  resetConnectionUI();
+  startLobbyUi.hideRoomSetup();
+  startLobbyUi.resetConnectionUI();
 });
 
 function startP2PGame(nm) {

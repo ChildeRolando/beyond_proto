@@ -113,3 +113,14 @@ test('P2P join validates room code', async ({ page }) => {
   await page.locator('#btn-join-room').click();
   await expect(page.locator('#room-error')).toContainText('请输入4位房间码');
 });
+
+// A8: Config back returns to start without error
+test('config back returns to start without error', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#btn-local').click();
+  await expect(page.locator('#config-screen')).toBeVisible();
+  await page.locator('#btn-config-back').click();
+  await expect(page.locator('#start-screen')).toBeVisible();
+  await expect(page.locator('#config-screen')).not.toBeVisible();
+  await expect(page.locator('#room-setup')).not.toBeVisible();
+});

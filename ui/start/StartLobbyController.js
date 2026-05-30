@@ -122,4 +122,9 @@ export function initStartLobbyController(ctx) {
     const serverAddr = document.getElementById('server-addr-input').value.trim() || ctx.defaultAddr;
     ctx.callbacks.onJoinRoom({ roomCode: code, serverAddr, ui });
   });
+
+  return {
+    hideRoomSetup,
+    resetConnectionUI: () => resetConnectionUI(ctx.defaultAddr),
+  };
 }
