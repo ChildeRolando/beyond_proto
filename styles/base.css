@@ -1,0 +1,82 @@
+:root {
+  --bg: #2b2a33;
+  --surface: #35344a;
+  --surface-raised: #3e3d54;
+  --border: #535164;
+  --text: #c4c0d0;
+  --text-dim: #7a768a;
+  --accent: #DDBB99;
+  --purple: #8b5cf6;
+  --purple-glow: rgba(139,92,246,0.25);
+  --red: #e05555;
+  --red-glow: rgba(224,85,85,0.25);
+  --amber: #d4943a;
+  --amber-glow: rgba(212,148,58,0.25);
+  --jade: #5a9e7e;
+
+  /* Config screen palette */
+  --cfg-bg: #080811;
+  --cfg-surface: rgba(18,18,30,0.82);
+  --cfg-surface-2: rgba(28,26,42,0.88);
+  --cfg-surface-3: rgba(42,38,60,0.82);
+  --cfg-border-soft: rgba(255,255,255,0.08);
+  --cfg-border-strong: rgba(230,189,131,0.45);
+  --cfg-gold: #e6bd83;
+  --cfg-mage: #a879ff;
+  --cfg-warrior: #e05f5f;
+  --cfg-shooter: #d4943a;
+  --cfg-cyan: #49c7d8;
+  --cfg-text: #eee8f5;
+  --cfg-text-dim: #8f879d;
+  --cfg-text-muted: #625c70;
+  --cfg-glow-mage: rgba(168,121,255,0.3);
+  --cfg-glow-gold: rgba(230,189,131,0.25);
+
+  --font-display: 'KaiTi', 'STKaiti', '楷体', 'FangSong', '仿宋', serif;
+  --font-body: 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+}
+
+@keyframes cloud-drift {
+  0% { background-position: 0% 0%, 0% 0%; }
+  100% { background-position: 200% 0%, 0% 0%; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px var(--purple-glow); }
+  50% { box-shadow: 0 0 20px var(--purple-glow), 0 0 40px rgba(139,92,246,0.15); }
+}
+
+@keyframes fade-slide-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes check-bounce {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+
+@keyframes phase-pulse {
+  0%, 100% { border-color: #7a768a; }
+  50% { border-color: var(--accent); }
+}
+
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 0.6; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+}
+

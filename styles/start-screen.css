@@ -1,0 +1,105 @@
+/* --- Start screen --- */
+#start-screen { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+#start-screen h1 {
+  font-family: var(--font-display);
+  font-size: 38px;
+  color: var(--accent);
+  letter-spacing: 6px;
+}
+#start-screen .subtitle {
+  font-size: 13px;
+  color: var(--text-dim);
+  letter-spacing: 3px;
+  margin-bottom: 16px;
+}
+.mode-btn {
+  width: 260px;
+  padding: 14px 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 17px;
+  letter-spacing: 3px;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.mode-btn:hover {
+  border-color: var(--accent);
+  background: var(--surface-raised);
+  color: var(--accent);
+}
+.mode-btn.primary { border-color: var(--accent); color: var(--accent); }
+.mode-btn.primary:hover { background: rgba(221,187,153,0.08); }
+.mode-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(221,187,153,0.06) 50%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.mode-btn:hover::after { opacity: 1; }
+
+#room-setup {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 310px;
+}
+#room-setup .room-code-display {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  color: var(--accent);
+}
+#room-setup input {
+  width: 160px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 18px;
+  text-align: center;
+  letter-spacing: 4px;
+  font-family: 'Cascadia Code', monospace;
+  text-transform: uppercase;
+  transition: border-color 0.2s;
+}
+#room-setup input:focus { outline: none; border-color: var(--accent); }
+#room-setup button {
+  padding: 8px 24px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+}
+.btn-host { background: var(--red); color: white; border-color: var(--red); }
+.btn-host:hover { background: #d45a5a; }
+.btn-join { background: var(--purple); color: white; border-color: var(--purple); }
+.btn-join:hover { background: #9d6eff; }
+.btn-back { background: transparent; color: var(--text-dim); margin-top: 8px; }
+.btn-back:hover { color: var(--text); border-color: var(--text-dim); }
+
+.conn-status { font-size: 12px; color: var(--text-dim); }
+.conn-status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+.conn-status .dot.red { background: var(--red); }
+.conn-status .dot.yellow { background: var(--amber); }
+.conn-status .dot.green { background: var(--jade); }
+
+#room-error { font-size: 12px; color: var(--red); min-height: 16px; }
+

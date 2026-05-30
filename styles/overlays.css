@@ -1,0 +1,255 @@
+/* --- Overlays --- */
+#disconnect-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(20,19,26,0.88);
+  z-index: 10;
+  justify-content: center;
+  align-items: center;
+}
+#disconnect-overlay.show { display: flex; }
+
+#disconnect-overlay .box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 36px 52px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+#disconnect-overlay .box h3 { color: var(--red); font-size: 18px; font-family: var(--font-display); }
+#disconnect-overlay .box p { color: var(--text-dim); font-size: 13px; }
+#disconnect-overlay .box button {
+  padding: 8px 24px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: var(--font-display);
+  background: var(--red);
+  color: white;
+}
+
+/* --- Right sidebar (results / chat) --- */
+#right-sidebar {
+  grid-row: 2 / span 2;
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+#hover-inspector {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  min-height: 132px;
+}
+#right-sidebar-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+#right-sidebar-tabs button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+}
+#right-sidebar-tabs button.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(221,187,153,0.08);
+}
+#sidebar-tab-panels {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-tab-panel {
+  display: none;
+  flex: 1;
+  min-height: 0;
+}
+.sidebar-tab-panel.active { display: flex; }
+#log {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  overflow-y: auto;
+  font-size: 13px;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  color: var(--text);
+  flex-direction: column;
+}
+#gameover-panel {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 10px;
+  flex-direction: column;
+}
+#gameover-panel.show { display: flex; }
+#gameover-panel .panel-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--accent);
+  text-align: center;
+}
+#gameover-panel button:hover { opacity: 0.85; }
+
+#chat-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+#chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  min-height: 0;
+}
+#chat-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 11px;
+  font-family: var(--font-body);
+  resize: none;
+}
+#chat-input:focus { outline: none; border-color: var(--accent); }
+#chat-box.sidebar-tab-panel { display: none; }
+#chat-box.sidebar-tab-panel.active { display: flex; }
+
+.info-skill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.info-skill,
+.drawer-skill-btn {
+  border: 1px solid rgba(221,187,153,0.12);
+  border-radius: 3px;
+  padding: 5px 6px;
+  background: rgba(0,0,0,0.12);
+  text-align: left;
+  color: var(--text);
+}
+.drawer-skill-btn {
+  cursor: pointer;
+}
+.drawer-skill-btn.selected,
+.drawer-skill-btn:hover {
+  border-color: var(--accent);
+  background: rgba(221,187,153,0.08);
+}
+.info-skill span {
+  display: block;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.info-skill small {
+  display: block;
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+/* --- Galaxy action bar --- */
+#galaxy-overlay { display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 15; }
+#galaxy-overlay.show { display: block; animation: fade-slide-up 0.3s ease-out; }
+#galaxy-overlay .box {
+  background: var(--surface);
+  border: 1px solid var(--purple);
+  border-radius: 6px;
+  padding: 12px 20px;
+  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: 700px;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+#galaxy-overlay .box h3 {
+  color: var(--purple);
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 3px;
+  white-space: nowrap;
+  margin: 0;
+}
+#galaxy-overlay .galaxy-hint { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+#galaxy-overlay .skill-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+#galaxy-overlay .skill-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+#galaxy-overlay .skill-btn:hover { background: var(--surface-raised); border-color: var(--purple); }
+#galaxy-overlay .skill-btn.selected { background: rgba(139,92,246,0.2); color: var(--purple); border-color: var(--purple); font-weight: 700; }
+#galaxy-overlay .skill-desc { font-size: 9px; color: var(--text-dim); }
+#galaxy-overlay .skill-btn.selected .skill-desc { color: #b49cf0; }
+
+#galaxy-overlay .btn-skip {
+  padding: 4px 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+#galaxy-overlay .btn-skip:hover { border-color: var(--text-dim); color: var(--text); }
+
+/* Rematch selects */
+select {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+select:focus { outline: none; border-color: var(--accent); }
+</style>

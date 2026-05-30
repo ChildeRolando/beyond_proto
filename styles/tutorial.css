@@ -1,0 +1,133 @@
+/* --- Tutorial modal --- */
+#btn-help-top {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+#btn-help-top:hover { border-color: var(--accent); color: var(--accent); }
+
+#tutorial-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  z-index: 3000;
+  justify-content: center;
+  align-items: center;
+}
+#tutorial-overlay.show { display: flex; }
+.tutorial-modal {
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  width: min(680px, 94vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 72px rgba(0,0,0,0.48);
+}
+.tutorial-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.tutorial-header h2 { color: var(--accent); font-family: var(--font-display); font-size: 18px; letter-spacing: 2px; }
+#tutorial-close {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+#tutorial-close:hover { border-color: var(--accent); color: var(--accent); }
+.tutorial-body {
+  padding: 16px 20px 24px;
+  overflow-y: auto;
+  line-height: 1.7;
+  color: var(--text);
+}
+.tutorial-body h3 {
+  color: var(--accent);
+  font-size: 14px;
+  margin: 16px 0 6px;
+  letter-spacing: 1px;
+}
+.tutorial-body h3:first-child { margin-top: 0; }
+.tutorial-body ul { padding-left: 18px; margin: 4px 0 10px; }
+.tutorial-body li { margin-bottom: 4px; font-size: 13px; }
+.tutorial-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 6px 0 10px;
+}
+.tutorial-table th, .tutorial-table td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+}
+.tutorial-table th { background: rgba(221,187,153,0.08); color: var(--accent); }
+.tutorial-body p { font-size: 13px; margin: 4px 0 10px; }
+.tutorial-body b { color: var(--accent); }
+
+.dock-control {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.target-hint {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+  min-height: 36px;
+}
+.target-hint .target-skill-name {
+  color: rgb(246, 198, 106);
+  font-weight: 700;
+}
+.dock-execute-proxy {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  border-radius: 4px;
+  min-height: 42px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+.dock-execute-proxy:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: #3e3d54;
+  border-color: #3e3d54;
+  color: #6a6680;
+}
+
+.log-entry {
+  padding: 1px 0;
+  border-bottom: 1px solid rgba(83,81,100,0.4);
+}
+.log-rg { color: var(--red); }
+.log-sh { color: #7b9fff; }
+.log-die { color: #ff3333; }
+.log-qi { color: var(--purple); }
+.log-s { color: var(--text-dim); }
+.log-warn { color: #d4943a; }
+.log-turn { color: var(--accent); font-weight: bold; }
+.log-action { color: #7bb8cf; }
+.log-ai { color: #5a9e7e; }
+

@@ -1,0 +1,416 @@
+/* --- Game screen --- */
+#app {
+  display: none;
+  position: relative;
+  grid-template-columns: minmax(620px, 1fr) 320px;
+  grid-template-rows: auto minmax(0, 1fr) 154px;
+  gap: 8px;
+  padding: 10px;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#topbar {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  flex-wrap: wrap;
+}
+#topbar h1 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--accent);
+  letter-spacing: 3px;
+  margin-right: auto;
+}
+#topbar .info { font-size: 14px; color: var(--text-dim); letter-spacing: 1px; }
+#topbar button {
+  padding: 6px 18px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+}
+#btn-execute {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+#btn-execute:hover:not(:disabled) { background: #c9a87a; }
+#btn-execute:disabled { background: #3e3d54; border-color: #3e3d54; color: #6a6680; cursor: not-allowed; }
+#btn-reset { background: transparent; color: var(--text-dim); }
+#btn-reset:hover { color: var(--text); border-color: var(--text-dim); }
+
+#mode-badge {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+#mode-badge.local { background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); }
+#mode-badge.online { background: rgba(90,158,126,0.12); color: var(--jade); border: 1px solid var(--jade); }
+
+#phase-text {
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  font-size: 12px;
+  transition: all 0.5s;
+}
+
+#selected-unit-drawer {
+  position: absolute;
+  left: 10px;
+  top: 70px;
+  bottom: 174px;
+  width: 300px;
+  z-index: 4;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(33,32,44,0.96);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  padding: 12px;
+  overflow: hidden;
+  box-shadow: 0 18px 42px rgba(0,0,0,0.32);
+}
+#selected-unit-drawer.open { display: flex; }
+.drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.drawer-header .hud-section-label { margin: 0 auto 0 0; }
+.drawer-close {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.drawer-close:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.drawer-empty,
+.inspector-empty {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.char-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  min-width: 170px;
+}
+.char-panel.mage { border-left: 3px solid var(--purple); }
+.char-panel.warrior { border-left: 3px solid var(--red); }
+.char-panel.shooter { border-left: 3px solid var(--amber); }
+.char-panel.opponent-panel { opacity: 0.65; }
+.char-panel.info-only {
+  min-width: 0;
+  flex: 1;
+  overflow: auto;
+}
+
+.panel-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+.char-panel.mage .panel-title { color: var(--purple); }
+.char-panel.warrior .panel-title { color: var(--red); }
+.char-panel.shooter .panel-title { color: var(--amber); }
+
+.resources { font-size: 12px; margin-bottom: 4px; }
+.resources span { margin-right: 8px; }
+.buffs { font-size: 12px; margin-bottom: 4px; min-height: 16px; }
+.buffs .buff {
+  display: inline-block;
+  background: rgba(221,187,153,0.08);
+  border: 1px solid rgba(221,187,153,0.18);
+  padding: 1px 5px;
+  border-radius: 2px;
+  margin: 1px 2px;
+  color: var(--accent);
+}
+
+.skill-grid { display: flex; flex-direction: column; gap: 4px; flex: 1; overflow-y: auto; min-height: 0; padding-right: 2px; }
+.skill-btn {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #122E8A;
+  border-radius: 3px;
+  background: #F5EFEA;
+  color: #122E8A;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.skill-btn:hover { background: #e8ddd0; border-color: #122E8A; }
+.skill-btn.selected {
+  background: #122E8A;
+  color: #F5EFEA;
+  border-color: #122E8A;
+  font-weight: 700;
+}
+.skill-btn.selected .skill-name { color: #F5EFEA; }
+.skill-btn.selected .skill-desc { color: rgba(245,239,234,0.8); }
+.skill-btn.used { background: rgba(0,0,0,0.2); color: #555; border-color: #2a2a3a; cursor: not-allowed; }
+.skill-btn.used .skill-name { color: #F5EFEA; }
+.skill-btn.used .skill-desc { color: rgba(245,239,234,0.7); }
+.skill-btn.opponent { opacity: 0.55; cursor: pointer; }
+.skill-btn.opponent:hover { background: rgba(255,255,255,0.06); border-color: #535164; }
+.skill-btn.used.opponent { cursor: pointer; }
+.skill-btn.unaffordable { opacity: 0.42; }
+.skill-btn.unaffordable:hover { opacity: 0.6; }
+
+.skill-name { font-weight: 600; font-size: 16px; color: #122E8A; }
+.skill-desc { font-size: 13px; color: #5a6a9a; }
+
+/* Pagination */
+.skill-page-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 4px 0;
+  flex-shrink: 0;
+}
+.skill-page-btn {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border: 1px solid #122E8A;
+  border-radius: 3px;
+  background: #F5EFEA;
+  color: #122E8A;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+.skill-page-btn:hover:not(:disabled) { background: #122E8A; color: #F5EFEA; }
+.skill-page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.skill-page-indicator { font-size: 12px; color: #ffffff; min-width: 32px; text-align: center; }
+
+/* Ripple effect for skill buttons */
+.skill-btn .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(221,187,153,0.3);
+  pointer-events: none;
+  width: 20px;
+  height: 20px;
+  animation: ripple 0.6s ease-out forwards;
+}
+
+#canvas-wrap {
+  grid-row: 2;
+  grid-column: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+canvas {
+  border-radius: 6px;
+  background: #1e1d2a;
+  border: 1px solid var(--border);
+  cursor: crosshair;
+  display: block;
+}
+
+#action-dock {
+  grid-row: 3;
+  grid-column: 1;
+  min-height: 0;
+  height: 154px;
+  display: grid;
+  grid-template-columns: 210px 1fr 170px;
+  gap: 10px;
+  align-items: stretch;
+  background: rgba(33,32,44,0.96);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 10px;
+  box-shadow: 0 -14px 36px rgba(0,0,0,0.28);
+  overflow: hidden;
+}
+.dock-actor {
+  border-right: 1px solid var(--border);
+  padding-right: 10px;
+  min-width: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.dock-actor .buffs {
+  max-height: 48px;
+  overflow-y: auto;
+}
+.dock-actor-label,
+.hud-section-label {
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+.dock-actor-name {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+.dock-skills {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dock-skills .skill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(58px, 64px));
+  grid-auto-rows: auto;
+  gap: 6px;
+  overflow-y: auto;
+  padding: 4px 2px 8px 4px;
+}
+#action-dock .skill-icon-btn {
+  width: 100%;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 3px;
+  border: 1px solid rgba(221,187,153,0.36);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(57,55,78,0.96), rgba(31,30,43,0.98));
+  color: var(--text);
+  position: relative;
+  overflow: visible;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04), 0 4px 14px rgba(0,0,0,0.22);
+  transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease, opacity 0.14s ease;
+}
+#action-dock .skill-icon-btn:hover:not(.used) {
+  border-color: rgba(246, 198, 106, 0.72);
+  background: linear-gradient(180deg, rgba(67,63,88,0.98), rgba(38,36,52,0.98));
+  transform: translateY(-1px);
+}
+#action-dock .skill-icon-btn.selected {
+  border-color: rgb(246, 198, 106);
+  background: linear-gradient(180deg, rgba(70,57,38,0.98), rgba(35,31,38,0.98));
+  color: #fff6df;
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(255,246,223,0.95),
+    0 0 0 3px rgba(246, 198, 106, 0.85),
+    0 8px 24px rgba(246, 198, 106, 0.22),
+    0 12px 24px rgba(0,0,0,0.32);
+}
+#action-dock .skill-icon-btn.selected::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  bottom: -7px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgb(246, 198, 106);
+  box-shadow: 0 0 12px rgba(246, 198, 106, 0.82);
+}
+#action-dock .skill-icon-btn.used {
+  opacity: 0.42;
+  filter: grayscale(0.5);
+  transform: none;
+  border-color: rgba(83,81,100,0.55);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+}
+.skill-glyph {
+  position: absolute;
+  inset: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 7px;
+  background: rgba(0,0,0,0.22);
+}
+.skill-glyph img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.skill-glyph span {
+  display: none;
+}
+.skill-meta {
+  position: absolute;
+  bottom: 5px; left: 5px; right: 5px;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 2px;
+  background: rgba(10,10,16,0.68);
+  color: #fff;
+  border-radius: 5px;
+  backdrop-filter: blur(2px);
+}
+.skill-meta span {
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 1px 2px;
+  background: rgba(0,0,0,0.25);
+}
+#action-dock .skill-icon-btn.selected .skill-meta {
+  background: rgba(246, 198, 106, 0.92);
+  color: #211b14;
+  font-weight: 700;
+}
+#action-dock .skill-icon-btn.selected .skill-meta span {
+  background: rgba(255,246,223,0.42);
+}
+#skill-tooltip {
+  position: fixed;
+  z-index: 30;
+  display: none;
+  max-width: 360px;
+  padding: 8px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: rgba(33,32,44,0.98);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+}
+#skill-tooltip.visible { display: block; }
+#skill-tooltip strong {
+  display: block;
+  color: var(--accent);
+  margin-bottom: 3px;
+}
+
