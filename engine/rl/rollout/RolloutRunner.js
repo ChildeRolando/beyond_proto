@@ -35,14 +35,57 @@ export class RolloutRunner {
       });
     }
 
+    // ─── Policy lifecycle: resetEpisode ───
+    const resetState = currentTs.extras.state;
+    const resetStateHash = resetState ? stableStateHash(resetState) : null;
+    const resetMasks = currentTs.extras.actionMasks;
+    const resetTurn = currentTs.extras.turn;
+
+    for (const pk of ['player1', 'player2']) {
+      const oppKey = pk === 'player1' ? 'player2' : 'player1';
+      const legalCount = _countMaskOnes(resetMasks[pk]);
+      this._policies[pk].resetEpisode({
+        playerKey: pk,
+        opponentKey: oppKey,
+        episodeStep: 0,
+        turn: resetTurn,
+        stateHash: resetStateHash,
+        legalActionCount: legalCount,
+      });
+    }
+
     while (!currentTs.last() && steps < maxSteps) {
       // Read observations and masks from current timestep
       const obs = currentTs.observation;
       const masks = currentTs.extras.actionMasks;
+      const preState = currentTs.extras.state;
+      const preStateHash = preState ? stableStateHash(preState) : null;
+      const turn = currentTs.extras.turn;
 
-      // Policies choose actions
-      const p1Action = this._policies.player1.act(obs.player1, masks.player1);
-      const p2Action = this._policies.player2.act(obs.player2, masks.player2);
+      // Compute legal action counts
+      const p1LegalCount = _countMaskOnes(masks.player1);
+      const p2LegalCount = _countMaskOnes(masks.player2);
+
+      // ─── Policy lifecycle: act with context ───
+      const p1Context = {
+        playerKey: 'player1',
+        opponentKey: 'player2',
+        turn,
+        episodeStep: steps,
+        stateHash: preStateHash,
+        legalActionCount: p1LegalCount,
+      };
+      const p2Context = {
+        playerKey: 'player2',
+        opponentKey: 'player1',
+        turn,
+        episodeStep: steps,
+        stateHash: preStateHash,
+        legalActionCount: p2LegalCount,
+      };
+
+      const p1Action = this._policies.player1.act(obs.player1, masks.player1, p1Context);
+      const p2Action = this._policies.player2.act(obs.player2, masks.player2, p2Context);
 
       // Validate legality
       const p1Legal = masks.player1[p1Action] === 1;
@@ -65,10 +108,6 @@ export class RolloutRunner {
 
       // Record trajectory step
       if (this._recordTrajectory) {
-        let p1LegalCount = 0, p2LegalCount = 0;
-        for (let i = 0; i < masks.player1.length; i++) { if (masks.player1[i] === 1) p1LegalCount++; }
-        for (let i = 0; i < masks.player2.length; i++) { if (masks.player2[i] === 1) p2LegalCount++; }
-
         trajectory.push({
           turn: currentTs.extras.turn,
           player1Action: p1Action,
@@ -93,6 +132,43 @@ export class RolloutRunner {
           stateHash: currentTs.extras.state ? stableStateHash(currentTs.extras.state) : null,
         });
       }
+
+      // ─── Policy lifecycle: observeTransition ───
+      const postStateHash = currentTs.extras.state ? stableStateHash(currentTs.extras.state) : null;
+
+      this._policies.player1.observeTransition({
+        playerKey: 'player1',
+        opponentKey: 'player2',
+        turn,
+        episodeStep: steps - 1,
+        observation: obs.player1,
+        action: p1Action,
+        actionMask: masks.player1,
+        reward: reward.player1,
+        done: currentTs.last(),
+        nextObservation: currentTs.observation?.player1 ?? null,
+        preStateHash,
+        postStateHash,
+        legalActionCount: p1LegalCount,
+        opponentAction: p2Action,
+      });
+
+      this._policies.player2.observeTransition({
+        playerKey: 'player2',
+        opponentKey: 'player1',
+        turn,
+        episodeStep: steps - 1,
+        observation: obs.player2,
+        action: p2Action,
+        actionMask: masks.player2,
+        reward: reward.player2,
+        done: currentTs.last(),
+        nextObservation: currentTs.observation?.player2 ?? null,
+        preStateHash,
+        postStateHash,
+        legalActionCount: p2LegalCount,
+        opponentAction: p1Action,
+      });
     }
 
     // Determine winner from final state
@@ -105,6 +181,23 @@ export class RolloutRunner {
         winner,
         finalStateHash: finalState ? stableStateHash(finalState) : null,
         steps,
+      });
+    }
+
+    // ─── Policy lifecycle: endEpisode ───
+    const finalStateHash = finalState ? stableStateHash(finalState) : null;
+
+    for (const pk of ['player1', 'player2']) {
+      const oppKey = pk === 'player1' ? 'player2' : 'player1';
+      this._policies[pk].endEpisode({
+        playerKey: pk,
+        opponentKey: oppKey,
+        winner,
+        steps,
+        totalReward: accumulatedReward[pk],
+        rawTotalReward: accumulatedReward,
+        finalStateHash,
+        finalTimeStep: currentTs,
       });
     }
 
@@ -130,4 +223,12 @@ export class RolloutRunner {
     if (!p1 && !p2) return 'draw';
     return null;
   }
+}
+
+function _countMaskOnes(mask) {
+  let count = 0;
+  for (let i = 0; i < mask.length; i++) {
+    if (mask[i] === 1) count++;
+  }
+  return count;
 }

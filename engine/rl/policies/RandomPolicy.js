@@ -12,7 +12,11 @@ export class RandomPolicy {
     this._rng = createRNG(seed);
   }
 
-  act(observation, actionMask) {
+  resetEpisode(_context = {}) {
+    // no-op — RandomPolicy has no episode-level state
+  }
+
+  act(_observation, actionMask, _context = {}) {
     const valid = [];
     for (let i = 0; i < actionMask.length; i++) {
       if (actionMask[i] === 1) valid.push(i);
@@ -20,5 +24,13 @@ export class RandomPolicy {
     if (valid.length === 0) throw new Error('no valid actions');
     const idx = Math.floor(this._rng() * valid.length);
     return valid[idx];
+  }
+
+  observeTransition(_transition) {
+    // no-op — RandomPolicy does not learn
+  }
+
+  endEpisode(_summary) {
+    // no-op — RandomPolicy has no episode-level state to reset
   }
 }
