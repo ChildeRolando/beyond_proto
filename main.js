@@ -262,7 +262,6 @@ function renderConfigScreen() {
       },
       onRoleHover: (roleId) => {
         hoverRoleId = roleId;
-        renderConfigScreen();
       },
       onSkillToggle: toggleLoadoutSkill,
       onSlotRemove: removeLoadoutAt,

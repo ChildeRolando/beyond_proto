@@ -33,8 +33,6 @@ function renderRoleList(ctx) {
       </div>
     </div>`;
   }).join('');
-  const activeRole = roles.find(r => r.id === ctx.cfg.roleId) || roles[0];
-  if (activeRole) renderRoleHero(activeRole, ctx);
 }
 
 function renderRoleHero(role, ctx) {
@@ -152,7 +150,16 @@ function wireConfigEvents(ctx) {
   });
   document.querySelectorAll('.config-role-list-item').forEach(item => {
     item.onclick = () => cb.onRoleSelect(item.dataset.role);
-    item.onmouseenter = () => cb.onRoleHover(item.dataset.role);
+    item.onmouseenter = () => {
+      const roleId = item.dataset.role;
+      if (!roleId) return;
+      cb.onRoleHover?.(roleId);
+      const role = ROLE_DEFS[roleId];
+      if (role) {
+        renderRoleHero(role, ctx);
+        renderRoleDetail(role);
+      }
+    };
   });
   document.querySelectorAll('.config-pool-skill-btn').forEach(btn => {
     btn.onclick = () => cb.onSkillToggle(btn.dataset.skill, btn.dataset.pool || 'class');
@@ -178,6 +185,7 @@ export function renderConfigScreenView(ctx) {
   ).join('');
 
   renderRoleList(ctx);
+  renderRoleHero(ctx.role, ctx);
   renderRoleDetail(ctx.role);
   renderTeamStatus(ctx);
   renderLoadout(ctx);
