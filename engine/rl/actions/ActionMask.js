@@ -5,6 +5,18 @@ import { getSkillPrimitiveProfile, PrimitiveTag } from '../../ai/PrimitiveProfil
 
 const BOARD_HEX_COUNT = 37;
 
+export function buildActionMaskFromOrders(orders, actionEncoder) {
+  const mask = new Uint8Array(actionEncoder.actionCount());
+  for (const order of orders) {
+    const idx = actionEncoder.encode({
+      skillSlot: order.skillSlot,
+      targetIndex: order.targetIndex,
+    });
+    if (idx >= 0) mask[idx] = 1;
+  }
+  return mask;
+}
+
 export function buildActionMask(engine, characterId, actionEncoder) {
   const mask = new Uint8Array(ACTION_COUNT);
   const state = engine.getState();
