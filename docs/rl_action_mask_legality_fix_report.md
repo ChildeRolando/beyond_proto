@@ -51,7 +51,10 @@ tests/rl_action_encoder_test.js               — variable bug fix + 5 new test 
 
 ## Variable Pollution Bug
 
-Test section 10, line 157: `engine.resourceSystem.add(...)` → `e2.resourceSystem.add(...)`. Variable `engine` leaked from outer scope (line 73), modifying wrong engine.
+Two instances of outer-scope `engine` leaking into inner blocks. Variable `engine` from line 73 leaked into sections 10 and 11, modifying the wrong engine's resource system.
+
+- Section 10: `engine.resourceSystem.add(ids2.player1Id, 'qi', 5)` → `e2.resourceSystem.add(ids2.player1Id, 'qi', 5)`
+- Section 11: `engine.resourceSystem.set(ids2.player1Id, 'qi', 0)` → `e2.resourceSystem.set(ids2.player1Id, 'qi', 0)`
 
 ## BattleEnv Optional Cleanup
 

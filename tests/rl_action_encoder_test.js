@@ -175,7 +175,7 @@ console.log('\n[11] Unaffordable skills mask=0');
 {
   const { engine: e2, ids: ids2 } = initBattle();
   // mage_burst costs 3 qi, we have 0
-  engine.resourceSystem.set(ids2.player1Id, 'qi', 0);
+  e2.resourceSystem.set(ids2.player1Id, 'qi', 0);
   const mask = buildActionMask(e2, ids2.player1Id, encoder);
   const burstSlot = (e2.getState().characters.find(c => c.id === ids2.player1Id)?.skills || [])
     .findIndex(s => s.id === 'mage_burst');
