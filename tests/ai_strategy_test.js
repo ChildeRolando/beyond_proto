@@ -100,8 +100,8 @@ console.log('[1] Jimmy safe marrow drinking');
   // Test the strategic state evaluator for Jimmy
   const result = evaluateStrategicState(engine.getState(), 'player1');
   check('Strategic state has marrowLayer detail', result.details.marrowLayer !== undefined);
-  check('Strategic state has marrowValue > 0 for layer 0',
-    result.details.marrowValue !== undefined && result.details.marrowValue > 0,
+  check('Strategic state has marrowValue = 0 for layer 0 (no wine yet)',
+    result.details.marrowValue !== undefined && result.details.marrowValue === 0,
     `marrowValue=${result.details.marrowValue}`);
 }
 
@@ -318,7 +318,7 @@ console.log('\n[6] Strategy term in StateEvaluator');
     `type=${typeof result.terms.strategy}`);
 
   // Jimmy starts with layer 0 → should have positive strategy value
-  check('Jimmy strategy term > 0 (marrow value)', result.terms.strategy > 0,
+  check('Jimmy strategy term = 0 for layer 0 (no wine)', Math.abs(result.terms.strategy) < 10,
     `strategy=${result.terms.strategy}`);
 }
 

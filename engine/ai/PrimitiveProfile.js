@@ -92,6 +92,8 @@ function emptyProfile(skillId) {
     resourceDelta: {},
     maxPower: 0,
     attackParts: 0,
+    burstDamage: 0,
+    hitCount: 0,
     commitment: 0,
     speed: 1,
     range: 0,
@@ -173,7 +175,10 @@ function applyEffect(profile, effect, skill) {
 function applyAttackEffect(profile, effect, skill) {
   addTag(profile, PrimitiveTag.PRESSURE);
   profile.attackParts += 1;
-  profile.maxPower = Math.max(profile.maxPower, numeric(effect.power));
+  const power = numeric(effect.power);
+  profile.maxPower = Math.max(profile.maxPower, power);
+  profile.burstDamage += power;
+  profile.hitCount += 1;
   profile.areaRadius = Math.max(profile.areaRadius, numeric(effect.radius));
 
   if (effect.cmd === 'ATTACK_MELEE') addTag(profile, PrimitiveTag.MELEE_THREAT);

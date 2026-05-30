@@ -1,8 +1,10 @@
 import { getSkillPrimitiveProfile, PrimitiveTag } from './PrimitiveProfile.js';
 import { hexDistance } from '../HexMath.js';
+import { evaluateGreedWindow } from './ThreatEvaluator.js';
 
 const MARROW_LAYER_VALUE = [0, 35, 75, 120, 175, 240];
 const MARROW_COSTS = [3, 4, 4, 5, 5];
+const AMMO_MAX = 6;
 
 export function evaluateRoleStrategy(engine, actorId, action, context = {}) {
   const profile = context.profile || getSkillPrimitiveProfile(action.skillId);
@@ -12,6 +14,7 @@ export function evaluateRoleStrategy(engine, actorId, action, context = {}) {
   const turn = context.turn ?? engine.getTurnNumber?.() ?? 1;
   const hasImmediateLethal = context.hasImmediateLethal ?? false;
   const isUnderThreat = context.isUnderThreat ?? false;
+  const hasLatentLethal = context.hasLatentLethal ?? false;
 
   const reasons = [];
   let scoreDelta = 0;
@@ -40,7 +43,6 @@ export function evaluateRoleStrategy(engine, actorId, action, context = {}) {
           scoreDelta -= 40;
           reasons.push('lethal_available');
         }
-        // Check post-drink resources — can still defend?
         const postRage = rage - cost;
         const hasPressureSkill = (stateActor?.skills || []).some(sr => {
           const p = getSkillPrimitiveProfile(sr.id);
@@ -56,7 +58,7 @@ export function evaluateRoleStrategy(engine, actorId, action, context = {}) {
 
   // ── Shooter: penalize empty setup ──
   if (profile.tags.includes(PrimitiveTag.SETUP) && !profile.tags.includes(PrimitiveTag.PRESSURE)) {
-    const attackPotential = estimateAttackPotential(stateActor, enemies, engine);
+    const attackPotential = estimateAttackPotential(stateActor, enemies);
     const ammo = engine.resourceSystem.get(actorId, 'ammo') || 0;
     const backpack = engine.resourceSystem.get(actorId, 'backpackAmmo') || 0;
 
@@ -85,7 +87,6 @@ export function evaluateRoleStrategy(engine, actorId, action, context = {}) {
         reasons.push('setup_for_range');
       }
     }
-    // If this is a finesse optional action and main already PRESSURE/BUILD
     if (context.isFinesseAction) {
       scoreDelta += 10;
       reasons.push('finesse_setup');
@@ -94,7 +95,7 @@ export function evaluateRoleStrategy(engine, actorId, action, context = {}) {
 
   // ── Generic setup penalty ──
   if (profile.tags.includes(PrimitiveTag.SETUP) && !profile.tags.includes(PrimitiveTag.PRESSURE)) {
-    const followUp = estimateAttackPotential(stateActor, enemies, engine);
+    const followUp = estimateAttackPotential(stateActor, enemies);
     if (followUp <= 0) {
       scoreDelta -= 15;
       if (!reasons.includes('empty_setup')) reasons.push('no_follow_up');
@@ -109,22 +110,123 @@ export function evaluateRoleStrategy(engine, actorId, action, context = {}) {
     }
   }
 
-  // ── Reload encouragement when empty ──
+  // ── Ammo economy: marginal reload/collect value ──
+  const ammo = engine.resourceSystem.get(actorId, 'ammo') || 0;
+  const backpackAmmo = engine.resourceSystem.get(actorId, 'backpackAmmo') || 0;
+
   const isReload = profile.tags.includes(PrimitiveTag.BUILD) &&
-    (profile.resourceDelta?.ammo || 0) > 0 &&
-    (engine.resourceSystem.get(actorId, 'ammo') || 0) <= 0;
+    (profile.resourceDelta?.ammo || 0) > 0 && !isCollectAction(profile);
   if (isReload) {
-    scoreDelta += 20;
-    reasons.push('reload_needed');
+    if (ammo >= AMMO_MAX) {
+      scoreDelta -= 50;
+      reasons.push('ammo_full');
+    } else if (backpackAmmo <= 0) {
+      scoreDelta -= 30;
+      reasons.push('reload_no_backpack');
+    } else {
+      const reloadGain = Math.min(profile.resourceDelta?.ammo || 6, AMMO_MAX - ammo, backpackAmmo);
+      if (reloadGain <= 0) {
+        scoreDelta -= 50;
+        reasons.push('reload_zero_gain');
+      } else if (ammo <= 0) {
+        scoreDelta += 8;
+        reasons.push('reload_needed');
+      } else if (ammo < 3) {
+        scoreDelta += 3;
+        reasons.push('reload_marginal');
+      } else {
+        scoreDelta -= 10;
+        reasons.push('reload_unnecessary');
+      }
+    }
   }
 
-  // ── Core/role skill mild bonus ──
+  // Collect actions: bonus when near ground resources
+  if (isCollectAction(profile) && ammo < AMMO_MAX) {
+    const state = engine.getState();
+    const casings = state.casings || [];
+    const wildBullets = state.wildBullets || [];
+    let nearbyResources = 0;
+    if (stateActor) {
+      for (const res of [...casings, ...wildBullets]) {
+        const d = hexDistance(stateActor.position.q, stateActor.position.r, res.q, res.r);
+        if (d <= 3) nearbyResources += (res.count || 1);
+      }
+    }
+    if (nearbyResources > 0) {
+      scoreDelta += Math.min(35, nearbyResources * 12);
+      reasons.push('nearby_resources');
+    }
+  }
+
+  // Greed window for BUILD without PRESSURE
+  if (profile.tags.includes(PrimitiveTag.BUILD) && !profile.tags.includes(PrimitiveTag.PRESSURE)) {
+    const greedCtx = context.greedWindow || evaluateGreedWindow(engine, actorId, {
+      threatState: context.threatState,
+      isUnderThreat,
+      hasLatentLethal,
+    });
+    if (greedCtx.greedy) {
+      scoreDelta += 15;
+      if (!reasons.includes('greed_window')) reasons.push('greed_window');
+    }
+    if (greedCtx.punishable) {
+      scoreDelta -= 20;
+      reasons.push('punishable_greed');
+    }
+    for (const r of greedCtx.reasons) {
+      if (!reasons.includes(r)) reasons.push(r);
+    }
+  }
+
+  // High-pressure skill recognition
+  if (profile.tags.includes(PrimitiveTag.PRESSURE)) {
+    const effectiveDamage = profile.burstDamage > 0 ? profile.burstDamage : profile.maxPower;
+    if (effectiveDamage >= 300 || profile.tags.includes(PrimitiveTag.KILL)) {
+      scoreDelta += 65;
+      reasons.push('burst_lethal');
+    } else if (effectiveDamage >= 150) {
+      scoreDelta += 30;
+      reasons.push('high_kill_pressure');
+    }
+    if (profile.hitCount >= 5) {
+      scoreDelta += 10;
+      reasons.push('multi_hit');
+    }
+  }
+
+  // Core/role skill mild bonus
   if (actor.roleId === 'warrior_jimmy' && action.skillId.startsWith('role_jimmy_')) {
     scoreDelta += 5;
     if (!reasons.includes('jimmy_marrow')) reasons.push('core_skill');
   }
 
   return { scoreDelta, reasons };
+}
+
+export function evaluateAmmoEconomy(engine, actorId, options = {}) {
+  const ammo = engine.resourceSystem.get(actorId, 'ammo') || 0;
+  const backpackAmmo = engine.resourceSystem.get(actorId, 'backpackAmmo') || 0;
+  const state = engine.getState();
+  const stateActor = state.characters.find(c => c.id === actorId);
+  const allGround = [...(state.casings || []), ...(state.wildBullets || [])];
+  let nearbyCollectable = 0;
+  if (stateActor) {
+    for (const res of allGround) {
+      const d = hexDistance(stateActor.position.q, stateActor.position.r, res.q, res.r);
+      if (d <= 3) nearbyCollectable += (res.count || 1);
+    }
+  }
+  return {
+    ammo,
+    ammoMax: AMMO_MAX,
+    backpackAmmo,
+    isFull: ammo >= AMMO_MAX,
+    isEmpty: ammo <= 0,
+    nearbyCollectable,
+    canReload: backpackAmmo > 0 && ammo < AMMO_MAX,
+    reloadGain: Math.min(AMMO_MAX - ammo, backpackAmmo, 6),
+  };
 }
 
 export function evaluateStrategicState(state, ownerId) {
@@ -136,17 +238,15 @@ export function evaluateStrategicState(state, ownerId) {
   const details = {};
 
   for (const char of self) {
-    // Jimmy marrow value
     if (char.roleId === 'warrior_jimmy') {
       const marrow = (char.buffs || []).find(b => b.statusType === 'JIMMY_MARROW');
       const layer = marrow?.data?.layer || 0;
-      const marrowValue = MARROW_LAYER_VALUE[layer] || 240;
+      const marrowValue = layer < MARROW_LAYER_VALUE.length ? MARROW_LAYER_VALUE[layer] : 240;
       details.marrowLayer = layer;
       details.marrowValue = marrowValue;
       total += marrowValue;
     }
 
-    // Setup realization value
     const hasSpeedBoost = (char.buffs || []).some(b => b.statusType === 'SPEED_BOOST');
     const hasSureHit = (char.buffs || []).some(b => b.statusType === 'SURE_HIT');
     const hasSheathed = (char.buffs || []).some(b => b.statusType === 'SHEATHED');
@@ -188,15 +288,6 @@ export function evaluateStrategicState(state, ownerId) {
     }
   }
 
-  // Enemy marrow scaling threat
-  for (const enemy of enemies) {
-    if (enemy.roleId === 'warrior_jimmy') {
-      const marrow = (enemy.buffs || []).find(b => b.statusType === 'JIMMY_MARROW');
-      const layer = marrow?.data?.layer || 0;
-      total -= MARROW_LAYER_VALUE[layer] * 0.5;
-    }
-  }
-
   details.total = total;
   return { total, details };
 }
@@ -209,7 +300,12 @@ function getAliveEnemies(engine, actor) {
   );
 }
 
-export function estimateAttackPotential(stateActor, enemies, engineOrResources) {
+function isCollectAction(profile) {
+  return (profile.tags.includes(PrimitiveTag.BUILD) && profile.tags.includes(PrimitiveTag.ESCAPE)) ||
+    ((profile.resourceDelta?.backpackAmmo || 0) > 0 && profile.tags.includes(PrimitiveTag.ESCAPE));
+}
+
+export function estimateAttackPotential(stateActor, enemies) {
   if (!stateActor || !enemies || enemies.length === 0) return 0;
   const skills = stateActor.skills || [];
   const resources = stateActor.resources || {};
@@ -233,8 +329,9 @@ export function estimateAttackPotential(stateActor, enemies, engineOrResources) 
     });
 
     if (reachable) {
-      potential += 20 + Math.min(120, p.maxPower * 0.1);
-      if (p.tags.includes(PrimitiveTag.KILL)) potential += 30;
+      const effectiveDamage = p.burstDamage > 0 ? p.burstDamage : p.maxPower;
+      potential += 20 + Math.min(120, effectiveDamage * 0.1);
+      if (p.tags.includes(PrimitiveTag.KILL) || effectiveDamage >= 300) potential += 30;
       if (p.tags.includes(PrimitiveTag.PIERCE_THREAT)) potential += 12;
     }
   }

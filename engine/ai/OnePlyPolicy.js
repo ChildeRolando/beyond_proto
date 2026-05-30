@@ -3,7 +3,8 @@ import { generateCandidateActions } from './CandidateGenerator.js';
 import { evaluateState } from './StateEvaluator.js';
 import { getSkillPrimitiveProfile, PrimitiveTag } from './PrimitiveProfile.js';
 import { estimateActionDistribution } from './OpponentModel.js';
-import { evaluateRoleStrategy, estimateAttackPotential } from './RoleStrategyEvaluator.js';
+import { evaluateRoleStrategy, estimateAttackPotential, evaluateAmmoEconomy } from './RoleStrategyEvaluator.js';
+import { evaluateThreatState, evaluateActionThreat, evaluateGreedWindow } from './ThreatEvaluator.js';
 
 const DEFAULT_TEMPERATURE = 60;
 
@@ -45,13 +46,17 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
   ).slice(0, options.maxOpponentActions ?? 16);
 
   // Pre-compute context shared across own actions
+  const threatState = evaluateThreatState(engine.getState(), actorOwner);
+  const ammoEconomy = evaluateAmmoEconomy(engine, actorId);
   const sharedContext = {
     turn: engine.getTurnNumber?.() ?? 1,
     actor: ownActor,
     stateActor,
     enemies,
-    isUnderThreat: checkUnderThreat(engine, actorId, stateActor, enemies),
-    hasImmediateLethal: checkImmediateLethal(engine, actorId, stateActor, enemies, ownSkills),
+    threatState,
+    isUnderThreat: threatState.underThreat,
+    hasImmediateLethal: threatState.immediateLethal,
+    hasLatentLethal: threatState.latentLethalThreat,
   };
 
   const results = [];
@@ -91,11 +96,22 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
       }
     }
 
-    // Strategy bias on the action itself
+    // Strategy bias and diagnostics
     const profile = getSkillPrimitiveProfile(ownAction.skillId);
+    const actionThreat = evaluateActionThreat(engine, actorId, ownAction, {
+      ...sharedContext,
+      profile,
+    });
+    const greedWindow = evaluateGreedWindow(engine, actorId, {
+      threatState,
+      isUnderThreat: sharedContext.isUnderThreat,
+      hasLatentLethal: sharedContext.hasLatentLethal,
+    });
     const stratResult = evaluateRoleStrategy(engine, actorId, ownAction, {
       ...sharedContext,
       profile,
+      threatState,
+      greedWindow,
     });
     const strategyBias = stratResult.scoreDelta;
 
@@ -115,6 +131,12 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
       strategyBias,
       strategyReasons: stratResult.reasons,
       finalValue: expectedValue + strategyBias,
+      diagnostics: {
+        lethalThreat: actionThreat.killPressure,
+        greedWindow: greedWindow.greedy,
+        ammoEconomy,
+        reasons: stratResult.reasons,
+      },
     });
   }
 
@@ -164,6 +186,10 @@ export function selectRepresentativeCandidates(actions, actorSkills, resources, 
     if (profile.tags.includes(PrimitiveTag.INVEST)) score += 6;
     if (profile.tags.includes(PrimitiveTag.PRESSURE)) score += 4;
     if (profile.tags.includes(PrimitiveTag.DEFEND)) score += 3;
+    // High burst damage bonus
+    const effectiveDamage = profile.burstDamage > 0 ? profile.burstDamage : profile.maxPower;
+    if (effectiveDamage >= 300) score += 20;
+    else if (effectiveDamage >= 150) score += 8;
     return { action, score };
   }).sort((a, b) => b.score - a.score);
 
@@ -269,42 +295,4 @@ function getAliveEnemies(engine, actor) {
   );
 }
 
-function checkUnderThreat(engine, actorId, stateActor, enemies) {
-  if (!stateActor || enemies.length === 0) return false;
-  for (const enemy of enemies) {
-    if (!enemy.skills) continue;
-    for (const sr of enemy.skills) {
-      const p = getSkillPrimitiveProfile(sr.id);
-      if (!p.tags.includes(PrimitiveTag.PRESSURE)) continue;
-      let affordable = true;
-      for (const [res, amt] of Object.entries(p.cost)) {
-        if ((enemy.resources?.[res] || 0) < amt) { affordable = false; break; }
-      }
-      if (!affordable) continue;
-      const d = hexDistance(stateActor.position.q, stateActor.position.r, enemy.position.q, enemy.position.r);
-      if (d <= (p.range === 99 ? 6 : p.range) + p.areaRadius) return true;
-    }
-  }
-  return false;
-}
-
-function checkImmediateLethal(engine, actorId, stateActor, enemies, ownSkills) {
-  if (!stateActor || enemies.length === 0) return false;
-  for (const sr of ownSkills) {
-    const p = getSkillPrimitiveProfile(sr.id);
-    if (!p.tags.includes(PrimitiveTag.PRESSURE)) continue;
-    let affordable = true;
-    for (const [res, amt] of Object.entries(p.cost)) {
-      if ((engine.resourceSystem.get(actorId, res) || 0) < amt) { affordable = false; break; }
-    }
-    if (!affordable) continue;
-    for (const enemy of enemies) {
-      const d = hexDistance(stateActor.position.q, stateActor.position.r, enemy.position.q, enemy.position.r);
-      if (d <= (p.range === 99 ? 6 : p.range) + p.areaRadius) {
-        if (p.tags.includes(PrimitiveTag.KILL) || p.maxPower >= 300) return true;
-      }
-    }
-  }
-  return false;
-}
 

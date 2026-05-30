@@ -44,6 +44,12 @@ export async function chooseAiAction(engine, characterId, options = {}) {
         const tb = r.termBreakdown;
         line += ` | T=${tb.terminal.toFixed(1)} R=${tb.resources.toFixed(1)} Th=${tb.threat.toFixed(1)} Pos=${tb.position.toFixed(1)} Tm=${tb.tempo.toFixed(1)} S=${tb.strategy?.toFixed(1) ?? '0.0'}`;
       }
+      if (r.diagnostics) {
+        const d = r.diagnostics;
+        line += ` | LT=${d.lethalThreat?.toFixed(0) ?? '0'} Gr=${d.greedWindow ? 'Y' : 'N'}`;
+        const ammo = d.ammoEconomy;
+        if (ammo) line += ` Am=${ammo.ammo}/${ammo.ammoMax}`;
+      }
       if (r.strategyReasons && r.strategyReasons.length > 0) {
         line += ` | ${r.strategyReasons.slice(0, 2).join(',')}`;
       }

@@ -1435,8 +1435,14 @@ export class TurnManager {
       const skillName = SKILLS[cmd.skillId]?.name || '风步';
       this.#logger?.log(`${actor?.name || cmd.actorId} ${skillName}(${toQ},${toR})→${bestTarget.name || '?'} 威${power}`, 'rg');
     } else if (bestTarget && !bestIsChar) {
-      this.#projectileCalculator?.destroyProjectile?.(bestTarget.id);
-      this.#logger?.log(`${actor?.name || cmd.actorId} ${SKILLS[cmd.skillId]?.name || '风步'}斩破弹体(${toQ},${toR}) 威${power}`, 'rg');
+      const iPq = bestTarget.path?.[bestTarget.stepIndex]?.[0] ?? bestTarget.fromQ;
+      const iPr = bestTarget.path?.[bestTarget.stepIndex]?.[1] ?? bestTarget.fromR;
+      const intercepted = this.#projectileCalculator?.interceptAt?.(iPq, iPr, power);
+      if (intercepted) {
+        this.#logger?.log(`${actor?.name || cmd.actorId} ${SKILLS[cmd.skillId]?.name || '风步'}斩破弹体(${iPq},${iPr}) 威${power}`, 'rg');
+      } else {
+        this.#logger?.log(`${actor?.name || cmd.actorId} ${SKILLS[cmd.skillId]?.name || '风步'}削弱弹体(${iPq},${iPr}) -${power}`, 'rg');
+      }
     } else {
       this.#logger?.log(`${actor?.name || cmd.actorId} ${SKILLS[cmd.skillId]?.name || '风步'}位移(${fromQ},${fromR})→(${toQ},${toR}) 无目标`, 'mv');
     }

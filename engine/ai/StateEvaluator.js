@@ -70,12 +70,14 @@ function threatValue(actors, enemies) {
 }
 
 function threatScore(profile) {
-  let value = 20 + Math.min(120, profile.maxPower * 0.1);
-  if (profile.tags.includes(PrimitiveTag.KILL)) value += 35;
+  const effectiveDamage = profile.burstDamage > 0 ? profile.burstDamage : profile.maxPower;
+  let value = 20 + Math.min(120, effectiveDamage * 0.1);
+  if (effectiveDamage >= 300 || profile.tags.includes(PrimitiveTag.KILL)) value += 35;
   if (profile.tags.includes(PrimitiveTag.PIERCE_THREAT)) value += 12;
   if (profile.tags.includes(PrimitiveTag.LOCK_THREAT)) value += 14;
   if (profile.tags.includes(PrimitiveTag.REACTION_THREAT)) value += 10;
   if (profile.tags.includes(PrimitiveTag.DELAYED_THREAT)) value -= 8;
+  if (profile.hitCount >= 3) value += profile.hitCount * 3;
   return value - profile.commitment * 1.5;
 }
 
@@ -122,10 +124,14 @@ function canAfford(char, cost) {
 }
 
 function evaluateStrategicStateForEnemies(state, ownerId) {
-  const enemies = (state.characters || []).filter(c => c.alive !== false && c.ownerId !== ownerId);
+  const seenOwners = new Set();
   let total = 0;
-  for (const enemy of enemies) {
-    total += evaluateStrategicState(state, enemy.ownerId).total;
+  for (const c of (state.characters || [])) {
+    if (c.alive === false) continue;
+    if (c.ownerId === ownerId) continue;
+    if (seenOwners.has(c.ownerId)) continue;
+    seenOwners.add(c.ownerId);
+    total += evaluateStrategicState(state, c.ownerId).total;
   }
   return total;
 }
