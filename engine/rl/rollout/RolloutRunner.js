@@ -1,3 +1,6 @@
+import { stableStateHash } from './StateHasher.js';
+import { ReplayRecorder } from './ReplayRecorder.js';
+
 export class RolloutRunner {
   constructor({
     env,
@@ -13,6 +16,7 @@ export class RolloutRunner {
 
   async runEpisode(options = {}) {
     const resetConfig = options.resetConfig || {};
+    const recorder = options.recorder || null;
     const ts = this._env.reset(resetConfig);
 
     const trajectory = [];
@@ -21,6 +25,15 @@ export class RolloutRunner {
     let currentTs = ts;
 
     const maxSteps = this._maxSteps ?? Infinity;
+
+    // Recorder start
+    if (recorder) {
+      const initialState = currentTs.extras.state;
+      recorder.start({
+        initialStateHash: initialState ? stableStateHash(initialState) : null,
+        config: resetConfig,
+      });
+    }
 
     while (!currentTs.last() && steps < maxSteps) {
       // Read observations and masks from current timestep
@@ -62,19 +75,45 @@ export class RolloutRunner {
           done: currentTs.last(),
         });
       }
+
+      // Recorder step
+      if (recorder) {
+        recorder.recordStep({
+          turn: currentTs.extras.turn,
+          player1Action: p1Action,
+          player2Action: p2Action,
+          decodedActions: currentTs.extras.decodedActions || null,
+          reward: { ...reward },
+          done: currentTs.last(),
+          stateHash: currentTs.extras.state ? stableStateHash(currentTs.extras.state) : null,
+        });
+      }
     }
 
     // Determine winner from final state
     const finalState = currentTs.extras.state;
     const winner = this._determineWinner(finalState);
 
-    return {
+    // Recorder finish
+    if (recorder) {
+      recorder.finish({
+        winner,
+        finalStateHash: finalState ? stableStateHash(finalState) : null,
+        steps,
+      });
+    }
+
+    const result = {
       steps,
       winner,
       totalReward: accumulatedReward,
       trajectory,
       finalTimeStep: currentTs,
     };
+    if (recorder) {
+      result.replay = recorder.toJSON();
+    }
+    return result;
   }
 
   _determineWinner(state) {
