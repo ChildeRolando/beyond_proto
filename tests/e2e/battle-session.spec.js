@@ -337,13 +337,13 @@ test('A6: return to start via window.returnToStart works', async ({ page }) => {
 });
 
 // ─── A7: Keyboard shortcuts do not break session state ───
-// NOTE: Digit1 is NOT tested here because the current keyboard handler has a
-// pre-existing bug: engine.registry.get(charId) entities don't expose .skills
-// directly, causing "Cannot read properties of undefined" on char.skills.filter.
-// This is unrelated to the BattleSessionController extraction.
 
 test('A7: keyboard shortcuts do not cause errors', async ({ page }) => {
   await enterLocalBattle(page);
+
+  // Press Digit1 to select first visible skill (bug fixed: now uses visibleSkillsForChar)
+  await page.keyboard.press('Digit1');
+  await page.waitForTimeout(200);
 
   // Press Escape to clear any selection
   await page.keyboard.press('Escape');

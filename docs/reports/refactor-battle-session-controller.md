@@ -1,123 +1,87 @@
-# BattleSessionController Complete Extraction Report
+# BattleSessionController Extraction Report
 
 ## Summary
 
-Extracted battle session state and lifecycle from `main.js` into `session/BattleSessionController.js`. The controller now owns GameEngine, all battle state (~20 variables), and all battle lifecycle/action-flow methods (~25 methods). main.js is reduced to a composition root that orchestrates canvas rendering, DOM manipulation, and network setup, delegating all battle logic to `battleSession`.
+Extracted battle session state and lifecycle from `main.js` into `session/BattleSessionController.js`. The controller owns GameEngine, all battle state, and all battle lifecycle/action-flow/encapsulation methods. main.js is reduced to a composition root — it no longer directly mutates any `battleSession` fields, no longer calls `engine.submitAction`/`engine.executeTurn`, and no longer defines P2P arrow wrappers.
+
+Completed in two phases:
+1. **Initial extraction** (commit `12d45a0`): Moved state + logic, but left direct field mutations and P2P wrappers in main.js.
+2. **Ownership hardening** (commit `a9cae01`): Eliminated all direct mutations, removed P2P wrappers, added encapsulation methods, fixed `returnToStart` lexical binding, repaired Digit1 hotkey.
 
 ## Files Changed
 
-| File | Before | After | Delta |
-|---|---|---|---|
-| `main.js` | ~2356 lines | ~1946 lines | -410 |
-| `session/BattleSessionController.js` | — | 684 lines | +684 |
-| `tests/e2e/battle-session.spec.js` | — | NEW (7 tests) | +377 |
-| `tests/architecture/battle-session-split.spec.js` | — | NEW (70 tests) | +136 |
-| `docs/reports/refactor-battle-session-controller.md` | — | NEW | +this |
+| File | Initial | After Hardening |
+|---|---|---|
+| `main.js` | ~2356 → ~1946 | further reduced |
+| `session/BattleSessionController.js` | 684 lines | ~830 lines (+146) |
+| `tests/e2e/battle-session.spec.js` | NEW (7 tests) | 9 tests (+A8, A9) |
+| `tests/architecture/battle-session-split.spec.js` | NEW (70 tests) | 107 tests (+37) |
 
 ## BattleSessionController Public API
 
-### State (all moved from main.js)
-- `engine` (GameEngine instance)
-- `characterIds`, `localSubmittedSet`, `remoteSubmittedSet`, `plannedActions`
-- `selectedSkill`, `viewingSkill`, `validTargets`
-- `hoveredHex`, `hoverEffectArea`, `selectedCharacterId`, `lastHoveredCharacterId`
-- `activeSidebarTab`, `turnTimeoutId`, `battleEnded`, `battleActive`
-- `pveAiRunning`, `skillPages`, `skillsPerPage`
-- Galaxy: `galaxyActive`, `galaxyCharId`, `galaxySelectedSkill`, `galaxyTargetPos`, `galaxyActionIndex`, `galaxyActionTotal`
-- Identity: `_player1Class`, `_player2Class`
-
-### Lifecycle Methods
-- `initGame(p1Class, p2Class, seed, players)` — Initialize battle
-- `startBattleFromConfigs(seed, players)` — Start battle from configs
-- `resetBattleSession()` — Reset all battle state
-- `startTurnTimeout()` / `clearTurnTimeout()` — 60s auto-submit timeout
+### Lifecycle
+`initGame`, `startBattleFromConfigs`, `resetBattleSession`, `startTurnTimeout`, `clearTurnTimeout`
 
 ### Action Flow
-- `selectSkill(charId, skillId)` — Select skill + compute valid targets
-- `viewOpponentSkill(charId, skillId)` — View-only opponent skill inspection
-- `submitAction(charId, skillId, targetPos)` — Submit action to engine
-- `executeLocalTurn()` — Execute local turn
-- `submitAiAndExecutePveTurn()` — Submit AI + execute PVE turn
-- `executeP2PTurn(nm)` — Execute P2P turn
-- `handleRemoteAction(nm, action)` — Apply remote action
-- `updateSubmitStatus(nm)` — Update submit status bar
-- `markP2PReady(nm)` / `maybeAutoReadyP2P(nm)` — P2P ready marking
+`selectSkill`, `viewOpponentSkill`, `submitAction`, `executeLocalTurn`, `submitAiAndExecutePveTurn`, `executeP2PTurn(nm, options)`, `handleRemoteAction`, `updateSubmitStatus`, `markP2PReady`, `maybeAutoReadyP2P`
 
-### Player Identity
-- `getMyCharacterIds()`, `isMyCharacter(charId)`, `getCharacterState(charId)`
-- `getPreviewOrigin(charId, skillId)`, `clearPlannedActions()`
-
-### Skill Helpers
-- `canSubmitForChar(charId, skillId)`, `isRequiredActionReady(charId)`
-- `hasOptionalActionAvailable(charId)`, `areMyRequiredActionsReady()`
-- `hasAnyMyOptionalActionAvailable()`, `visibleSkillsForChar(char)`
+### Player Identity / Helpers
+`getMyCharacterIds`, `isMyCharacter`, `getCharacterState`, `getPreviewOrigin`, `clearPlannedActions`, `canSubmitForChar`, `isRequiredActionReady`, `hasOptionalActionAvailable`, `areMyRequiredActionsReady`, `hasAnyMyOptionalActionAvailable`, `visibleSkillsForChar`
 
 ### Getters
-- `getState()` — Returns `engine.getState()`
-- `getViewState()` — Returns all view-relevant state
-- `getBattlePanelsContext(extra)` — Builds ctx for BattlePanelsView
+`getState`, `getViewState`, `getBattlePanelsContext(extra)`
 
-### Selection/Hover
-- `setHoveredHex(q, r, charId)`, `setHoverEffectArea(area)`
-- `clearSelection()`
+### Encapsulation Methods (added in hardening phase)
+`resetForConfigScreen`, `resetForReturnToStart`, `resetSubmissions`, `resetSelection`, `clearTargetPreview`, `setSelectedCharacterId`, `setLastHoveredCharacterId`, `cancelCurrentSelection`, `handleInvalidTargetClick`, `clearSelection`, `setHoveredHex`, `setHoverEffectArea`
 
-## Functions Removed from main.js
+### Galaxy Methods (added in hardening phase)
+`startGalaxySubphase`, `promptGalaxyAction`, `endGalaxySubphase`, `selectGalaxySkill`, `clearGalaxySelection`, `prepareGalaxyTargeting`, `submitGalaxyTarget`, `skipGalaxyAction`
 
-All ~25 battle lifecycle/action/identity/skill functions — now in BattleSessionController:
-initGame, startTurnTimeout, clearTurnTimeout, getMyCharacterIds, isMyCharacter, getCharacterState, getPreviewOrigin, clearPlannedActions, canSubmitForChar, isRequiredActionReady, hasOptionalActionAvailable, areMyRequiredActionsReady, hasAnyMyOptionalActionAvailable, markP2PReady, maybeAutoReadyP2P, updateSubmitStatus, selectSkill, viewOpponentSkill, submitAction, getPveAiCharacterId, submitAiAndExecutePveTurn, executeLocalTurn, visibleSkillsForChar
+## Bugs Fixed
 
-## State Removed from main.js
+1. **returnToStart lexical binding**: Changed from `window.returnToStart = function()` to `function returnToStart()` + `window.returnToStart = returnToStart`. btn-lobby now safely calls lexical `returnToStart()`.
+2. **P2P wrapper duplication**: Removed `const handleRemoteAction` and `const executeP2PTurn` from main.js. NetworkManager callbacks now call `battleSession.handleRemoteAction(nm, action)` and `battleSession.executeP2PTurn(nm, { animateTurn })` directly. `executeP2PTurn` accepts `options.animateTurn` callback.
+3. **Direct battleSession mutations eliminated**: ~100+ direct field assignments (`battleSession.selectedSkill = null`, etc.) replaced with encapsulation method calls. main.js no longer directly writes any battleSession field.
+4. **Direct engine calls eliminated**: No `engine.submitAction(` or `engine.executeTurn(` calls remain in main.js.
+5. **Digit1 hotkey fixed**: Changed `char.skills.filter(...)` (used `engine.registry.get()` entity without `.skills` property) to `battleSession.visibleSkillsForChar(stateChar)` (uses state character from `getCharacterState`).
 
-All ~20 battle state variables — now on BattleSessionController:
-characterIds, localSubmittedSet, remoteSubmittedSet, plannedActions, selectedSkill, viewingSkill, validTargets, hoveredHex, hoverEffectArea, selectedCharacterId, lastHoveredCharacterId, activeSidebarTab, turnTimeoutId, battleEnded, battleActive, pveAiRunning, skillPages, skillsPerPage, galaxyActive, galaxyCharId, galaxySelectedSkill, galaxyTargetPos, galaxyActionIndex, galaxyActionTotal, player1Class, player2Class
+## Architecture — What main.js No Longer Owns
+
+- No `function initGame/selectSkill/submitAction/...` definitions
+- No `let selectedSkill/battleEnded/characterIds/...` declarations
+- No `const handleRemoteAction/executeP2PTurn` arrow wrappers
+- No `engine.submitAction(` / `engine.executeTurn(` calls
+- No `battleSession.selectedSkill =` / `battleSession.battleEnded =` assignments
+- No `battleSession.localSubmittedSet.clear()` / `battleSession.clearPlannedActions()` calls
 
 ## Callback Boundary
 
-BattleSessionController notifies main.js via callbacks:
-- `computeEffectArea(skill, charPos, hoveredTarget, rangeOverride)` — area computation (stays in main.js)
-- `renderAll()`, `renderLog()`, `clearLog()`
-- `setSubmitStatus(text)`, `setExecuteDisabled(disabled)`
-- `showGameOverPanel(winnerId)`, `hideGameOverPanel()`, `showDisconnect(reason)`
-- `getNetworkManager()`, `getConfigMode()`, `isPveMode()`
-- `setRoute(route)`, `appendChatMessage(sender, text)`, `resizeCanvas()`
-
-## Remaining in main.js
-
-- Canvas rendering: renderBoard, renderAll, renderLog, animateTurn, draw* functions
-- computeEffectArea, simulateDash (pure functions)
-- Config screen logic, NetworkManager, P2P setup callbacks
-- DOM manipulation: setRoute, showDisconnect, showGameOver, updateRematchButton
-- Keyboard + mouse input handlers (delegate to battleSession)
-- Galaxy DOM panels (read from battleSession.xxx)
-- Thin wrappers: startBattleFromConfigs, handleRemoteAction, executeP2PTurn (const arrow functions)
+Controller → main.js: `computeEffectArea`, `renderAll`, `renderLog`, `clearLog`, `setSubmitStatus`, `setExecuteDisabled`, `showGameOverPanel`, `hideGameOverPanel`, `showDisconnect`, `getNetworkManager`, `getConfigMode`, `isPveMode`, `setRoute`, `appendChatMessage`, `resizeCanvas`
 
 ## Test Results
 
 | Suite | Count | Status |
 |---|---|---|
-| E2E (battle-session) | 7/7 | pass |
+| E2E (battle-session) | 9/9 | pass |
 | E2E (battle-panels) | 6/6 | pass |
 | E2E (battle-screen) | 5/5 | pass |
 | E2E (config-screen) | 9/9 | pass |
 | E2E (start-lobby) | 8/8 | pass |
 | E2E (smoke) | 3/3 | pass |
-| Architecture (battle-session-split) | 70/70 | pass |
+| Architecture (battle-session-split) | 107/107 | pass |
 | Architecture (main-split) | 9/9 | pass |
 | Architecture (start-lobby-split) | 17/17 | pass |
-| **Total** | **134/134** | **pass** |
+| **Total** | **173/173** | **pass** |
 
-## Known Issues
+## Remaining Technical Debt
 
-1. **`engine` alias**: `const engine = battleSession.engine` remains as a temporary migration for canvas rendering. Future work should remove this alias and have canvas directly access `battleSession.engine`.
-2. **Galaxy DOM panels**: Galaxy event listeners and panel rendering still in main.js, reading `battleSession.galaxyXxx` properties. Should be extracted to a GalaxyController.
-3. **Keyboard handler bug**: Digit1 key causes `char.skills is undefined` error — pre-existing bug unrelated to this refactor.
-4. **`computeEffectArea` stays in main.js**: Used by both canvas hover (main.js) and skill selection (controller). Passed via callback.
+1. **`engine` alias**: `const engine = battleSession.engine` for canvas read-only rendering.
+2. **Galaxy DOM panels**: `showGalaxyPanel`/`hideGalaxyPanel` still in main.js.
+3. **Canvas renderer**: `renderBoard` + draw functions remain in main.js.
+4. **Network session**: P2P setup callbacks remain in main.js.
+5. **`startBattleFromConfigs` const adapter**: Thin DOM wrapper in main.js (calls `battleSession.startBattleFromConfigs`).
 
 ## Future Work
 
-- Extract `BattleCanvasRenderer` — move renderBoard + draw functions
-- Extract `BattleInputController` — move keyboard/mouse handlers
-- Extract `NetworkSessionController` — move P2P network handling
-- Extract `GalaxyOverlayController` — move galaxy panel DOM
-- Extract `GameOverController` — move game over panel
+- Extract `BattleCanvasRenderer`, `BattleInputController`, `NetworkSessionController`, `GalaxyOverlayController`, `GameOverController`
 - Remove `const engine = battleSession.engine` alias

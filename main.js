@@ -1681,17 +1681,9 @@ document.addEventListener('keydown', (e) => {
     const myChars = battleSession.getMyCharacterIds();
     for (const charId of myChars) {
       if (!battleSession.canSubmitForChar(charId)) continue;
-      const char = engine.registry.get(charId);
-      if (!char) continue;
-      const forcedId = engine.getForcedSkillId(charId);
-      const allSkills = char.skills.filter(s => {
-        const skill = SKILLS[s.id];
-        return skill && !skill.hidden && (!forcedId || s.id === forcedId);
-      }).sort((a, b) => {
-        const costA = Object.values(SKILLS[a.id]?.cost || {}).reduce((s, v) => s + v, 0);
-        const costB = Object.values(SKILLS[b.id]?.cost || {}).reduce((s, v) => s + v, 0);
-        return costA - costB;
-      });
+      const stateChar = battleSession.getCharacterState(charId);
+      if (!stateChar) continue;
+      const allSkills = battleSession.visibleSkillsForChar(stateChar);
       const page = battleSession.skillPages.get(charId) || 0;
       const pageSkills = allSkills.slice(page * battleSession.skillsPerPage, (page + 1) * battleSession.skillsPerPage);
       if (key <= pageSkills.length) {
