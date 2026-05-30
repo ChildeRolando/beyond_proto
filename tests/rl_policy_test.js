@@ -236,13 +236,18 @@ console.log('\n[D] Lifecycle hooks');
       `recorded=${recordedCount} ctx=${ctx.legalActionCount}`);
   }
 
-  // D7. transition fields
+  // D7. transition fields — first element type + value
   if (p1.transitionCalls.length > 0) {
     const t = p1.transitionCalls[0];
+    const traj0 = episode.trajectory[0];
     check('transition has playerKey', t.playerKey === 'player1');
     check('transition has action', typeof t.action === 'number');
-    check('transition has reward', typeof t.reward === 'number');
-    check('transition has done', typeof t.done === 'boolean');
+    check('transition.reward === trajectory[0].reward.player1',
+      t.reward === traj0.reward.player1,
+      `trans=${t.reward} traj=${traj0.reward.player1}`);
+    check('transition.done === trajectory[0].done',
+      t.done === traj0.done,
+      `trans=${t.done} traj=${traj0.done}`);
     check('transition has preStateHash', typeof t.preStateHash === 'string' || t.preStateHash === null);
     check('transition has postStateHash', typeof t.postStateHash === 'string' || t.postStateHash === null);
     check('transition has opponentAction', typeof t.opponentAction === 'number');
@@ -277,6 +282,24 @@ console.log('\n[D] Lifecycle hooks');
     }
   }
   check('transition.opponentAction === trajectory player2Action', oppActionOk);
+
+  // transition.reward must match trajectory.reward[playerKey] at each step
+  let rewardSeqOk = true;
+  for (let i = 0; i < Math.min(p1.transitionCalls.length, episode.trajectory.length); i++) {
+    if (p1.transitionCalls[i].reward !== episode.trajectory[i].reward.player1) {
+      rewardSeqOk = false; break;
+    }
+  }
+  check('transition.reward === trajectory[i].reward.player1 at each step', rewardSeqOk);
+
+  // transition.done must match trajectory.done at each step
+  let doneSeqOk = true;
+  for (let i = 0; i < Math.min(p1.transitionCalls.length, episode.trajectory.length); i++) {
+    if (p1.transitionCalls[i].done !== episode.trajectory[i].done) {
+      doneSeqOk = false; break;
+    }
+  }
+  check('transition.done === trajectory[i].done at each step', doneSeqOk);
 
   env.close();
 }
