@@ -65,12 +65,17 @@ export class RolloutRunner {
 
       // Record trajectory step
       if (this._recordTrajectory) {
+        let p1LegalCount = 0, p2LegalCount = 0;
+        for (let i = 0; i < masks.player1.length; i++) { if (masks.player1[i] === 1) p1LegalCount++; }
+        for (let i = 0; i < masks.player2.length; i++) { if (masks.player2[i] === 1) p2LegalCount++; }
+
         trajectory.push({
           turn: currentTs.extras.turn,
           player1Action: p1Action,
           player2Action: p2Action,
           player1ActionWasLegal: p1Legal,
           player2ActionWasLegal: p2Legal,
+          legalActions: { player1: p1LegalCount, player2: p2LegalCount },
           reward: { ...reward },
           done: currentTs.last(),
         });
