@@ -9,12 +9,12 @@ for %%a in (%*) do (
 )
 
 echo === Deploying combat-engine to cloud server ===
-echo Code files: engine/ server/ index.html package.json
+echo Code files: engine/ server/ index.html package.json main.js styles/
 if %PUSH_ASSETS%==1 (echo Assets:     assets/ (included^)) else (echo Assets:     skipped (use --assets to include^))
 echo.
 
 :: Always push code files (small, change frequently)
-scp -i "%USERPROFILE%\.ssh\id_ed25519" -o IdentitiesOnly=yes -r engine server index.html package.json Administrator@120.77.178.15:"C:/Users/Administrator/Desktop/combat-engine/"
+scp -i "%USERPROFILE%\.ssh\id_ed25519" -o IdentitiesOnly=yes -r engine server index.html package.json main.js styles Administrator@120.77.178.15:"C:/Users/Administrator/Desktop/combat-engine/"
 if errorlevel 1 echo [WARN] scp code upload had errors
 
 :: Assets are large images that rarely change 鈥?only push when asked
