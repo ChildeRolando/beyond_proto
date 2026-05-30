@@ -20,6 +20,7 @@ import {
 import { isOnBoard, hexCenter, hexCorners, pixelToHex, hexDistance, hexLine, hexSpiral, setCanvasSize, getSectorHexes } from './engine/HexMath.js';
 import { renderConfigScreenView } from './ui/config/ConfigScreenView.js';
 import { renderBattlePanelsView } from './ui/battle/BattlePanelsView.js';
+import { initStartLobbyController } from './ui/start/StartLobbyController.js';
 
 const PORTRAIT_CACHE_VERSION = '2';
 
@@ -427,175 +428,55 @@ document.getElementById('btn-galaxy-skip').addEventListener('click', () => {
   hideGalaxyPanel();
 });
 
-// --- Start screen ---
-document.getElementById('btn-local').addEventListener('click', () => {
-  networkManager = null;
-  configMode = 'local';
-  currentConfigPlayer = 'player1';
-  configPlayers.player1 = makeDefaultPlayerConfig('player1', configPlayers.player1.class || '法师');
-  configPlayers.player2 = makeDefaultPlayerConfig('player2', configPlayers.player2.class || '战士');
-  document.getElementById('mode-badge').textContent = '本地';
-  document.getElementById('mode-badge').className = 'local';
-  document.getElementById('conn-indicator').style.display = 'none';
-  document.getElementById('p1-class-select').style.display = 'none';
-  document.getElementById('p2-class-select').style.display = 'none';
-  document.getElementById('btn-start').style.display = 'none';
-  document.getElementById('btn-reset').style.display = '';
-  showConfigScreen('local');
-});
+// --- Start screen / lobby / tutorial — managed by ui/start/StartLobbyController.js ---
+// Old button bindings, showTutorial, hideTutorial, updateHostStatus, updateJoinStatus,
+// resetConnectionUI migrated to StartLobbyController. Business logic stays here via callbacks.
 
-document.getElementById('btn-pve').addEventListener('click', () => {
-  networkManager = null;
-  configMode = 'pve';
-  currentConfigPlayer = 'player1';
-  configPlayers.player1 = makeDefaultPlayerConfig('player1', configPlayers.player1.class || '法师');
-  configPlayers.player2 = makeDefaultPlayerConfig('player2', configPlayers.player2.class || '战士');
-  document.getElementById('mode-badge').textContent = 'PVE';
-  document.getElementById('mode-badge').className = 'local';
-  document.getElementById('conn-indicator').style.display = 'none';
-  document.getElementById('p1-class-select').style.display = 'none';
-  document.getElementById('p2-class-select').style.display = 'none';
-  document.getElementById('btn-start').style.display = 'none';
-  document.getElementById('btn-reset').style.display = '';
-  showConfigScreen('pve');
-});
+// (P2P button, create/join room handlers migrated to StartLobbyController)
+// initStartLobbyController called below
 
-// --- Tutorial modal ---
-function showTutorial() {
-  document.getElementById('tutorial-overlay').classList.add('show');
-}
-function hideTutorial() {
-  document.getElementById('tutorial-overlay').classList.remove('show');
-}
-document.getElementById('btn-tutorial').addEventListener('click', showTutorial);
-document.getElementById('tutorial-close').addEventListener('click', hideTutorial);
-document.getElementById('tutorial-overlay').addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) hideTutorial();
-});
-document.getElementById('btn-help-top').addEventListener('click', showTutorial);
+// create-room / join-room handlers migrated to StartLobbyController
 
-document.getElementById('btn-p2p').addEventListener('click', () => {
-  document.getElementById('room-setup').style.display = 'flex';
-  document.getElementById('room-host-section').style.display = 'block';
-  document.getElementById('room-join-section').style.display = 'block';
-  document.getElementById('room-code-text').style.display = 'none';
-  document.getElementById('room-error').textContent = '';
-  document.getElementById('p2p-class-pick').style.display = 'none';
-});
+// join-room handler migrated to StartLobbyController
 
-document.getElementById('btn-back-start').addEventListener('click', () => {
-  if (networkManager) { networkManager.disconnect(); networkManager = null; }
-  document.getElementById('room-setup').style.display = 'none';
-  document.getElementById('room-code-text').style.display = 'none';
-  document.getElementById('room-error').textContent = '';
-  resetConnectionUI();
-});
-
-document.getElementById('btn-create-room').addEventListener('click', async () => {
-  document.getElementById('room-error').textContent = '';
-  document.getElementById('room-code-text').style.display = 'none';
-  updateHostStatus('connecting', '连接中...');
-  const serverAddr = document.getElementById('server-addr-input-host').value.trim() || 'localhost:8088';
-  const signalingUrl = serverAddr.match(/^wss?:\/\//) ? serverAddr : (isNgrok ? `wss://${serverAddr}` : `ws://${serverAddr}`);
-  const nm = new NetworkManager({
-    onStatusChange: (s) => {
-      if (s.roomCode) {
-        document.getElementById('room-code-text').textContent = s.roomCode;
-        document.getElementById('room-code-text').style.display = 'block';
-        updateHostStatus('connecting', '等待对手加入...');
-      }
-      if (s.status === 'connected') {
-        updateHostStatus('connected', '已连接！');
-        startP2PGame(nm);
-      }
-      if (s.error) {
-        document.getElementById('room-error').textContent = s.error;
-        updateHostStatus('disconnected', '错误');
-        nm.disconnect();
-      }
+initStartLobbyController({
+  defaultAddr: isNgrok ? window.location.host : '120.77.178.15:8088',
+  callbacks: {
+    onStartLocal() {
+      networkManager = null; configMode = 'local'; currentConfigPlayer = 'player1';
+      configPlayers.player1 = makeDefaultPlayerConfig('player1', configPlayers.player1.class || '法师');
+      configPlayers.player2 = makeDefaultPlayerConfig('player2', configPlayers.player2.class || '战士');
+      document.getElementById('mode-badge').textContent = '本地'; document.getElementById('mode-badge').className = 'local';
+      document.getElementById('conn-indicator').style.display = 'none';
+      document.getElementById('p1-class-select').style.display = 'none'; document.getElementById('p2-class-select').style.display = 'none';
+      document.getElementById('btn-start').style.display = 'none'; document.getElementById('btn-reset').style.display = '';
+      showConfigScreen('local');
     },
-    onDisconnect: (reason) => showDisconnect(reason),
-    onRemoteSubmitted: (action) => handleRemoteAction(nm, action),
-    onRemoteReady: () => updateSubmitStatus(nm),
-    onReady: () => executeP2PTurn(nm),
-    onClassPick: () => {},
-    onGalaxyAction: (charId, skillId, targetPos) => {
-      engine.submitGalaxyAction(skillId, targetPos);
+    onStartPve() {
+      networkManager = null; configMode = 'pve'; currentConfigPlayer = 'player1';
+      configPlayers.player1 = makeDefaultPlayerConfig('player1', configPlayers.player1.class || '法师');
+      configPlayers.player2 = makeDefaultPlayerConfig('player2', configPlayers.player2.class || '战士');
+      document.getElementById('mode-badge').textContent = 'PVE'; document.getElementById('mode-badge').className = 'local';
+      document.getElementById('conn-indicator').style.display = 'none';
+      document.getElementById('p1-class-select').style.display = 'none'; document.getElementById('p2-class-select').style.display = 'none';
+      document.getElementById('btn-start').style.display = 'none'; document.getElementById('btn-reset').style.display = '';
+      showConfigScreen('pve');
     },
-    onMessage: (payload) => handleNetworkMessage(payload),
-  }, signalingUrl);
-  networkManager = nm;
-  try {
-    await nm.createRoom();
-  } catch (e) {
-    document.getElementById('room-error').textContent = '连接服务器失败';
-    updateHostStatus('disconnected', '连接失败');
-    networkManager = null;
-  }
+    onBackStart() { if (networkManager) { networkManager.disconnect(); networkManager = null; } },
+    async onCreateRoom({ serverAddr, ui }) {
+      const signalingUrl = serverAddr.match(/^wss?:\/\//) ? serverAddr : (isNgrok ? `wss://${serverAddr}` : `ws://${serverAddr}`);
+      const nm = new NetworkManager({ onStatusChange: (s) => { if (s.roomCode) { ui.showRoomCode(s.roomCode); ui.updateHostStatus('connecting', '等待对手加入...'); } if (s.status === 'connected') { ui.updateHostStatus('connected', '已连接！'); startP2PGame(nm); } if (s.error) { ui.setRoomError(s.error); ui.updateHostStatus('disconnected', '错误'); nm.disconnect(); } }, onDisconnect: (reason) => showDisconnect(reason), onRemoteSubmitted: (action) => handleRemoteAction(nm, action), onRemoteReady: () => updateSubmitStatus(nm), onReady: () => executeP2PTurn(nm), onClassPick: () => {}, onGalaxyAction: (charId, skillId, targetPos) => { engine.submitGalaxyAction(skillId, targetPos); }, onMessage: (payload) => handleNetworkMessage(payload), }, signalingUrl);
+      networkManager = nm; try { await nm.createRoom(); } catch (e) { ui.setRoomError('连接服务器失败'); ui.updateHostStatus('disconnected', '连接失败'); networkManager = null; }
+    },
+    async onJoinRoom({ roomCode, serverAddr, ui }) {
+      const signalingUrl = serverAddr.match(/^wss?:\/\//) ? serverAddr : (isNgrok ? `wss://${serverAddr}` : `ws://${serverAddr}`);
+      const nm = new NetworkManager({ onStatusChange: (s) => { if (s.status === 'connected') { ui.updateJoinStatus('connected', '已连接！'); startP2PGame(nm); } if (s.error) { ui.setRoomError(s.error); ui.updateJoinStatus('disconnected', '错误'); nm.disconnect(); } }, onDisconnect: (reason) => showDisconnect(reason), onRemoteSubmitted: (action) => handleRemoteAction(nm, action), onRemoteReady: () => updateSubmitStatus(nm), onReady: () => executeP2PTurn(nm), onClassPick: () => {}, onGalaxyAction: (charId, skillId, targetPos) => { engine.submitGalaxyAction(skillId, targetPos); }, onMessage: (payload) => handleNetworkMessage(payload), }, signalingUrl);
+      networkManager = nm; try { await nm.joinRoom(roomCode); } catch (e) { ui.setRoomError('连接服务器失败'); ui.updateJoinStatus('disconnected', '连接失败'); networkManager = null; }
+    },
+  },
 });
 
-document.getElementById('btn-join-room').addEventListener('click', async () => {
-  const code = document.getElementById('room-code-input').value.toUpperCase().trim();
-  if (!code || code.length !== 4) {
-    document.getElementById('room-error').textContent = '请输入4位房间码';
-    return;
-  }
-  document.getElementById('room-error').textContent = '';
-  updateJoinStatus('connecting', '连接中...');
-  const serverAddr = document.getElementById('server-addr-input').value.trim() || 'localhost:8088';
-  const signalingUrl = serverAddr.match(/^wss?:\/\//) ? serverAddr : (isNgrok ? `wss://${serverAddr}` : `ws://${serverAddr}`);
-  const nm = new NetworkManager({
-    onStatusChange: (s) => {
-      if (s.status === 'connected') {
-        updateJoinStatus('connected', '已连接！');
-        startP2PGame(nm);
-      }
-      if (s.error) {
-        document.getElementById('room-error').textContent = s.error;
-        updateJoinStatus('disconnected', '错误');
-        nm.disconnect();
-      }
-    },
-    onDisconnect: (reason) => showDisconnect(reason),
-    onRemoteSubmitted: (action) => handleRemoteAction(nm, action),
-    onRemoteReady: () => updateSubmitStatus(nm),
-    onReady: () => executeP2PTurn(nm),
-    onClassPick: () => {},
-    onGalaxyAction: (charId, skillId, targetPos) => {
-      engine.submitGalaxyAction(skillId, targetPos);
-    },
-    onMessage: (payload) => handleNetworkMessage(payload),
-  }, signalingUrl);
-  networkManager = nm;
-  try {
-    await nm.joinRoom(code);
-  } catch (e) {
-    document.getElementById('room-error').textContent = '连接服务器失败';
-    updateJoinStatus('disconnected', '连接失败');
-    networkManager = null;
-  }
-});
-
-function updateHostStatus(status, text) {
-  const dot = document.querySelector('#room-host-section .dot');
-  dot.className = 'dot ' + (status === 'connected' ? 'green' : status === 'connecting' ? 'yellow' : 'red');
-  document.getElementById('host-status-text').textContent = text;
-}
-
-function updateJoinStatus(status, text) {
-  const dot = document.querySelector('#room-join-section .dot');
-  dot.className = 'dot ' + (status === 'connected' ? 'green' : status === 'connecting' ? 'yellow' : 'red');
-  document.getElementById('join-status-text').textContent = text;
-}
-
-function resetConnectionUI() {
-  updateHostStatus('disconnected', '等待创建...');
-  updateJoinStatus('disconnected', '输入房间码和地址');
-  document.getElementById('room-code-input').value = '';
-  const defaultAddr = isNgrok ? window.location.host : 'localhost:8088';
-  document.getElementById('server-addr-input').value = defaultAddr;
-  document.getElementById('server-addr-input-host').value = defaultAddr;
-}
+// updateHostStatus, updateJoinStatus, resetConnectionUI migrated to StartLobbyController
 
 document.querySelectorAll('#config-player-switch button').forEach(btn => {
   btn.addEventListener('click', () => {
