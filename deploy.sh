@@ -32,8 +32,12 @@ if ! $PUSH_ASSETS; then
   EXCLUDE_DIRS="$EXCLUDE_DIRS assets"
 fi
 
+# Root-level files to exclude
+EXCLUDE_FILES="ngrok.exe"
+
 echo "=== Deploying combat-engine to $SERVER ==="
-echo "Excluded dirs: $EXCLUDE_DIRS"
+echo "Excluded dirs:  $EXCLUDE_DIRS"
+echo "Excluded files: $EXCLUDE_FILES"
 
 # Push each top-level directory (blacklist: skip excluded)
 for dir in */; do
@@ -50,10 +54,19 @@ for dir in */; do
   fi
 done
 
-# Push all root-level files (*.js, *.json, *.html, *.sh, *.md)
+# Push all root-level files (blacklist: skip excluded)
 echo "  push: root files"
 for f in *; do
-  [ -f "$f" ] && scp $SSH_OPTS "$f" "$SERVER:$REMOTE_DIR/" 2>&1
+  [ -f "$f" ] || continue
+  skip=false
+  for ex in $EXCLUDE_FILES; do
+    [ "$f" = "$ex" ] && skip=true && break
+  done
+  if $skip; then
+    echo "  skip: $f"
+  else
+    scp $SSH_OPTS "$f" "$SERVER:$REMOTE_DIR/" 2>&1
+  fi
 done
 
 # Schedule restart via Task Scheduler (survives SSH disconnect)
