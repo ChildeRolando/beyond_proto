@@ -78,7 +78,7 @@ test('class loadout add/remove works', async ({ page }) => {
 
   const poolSkill = page.locator('#skill-pool .config-pool-skill-btn').first();
   await poolSkill.click();
-  await expect(page.locator('#skill-pool .config-pool-skill-btn.selected')).toHaveCount(1);
+  await expect(page.locator('#skill-pool .config-pool-skill-btn.equipped')).not.toHaveCount(0);
 });
 
 test('role loadout add/remove works and updates UI', async ({ page }) => {
