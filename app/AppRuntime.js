@@ -25,6 +25,7 @@ import { initBattleInputController } from '../ui/battle/BattleInputController.js
 import { initGalaxyOverlayController } from '../ui/battle/GalaxyOverlayController.js';
 import { initGameOverController } from '../ui/battle/GameOverController.js';
 import { initChatController } from '../ui/battle/ChatController.js';
+import { RouteController } from './RouteController.js';
 
 export function createAppRuntime() {
 
@@ -63,7 +64,7 @@ const battleSession = new BattleSessionController({
   getNetworkManager: () => networkManager,
   getConfigMode: () => configMode,
   isPveMode: () => isPveMode(),
-  setRoute: (route) => setRoute(route),
+  setRoute: (route) => routeController.setRoute(route),
   appendChatMessage: (sender, text) => { if (chatController) chatController.appendMessage(sender, text); },
   resizeCanvas: () => resizeCanvas(),
 });
@@ -101,7 +102,10 @@ window.addEventListener('resize', resizeCanvas);
 
 
 const CLASSES = ['法师', '战士', '射手'];
-let currentRoute = 'start';
+// Route state extracted to RouteController
+const routeController = new RouteController({
+  dom: { startScreen: 'start-screen', configScreen: 'config-screen', app: 'app' },
+});
 let configMode = 'local';
 let currentConfigPlayer = 'player1';
 let configLoadoutOpen = false;
@@ -141,12 +145,7 @@ function cloneConfig(config) {
   };
 }
 
-function setRoute(route) {
-  currentRoute = route;
-  document.getElementById('start-screen').style.display = route === 'start' ? 'flex' : 'none';
-  document.getElementById('config-screen').style.display = route === 'config' ? 'grid' : 'none';
-  document.getElementById('app').style.display = route === 'battle' ? 'grid' : 'none';
-}
+// setRoute → routeController.setRoute
 
 function showConfigScreen(mode) {
   configMode = mode || configMode || 'local';
@@ -158,7 +157,7 @@ function showConfigScreen(mode) {
     configPlayers[pid].locked = false;
   }
   if (gameOverController) gameOverController.hide();
-  setRoute('config');
+  routeController.setRoute('config');
   renderConfigScreen();
   sendConfigUpdate();
 }
@@ -307,7 +306,7 @@ function sendConfigLock() {
 
 function maybeStartP2PBattle() {
   if (!networkManager || networkManager.myPlayerId !== 'player1') return;
-  if (currentRoute !== 'config') return;
+  if (!routeController.is('config')) return;
   if (!configPlayers.player1.locked || !configPlayers.player2.locked) return;
   const seed = Date.now();
   const players = getBattlePlayerConfigs();
@@ -402,7 +401,7 @@ document.getElementById('btn-config-start').addEventListener('click', () => {
 });
 document.getElementById('btn-config-back').addEventListener('click', () => {
   if (networkManager) { networkManager.disconnect(); networkManager = null; }
-  setRoute('start');
+  routeController.setRoute('start');
   startLobbyUi.hideRoomSetup();
   startLobbyUi.resetConnectionUI();
 });
@@ -490,7 +489,7 @@ function returnToStart() {
   if (networkManager) { networkManager.disconnect(); networkManager = null; }
   document.getElementById('disconnect-overlay').classList.remove('show');
   if (gameOverController) gameOverController.hide();
-  setRoute('start');
+  routeController.setRoute('start');
   document.getElementById('room-setup').style.display = 'none';
   document.getElementById('room-code-text').style.display = 'none';
   document.getElementById('p2p-class-pick').style.display = 'none';
@@ -1521,7 +1520,7 @@ function handleNetworkMessage(payload) {
       maybeStartP2PBattle();
     }
   } else if (payload.type === 'BATTLE_START') {
-    if (currentRoute === 'battle' && battleSession.battleActive) return;
+    if (routeController.is('battle') && battleSession.battleActive) return;
     if (Array.isArray(payload.players)) {
       for (const cfg of payload.players) {
         if (cfg?.playerId) configPlayers[cfg.playerId] = normalizePlayerConfig(cfg, cfg.playerId);
@@ -1581,7 +1580,7 @@ gameOverController = initGameOverController({
   isPveMode,
   startLobbyUi,
   callbacks: {
-    setRoute,
+    setRoute: (route) => routeController.setRoute(route),
     showConfigScreen,
     startBattleFromConfigs,
     resetNetworkState: () => {
