@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-05-31 - Strong-agent architecture recovery
+
+- Split config ownership into `ConfigSessionController` and network/P2P ownership into `NetworkSessionController`.
+- Kept the split safe by wiring config/network through AppRuntime providers and callbacks instead of direct imports.
+- Moved battle canvas drawing into `BattleCanvasRenderer` and `VisualEffects`.
+- Tightened architecture coverage with new config/network and canvas split tests.
+- Added browser coverage for config flow, network flow, and canvas rendering.
+- Updated the final architecture report and confirmed the full Playwright suite passes.
+
 ## 2026-05-29 - AI ????????
 
 - `AiController.chooseAiAction()` ?????????????? 15 ???????????????????? fallback??? PVE ?????

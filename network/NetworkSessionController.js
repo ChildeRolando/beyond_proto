@@ -24,6 +24,26 @@ export class NetworkSessionController {
 
   disconnect() {
     if (this._networkManager) { this._networkManager.disconnect(); this._networkManager = null; }
+    this.remoteClassPick = null;
+    this.battleSeed = 0;
+    this.pendingMyClass = null;
+    this.pendingRemoteRematchClass = null;
+    this.opponentReadyForRematch = false;
+  }
+
+  startP2PGame() {
+    if (!this._networkManager) return;
+    this.remoteClassPick = null;
+    this.pendingRemoteRematchClass = null;
+    this.pendingMyClass = null;
+    this.opponentReadyForRematch = false;
+    this.battleSeed = 0;
+
+    this._ctx.callbacks.hideGameOver?.();
+    this._ctx.callbacks.setModeBadge?.(`联机 ${this._networkManager.roomCode || ''}`, 'online');
+    this._ctx.callbacks.setConnectionIndicator?.(true);
+    this._ctx.callbacks.hideLobbyControls?.();
+    this._ctx.configSession.showConfigScreen('p2p');
   }
 
   _resolveSignalingUrl(serverAddr) {
@@ -39,14 +59,14 @@ export class NetworkSessionController {
     const nm = new NetworkManager({
       onStatusChange: (s) => {
         if (s.roomCode) { ui.showRoomCode(s.roomCode); ui.updateHostStatus('connecting', '等待对手加入...'); }
-        if (s.status === 'connected') { ui.updateHostStatus('connected', '已连接！'); this._ctx.callbacks.startP2PGame(nm); }
+        if (s.status === 'connected') { ui.updateHostStatus('connected', '已连接！'); this.startP2PGame(); }
         if (s.error) { ui.setRoomError(s.error); ui.updateHostStatus('disconnected', '错误'); nm.disconnect(); }
       },
       onDisconnect: (reason) => this._ctx.callbacks.showDisconnect(reason),
       onRemoteSubmitted: (action) => this._ctx.battleSession.handleRemoteAction(nm, action),
       onRemoteReady: () => this._ctx.battleSession.updateSubmitStatus(nm),
       onReady: () => this._ctx.battleSession.executeP2PTurn(nm, { animateTurn: this._ctx.callbacks.animateTurn }),
-      onClassPick: () => {},
+      onClassPick: (playerClass, battleSeed) => this.onClassPick(playerClass, battleSeed),
       onGalaxyAction: (charId, skillId, targetPos) => {
         this._ctx.battleSession.engine.submitGalaxyAction(skillId, targetPos);
       },
@@ -63,14 +83,14 @@ export class NetworkSessionController {
     const { signalingUrl } = this._resolveSignalingUrl(serverAddr);
     const nm = new NetworkManager({
       onStatusChange: (s) => {
-        if (s.status === 'connected') { ui.updateJoinStatus('connected', '已连接！'); this._ctx.callbacks.startP2PGame(nm); }
+        if (s.status === 'connected') { ui.updateJoinStatus('connected', '已连接！'); this.startP2PGame(); }
         if (s.error) { ui.setRoomError(s.error); ui.updateJoinStatus('disconnected', '错误'); nm.disconnect(); }
       },
       onDisconnect: (reason) => this._ctx.callbacks.showDisconnect(reason),
       onRemoteSubmitted: (action) => this._ctx.battleSession.handleRemoteAction(nm, action),
       onRemoteReady: () => this._ctx.battleSession.updateSubmitStatus(nm),
       onReady: () => this._ctx.battleSession.executeP2PTurn(nm, { animateTurn: this._ctx.callbacks.animateTurn }),
-      onClassPick: () => {},
+      onClassPick: (playerClass, battleSeed) => this.onClassPick(playerClass, battleSeed),
       onGalaxyAction: (charId, skillId, targetPos) => {
         this._ctx.battleSession.engine.submitGalaxyAction(skillId, targetPos);
       },
@@ -106,6 +126,41 @@ export class NetworkSessionController {
     const configs = this._ctx.configSession.getBattlePlayerConfigs();
     this._networkManager.sendMessage({ type: 'BATTLE_START', seed, players: configs });
     this._ctx.callbacks.startBattleFromConfigs(seed, configs);
+  }
+
+  onClassPick(remoteClass, seed = 0) {
+    const gameoverShown = this._ctx.callbacks.isGameOverShown?.() || false;
+    if (!gameoverShown && this._ctx.battleSession.battleActive) {
+      this.pendingRemoteRematchClass = remoteClass;
+      return;
+    }
+    this.remoteClassPick = remoteClass;
+    if (seed) this.battleSeed = seed;
+
+    if (gameoverShown && !this.pendingMyClass) {
+      this._ctx.callbacks.setOpponentReadyForRematch?.(true);
+      return;
+    }
+
+    const myClass = this.pendingMyClass || this._ctx.callbacks.getP2PClassSelection?.() || '娉曞笀';
+    if (this.pendingMyClass) {
+      this._networkManager?.sendClassPick(myClass, this.battleSeed);
+    }
+    this.pendingMyClass = null;
+    this._ctx.callbacks.setOpponentReadyForRematch?.(false);
+    this.tryInitWithClasses(myClass);
+  }
+
+  tryInitWithClasses(myClass) {
+    if (!this.remoteClassPick) return;
+    const myId = this.getMyPlayerId();
+    const p1Class = myId === 'player1' ? myClass : this.remoteClassPick;
+    const p2Class = myId === 'player2' ? myClass : this.remoteClassPick;
+    this.remoteClassPick = null;
+    this._ctx.battleSession.initGame(p1Class, p2Class, this.battleSeed);
+    this.battleSeed = 0;
+    this._ctx.battleSession.startTurnTimeout();
+    this._ctx.battleSession.updateSubmitStatus(this._networkManager);
   }
 
   resetForReturnToStart() {

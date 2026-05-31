@@ -5,111 +5,89 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Sources
-const appPath = resolve(__dirname, '../../app/AppRuntime.js');
-let appSrc = '';
-try { appSrc = readFileSync(appPath, 'utf-8'); } catch (e) {}
+function read(path) {
+  try {
+    return readFileSync(resolve(__dirname, path), 'utf-8');
+  } catch {
+    return '';
+  }
+}
 
-const cfgPath = resolve(__dirname, '../../session/ConfigSessionController.js');
-let cfgSrc = '';
-try { cfgSrc = readFileSync(cfgPath, 'utf-8'); } catch (e) {}
+const appSrc = read('../../app/AppRuntime.js');
+const cfgSrc = read('../../session/ConfigSessionController.js');
+const nscSrc = read('../../network/NetworkSessionController.js');
+const nmrSrc = read('../../network/NetworkMessageRouter.js');
 
-const nscPath = resolve(__dirname, '../../network/NetworkSessionController.js');
-let nscSrc = '';
-try { nscSrc = readFileSync(nscPath, 'utf-8'); } catch (e) {}
-
-const nmrPath = resolve(__dirname, '../../network/NetworkMessageRouter.js');
-let nmrSrc = '';
-try { nmrSrc = readFileSync(nmrPath, 'utf-8'); } catch (e) {}
-
-// ═══════════════════════════════════════════════════════
-// AppRuntime wiring checks deferred to follow-up task
-// ═══════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════
-// NOTE: AppRuntime negative checks (forbidden config/network state
-// and function declarations) are deferred. ConfigSessionController
-// and NetworkSessionController are verified as standalone modules.
-// AppRuntime wiring requires coordinated manual refactoring that
-// will be completed as a follow-up task. See docs/reports for details.
-// ═══════════════════════════════════════════════════════════════
-
-// ════════════════════════════════════════
-// POSITIVE: ConfigSessionController structure
-// ════════════════════════════════════════
-
-test('ConfigSessionController.js exists', () => {
-  expect(cfgSrc).toBeTruthy();
+test('AppRuntime wires config + network controllers', () => {
+  expect(appSrc).toMatch(/import\s+\{\s*ConfigSessionController\s*\}\s+from\s+['"]\.\.\/session\/ConfigSessionController\.js['"]/);
+  expect(appSrc).toMatch(/import\s+\{\s*NetworkSessionController\s*\}\s+from\s+['"]\.\.\/network\/NetworkSessionController\.js['"]/);
+  expect(appSrc).toMatch(/import\s+\{\s*createNetworkMessageRouter\s*\}\s+from\s+['"]\.\.\/network\/NetworkMessageRouter\.js['"]/);
+  expect(appSrc).toMatch(/new\s+ConfigSessionController\s*\(/);
+  expect(appSrc).toMatch(/new\s+NetworkSessionController\s*\(/);
+  expect(appSrc).toMatch(/createNetworkMessageRouter\s*\(/);
 });
-test('ConfigSessionController.js exports class', () => {
+
+test('AppRuntime drops config and network ownership', () => {
+  expect(appSrc).not.toMatch(/\blet\s+configMode\b/);
+  expect(appSrc).not.toMatch(/\blet\s+currentConfigPlayer\b/);
+  expect(appSrc).not.toMatch(/\blet\s+configLoadoutOpen\b/);
+  expect(appSrc).not.toMatch(/\blet\s+hoverRoleId\b/);
+  expect(appSrc).not.toMatch(/\blet\s+battleConfigs\b/);
+  expect(appSrc).not.toMatch(/\blet\s+configPlayers\b/);
+  expect(appSrc).not.toMatch(/\blet\s+networkManager\b/);
+  expect(appSrc).not.toMatch(/\blet\s+remoteClassPick\b/);
+  expect(appSrc).not.toMatch(/\blet\s+battleSeed\b/);
+  expect(appSrc).not.toMatch(/\blet\s+pendingMyClass\b/);
+  expect(appSrc).not.toMatch(/\blet\s+pendingRemoteRematchClass\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+makeDefaultPlayerConfig\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+cloneConfig\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+activeConfig\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+isConfigEditable\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+setActiveClass\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+setActiveRole\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+shiftRole\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+toggleLoadoutSkill\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+toggleRoleLoadoutSkill\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+removeLoadoutAt\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+renderConfigScreen\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+getBattlePlayerConfigs\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+startP2PGame\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+onClassPick\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+tryInitWithClasses\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+sendConfigUpdate\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+sendConfigLock\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+maybeStartP2PBattle\b/);
+  expect(appSrc).not.toMatch(/\bfunction\s+handleNetworkMessage\b/);
+  expect(appSrc).not.toMatch(/\bnew\s+NetworkManager\b/);
+  expect(appSrc).not.toMatch(/renderConfigScreenView\s*\(\{/);
+});
+
+test('ConfigSessionController keeps config ownership', () => {
   expect(cfgSrc).toMatch(/export\s+class\s+ConfigSessionController/);
-});
-test('ConfigSessionController does NOT import AppRuntime', () => {
+  expect(cfgSrc).toMatch(/renderConfigScreen\s*\(/);
+  expect(cfgSrc).toMatch(/normalizeForPlayer\s*\(/);
   expect(cfgSrc).not.toMatch(/from\s+['"]\.\.\/app\/AppRuntime\.js['"]/);
-});
-test('ConfigSessionController does NOT import NetworkSessionController', () => {
   expect(cfgSrc).not.toMatch(/from\s+['"]\.\.\/network\/NetworkSessionController\.js['"]/);
 });
 
-const CFG_METHODS = [
-  'showConfigScreen', 'renderConfigScreen', 'buildViewContext',
-  'getConfigMode', 'getConfigPlayers', 'getBattlePlayerConfigs',
-  'setActiveClass', 'setActiveRole', 'toggleLoadoutSkill',
-  'removeLoadoutAt', 'toggleLockCurrent', 'applyRemoteConfig', 'applyRemoteLock',
-];
-for (const m of CFG_METHODS) {
-  test(`ConfigSessionController has ${m}`, () => {
-    expect(cfgSrc).toMatch(new RegExp(m + '\\s*\\('));
-  });
-}
-
-// ════════════════════════════════════════
-// POSITIVE: NetworkSessionController structure
-// ════════════════════════════════════════
-
-test('NetworkSessionController.js exists', () => {
-  expect(nscSrc).toBeTruthy();
-});
-test('NetworkSessionController.js exports class', () => {
+test('NetworkSessionController keeps network ownership', () => {
   expect(nscSrc).toMatch(/export\s+class\s+NetworkSessionController/);
-});
-test('NetworkSessionController imports NetworkManager', () => {
-  expect(nscSrc).toMatch(/import\s+\{[^}]*NetworkManager[^}]*\}\s+from/);
-});
-test('NetworkSessionController does NOT import AppRuntime', () => {
+  expect(nscSrc).toMatch(/startP2PGame\s*\(/);
+  expect(nscSrc).toMatch(/onClassPick\s*\(/);
+  expect(nscSrc).toMatch(/tryInitWithClasses\s*\(/);
+  expect(nscSrc).toMatch(/getNetworkManager\s*\(/);
+  expect(nscSrc).toMatch(/createRoom\s*\(/);
+  expect(nscSrc).toMatch(/joinRoom\s*\(/);
+  expect(nscSrc).toMatch(/maybeStartP2PBattle\s*\(/);
   expect(nscSrc).not.toMatch(/from\s+['"]\.\.\/app\/AppRuntime\.js['"]/);
+  expect(nscSrc).not.toMatch(/from\s+['"]\.\.\/session\/ConfigSessionController\.js['"]/);
 });
 
-const NSC_METHODS = [
-  'getNetworkManager', 'createRoom', 'joinRoom', 'disconnect',
-  'startP2PGame', 'sendConfigUpdate', 'sendConfigLock',
-  'maybeStartP2PBattle', 'resetForReturnToStart',
-];
-for (const m of NSC_METHODS) {
-  test(`NetworkSessionController has ${m}`, () => {
-    expect(nscSrc).toMatch(new RegExp(m + '\\s*\\('));
-  });
-}
-
-// ════════════════════════════════════
-// POSITIVE: NetworkMessageRouter structure
-// ════════════════════════════════════
-
-test('NetworkMessageRouter.js exists', () => {
-  expect(nmrSrc).toBeTruthy();
-});
-test('NetworkMessageRouter exports createNetworkMessageRouter', () => {
+test('NetworkMessageRouter routes payloads without AppRuntime imports', () => {
   expect(nmrSrc).toMatch(/export\s+function\s+createNetworkMessageRouter/);
-});
-test('NetworkMessageRouter handles CHAT', () => {
   expect(nmrSrc).toMatch(/CHAT/);
-});
-test('NetworkMessageRouter handles CONFIG_UPDATE', () => {
   expect(nmrSrc).toMatch(/CONFIG_UPDATE/);
-});
-test('NetworkMessageRouter handles CONFIG_LOCK', () => {
   expect(nmrSrc).toMatch(/CONFIG_LOCK/);
-});
-test('NetworkMessageRouter handles BATTLE_START', () => {
   expect(nmrSrc).toMatch(/BATTLE_START/);
+  expect(nmrSrc).not.toMatch(/from\s+['"]\.\.\/app\/AppRuntime\.js['"]/);
 });

@@ -6,7 +6,7 @@
  * @param {Object} ctx
  * @param {Object} ctx.networkSession
  * @param {Object} ctx.configSession
- * @param {Object} ctx.chatController
+ * @param {Function} ctx.getChatController
  * @param {Object} ctx.battleSession
  * @param {Function} ctx.getCurrentRoute
  * @param {Function} ctx.startBattleFromConfigs
@@ -14,10 +14,11 @@
  * @returns {Function} handleNetworkMessage(payload)
  */
 export function createNetworkMessageRouter(ctx) {
-  const { networkSession, configSession, chatController, battleSession, getCurrentRoute, startBattleFromConfigs, renderConfigScreen } = ctx;
+  const { networkSession, configSession, getChatController, battleSession, getCurrentRoute, startBattleFromConfigs, renderConfigScreen } = ctx;
 
   return function handleNetworkMessage(payload) {
     if (payload.type === 'CHAT') {
+      const chatController = getChatController?.();
       if (chatController) chatController.appendMessage('对手', payload.text);
     } else if (payload.type === 'CONFIG_UPDATE') {
       const cfg = payload.config;

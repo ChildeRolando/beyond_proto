@@ -24,6 +24,8 @@ export class ConfigSessionController {
     this._currentConfigPlayer = 'player1';
     this._configLoadoutOpen = false;
     this._hoverRoleId = null;
+    this._selectedPoolSkillId = null;
+    this._selectedPoolType = null;
     this._battleConfigs = null;
     this._configPlayers = {
       player1: this._makeDefaultConfig('player1', '法师'),
@@ -59,6 +61,10 @@ export class ConfigSessionController {
   getBattleConfigs() { return this._battleConfigs; }
   setBattleConfigs(players) { this._battleConfigs = players; }
 
+  normalizeForPlayer(config, playerId) {
+    return this._ctx.normalizePlayerConfig(config, playerId);
+  }
+
   activeConfig() {
     return this._configPlayers[this._currentConfigPlayer];
   }
@@ -80,6 +86,8 @@ export class ConfigSessionController {
     if (!this.isConfigEditable() || cfg.locked) return;
     this._configPlayers[this._currentConfigPlayer] = this._makeDefaultConfig(this._currentConfigPlayer, className);
     this._hoverRoleId = null;
+    this._selectedPoolSkillId = null;
+    this._selectedPoolType = null;
     this._renderAndSync();
   }
 
@@ -91,6 +99,8 @@ export class ConfigSessionController {
     cfg.roleId = roleId;
     cfg.roleLoadoutSkillIds = getDefaultRoleLoadout(roleId);
     this._hoverRoleId = roleId;
+    this._selectedPoolSkillId = null;
+    this._selectedPoolType = null;
     this._renderAndSync();
   }
 
@@ -110,6 +120,8 @@ export class ConfigSessionController {
     const existing = cfg.loadoutSkillIds.indexOf(skillId);
     if (existing >= 0) cfg.loadoutSkillIds.splice(existing, 1);
     else if (cfg.loadoutSkillIds.length < this._ctx.LOADOUT_SIZE) cfg.loadoutSkillIds.push(skillId);
+    this._selectedPoolSkillId = skillId;
+    this._selectedPoolType = poolType;
     this._renderAndSync();
   }
 
@@ -130,11 +142,13 @@ export class ConfigSessionController {
     } else {
       cfg.loadoutSkillIds.splice(index, 1);
     }
+    this._selectedPoolSkillId = null;
+    this._selectedPoolType = null;
     this._renderAndSync();
   }
 
   _renderAndSync() {
-    this._ctx.renderConfigScreen();
+    this.renderConfigScreen();
     this._ctx.sendConfigUpdate();
   }
 
@@ -150,9 +164,9 @@ export class ConfigSessionController {
     for (const pid of ['player1', 'player2']) {
       this._configPlayers[pid].locked = false;
     }
-    if (this._ctx.gameOverController) this._ctx.gameOverController.hide();
+    this._ctx.callbacks.hideGameOver?.();
     this._ctx.routeController.setRoute('config');
-    this._ctx.renderConfigScreen();
+    this.renderConfigScreen();
     this._ctx.sendConfigUpdate();
   }
 
@@ -166,7 +180,7 @@ export class ConfigSessionController {
     const ownRoleOk = validateRoleLoadout(cfg.roleId, cfg.roleLoadoutSkillIds || []).ok && (cfg.roleLoadoutSkillIds || []).length === ROLE_LOADOUT_SIZE;
     if (!cfg.locked && !(ownClassOk && ownRoleOk)) return;
     cfg.locked = !cfg.locked;
-    this._ctx.renderConfigScreen();
+    this.renderConfigScreen();
     this._ctx.sendConfigLock();
     this._ctx.maybeStartP2PBattle();
   }
@@ -191,9 +205,8 @@ export class ConfigSessionController {
   // ─── Remote config ───
 
   applyRemoteConfig(cfg) {
-    const { normalizePlayerConfig } = this._ctx;
     if (cfg?.playerId) {
-      this._configPlayers[cfg.playerId] = normalizePlayerConfig(cfg, cfg.playerId);
+      this._configPlayers[cfg.playerId] = this.normalizeForPlayer(cfg, cfg.playerId);
     }
   }
 
@@ -230,6 +243,8 @@ export class ConfigSessionController {
       currentConfigPlayer: this._currentConfigPlayer,
       configPlayers: this._configPlayers,
       configLoadoutOpen: this._configLoadoutOpen,
+      selectedPoolSkillId: this._selectedPoolSkillId,
+      selectedPoolType: this._selectedPoolType,
       editable,
       portraitCacheVersion: PORTRAIT_CACHE_VERSION,
       callbacks: {
@@ -246,7 +261,7 @@ export class ConfigSessionController {
 
   toggleLoadoutDrawer() {
     this._configLoadoutOpen = !this._configLoadoutOpen;
-    this._ctx.renderConfigScreen();
+    this.renderConfigScreen();
   }
 
   // ─── Reset hover ───
@@ -258,6 +273,14 @@ export class ConfigSessionController {
   setConfigPlayerSwitch(playerId) {
     this._currentConfigPlayer = playerId;
     this._hoverRoleId = null;
-    this._ctx.renderConfigScreen();
+    this._selectedPoolSkillId = null;
+    this._selectedPoolType = null;
+    this.renderConfigScreen();
+  }
+
+  renderConfigScreen() {
+    const { renderConfigScreenView } = this._ctx;
+    if (typeof renderConfigScreenView !== 'function') return;
+    renderConfigScreenView(this.buildViewContext());
   }
 }
