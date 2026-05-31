@@ -142,7 +142,7 @@ export class NetworkSessionController {
       return;
     }
 
-    const myClass = this.pendingMyClass || this._ctx.callbacks.getP2PClassSelection?.() || '娉曞笀';
+    const myClass = this.pendingMyClass || this._ctx.callbacks.getP2PClassSelection?.() || '法师';
     if (this.pendingMyClass) {
       this._networkManager?.sendClassPick(myClass, this.battleSeed);
     }
