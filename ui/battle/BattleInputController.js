@@ -94,14 +94,18 @@ export function initBattleInputController(ctx) {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
     const [hq, hr] = pixelToHex(mx, my);
+
     if (!isOnBoard(hq, hr)) {
       battleSession.setHoveredHex(null, null);
-    } else {
-      const hoverChar = getCharacterAtHex(hq, hr);
-      battleSession.setHoveredHex(hq, hr, hoverChar?.id);
+      battleSession.clearHoverEffectArea();
+      renderAll();
+      return;
     }
 
-    battleSession.clearTargetPreview();
+    const hoverChar = getCharacterAtHex(hq, hr);
+    battleSession.setHoveredHex(hq, hr, hoverChar?.id);
+    battleSession.clearHoverEffectArea();
+
     if (battleSession.selectedSkill || battleSession.viewingSkill) {
       const engine = getEngine();
       const sel = battleSession.selectedSkill || battleSession.viewingSkill;

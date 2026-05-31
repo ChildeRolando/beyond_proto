@@ -162,3 +162,37 @@ test('I5: Space executes only when valid', async ({ page }) => {
   // Canvas still visible
   await expect(page.locator('canvas#board')).toBeVisible();
 });
+
+// ─── I6: selected skill survives canvas hover (regression for clearTargetPreview bug) ───
+
+test('I6: selected skill survives canvas hover', async ({ page }) => {
+  await enterLocalBattle(page);
+
+  const canvas = page.locator('canvas#board');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+
+  // Select a character
+  await page.mouse.click(box.x + box.width / 2 - 100, box.y + box.height / 2);
+  await page.waitForTimeout(300);
+
+  // Click first available skill
+  const skillBtns = page.locator('#action-dock .skill-btn:not(.used)');
+  const count = await skillBtns.count();
+  if (count === 0) { test.skip(); return; }
+  await skillBtns.first().click();
+  await page.waitForTimeout(300);
+
+  // Target hint should appear (skill is selected)
+  const targetHint = page.locator('#action-dock .target-hint');
+  await expect(targetHint).toBeVisible();
+
+  // Move mouse over canvas — this must NOT deselect the skill
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(300);
+
+  // Skill must still be selected after hover
+  await expect(targetHint).toBeVisible();
+  await expect(page.locator('#action-dock .skill-btn')).not.toHaveCount(0);
+  await expect(page.locator('canvas#board')).toBeVisible();
+});

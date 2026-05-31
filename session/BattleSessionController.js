@@ -458,6 +458,10 @@ export class BattleSessionController {
     this.hoveredHex = null;
   }
 
+  clearHoverEffectArea() {
+    this.hoverEffectArea = [];
+  }
+
   resetSubmissions() {
     this.localSubmittedSet.clear();
     this.remoteSubmittedSet.clear();
