@@ -79,6 +79,8 @@ The important boundary is that config and network controllers do not import each
 
 ## Tests Run
 
+- `npm run test:e2e -- tests/architecture/code-quality-hygiene.spec.js`
+- `npm run test:e2e -- tests/architecture/render-view-boundary.spec.js`
 - `npm run test:e2e -- tests/architecture/config-network-session-split.spec.js`
 - `npm run test:e2e -- tests/e2e/config-session.spec.js`
 - `npm run test:e2e -- tests/e2e/network-session.spec.js`
@@ -88,7 +90,7 @@ The important boundary is that config and network controllers do not import each
 - `npm run test:e2e`
 - `npm test`
 
-All passed. Full Playwright suite size: 303 tests.
+All passed. Full Playwright suite size: 312 tests.
 
 ## Remaining Technical Debt
 
