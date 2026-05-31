@@ -275,6 +275,10 @@
   border-color: var(--cfg-gold); color: var(--cfg-gold);
   background: rgba(230,189,131,0.1);
 }
+.config-pool-skill-btn.equipped {
+  border-color: var(--cfg-gold); color: var(--cfg-gold);
+  background: rgba(230,189,131,0.1);
+}
 .config-pool-skill-btn.trait-btn { font-style: italic; }
 .config-cta-row {
   display: flex; align-items: center; justify-content: flex-end;

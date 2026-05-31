@@ -125,3 +125,28 @@ test('start battle works and back returns to start', async ({ page }) => {
   await expect(page.locator('#start-screen')).toBeVisible();
   await expect(page.locator('#config-screen')).not.toBeVisible();
 });
+
+// ─── Equipped skill highlight regression ───
+
+test('equipped class skills are highlighted in skill pool', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#btn-local').click();
+  await page.locator('#btn-toggle-loadout').click();
+  await page.waitForTimeout(200);
+
+  // Default mage loadout should have equipped skills highlighted
+  const equipped = page.locator('#skill-pool .config-pool-skill-btn.equipped');
+  const count = await equipped.count();
+  expect(count).toBeGreaterThan(0);
+});
+
+test('equipped role skills are highlighted in role skill pool', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#btn-local').click();
+  await page.locator('#btn-toggle-loadout').click();
+  await page.waitForTimeout(200);
+
+  const equipped = page.locator('#role-skill-pool .config-pool-skill-btn.equipped');
+  const count = await equipped.count();
+  expect(count).toBeGreaterThan(0);
+});

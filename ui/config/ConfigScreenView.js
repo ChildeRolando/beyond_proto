@@ -81,6 +81,8 @@ function renderLoadout(ctx) {
   const cfg = ctx.cfg;
   const validation = validateLoadout(cfg.class, cfg.loadoutSkillIds);
   const roleValidation = validateRoleLoadout(cfg.roleId, cfg.roleLoadoutSkillIds || []);
+  const classEquipped = new Set(cfg.loadoutSkillIds || []);
+  const roleEquipped = new Set(cfg.roleLoadoutSkillIds || []);
   document.getElementById('loadout-count').textContent =
     `职业 ${cfg.loadoutSkillIds.length}/${LOADOUT_SIZE} · 角色 ${(cfg.roleLoadoutSkillIds || []).length}/${ROLE_LOADOUT_SIZE}${validation.ok && roleValidation.ok ? '' : ' · 无效'}`;
   document.getElementById('config-skill-drawer').classList.toggle('open', ctx.configLoadoutOpen);
@@ -105,13 +107,17 @@ function renderLoadout(ctx) {
     if (skill.type === '角色' && !rolePool.includes(id)) return false;
     return true;
   });
-  document.getElementById('skill-pool').innerHTML = classPool.map(id => `
-    <button class="config-pool-skill-btn ${(ctx.selectedPoolType === 'class' && ctx.selectedPoolSkillId === id) ? 'selected' : ''}" data-skill="${id}" data-pool="class" title="${SKILLS[id].desc || ''}">${SKILLS[id].name}</button>
-  `).join('');
+  document.getElementById('skill-pool').innerHTML = classPool.map(id => {
+    const isEquipped = classEquipped.has(id);
+    const isSelected = ctx.selectedPoolType === 'class' && ctx.selectedPoolSkillId === id;
+    return `<button class="config-pool-skill-btn${isEquipped ? ' equipped' : ''}${isSelected ? ' selected' : ''}" data-skill="${id}" data-pool="class" title="${SKILLS[id].desc || ''}">${SKILLS[id].name}</button>`;
+  }).join('');
 
-  document.getElementById('role-skill-pool').innerHTML = rolePool.map(id => `
-    <button class="config-pool-skill-btn ${(ctx.selectedPoolType === 'role' && ctx.selectedPoolSkillId === id) ? 'selected' : ''} ${SKILLS[id].isTrait ? 'trait-btn' : ''}" data-skill="${id}" data-pool="role" title="${SKILLS[id].desc || ''}">${SKILLS[id].name}${SKILLS[id].isTrait ? ' <span class="config-trait-badge">被动</span>' : ''}</button>
-  `).join('');
+  document.getElementById('role-skill-pool').innerHTML = rolePool.map(id => {
+    const isEquipped = roleEquipped.has(id);
+    const isSelected = ctx.selectedPoolType === 'role' && ctx.selectedPoolSkillId === id;
+    return `<button class="config-pool-skill-btn${isEquipped ? ' equipped' : ''}${isSelected ? ' selected' : ''}${SKILLS[id].isTrait ? ' trait-btn' : ''}" data-skill="${id}" data-pool="role" title="${SKILLS[id].desc || ''}">${SKILLS[id].name}${SKILLS[id].isTrait ? ' <span class="config-trait-badge">被动</span>' : ''}</button>`;
+  }).join('');
 }
 
 function renderConfigFooter(ctx) {
