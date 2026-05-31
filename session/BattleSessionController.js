@@ -117,6 +117,16 @@ export class BattleSessionController {
     };
   }
 
+  getRenderViewState() {
+    return {
+      hoverEffectArea: this.hoverEffectArea.map(area => ({ ...area })),
+      validTargets: this.validTargets.map(target => ({ ...target })),
+      hoveredHex: this.hoveredHex ? [...this.hoveredHex] : null,
+      localSubmittedCharacterIds: [...this.localSubmittedSet],
+      remoteSubmittedCharacterIds: [...this.remoteSubmittedSet],
+    };
+  }
+
   getBattlePanelsContext(extra = {}) {
     const state = this.engine.getState();
     return {

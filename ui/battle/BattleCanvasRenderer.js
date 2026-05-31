@@ -26,6 +26,12 @@ export class BattleCanvasRenderer {
     const ctx = this.context;
     const { hexCenter, hexCorners, isOnBoard } = this.geometry;
     if (!engine || !ctx || !hexCenter || !hexCorners || !isOnBoard) return;
+    const renderView = this.battleSession.getRenderViewState() || {};
+    const hoverEffectArea = renderView.hoverEffectArea || [];
+    const validTargets = renderView.validTargets || [];
+    const hoveredHex = renderView.hoveredHex;
+    const localSubmittedCharacterIds = new Set(renderView.localSubmittedCharacterIds || []);
+    const remoteSubmittedCharacterIds = new Set(renderView.remoteSubmittedCharacterIds || []);
 
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -131,9 +137,9 @@ export class BattleCanvasRenderer {
         for (let i = 1; i < 6; i++) ctx.lineTo(corners[i][0], corners[i][1]);
         ctx.closePath();
 
-        const inEffectArea = this.battleSession.hoverEffectArea?.some(t => t.q === q && t.r === r);
-        const isValidTarget = this.battleSession.validTargets?.some(t => t.q === q && t.r === r);
-        const isHovered = this.battleSession.hoveredHex && this.battleSession.hoveredHex[0] === q && this.battleSession.hoveredHex[1] === r;
+        const inEffectArea = hoverEffectArea.some(t => t.q === q && t.r === r);
+        const isValidTarget = validTargets.some(t => t.q === q && t.r === r);
+        const isHovered = hoveredHex && hoveredHex[0] === q && hoveredHex[1] === r;
 
         if (inEffectArea) {
           ctx.fillStyle = `rgba(212,148,58,${0.32 + pulse * 0.12})`;
@@ -392,9 +398,9 @@ export class BattleCanvasRenderer {
 
     for (const c of engine.registry.characters()) {
       if (c.alive === false) continue;
-      if (this.battleSession.localSubmittedSet?.has(c.id) || this.battleSession.remoteSubmittedSet?.has(c.id)) {
+      if (localSubmittedCharacterIds.has(c.id) || remoteSubmittedCharacterIds.has(c.id)) {
         const [cx, cy] = hexCenter(c.position.q, c.position.r);
-        const isLocal = this.battleSession.localSubmittedSet.has(c.id);
+        const isLocal = localSubmittedCharacterIds.has(c.id);
         ctx.fillStyle = isLocal ? '#5a9e7e' : '#7b9fff';
         ctx.font = 'bold 20px sans-serif';
         ctx.textAlign = 'center';
