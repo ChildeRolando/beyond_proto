@@ -13,11 +13,6 @@ const cfgCtrlPath = resolve(__dirname, '../../session/ConfigSessionController.js
 let cfgSrc = '';
 try { cfgSrc = readFileSync(cfgCtrlPath, 'utf-8'); } catch (e) { /* file may not exist yet */ }
 
-// NOTE: AppRuntime wiring tests deferred to Phase 3 (after NetworkSessionController extraction).
-// ConfigSessionController and NetworkSessionController are co-dependent via
-// sendConfigUpdate/sendConfigLock/maybeStartP2PBattle, so both must be extracted together.
-// The positive tests below confirm ConfigSessionController.js has correct structure.
-
 // ─── Positive: ConfigSessionController.js exists and has correct structure ───
 
 test('session/ConfigSessionController.js exists', () => {

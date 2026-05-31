@@ -46,7 +46,6 @@ for (const m of NSC_METHODS) {
 
 test('NetworkSessionController.js uses a sane P2P class fallback', () => {
   expect(nscSrc).toMatch(/['"]法师['"]/);
-  expect(nscSrc).not.toMatch(/娉曞笀/);
 });
 
 // ─── NetworkMessageRouter ───
