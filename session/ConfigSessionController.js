@@ -106,7 +106,7 @@ export class ConfigSessionController {
   toggleLoadoutSkill(skillId, poolType) {
     const cfg = this.activeConfig();
     if (!this.isConfigEditable() || cfg.locked) return;
-    if (poolType === 'role') return this._toggleRoleLoadoutSkill(skillId);
+    if (poolType === 'role') { this._toggleRoleLoadoutSkill(skillId); this._renderAndSync(); return; }
     const existing = cfg.loadoutSkillIds.indexOf(skillId);
     if (existing >= 0) cfg.loadoutSkillIds.splice(existing, 1);
     else if (cfg.loadoutSkillIds.length < this._ctx.LOADOUT_SIZE) cfg.loadoutSkillIds.push(skillId);
