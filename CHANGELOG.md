@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-06-01 - 战斗界面角色头像
+
+- 配置界面角色立绘改为读取 `assets/character-portraits/icons/*.png`，与新裁切头像保持一致。
+- 对战界面 hex 地图单位图标从职业单字改为角色头像，优先按 `roleId` 读取头像图，缺图时回退到原职业字母。
+- 战斗头像增加缓存版本号，避免浏览器继续命中旧资源。
+- 新增 `tests/battle_canvas_renderer_test.js` 覆盖 hex 单位头像渲染路径。
+
 ## 2026-05-31 - Strong-agent architecture recovery
 
 - Split config ownership into `ConfigSessionController` and network/P2P ownership into `NetworkSessionController`.

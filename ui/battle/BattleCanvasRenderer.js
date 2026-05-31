@@ -1,13 +1,36 @@
 import { setCanvasSize } from '../../engine/HexMath.js';
 
 export class BattleCanvasRenderer {
-  constructor({ canvas, context, battleSession, getEngine, geometry, visualEffects }) {
+  constructor({ canvas, context, battleSession, getEngine, geometry, visualEffects, portraitCacheVersion = '3' }) {
     this.canvas = canvas;
     this.context = context;
     this.battleSession = battleSession;
     this.getEngine = getEngine;
     this.geometry = geometry;
     this.visualEffects = visualEffects;
+    this.portraitCacheVersion = portraitCacheVersion;
+    this.portraitImageCache = new Map();
+  }
+
+  getCharacterPortraitSrc(char) {
+    const roleId = char?.roleId;
+    if (!roleId) return null;
+    return `assets/character-portraits/icons/${roleId}.png?v=${this.portraitCacheVersion}`;
+  }
+
+  getCharacterPortraitImage(char) {
+    const roleId = char?.roleId;
+    const src = this.getCharacterPortraitSrc(char);
+    if (!roleId || !src || typeof Image === 'undefined') return null;
+    if (!this.portraitImageCache.has(roleId)) {
+      const img = new Image();
+      img.onload = () => {
+        if (typeof this.renderBoard === 'function') this.renderBoard();
+      };
+      img.src = src;
+      this.portraitImageCache.set(roleId, img);
+    }
+    return this.portraitImageCache.get(roleId);
   }
 
   resize() {
@@ -263,11 +286,22 @@ export class BattleCanvasRenderer {
         ctx.lineWidth = 2 + hitFlash * 3;
         ctx.stroke();
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 14px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(charLabel, cx, cy);
+        const portrait = this.getCharacterPortraitImage(e);
+        if (portrait && portrait.complete && portrait.naturalWidth > 0) {
+          const portraitSize = 32;
+          ctx.save?.();
+          ctx.beginPath();
+          ctx.arc(cx, cy, 16, 0, Math.PI * 2);
+          ctx.clip?.();
+          ctx.drawImage(portrait, cx - portraitSize / 2, cy - portraitSize / 2, portraitSize, portraitSize);
+          ctx.restore?.();
+        } else {
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 14px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(charLabel, cx, cy);
+        }
 
         const badge = e.ownerId === 'player1' ? '1P' : '2P';
         ctx.fillStyle = e.ownerId === 'player1' ? '#8b5cf6' : '#d4943a';

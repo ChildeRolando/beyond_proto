@@ -34,7 +34,7 @@ import {
 import { computeEffectArea } from '../ui/battle/EffectAreaCalculator.js';
 
 export function createAppRuntime() {
-  const PORTRAIT_CACHE_VERSION = '2';
+  const PORTRAIT_CACHE_VERSION = '3';
   const CLASSES = ['法师', '战士', '射手'];
 
   const getEl = (id) => document.getElementById(id);
@@ -235,6 +235,7 @@ export function createAppRuntime() {
     getEngine: () => battleSession.engine,
     geometry,
     visualEffects,
+    portraitCacheVersion: PORTRAIT_CACHE_VERSION,
   });
 
   startLobbyUi = initStartLobbyController({

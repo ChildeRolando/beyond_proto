@@ -16,7 +16,7 @@ import {
 // ─── Helpers ───
 
 function getRolePortrait(roleId, cacheVersion) {
-  return `assets/character-portraits/${roleId}.webp?v=${cacheVersion}`;
+  return `assets/character-portraits/icons/${roleId}.png?v=${cacheVersion}`;
 }
 
 // ─── Sub-renderers ───
