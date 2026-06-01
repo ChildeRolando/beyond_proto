@@ -406,6 +406,7 @@ canvas {
   line-height: 1.45;
   pointer-events: none;
   box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+  white-space: pre-line;
 }
 #skill-tooltip.visible { display: block; }
 #skill-tooltip strong {

@@ -183,6 +183,7 @@
   color: var(--text-dim);
   font-size: 11px;
   line-height: 1.35;
+  white-space: pre-line;
 }
 
 /* --- Galaxy action bar --- */
