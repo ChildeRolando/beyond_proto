@@ -723,7 +723,6 @@ export class BattleSessionController {
     }
     this._callbacks.setSubmitStatus('等待双方提交...');
     if (options.animateTurn) await options.animateTurn();
-    this.engine.projectileCalculator.clearKeyframes?.();
     this._callbacks.renderAll();
     this.startTurnTimeout();
     this.updateSubmitStatus(nm);
@@ -743,13 +742,14 @@ export class BattleSessionController {
     this.clearPlannedActions();
     this._callbacks.setExecuteDisabled(true);
 
+    await this._callbacks.animateTurn?.();
+
     if (result.battleEnded) {
       this._callbacks.renderAll();
       return result;
     }
 
     this._callbacks.setSubmitStatus('等待双方提交...');
-    // Note: animateTurn is in main.js (canvas rendering), called after this returns
     this._callbacks.renderAll();
     this.startTurnTimeout();
     this.updateSubmitStatus();

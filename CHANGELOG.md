@@ -1,5 +1,11 @@
 ﻿# Changelog
 
+## 2026-06-01 - 战斗回合动画恢复
+
+- 将 `animateTurn` 作为会话级回调注入 `BattleSessionController`，让本地回合和 PVE 回合都走同一条动画链路。
+- `executeLocalTurn()` 现在会先播放动画，再进入战斗结束分支或常规回合收尾，避免直接跳到结算态。
+- `AppRuntime.animateTurn()` 统一清理 `clearKeyframes()` 和 `clearAnimEvents()`，P2P 回合不再重复清理 keyframes。
+- 新增 `tests/battle_animation_flow_test.js` 覆盖本地回合、战斗结束回合、PVE 链路和回调注入。
 ## 2026-06-01 - 头像引用统一为 webp
 
 - 配置页中央主图和列表缩略图、战斗界面单位头像都改为读取 `assets/character-portraits/*.webp` 和 `assets/character-portraits/icons/*.webp`。
@@ -137,5 +143,3 @@
 - 鏂板 CHANGELOG.md (鏈枃浠?
 
 - 绉婚櫎 ARCHITECTURE.md / RETROSPECTIVE.md
-
-

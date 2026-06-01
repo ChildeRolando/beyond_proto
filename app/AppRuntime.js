@@ -181,6 +181,7 @@ export function createAppRuntime() {
     }
     await sleep(200);
     renderAll(-1, 0);
+    battleSession.engine.projectileCalculator.clearKeyframes?.();
     battleSession.engine.projectileCalculator.clearAnimEvents();
   }
 
@@ -200,6 +201,7 @@ export function createAppRuntime() {
     setRoute: (route) => routeController.setRoute(route),
     appendChatMessage: (sender, text) => chatController?.appendMessage(sender, text),
     resizeCanvas,
+    animateTurn,
   });
 
   configSession = new ConfigSessionController({
