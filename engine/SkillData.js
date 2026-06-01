@@ -12,7 +12,7 @@ export const SKILLS = {
       { cmd: 'APPLY_STATUS', status: 'SHIELD_ACTIVE', target: 'SELF' },
       { cmd: 'SET_FLAG', flag: 'pendingQi', value: true, target: 'SELF' },
     ],
-    desc: '技能概念：凝聚护盾并准备在回合结束时获得气。\n游戏作用：自身获得护盾状态；若本回合未受到有效伤害，回合结束时获得气。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：凝聚护盾并准备在回合结束时获得气。\n游戏作用：自身获得护盾状态；若本回合未受到有效伤害，回合结束时获得气。\n范围：自身；威力：无；速度：3；费用：无',
   },
 
   mage_blast: {
@@ -22,7 +22,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 1 },
       { cmd: 'ATTACK_PROJECTILE', power: 100 },
     ],
-    desc: '技能概念：向目标方向发射一枚气功弹。\n游戏作用：生成直线飞行弹体，射程无限，用于远距离打击目标。\n威力｜速度｜费用：威力：100；速度：1；费用：气1',
+    desc: '技能概念：向目标方向发射一枚气功弹。\n游戏作用：生成直线飞行弹体，射程无限，用于远距离打击目标。\n范围：99（无限）；威力：100；速度：1；费用：气1',
   },
 
   mage_small_blast: {
@@ -32,7 +32,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'ATTACK_PROJECTILE', power: 100 },
     ],
-    desc: '技能概念：向目标方向发射一枚短程气功弹。\n游戏作用：生成直线飞行弹体，射程5格。\n威力｜速度｜费用：威力：100；速度：2；费用：气3',
+    desc: '技能概念：向目标方向发射一枚短程气功弹。\n游戏作用：生成直线飞行弹体，射程5。\n范围：5；威力：100；速度：2；费用：气3',
   },
 
   mage_bigblast: {
@@ -42,7 +42,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'ATTACK_PROJECTILE', power: 300 },
     ],
-    desc: '技能概念：向目标方向发射一枚大型气功弹。\n游戏作用：生成直线飞行弹体，射程无限。\n威力｜速度｜费用：威力：300；速度：1；费用：气3',
+    desc: '技能概念：向目标方向发射一枚大型气功弹。\n游戏作用：生成直线飞行弹体，射程无限。\n范围：99（无限）；威力：300；速度：1；费用：气3',
   },
 
   mage_burst: {
@@ -60,7 +60,7 @@ export const SKILLS = {
       { cmd: 'ATTACK_PROJECTILE', power: 50 },
       { cmd: 'ATTACK_PROJECTILE', power: 50 },
     ],
-    desc: '技能概念：连续发射九枚小型气功弹。\n游戏作用：生成9枚直线飞行弹体，依次向目标方向飞行。\n威力｜速度｜费用：威力：50×9，总计450；速度：1；费用：气3',
+    desc: '技能概念：连续发射九枚小型气功弹。\n游戏作用：生成9枚直线飞行弹体，依次向目标方向飞行。\n范围：99（无限）；威力：50×9，总计450；速度：1；费用：气3',
   },
 
   mage_realm_sweep: {
@@ -70,7 +70,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 7 },
       { cmd: 'SPAWN_STATIONARY_AOE', power: 700, radius: 2 },
     ],
-    desc: '技能概念：以自身为中心释放大范围气功冲击。\n游戏作用：自身半径2内生成静止AOE弹体，对范围内所有敌人造成伤害。\n威力｜速度｜费用：威力：700；速度：1；费用：气7',
+    desc: '技能概念：以自身为中心释放大范围气功冲击。\n游戏作用：自身半径2范围内生成静止AOE弹体，对范围内所有敌人造成伤害。\n范围：半径2；威力：700；速度：1；费用：气7',
   },
 
   mage_buddha_palm: {
@@ -80,7 +80,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
       { cmd: 'SPAWN_STATIONARY_AOE', power: 300, radius: 1, includeCenter: true },
     ],
-    desc: '技能概念：在目标点召唤掌印形成静止AOE区域。\n游戏作用：目标点及相邻6格各生成1个静止弹体（共7个）。\n威力｜速度｜费用：威力：300（每个弹体）；速度：1；费用：气5',
+    desc: '技能概念：在目标点召唤掌印形成静止AOE区域。\n游戏作用：目标点及相邻6格各生成1个静止弹体（共7个）。\n范围：99（无限）；威力：300（每个弹体）；速度：1；费用：气5',
   },
 
   mage_teleport: {
@@ -91,7 +91,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 1 },
       { cmd: 'MOVE_TELEPORT', target: 'TARGET_POS' },
     ],
-    desc: '技能概念：瞬间移动到目标位置。\n游戏作用：传送至3格范围内未被敌人占据的位置。\n威力｜速度｜费用：威力：无；速度：2；费用：气1',
+    desc: '技能概念：瞬间移动到目标位置。\n游戏作用：传送至3范围内未被敌人占据的位置。\n范围：3；威力：无；速度：2；费用：气1',
   },
 
   mage_reactive: {
@@ -100,7 +100,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'SPAWN_STATIONARY_AOE', power: 'SHIELD_CURRENT', radius: 1, includeCenter: true },
     ],
-    desc: '技能概念：将当前护盾值转化为周围静止AOE伤害。\n游戏作用：自身及半径1内生成7个静止弹体，每个弹体威力等于当前护盾值。\n威力｜速度｜费用：威力：等于当前护盾值；速度：1；费用：无',
+    desc: '技能概念：将当前护盾值转化为周围静止AOE伤害。\n游戏作用：自身半径1范围内7格生成静止弹体，每个弹体威力等于当前护盾值。\n范围：半径1（自身中心）；威力：等于当前护盾值；速度：1；费用：无',
   },
 
   mage_shield_repair: {
@@ -110,7 +110,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'GAIN_RESOURCE', resource: 'shield', amount: 300 },
     ],
-    desc: '技能概念：消耗气恢复自身护盾。\n游戏作用：立即恢复300点护盾值。\n威力｜速度｜费用：威力：无；速度：1；费用：气3',
+    desc: '技能概念：消耗气恢复自身护盾。\n游戏作用：立即恢复300点护盾值。\n范围：自身；威力：无；速度：1；费用：气3',
   },
 
   mage_armor_breaker: {
@@ -120,7 +120,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 2 },
       { cmd: 'ATTACK_PROJECTILE', power: 0, flags: ['ARMOR_PIERCE', 'BREAK_ARMOR'] },
     ],
-    desc: '技能概念：发射一枚专门破除防御的气功针。\n游戏作用：生成直线飞行弹体，射程4格；弹体具有穿甲、碎盾、破格挡效果。\n威力｜速度｜费用：威力：0，附带穿甲破防；速度：1；费用：气2',
+    desc: '技能概念：发射一枚专门破除防御的气功针。\n游戏作用：生成直线飞行弹体，射程4；弹体具有碎盾、消除怒气效果。\n范围：4；威力：0；速度：1；费用：气2',
   },
 
   mage_jump: {
@@ -130,7 +130,7 @@ export const SKILLS = {
       { cmd: 'SET_FLAG', flag: 'jumpReturn', value: true, target: 'SELF' },
       { cmd: 'MOVE_TELEPORT', range: 1 },
     ],
-    desc: '技能概念：短距离瞬移并在回合结束时返回原位。\n游戏作用：瞬移至1格内位置；回合结束时自动返回移动前位置。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：短距离瞬移并在回合结束时返回原位。\n游戏作用：瞬移至1范围内位置；回合结束时自动返回移动前位置。\n范围：1；威力：无；速度：3；费用：无',
   },
 
   mage_sword_flight: {
@@ -140,7 +140,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'APPLY_STATUS', status: 'SWORD_FLIGHT', target: 'SELF', duration: -1, data: { direction: 'TOWARD_TARGET', remaining: 2, swordPower: 300, swordEnergy: 300 } },
     ],
-    desc: '技能概念：御剑向指定方向持续飞行移动。\n游戏作用：向目标方向持续移动2回合（永久状态）；撞击敌人造成300伤害（无视减伤）；剑体可吸收200伤害后被摧毁。\n威力｜速度｜费用：威力：撞击300（无视减伤）；速度：2；费用：气3',
+    desc: '技能概念：御剑向指定方向持续飞行移动。\n游戏作用：向目标方向持续移动2回合（永久状态）；撞击敌人造成300伤害（无视减伤）；剑体可吸收300伤害后被摧毁。\n范围：方向1；威力：撞击300（无视减伤）；速度：2；费用：气3',
   },
 
   mage_dimension_gate: {
@@ -150,7 +150,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'CREATE_GATE', target: 'TARGET_POS', orientation: 'HORIZONTAL' },
     ],
-    desc: '技能概念：在目标位置创建一扇次元传送门。\n游戏作用：目标格创建水平方向次元之门；一名角色穿越后门关闭。\n威力｜速度｜费用：威力：无；速度：1；费用：气3',
+    desc: '技能概念：在目标位置创建一扇次元传送门。\n游戏作用：目标格创建水平方向次元之门；一名角色穿越后门关闭。\n范围：3；威力：无；速度：1；费用：气3',
   },
 
   mage_breath_small: {
@@ -160,7 +160,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'GAIN_RESOURCE', resource: 'qi', amount: 5 },
     ],
-    desc: '技能概念：通过吐纳将少量气转化为更多气。\n游戏作用：消耗3气，获得5气，净增2气。\n威力｜速度｜费用：威力：无；速度：1；费用：气3（净增2）',
+    desc: '技能概念：通过吐纳将少量气转化为更多气。\n游戏作用：获得5气。\n范围：自身；威力：无；速度：1；费用：气3',
   },
 
   mage_breath_big: {
@@ -170,7 +170,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
       { cmd: 'GAIN_RESOURCE', resource: 'qi', amount: 8 },
     ],
-    desc: '技能概念：通过大周天吐纳将气转化为更多气。\n游戏作用：消耗5气，获得8气，净增3气。\n威力｜速度｜费用：威力：无；速度：1；费用：气5（净增3）',
+    desc: '技能概念：通过大周天吐纳将气转化为更多气。\n游戏作用：获得8气。\n范围：自身；威力：无；速度：1；费用：气5',
   },
 
   mage_breath_tide: {
@@ -180,7 +180,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
       { cmd: 'APPLY_STATUS', status: 'BREATH_TIDE', target: 'SELF', duration: -1 },
     ],
-    desc: '技能概念：激活永久气海潮汐状态，使后续气获得翻倍。\n游戏作用：获得永久气海潮汐状态（BREATH_TIDE）；此后所有气获得量翻倍。\n威力｜速度｜费用：威力：无；速度：1；费用：气5',
+    desc: '技能概念：激活永久气海潮汐状态，使后续气获得翻倍。\n游戏作用：获得永久气海潮汐状态（BREATH_TIDE）；此后所有气获得量翻倍。\n范围：自身；威力：无；速度：1；费用：气5',
   },
 
   mage_lion_roar: {
@@ -190,7 +190,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'SPAWN_STATIONARY_AOE', power: 300, radius: 1 },
     ],
-    desc: '技能概念：以自身为中心咆哮释放气功冲击。\n游戏作用：自身周围半径1格（不含中心）生成静止AOE弹体。\n威力｜速度｜费用：威力：300；速度：1；费用：气3',
+    desc: '技能概念：以自身为中心咆哮释放气功冲击。\n游戏作用：自身半径1范围内7格生成静止弹体。\n范围：半径1（自身中心）；威力：300；速度：1；费用：气3',
   },
 
   mage_double_cast: {
@@ -200,7 +200,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'APPLY_STATUS', status: 'MULTI_CAST_PENDING', target: 'SELF', duration: 1, data: { repeatCount: 2 } },
     ],
-    desc: '技能概念：准备下回合重复释放技能两次。\n游戏作用：获得二重咏唱状态（持续1回合）；下回合使用技能时自动重复释放1次（共2次）。\n威力｜速度｜费用：威力：无；速度：1；费用：气3',
+    desc: '技能概念：准备下回合重复释放技能两次。\n游戏作用：获得二重咏唱状态（持续1回合）；下回合使用技能时自动重复释放1次（共2次）。\n范围：自身；威力：无；速度：1；费用：气3',
   },
 
   mage_triple_cast: {
@@ -210,7 +210,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
       { cmd: 'APPLY_STATUS', status: 'MULTI_CAST_PENDING', target: 'SELF', duration: 1, data: { repeatCount: 3 } },
     ],
-    desc: '技能概念：准备下回合重复释放技能三次。\n游戏作用：获得三重咏唱状态（持续1回合）；下回合使用技能时自动重复释放2次（共3次）。\n威力｜速度｜费用：威力：无；速度：1；费用：气5',
+    desc: '技能概念：准备下回合重复释放技能三次。\n游戏作用：获得三重咏唱状态（持续1回合）；下回合使用技能时自动重复释放2次（共3次）。\n范围：自身；威力：无；速度：1；费用：气5',
   },
 
   mage_sword_hang: {
@@ -220,7 +220,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'APPLY_STATUS', status: 'SWORD_HANGING', target: 'SELF', duration: 1, data: { targetQ: 'TARGET_Q', targetR: 'TARGET_R' } },
     ],
-    desc: '技能概念：锁定目标位置召唤悬剑，下回合落剑造成即死。\n游戏作用：获得悬剑状态（持续1回合）；下回合自动对选中目标格落剑，命中即死。\n威力｜速度｜费用：威力：即死；速度：2；费用：气3',
+    desc: '技能概念：锁定目标位置召唤悬剑，下回合落剑造成即死。\n游戏作用：获得悬剑状态（持续1回合）；下回合自动对选中目标格落剑，命中即死。\n范围：99（无限）；威力：即死；速度：2；费用：气3',
   },
 
   mage_galaxy: {
@@ -230,7 +230,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
       { cmd: 'GALAXY_SUBTURN', repeatCount: 3 },
     ],
-    desc: '技能概念：创造额外三个子回合在同一结算阶段执行。\n游戏作用：获得3个额外子回合；所有子回合与本回合在同一结算阶段按顺序依次结算。\n威力｜速度｜费用：威力：无；速度：2；费用：气5',
+    desc: '技能概念：创造额外三个子回合在同一结算阶段执行。\n游戏作用：获得3个额外子回合；所有子回合与本回合在同一结算阶段按顺序依次结算。\n范围：自身；威力：无；速度：2；费用：气5',
   },
 
   mage_formation: {
@@ -240,7 +240,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'CREATE_FORMATION', energy: 300, talismans: [] },
     ],
-    desc: '技能概念：在目标位置创建防御阵法保护友方。\n游戏作用：目标格及半径1格设为阵法区域；阵法能量300，吸收范围内友方受到的伤害；阵眼被击中时阵法破灭。\n威力｜速度｜费用：威力：无；速度：1；费用：气3',
+    desc: '技能概念：在目标位置创建防御阵法保护友方。\n游戏作用：目标格及半径1范围内设为阵法区域；阵法能量300，吸收范围内友方受到的伤害；阵眼被击中时阵法破灭。\n范围：5；威力：无；速度：1；费用：气3',
   },
 
   mage_dimension_slash: {
@@ -250,7 +250,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 10 },
       { cmd: 'ATTACK_LINE', power: 1000 },
     ],
-    desc: '技能概念：释放贯穿次元的直线斩击。\n游戏作用：生成直线攻击，对路径上所有单位造成伤害；可在次元中生效。\n威力｜速度｜费用：威力：1000；速度：2；费用：气10',
+    desc: '技能概念：释放贯穿次元的直线斩击。\n游戏作用：生成直线攻击，对路径上所有单位造成伤害；可在次元中生效。\n范围：8；威力：1000；速度：2；费用：气10',
   },
 
   // =========================================================================
@@ -263,7 +263,7 @@ export const SKILLS = {
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 2 },
       { cmd: 'SET_FLAG', flag: 'usedRage', value: true, target: 'SELF' },
     ],
-    desc: '技能概念：凝聚怒气，本回合放弃攻击。\n游戏作用：获得2点怒气；设置本回合已使用怒气标记，本回合不能再使用攻击技能。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：凝聚怒气。\n游戏作用：获得2点怒气。\n范围：自身；威力：无；速度：3；费用：无',
   },
 
   warrior_move: {
@@ -272,7 +272,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'MOVE_WALK', target: 'TARGET_POS' },
     ],
-    desc: '技能概念：向目标位置步行移动一格。\n游戏作用：移动至1格内相邻位置（可走斜线）。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：向目标位置步行移动一格。\n游戏作用：移动至1范围内相邻位置。\n范围：1；威力：无；速度：3；费用：无',
   },
 
   warrior_slash: {
@@ -282,7 +282,7 @@ export const SKILLS = {
       { cmd: 'ATTACK_MELEE', power: 100, range: 1 },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '技能概念：对相邻目标进行近距离斩击。\n游戏作用：对1格范围内目标造成近战伤害；命中时获得1点怒气。\n威力｜速度｜费用：威力：100；速度：1；费用：无',
+    desc: '技能概念：对相邻目标进行近距离斩击。\n游戏作用：对1范围内目标造成近战伤害；命中时获得1点怒气。\n范围：1；威力：100；速度：1；费用：无',
   },
 
   warrior_dash: {
@@ -293,7 +293,7 @@ export const SKILLS = {
       { cmd: 'WINDSTEP_SLASH', power: 100, radius: 1 },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '技能概念：冲刺至目标旁并自动斩击周围敌人。\n游戏作用：位移至目标相邻格；终点半径1内自动斩击（优先角色，其次弹体）；命中时获得1点怒气。\n威力｜速度｜费用：威力：100；速度：1；费用：怒气1',
+    desc: '技能概念：冲刺至目标旁并自动斩击周围敌人。\n游戏作用：位移至目标相邻格；终点半径1范围内自动斩击（优先角色，其次弹体）；命中时获得1点怒气。\n范围：1；威力：100；速度：1；费用：怒气1',
   },
 
   warrior_sheathe: {
@@ -302,7 +302,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SHEATHED', target: 'SELF' },
     ],
-    desc: '技能概念：进入纳刀反击架势。\n游戏作用：获得纳刀状态；自动反击进入范围的弹体或敌人，反击威力300。\n威力｜速度｜费用：威力：反击300；速度：3；费用：无',
+    desc: '技能概念：进入纳刀反击架势。\n游戏作用：获得纳刀状态；自动反击进入范围的弹体或敌人仅一次，反击威力300。\n范围：自身；威力：反击300；速度：3；费用：无',
   },
 
   warrior_feint: {
@@ -315,7 +315,7 @@ export const SKILLS = {
       { cmd: 'ATTACK_MELEE', power: 100, range: 1, origin: 'NEW_POS', subSpeed: 0 },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '技能概念：向后闪避后向前突进并斩击。\n游戏作用：先背离目标退1格，再向目标方向冲2格，最后在新位置近战斩击；命中时获得1点怒气。\n威力｜速度｜费用：威力：100；速度：2；费用：怒气1',
+    desc: '技能概念：向目标方向进行折返冲刺并斩击路径敌人。\n游戏作用：2速阶段背离目标退1格，0速阶段向目标方向冲刺2格，斩击冲刺路径上所有敌人；命中时获得1点怒气。\n范围：1；威力：100（路径AOE）；速度：2；费用：怒气1',
   },
 
   warrior_swallow: {
@@ -327,7 +327,7 @@ export const SKILLS = {
       { cmd: 'MOVE_DASH', direction: 'AWAY_FROM_TARGET', distance: 1 },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '技能概念：斩击后向后跳跃拉开距离。\n游戏作用：对目标造成近战伤害后自动后跳1格；命中时获得1点怒气。\n威力｜速度｜费用：威力：100；速度：1；费用：怒气1',
+    desc: '技能概念：斩击后向后跳跃拉开距离。\n游戏作用：对目标造成近战伤害后后跳1格；命中时获得1点怒气。\n范围：1；威力：100；速度：1；费用：怒气1',
   },
 
   warrior_iaido: {
@@ -338,7 +338,7 @@ export const SKILLS = {
       { cmd: 'ATTACK_MELEE', power: 100, range: 1, consumeSheathed: true },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '技能概念：以纳刀状态为前置的强化居合斩。\n游戏作用：若处于纳刀状态则消耗纳刀状态，范围扩展至2格且费用变为0；否则范围1格。命中时获得1点怒气。\n威力｜速度｜费用：威力：100；速度：2；费用：怒气3（纳刀状态下费用：无）',
+    desc: '技能概念：以纳刀状态为前置的强化居合斩。\n游戏作用：若处于纳刀状态则消耗纳刀状态，范围扩展至2且费用变为0；否则范围1。命中时获得1点怒气。\n范围：2（纳刀）/1；威力：100；速度：2；费用：怒气3',
   },
 
   warrior_hook: {
@@ -348,7 +348,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 2 },
       { cmd: 'MOVE_PULL', target: 'FAN_AREA' },
     ],
-    desc: '技能概念：将扇形区域内的敌人拉向自己。\n游戏作用：将前方扇形3格范围内敌人拉向自身；扇形宽度随距离递增（第1排1格宽，第2排2格宽，第3排3格宽）。\n威力｜速度｜费用：威力：无；速度：2；费用：怒气2',
+    desc: '技能概念：将扇形区域内的敌人拉向自己。\n游戏作用：将前方扇形3范围内敌人拉到自身身前一格。\n范围：扇形3；威力：无；速度：2；费用：怒气2',
   },
 
   warrior_lock: {
@@ -358,7 +358,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 2 },
       { cmd: 'APPLY_STATUS', status: 'LOCKED', target: 'TARGET', duration: -1 },
     ],
-    desc: '技能概念：锁定目标使其无法移动和穿越次元。\n游戏作用：对6格内目标施加锁定状态（永久）；锁定期间目标定身且禁止穿越次元；被击中后锁定移除。\n威力｜速度｜费用：威力：无；速度：1；费用：怒气2',
+    desc: '技能概念：锁定目标使其无法移动和穿越次元。\n游戏作用：对6范围内目标施加锁定状态（永久）；锁定期间目标定身且禁止穿越次元；被击中后锁定移除。\n范围：6；威力：无；速度：1；费用：怒气2',
   },
 
   warrior_blink_strike: {
@@ -370,7 +370,7 @@ export const SKILLS = {
       { cmd: 'ATTACK_MELEE', power: 100, range: 1, origin: 'NEW_POS' },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '技能概念：瞬间闪现到目标背后进行斩击。\n游戏作用：传送至5格内目标背后位置，然后进行近战斩击；命中时获得1点怒气。\n威力｜速度｜费用：威力：100；速度：1；费用：怒气3',
+    desc: '技能概念：瞬间闪现到目标背后进行斩击。\n游戏作用：传送至5范围内目标背后位置，然后进行近战斩击；命中时获得1点怒气。\n范围：5；威力：100；速度：1；费用：怒气3',
   },
 
   warrior_flash: {
@@ -381,17 +381,17 @@ export const SKILLS = {
       { cmd: 'MOVE_DASH', direction: 'TOWARD_TARGET', distance: 2 },
       { cmd: 'ATTACK_AOE_PATH', power: 100 },
     ],
-    desc: '技能概念：向指定方向冲刺并对路径上敌人造成伤害。\n游戏作用：向目标方向冲刺2格，对路径上所有敌人造成AOE伤害。\n威力｜速度｜费用：威力：100（路径AOE）；速度：2；费用：怒气3',
+    desc: '技能概念：向指定方向冲刺并对路径上敌人造成伤害。\n游戏作用：向目标方向冲刺2格，对路径上所有敌人造成AOE伤害。\n范围：方向2；威力：100（路径AOE）；速度：2；费用：怒气3',
   },
 
   warrior_meteor: {
     id: 'warrior_meteor', name: '大荒星陨', icon: 'assets/skill-icons/warrior/warrior_meteor.png', class: '战士', type: '攻击',
-    cost: { rage: 7 }, speed: 1, targeting: { shape: 'HEX', range: 8 },
+    cost: { rage: 7 }, speed: 2, targeting: { shape: 'HEX', range: 8 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 7 },
       { cmd: 'APPLY_STATUS', status: 'METEOR_ASCENDING', target: 'SELF', duration: 1, data: { targetQ: 'TARGET_Q', targetR: 'TARGET_R' } },
     ],
-    desc: '技能概念：升入空中进入无敌状态，下回合坠落造成范围伤害。\n游戏作用：获得陨星升空状态（持续1回合，升空期间无敌）；下回合自动在目标格坠落并造成AOE伤害。\n威力｜速度｜费用：威力：坠落AOE 500；速度：1；费用：怒气7',
+    desc: '技能概念：升入空中进入无敌状态，下回合坠落造成范围伤害。\n游戏作用：获得陨星升空状态（持续1回合，升空期间无敌）；下回合2速阶段自动在目标格坠落并造成AOE伤害。\n范围：8；威力：坠落AOE 500；速度：2；费用：怒气7',
   },
 
   warrior_meteor_resolve: {
@@ -400,7 +400,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS' },
     ],
-    desc: '技能概念：陨星坠落自动结算，对落点周围造成AOE伤害。\n游戏作用：在陨星标记位置坠落，对半径1格内敌人造成500伤害。此技能由系统自动执行，不可主动选择。\n威力｜速度｜费用：威力：500（AOE半径1）；速度：2；费用：无',
+    desc: '技能概念：陨星坠落自动结算，对落点周围造成AOE伤害。\n游戏作用：在陨星标记位置坠落，对半径1范围内敌人造成500伤害。此技能由系统自动执行，不可主动选择。\n范围：自身；威力：500（AOE半径1）；速度：2；费用：无',
   },
 
   warrior_formation_break: {
@@ -409,7 +409,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'BREAK_FORMATION' },
     ],
-    desc: '技能概念：站在阵眼处直接破解敌方阵法。\n游戏作用：若自身站在敌方阵法的阵眼上，直接摧毁该阵法。\n威力｜速度｜费用：威力：无；速度：1；费用：无',
+    desc: '技能概念：站在阵眼处直接破解敌方阵法。\n游戏作用：若自身站在敌方阵法的阵眼上，直接摧毁该阵法。\n范围：自身；威力：无；速度：1；费用：无',
   },
 
   warrior_realm_sweep: {
@@ -419,7 +419,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 7 },
       { cmd: 'SPAWN_STATIONARY_AOE', power: 700, radius: 2 },
     ],
-    desc: '技能概念：以自身为中心释放大范围怒气爆发。\n游戏作用：自身半径2内生成静止AOE弹体，对范围内所有敌人造成伤害。\n威力｜速度｜费用：威力：700；速度：1；费用：怒气7',
+    desc: '技能概念：以自身为中心释放大范围怒气爆发。\n游戏作用：自身半径2范围内生成静止AOE弹体，对范围内所有敌人造成伤害。\n范围：半径2；威力：700；速度：1；费用：怒气7',
   },
 
   warrior_dimension_slash: {
@@ -429,7 +429,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 10 },
       { cmd: 'ATTACK_LINE', power: 1000 },
     ],
-    desc: '技能概念：释放贯穿次元的直线斩击。\n游戏作用：生成直线攻击，对路径上所有单位造成伤害；可在次元中生效。\n威力｜速度｜费用：威力：1000；速度：2；费用：怒气10',
+    desc: '技能概念：释放贯穿次元的直线斩击。\n游戏作用：生成直线攻击，对路径上所有单位造成伤害；可在次元中生效。\n范围：8；威力：1000；速度：2；费用：怒气10',
   },
 
   // =========================================================================
@@ -442,16 +442,16 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 1 },
       { cmd: 'ATTACK_PROJECTILE', power: 100, flags: ['CASING_DROP'] },
     ],
-    desc: '技能概念：使用枪械进行标准远程射击。\n游戏作用：生成直线飞行弹体，射程6格；弹壳掉落在自身周围。\n威力｜速度｜费用：威力：100；速度：1；费用：弹药1',
+    desc: '技能概念：使用枪械进行标准远程射击。\n游戏作用：生成直线飞行弹体，射程6；弹壳掉落在自身格。\n范围：6；威力：100；速度：1；费用：弹药1',
   },
 
   shooter_reload: {
-    id: 'shooter_reload', name: '上子弹', icon: 'assets/skill-icons/shooter/shooter_reload.png', class: '射手', type: '特殊',
+    id: 'shooter_reload', name: '上膛', icon: 'assets/skill-icons/shooter/shooter_reload.png', class: '射手', type: '特殊',
     cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'RELOAD_AMMO' },
     ],
-    desc: '技能概念：从背包弹药转移至当前弹匣。\n游戏作用：将背包中的弹药填充至当前弹药槽（当前弹药上限6）；填充量取决于背包弹药数量。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：从背包弹药转移至弹匣。\n游戏作用：将背包中的弹药尽可能填充至弹匣。\n范围：自身；威力：无；速度：3；费用：无',
   },
 
   shooter_roll: {
@@ -461,7 +461,7 @@ export const SKILLS = {
       { cmd: 'MOVE_TELEPORT', target: 'TARGET_POS' },
       { cmd: 'COLLECT_CASINGS', area: 'ADJACENT' },
     ],
-    desc: '技能概念：翻滚位移并收集周围弹壳。\n游戏作用：传送至2格范围内位置；自动捡起新位置周围相邻格的弹壳。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：翻滚位移并收集周围弹壳。\n游戏作用：移动至2范围内位置；捡起新位置及相邻格的所有弹壳。\n范围：2；威力：无；速度：3；费用：无',
   },
 
   shooter_bell: {
@@ -472,7 +472,7 @@ export const SKILLS = {
       { cmd: 'DELAYED_SKILL', resolveInTurns: 1, skillId: 'shooter_bell_resolve' },
       { cmd: 'APPLY_STATUS', status: 'BELL_PENDING', target: 'SELF', duration: 1 },
     ],
-    desc: '技能概念：消耗全部弹药设置延迟火力压制。\n游戏作用：消耗当前所有弹药；获得丧钟待发状态（持续1回合）；下回合自动对目标射出必中弹体，弹体数量取决于消耗的弹药量。\n威力｜速度｜费用：威力：100×消耗弹药数；速度：1；费用：消耗全部弹药',
+    desc: '技能概念：消耗全部弹药设置延迟火力压制。\n游戏作用：消耗当前所有弹药；获得丧钟待发状态（持续1回合）；下回合自动对目标射出必中弹体，弹体数量等同于消耗的弹药量。\n范围：6；威力：100×消耗弹药数；速度：1；费用：消耗全部弹药',
   },
 
   shooter_aim: {
@@ -481,7 +481,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SPEED_BOOST', target: 'SELF', duration: 1 },
     ],
-    desc: '技能概念：专注瞄准，下回合提升先手速度。\n游戏作用：获得速度提升状态（持续1回合）；下回合速度+1。\n威力｜速度｜费用：威力：无；速度：1；费用：无',
+    desc: '技能概念：专注瞄准，下回合提升先手速度。\n游戏作用：获得速度提升状态（持续1回合）；下回合速度+1。\n范围：自身；威力：无；速度：1；费用：无',
   },
 
   shooter_predict: {
@@ -490,7 +490,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SURE_HIT', target: 'TARGET', duration: 1 },
     ],
-    desc: '技能概念：预判目标行动，确保下回合命中。\n游戏作用：对6格内目标施加必中标记（持续1回合）；下回合对该目标的攻击必定命中。\n威力｜速度｜费用：威力：无；速度：1；费用：无',
+    desc: '技能概念：预判目标行动，确保下回合命中。\n游戏作用：对6范围内目标施加必中标记（持续1回合）；下回合对该目标的攻击必定命中。\n范围：6；威力：无；速度：1；费用：无',
   },
 
   shooter_hook: {
@@ -501,7 +501,7 @@ export const SKILLS = {
       { cmd: 'MOVE_GRAPNEL' },
       { cmd: 'COLLECT_CASINGS', area: 'PATH' },
     ],
-    desc: '技能概念：发射钩锁将自己拉向目标位置并收集弹壳。\n游戏作用：钩锁拉向5格内目标位置；沿路径收集弹壳。\n威力｜速度｜费用：威力：无；速度：2；费用：弹药1',
+    desc: '技能概念：发射钩锁将自己拉向目标位置并收集弹壳。\n游戏作用：钩锁拉向5范围内目标位置；沿路径收集弹壳。\n范围：5；威力：无；速度：2；费用：弹药1',
   },
 
   shooter_slow_shot: {
@@ -512,7 +512,7 @@ export const SKILLS = {
       { cmd: 'ATTACK_PROJECTILE', power: 100, flags: ['CASING_DROP'] },
       { cmd: 'APPLY_STATUS', status: 'ROOTED', target: 'TARGET', duration: 2 },
     ],
-    desc: '技能概念：射击命中后使目标定身。\n游戏作用：生成直线飞行弹体，射程6格；命中后对目标施加定身状态（持续2回合）；弹壳掉落。\n威力｜速度｜费用：威力：100；速度：1；费用：弹药2',
+    desc: '技能概念：射击命中后使目标定身。\n游戏作用：生成直线飞行弹体，射程6；命中后对目标施加定身状态（持续2回合）；弹壳掉落。\n范围：6；威力：100；速度：1；费用：弹药2',
   },
 
   shooter_armor_pierce: {
@@ -522,7 +522,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 2 },
       { cmd: 'ATTACK_PROJECTILE', power: 100, flags: ['CASING_DROP', 'ARMOR_PIERCE'] },
     ],
-    desc: '技能概念：发射穿甲弹无视护盾和格挡。\n游戏作用：生成直线飞行弹体，射程6格；弹体具有穿甲效果（穿透护盾、格挡、防御阵符）；弹壳掉落。\n威力｜速度｜费用：威力：100（穿甲）；速度：1；费用：弹药2',
+    desc: '技能概念：发射穿甲弹无视护盾和格挡。\n游戏作用：生成直线飞行弹体，射程6；弹体具有穿甲效果（穿透护盾、格挡、防御阵符）；弹壳掉落。\n范围：6；威力：100（穿甲）；速度：1；费用：弹药2',
   },
 
   shooter_cover_fire: {
@@ -532,7 +532,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 3 },
       { cmd: 'APPLY_STATUS', status: 'COVERING_FIRE', target: 'SELF', duration: 1 },
     ],
-    desc: '技能概念：为友方提供掩护射击，拦截来袭攻击并还击。\n游戏作用：获得掩护射击状态（持续1回合）；友方受击时自动拦截300伤害并对攻击者还击100伤害。\n威力｜速度｜费用：威力：拦截300/还击100；速度：3；费用：弹药3',
+    desc: '技能概念：为友方提供掩护射击，拦截来袭攻击并还击。\n游戏作用：获得掩护射击状态（持续1回合）；友方受击时自动拦截300伤害并对攻击者还击100伤害。\n范围：自身；威力：拦截300/还击100；速度：3；费用：弹药3',
   },
 
   shooter_gun_dance: {
@@ -545,7 +545,7 @@ export const SKILLS = {
       { cmd: 'SPAWN_STATIONARY_AOE', power: 100, radius: 2, dropCasing: true },
       { cmd: 'SPAWN_STATIONARY_AOE', power: 100, radius: 2, dropCasing: true },
     ],
-    desc: '技能概念：向四周快速四连射击。\n游戏作用：自身半径2格内连续生成4波静止AOE弹体，每波掉落1个弹壳。\n威力｜速度｜费用：威力：100×4，总计400；速度：1；费用：弹药4',
+    desc: '技能概念：向四周快速四连射击。\n游戏作用：自身半径2范围内连续生成4波静止AOE弹体，每波掉落1个弹壳。\n范围：半径2；威力：100×4，总计400；速度：1；费用：弹药4',
   },
 
   shooter_bell_resolve: {
@@ -554,7 +554,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'ATTACK_PROJECTILE', power: 100, flags: ['CASING_DROP'] },
     ],
-    desc: '技能概念：丧钟延迟射击的自动结算弹体。\n游戏作用：对丧钟标记目标射出必中弹体；弹体数量取决于丧钟消耗的弹药量（每发消耗的弹药产生一发弹体）。此技能由丧钟自动触发，不可主动选择。\n威力｜速度｜费用：威力：100（每发）；速度：2；费用：无',
+    desc: '技能概念：丧钟延迟射击的自动结算弹体。\n游戏作用：对丧钟标记目标射出必中弹体；弹体数量取决于丧钟消耗的弹药量（每发消耗的弹药产生一发弹体）。此技能由丧钟自动触发，不可主动选择。\n范围：6；威力：100（每发）；速度：2；费用：无',
   },
 
   shooter_causality: {
@@ -564,7 +564,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 6 },
       { cmd: 'ATTACK_PROJECTILE', power: 1000, flags: ['ARMOR_PIERCE', 'CASING_DROP'] },
     ],
-    desc: '技能概念：发射一枚因果律子弹，穿透一切防御。\n游戏作用：生成直线飞行弹体，射程10格；具备穿甲效果，可在次元中造成伤害；弹壳掉落。\n威力｜速度｜费用：威力：1000（穿甲）；速度：1；费用：弹药6',
+    desc: '技能概念：发射一枚因果律子弹，穿透一切防御。\n游戏作用：生成直线飞行弹体，射程10；具备穿甲效果，可在次元中造成伤害；弹壳掉落。\n范围：10；威力：1000（穿甲）；速度：1；费用：弹药6',
   },
 
   shooter_iaido: {
@@ -574,7 +574,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 2 },
       { cmd: 'ATTACK_PROJECTILE', power: 100, flags: ['CASING_DROP'] },
     ],
-    desc: '技能概念：快速拔枪射击。\n游戏作用：生成直线飞行弹体，射程6格；弹壳掉落。\n威力｜速度｜费用：威力：100；速度：2；费用：弹药2',
+    desc: '技能概念：快速拔枪射击。\n游戏作用：生成直线飞行弹体，射程6；弹壳掉落。\n范围：6；威力：100；速度：2；费用：弹药2',
   },
 
     // =========================================================================
@@ -586,7 +586,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '角色技能暂未实装：折返跃迁' },
     ],
-    desc: '技能概念：消耗次元token进行次元穿越并返回。\n游戏作用：消耗1个次元token，穿越次元并在下回合结束阶段返回原位（机制暂未实装）。\n威力｜速度｜费用：威力：无；速度：3；费用：次元token×1',
+    desc: '技能概念：消耗次元token进行次元穿越并返回。\n游戏作用：消耗1个次元token，穿越次元并在下回合结束阶段返回原位（机制暂未实装）。\n范围：自身；威力：无；速度：3；费用：次元token×1',
   },
   role_mirror_phase_sync: {
     id: 'role_mirror_phase_sync', name: '相位同调', class: '法师', type: '角色',
@@ -594,7 +594,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '角色技能暂未实装：相位同调' },
     ],
-    desc: '技能概念：消耗次元token使本回合攻击在另一维度发出。\n游戏作用：消耗2个次元token，本回合攻击将在另一个次元中发出（机制暂未实装）。\n威力｜速度｜费用：威力：无；速度：3；费用：次元token×2',
+    desc: '技能概念：消耗次元token使本回合攻击在另一维度发出。\n游戏作用：消耗2个次元token，本回合攻击将在另一个次元中发出（机制暂未实装）。\n范围：自身；威力：无；速度：3；费用：次元token×2',
   },
   role_stargazer_orbit: {
     id: 'role_stargazer_orbit', name: '星轨预读', class: '法师', type: '角色',
@@ -602,7 +602,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '角色技能暂未实装：星轨预读' },
     ],
-    desc: '技能概念：占位角色技能，暂未实装。\n游戏作用：机制占位，当前无实际效果（星轨预读暂未实装）。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：占位角色技能，暂未实装。\n游戏作用：机制占位，当前无实际效果（星轨预读暂未实装）。\n范围：自身；威力：无；速度：3；费用：无',
   },
   role_gatekeeper_anchor: {
     id: 'role_gatekeeper_anchor', name: '门锚', class: '法师', type: '角色',
@@ -610,7 +610,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '角色技能暂未实装：门锚' },
     ],
-    desc: '技能概念：占位角色技能，暂未实装。\n游戏作用：机制占位，当前无实际效果（门锚暂未实装）。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：占位角色技能，暂未实装。\n游戏作用：机制占位，当前无实际效果（门锚暂未实装）。\n范围：自身；威力：无；速度：3；费用：无',
   },
 
   role_jimmy_marrow_wine: {
@@ -619,7 +619,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'MARROW_UPGRADE' },
     ],
-    desc: '技能概念：饮用洗髓酒永久提升自身洗髓层数。\n游戏作用：增加JIMMY_MARROW层数；层数越高后续饮酒费用越高；依次获得5层强化（怒+1/攻击距离+1/移动视为灵巧/怒+1/威力+100）。\n威力｜速度｜费用：威力：无；速度：1；费用：怒气按层数递增，3/4/4/5/5',
+    desc: '技能概念：饮用洗髓酒永久提升自身洗髓层数。\n游戏作用：增加JIMMY_MARROW层数；层数越高后续饮酒费用越高；依次获得5层强化（怒+1/攻击距离+1/移动视为灵巧/怒+1/威力+100）。\n范围：自身；威力：无；速度：1；费用：怒气按层数递增，3/4/4/5/5',
   },
   role_duelist_windstep: {
     id: 'role_duelist_windstep', name: '逐风步', icon: 'assets/skill-icons/role/role_duelist_windstep.png', class: '战士', type: '角色',
@@ -629,7 +629,7 @@ export const SKILLS = {
       { cmd: 'WINDSTEP_SLASH', power: 100, radius: 1 },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '技能概念：以逐风步快速位移并斩击周围敌人。\n游戏作用：位移2格至目标位置；终点半径1内自动斩击（优先角色，其次弹体）；命中时获得1点怒气。冷却3回合。\n威力｜速度｜费用：威力：100；速度：1；费用：怒气1',
+    desc: '技能概念：以逐风步快速位移并斩击周围敌人。\n游戏作用：位移2格至目标位置；终点半径1范围内自动斩击（优先角色，其次弹体）；命中时获得1点怒气。冷却3回合。\n范围：2；威力：100；速度：1；费用：怒气1',
   },
   role_vanguard_breakline: {
     id: 'role_vanguard_breakline', name: '破阵线', class: '战士', type: '角色',
@@ -637,7 +637,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '角色技能暂未实装：破阵线' },
     ],
-    desc: '技能概念：占位角色技能，暂未实装。\n游戏作用：机制占位，当前无实际效果（破阵线暂未实装）。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：占位角色技能，暂未实装。\n游戏作用：机制占位，当前无实际效果（破阵线暂未实装）。\n范围：自身；威力：无；速度：3；费用：无',
   },
 
   role_gunfighter_quick_action: {
@@ -646,7 +646,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '灵巧行动是枪侠被动特质，不作为主动技能提交' },
     ],
-    desc: '技能概念：枪侠被动特性——每回合额外灵巧行动。\n游戏作用：每回合主行动后可额外提交一个费用为0的行动。此技能为被动特质标记，不可主动选择。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：枪侠被动特性——每回合额外灵巧行动。\n游戏作用：每回合主行动后可额外提交一个费用为0的行动。此技能为被动特质标记，不可主动选择。\n范围：自身；威力：无；速度：3；费用：无',
   },
   role_helldiver_supply_drop: {
     id: 'role_helldiver_supply_drop', name: '呼叫补给', icon: 'assets/skill-icons/role/role_helldiver_supply_drop.png', class: '射手', type: '角色',
@@ -654,7 +654,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'DROP_SUPPLY_CRATE' },
     ],
-    desc: '技能概念：呼叫空投补给箱到目标位置。\n游戏作用：目标格空投降落补给箱；角色移至该格可拾取，背包弹药+3。冷却6回合。\n威力｜速度｜费用：威力：无；速度：1；费用：无',
+    desc: '技能概念：呼叫空投补给箱到目标位置。\n游戏作用：目标格空投降落补给箱；角色移至该格可拾取，背包弹药+3。冷却6回合。\n范围：6；威力：无；速度：1；费用：无',
   },
   role_helldiver_bombardment: {
     id: 'role_helldiver_bombardment', name: '呼叫轰炸', icon: 'assets/skill-icons/role/role_helldiver_supply_drop.png', class: '射手', type: '角色',
@@ -663,7 +663,7 @@ export const SKILLS = {
       { cmd: 'DELAYED_SKILL', resolveInTurns: 1, skillId: 'role_helldiver_bombardment_resolve' },
       { cmd: 'APPLY_STATUS', status: 'BOMBARDMENT_PENDING', target: 'SELF', duration: 1 },
     ],
-    desc: '技能概念：呼叫延迟轰炸，下回合对目标位置发射弹体。\n游戏作用：标记目标位置并获得轰炸待发状态（持续1回合）；下回合自动发射弹体。冷却6回合。\n威力｜速度｜费用：威力：100（下回合结算）；速度：1；费用：无',
+    desc: '技能概念：呼叫延迟轰炸，下回合对目标位置发射弹体。\n游戏作用：标记目标位置并获得轰炸待发状态（持续1回合）；下回合自动发射弹体。冷却6回合。\n范围：6；威力：100（下回合结算）；速度：1；费用：无',
   },
   role_helldiver_bombardment_resolve: {
     id: 'role_helldiver_bombardment_resolve', name: '轰炸·弹', class: '射手', type: '角色',
@@ -671,7 +671,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'ATTACK_PROJECTILE', power: 100 },
     ],
-    desc: '技能概念：轰炸弹体自动结算。\n游戏作用：对轰炸标记位置发射直线飞行弹体。此技能由呼叫轰炸自动触发，不可主动选择。\n威力｜速度｜费用：威力：100；速度：1；费用：无',
+    desc: '技能概念：轰炸弹体自动结算。\n游戏作用：对轰炸标记位置发射直线飞行弹体。此技能由呼叫轰炸自动触发，不可主动选择。\n范围：6；威力：100；速度：1；费用：无',
   },
   role_yan_empty_gun: {
     id: 'role_yan_empty_gun', name: '我赌你的枪里没有子弹', icon: 'assets/skill-icons/role/role_yan_empty_gun.png', class: '射手', type: '角色',
@@ -679,7 +679,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'APPLY_STATUS', status: 'YAN_EMPTY_GUN', target: 'TARGET', duration: 1 },
     ],
-    desc: '技能概念：限定技，赌目标本回合未攻击以剥夺其全部资源。\n游戏作用：对6格内目标施加标记状态（持续至本回合结束）；若本回合目标未发起攻击，则剥夺其全部资源。每场战斗仅限使用1次。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：限定技，赌目标本回合未攻击以剥夺其全部资源。\n游戏作用：对6范围内目标施加标记状态（持续至本回合结束）；若本回合目标未发起攻击，则剥夺其全部资源。每场战斗仅限使用1次。\n范围：6；威力：无；速度：3；费用：无',
   },
 
   // === Passive trait skills (selectable in loadout, auto-applied in battle) ===
@@ -689,7 +689,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '呼吸法：奇数回合吸(怒+1/距-1)，偶数回合呼(距+1/怒-1)' },
     ],
-    desc: '技能概念：吉米被动呼吸法，回合交替切换攻防状态。\n游戏作用：奇数回合进入"吸"状态（怒气获得+1，攻击距离-1）；偶数回合进入"呼"状态（攻击距离+1，怒气获得-1）。此技能为被动特质，自动生效。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：吉米被动呼吸法，回合交替切换攻防状态。\n游戏作用：奇数回合进入"吸"状态（怒气获得+1，攻击距离-1）；偶数回合进入"呼"状态（攻击距离+1，怒气获得-1）。此技能为被动特质，自动生效。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_jimmy_marrow: {
     id: 'trait_jimmy_marrow', name: '易经洗髓酒', class: '战士', type: '特质',
@@ -697,7 +697,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '易经洗髓酒：回合结束时若怒气达标(5/6/7/8/9)自动扣除怒气并获得永久强化' },
     ],
-    desc: '技能概念：吉米被动，回合结束时自动消耗怒气突破洗髓层数。\n游戏作用：回合结束时若怒气达标（5/6/7/8/9），自动扣除怒气并获得永久强化（依次为怒+1/攻击距离+1/移动视为灵巧/怒+1/威力+100）。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：吉米被动，回合结束时自动消耗怒气突破洗髓层数。\n游戏作用：回合结束时若怒气达标（5/6/7/8/9），自动扣除怒气并获得永久强化（依次为怒+1/攻击距离+1/移动视为灵巧/怒+1/威力+100）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_gunfighter_finesse: {
     id: 'trait_gunfighter_finesse', name: '灵巧', icon: 'assets/skill-icons/shooter/shooter_roll.png', class: '射手', type: '特质',
@@ -705,7 +705,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '灵巧：每两回合获得一个灵巧行动点，可提交一个额外cost0行动' },
     ],
-    desc: '技能概念：枪侠被动，每两回合获得一个灵巧行动点。\n游戏作用：每两回合获得一个灵巧行动点，可额外提交一个费用为0的行动，不占用主行动点数。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：枪侠被动，每两回合获得一个灵巧行动点。\n游戏作用：每两回合获得一个灵巧行动点，可额外提交一个费用为0的行动，不占用主行动点数。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_gunfighter_strong: {
     id: 'trait_gunfighter_strong', name: '强者', icon: 'assets/skill-icons/shooter/shooter_attack.png', class: '射手', type: '特质',
@@ -713,7 +713,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '强者：携带这个被动的人是一个强者' },
     ],
-    desc: '技能概念：枪侠被动特质"强者"，无实际战斗效果。\n游戏作用：仅作为被动特质标记存在，无战斗数值影响。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：枪侠被动特质"强者"，无实际战斗效果。\n游戏作用：仅作为被动特质标记存在，无战斗数值影响。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_yan_death_wind: {
     id: 'trait_yan_death_wind', name: '死亡如风', icon: 'assets/skill-icons/shooter/shooter_reload.png', class: '射手', type: '特质',
@@ -721,7 +721,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '死亡如风：对手攻击落空时自动装填' },
     ],
-    desc: '技能概念：燕被动，对手攻击落空时自动装填弹药。\n游戏作用：每当对手发起攻击但未命中时，获得1子弹并立即执行一次上子弹（不占用行动）。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：燕被动，对手攻击落空时自动装填弹药。\n游戏作用：每当对手发起攻击但未命中时，获得1子弹并立即执行一次上膛（不占用行动）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_helldiver_laser_weapon: {
     id: 'trait_helldiver_laser_weapon', name: '激光武器', icon: 'assets/skill-icons/shooter/shooter_aim.png', class: '射手', type: '特质',
@@ -729,7 +729,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '激光武器：每回合结束背包弹药+1，无上限' },
     ],
-    desc: '技能概念：地狱伞兵被动，每回合自动获得背包弹药。\n游戏作用：每回合结束时背包弹药+1，无弹药上限。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：地狱伞兵被动，每回合自动获得背包弹药。\n游戏作用：每回合结束时背包弹药+1，无弹药上限。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_helldiver_priority_ready: {
     id: 'trait_helldiver_priority_ready', name: '优先战备', icon: 'assets/skill-icons/shooter/shooter_bell.png', class: '射手', type: '特质',
@@ -737,7 +737,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '优先战备：呼叫技能延迟-1回合，本回合即结算' },
     ],
-    desc: '技能概念：地狱伞兵被动，呼叫类技能延迟减少。\n游戏作用：呼叫类技能（轰炸、补给）延迟-1回合，即本回合提交后当回合立即结算。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：地狱伞兵被动，呼叫类技能延迟减少。\n游戏作用：呼叫类技能（轰炸、补给）延迟-1回合，即本回合提交后当回合立即结算。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_helldiver_fast_ready: {
     id: 'trait_helldiver_fast_ready', name: '快速战备', icon: 'assets/skill-icons/shooter/shooter_gun_dance.png', class: '射手', type: '特质',
@@ -745,7 +745,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '快速战备：呼叫技能+50技能急速' },
     ],
-    desc: '技能概念：地狱伞兵被动，呼叫类技能冷却缩短。\n游戏作用：呼叫技能+50技能急速，冷却时间从6回合缩短为4回合。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：地狱伞兵被动，呼叫类技能冷却缩短。\n游戏作用：呼叫技能+50技能急速，冷却时间从6回合缩短为4回合。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_helldiver_speed_draw: {
     id: 'trait_helldiver_speed_draw', name: '全凭手速', icon: 'assets/skill-icons/shooter/shooter_hook.png', class: '射手', type: '特质',
@@ -753,7 +753,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '全凭手速：呼叫行动视为灵巧行动，每回合无限灵巧呼叫点' },
     ],
-    desc: '技能概念：地狱伞兵被动，呼叫行动视为灵巧行动。\n游戏作用：呼叫类技能视为灵巧行动，每回合可使用无限个灵巧呼叫行动点。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：地狱伞兵被动，呼叫行动视为灵巧行动。\n游戏作用：呼叫类技能视为灵巧行动，每回合可使用无限个灵巧呼叫行动点。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_mirror_slippery: {
     id: 'trait_mirror_slippery', name: '脚底抹油', class: '法师', type: '特质',
@@ -761,7 +761,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '脚底抹油：次元之门不占用行动点（机制占位）' },
     ],
-    desc: '技能概念：镜被动，次元之门不占用行动点。\n游戏作用：使用次元之门时不消耗行动点数（机制暂未实装）。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：镜被动，次元之门不占用行动点。\n游戏作用：使用次元之门时不消耗行动点数（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_mirror_dimension_child: {
     id: 'trait_mirror_dimension_child', name: '次元之子', class: '法师', type: '特质',
@@ -769,7 +769,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '次元之子：独处于次元时获得次元token（机制占位）' },
     ],
-    desc: '技能概念：镜被动，独处于次元时获得次元token。\n游戏作用：角色独自存在于次元中时获得次元token（机制暂未实装）。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：镜被动，独处于次元时获得次元token。\n游戏作用：角色独自存在于次元中时获得次元token（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_mirror_dimension_lord: {
     id: 'trait_mirror_dimension_lord', name: '次元之主', class: '法师', type: '特质',
@@ -777,7 +777,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '次元之主：积累token后解锁次元系永久强化（机制占位）' },
     ],
-    desc: '技能概念：镜被动，积累token解锁次元系永久强化。\n游戏作用：积累次元token后解锁次元系永久强化（机制暂未实装）。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：镜被动，积累token解锁次元系永久强化。\n游戏作用：积累次元token后解锁次元系永久强化（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_mirror_phase_sling: {
     id: 'trait_mirror_phase_sling', name: '相位弹弓', class: '法师', type: '特质',
@@ -785,7 +785,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '相位弹弓：技能穿过次元门后加速并提高威力（机制占位）' },
     ],
-    desc: '技能概念：镜被动，技能穿过次元门后加速并提高威力。\n游戏作用：技能弹体穿过次元门后获得加速和威力提升（机制暂未实装）。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：镜被动，技能穿过次元门后加速并提高威力。\n游戏作用：技能弹体穿过次元门后获得加速和威力提升（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_duelist_minds_eye: {
     id: 'trait_duelist_minds_eye', name: '心眼', class: '战士', type: '特质',
@@ -793,7 +793,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '心眼：敌人总有2个方向生成弱点，弱点方向击中+1怒/逐风步CD-1' },
     ],
-    desc: '技能概念：剑客被动，识破敌人弱点以获得战斗优势。\n游戏作用：所有敌人随机2个方向有弱点标记；弱点方向击中回复1怒且逐风步CD-1；命中后弱点刷新。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：剑客被动，识破敌人弱点以获得战斗优势。\n游戏作用：所有敌人随机2个方向有弱点标记；弱点方向击中回复1怒且逐风步CD-1；命中后弱点刷新。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_placeholder_adapt: {
     id: 'trait_placeholder_adapt', name: '预留特质', class: '法师', type: '特质',
@@ -801,7 +801,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '预留特质（机制占位）' },
     ],
-    desc: '技能概念：占位预留特质，暂无实际效果。\n游戏作用：机制占位，供未来角色使用。此技能为被动特质。\n威力｜速度｜费用：威力：无；速度：3；费用：无',
+    desc: '技能概念：占位预留特质，暂无实际效果。\n游戏作用：机制占位，供未来角色使用。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
 };
 

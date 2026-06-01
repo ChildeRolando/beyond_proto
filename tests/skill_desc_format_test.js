@@ -28,7 +28,7 @@ function test(name, fn) {
 const allSkillIds = Object.keys(SKILLS);
 console.log(`Testing ${allSkillIds.length} skills...\n`);
 
-// ── Test 1: All skills have a desc ──────────────────────────────────
+// -- Test 1: All skills have a desc ----------------------------------
 test('All skills have desc', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -37,7 +37,7 @@ test('All skills have desc', () => {
   }
 });
 
-// ── Test 2: desc contains exactly 3 lines (separated by \n) ─────────
+// -- Test 2: desc contains exactly 3 lines (separated by \n) ---------
 test('desc has exactly 3 lines', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -47,7 +47,7 @@ test('desc has exactly 3 lines', () => {
   }
 });
 
-// ── Test 3: Line 1 starts with "技能概念：" ─────────────────────────
+// -- Test 3: Line 1 starts with "技能概念：" --------------------------
 test('Line 1 starts with 技能概念：', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -59,7 +59,7 @@ test('Line 1 starts with 技能概念：', () => {
   }
 });
 
-// ── Test 4: Line 2 starts with "游戏作用：" ─────────────────────────
+// -- Test 4: Line 2 starts with "游戏作用：" --------------------------
 test('Line 2 starts with 游戏作用：', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -71,36 +71,45 @@ test('Line 2 starts with 游戏作用：', () => {
   }
 });
 
-// ── Test 5: Line 3 starts with "威力｜速度｜费用：" ─────────────────
-test('Line 3 starts with 威力｜速度｜费用：', () => {
+// -- Test 5: Line 3 starts with "范围：" ------------------------------
+test('Line 3 starts with 范围：', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
     const lines = skill.desc.split('\n');
     if (lines.length >= 3) {
-      assert(lines[2].startsWith('威力｜速度｜费用：'),
-        `${id}: line 3 does not start with "威力｜速度｜费用：": "${lines[2]}"`);
+      assert(lines[2].startsWith('范围：'),
+        `${id}: line 3 does not start with "范围：": "${lines[2]}"`);
     }
   }
 });
 
-// ── Test 6: Line 3 contains all three sub-fields ────────────────────
-test('Line 3 contains 威力：, 速度：, 费用：', () => {
+// -- Test 6: Line 3 contains all four sub-fields in order -------------
+test('Line 3 contains 范围：, 威力：, 速度：, 费用： in order', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
     const lines = skill.desc.split('\n');
     if (lines.length >= 3) {
       const line3 = lines[2];
+      assert(line3.includes('范围：'),
+        `${id}: line 3 missing "范围：": "${line3}"`);
       assert(line3.includes('威力：'),
         `${id}: line 3 missing "威力：": "${line3}"`);
       assert(line3.includes('速度：'),
         `${id}: line 3 missing "速度：": "${line3}"`);
       assert(line3.includes('费用：'),
         `${id}: line 3 missing "费用：": "${line3}"`);
+      // Verify order: 范围 before 威力 before 速度 before 费用
+      const idxRange = line3.indexOf('范围：');
+      const idxPower = line3.indexOf('威力：');
+      const idxSpeed = line3.indexOf('速度：');
+      const idxCost  = line3.indexOf('费用：');
+      assert(idxRange < idxPower && idxPower < idxSpeed && idxSpeed < idxCost,
+        `${id}: line 3 field order wrong (expected 范围→威力→速度→费用): "${line3}"`);
     }
   }
 });
 
-// ── Test 7: No English word "cost" in desc ──────────────────────────
+// -- Test 7: No English word "cost" in desc --------------------------
 test('No "cost" in desc', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -110,18 +119,17 @@ test('No "cost" in desc', () => {
   }
 });
 
-// ── Test 8: No old-format separator " | cost" or " | " patterns ─────
+// -- Test 8: No old-format separator " | cost" or " | " patterns -----
 test('No old-format separators like " | cost"', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    // Old format used " | cost" or " | 速" as separators
     const hasOldFormat = /\|\s*cost/i.test(skill.desc);
     assert(!hasOldFormat,
       `${id}: desc contains old format "| cost": "${skill.desc}"`);
   }
 });
 
-// ── Test 9: No empty lines ──────────────────────────────────────────
+// -- Test 9: No empty lines ------------------------------------------
 test('No empty lines', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -133,7 +141,7 @@ test('No empty lines', () => {
   }
 });
 
-// ── Test 10: No placeholder / TODO / 待补充 / 未知 ──────────────────
+// -- Test 10: No placeholder / TODO / 待补充 / 未知 ------------------
 test('No placeholders (待补充/TODO/未知)', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -143,7 +151,7 @@ test('No placeholders (待补充/TODO/未知)', () => {
   }
 });
 
-// ── Test 11: No English field names in line 3 ───────────────────────
+// -- Test 11: No English field names in line 3 -----------------------
 test('No English field names in line 3', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -153,11 +161,25 @@ test('No English field names in line 3', () => {
       assert(!line3.includes('cost:'), `${id}: line 3 uses "cost:"`);
       assert(!line3.includes('power:'), `${id}: line 3 uses "power:"`);
       assert(!line3.includes('speed:'), `${id}: line 3 uses "speed:"`);
+      assert(!line3.includes('range:'), `${id}: line 3 uses "range:"`);
     }
   }
 });
 
-// ── Summary ────────────────────────────────────────────────────────
+// -- Test 12: No 威力｜速度｜费用 old-format prefix in line 3 ---------
+test('No old 威力｜速度｜费用 prefix in line 3', () => {
+  for (const id of allSkillIds) {
+    const skill = SKILLS[id];
+    const lines = skill.desc.split('\n');
+    if (lines.length >= 3) {
+      const hasOldPrefix = lines[2].includes('威力｜速度｜费用');
+      assert(!hasOldPrefix,
+        `${id}: line 3 uses old "威力｜速度｜费用" prefix: "${lines[2]}"`);
+    }
+  }
+});
+
+// -- Summary --------------------------------------------------------
 console.log('\n═══════════════════════════════════════════');
 console.log(`Total skills: ${allSkillIds.length}`);
 console.log(`PASSED: ${totalPassed}`);
