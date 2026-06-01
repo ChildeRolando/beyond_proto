@@ -31,11 +31,11 @@ test('local config opens and renders the config view', async ({ page }) => {
   await expect(page.locator('#config-hero-portrait')).toBeVisible();
   await expect(page.locator('#config-hero-portrait')).toHaveAttribute(
     'src',
-    /assets\/character-portraits\/originals\/.+\.png\?v=/
+    /assets\/character-portraits\/.+\.webp\?v=/
   );
   await expect(page.locator('#config-role-list .config-role-list-thumb').first()).toHaveAttribute(
     'src',
-    /assets\/character-portraits\/icons\/.+\.png\?v=/
+    /assets\/character-portraits\/icons\/.+\.webp\?v=/
   );
   await expect(page.locator('#team-status')).toBeVisible();
   await expect(page.locator('#loadout-slots')).toBeVisible();

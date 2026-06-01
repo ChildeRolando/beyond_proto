@@ -139,7 +139,7 @@ test('battle canvas draws role portraits for hex characters', () => {
   const portraitCall = ctx.calls.drawImage[0];
   assert.match(
     String(portraitCall[0]?.src || ''),
-    /assets\/character-portraits\/icons\/shooter_gunfighter\.png\?v=test-cache/,
+    /assets\/character-portraits\/icons\/shooter_gunfighter\.webp\?v=test-cache/,
     'portrait image should come from the icons folder'
   );
 

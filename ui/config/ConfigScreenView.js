@@ -16,11 +16,11 @@ import {
 // ─── Helpers ───
 
 function getRoleThumbnail(roleId, cacheVersion) {
-  return `assets/character-portraits/icons/${roleId}.png?v=${cacheVersion}`;
+  return `assets/character-portraits/icons/${roleId}.webp?v=${cacheVersion}`;
 }
 
 function getRoleHeroPortrait(roleId, cacheVersion) {
-  return `assets/character-portraits/originals/${roleId}.png?v=${cacheVersion}`;
+  return `assets/character-portraits/${roleId}.webp?v=${cacheVersion}`;
 }
 
 // ─── Sub-renderers ───
@@ -42,8 +42,9 @@ function renderRoleList(ctx) {
 function renderRoleHero(role, ctx) {
   if (!role) return;
   document.getElementById('config-hero-glow').className = `config-hero-glow theme-${role.portraitTheme || 'steel'}`;
-  document.getElementById('config-hero-portrait').src = getRoleHeroPortrait(role.id, ctx.portraitCacheVersion);
-  document.getElementById('config-hero-portrait').alt = role.name;
+  const portraitEl = document.getElementById('config-hero-portrait');
+  portraitEl.src = getRoleHeroPortrait(role.id, ctx.portraitCacheVersion);
+  portraitEl.alt = role.name;
   document.getElementById('config-hero-name').textContent = role.name;
   document.getElementById('config-hero-class').textContent = role.class;
 }

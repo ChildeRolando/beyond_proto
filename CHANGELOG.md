@@ -1,22 +1,21 @@
-# Changelog
+﻿# Changelog
+
+## 2026-06-01 - 头像引用统一为 webp
+
+- 配置页中央主图和列表缩略图、战斗界面单位头像都改为读取 `assets/character-portraits/*.webp` 和 `assets/character-portraits/icons/*.webp`。
+- 本地仅保留 `assets/character-portraits/icons/*.webp` 的新裁切头像，误生成的 `originals/*.webp` 已清理。
 
 ## 2026-06-01 - 配置页主图切回完整立绘
 
-- 配置界面的中央主图改为读取 `assets/character-portraits/originals/*.png`，列表缩略图继续使用 `assets/character-portraits/icons/*.png`。
+- 配置界面的中央主图读取 `assets/character-portraits/*.webp`；列表缩略图继续使用 `assets/character-portraits/icons/*.webp`。
 - 新增回归测试，断言主图与缩略图分别来自完整立绘和头像图标目录，避免后续回退。
 
 ## 2026-06-01 - 战斗界面角色头像
 
-- 配置界面角色立绘改为读取 `assets/character-portraits/icons/*.png`，与新裁切头像保持一致。
+- 配置界面角色立绘改为读取 `assets/character-portraits/icons/*.webp`，与新裁切头像保持一致。
 - 对战界面 hex 地图单位图标从职业单字改为角色头像，优先按 `roleId` 读取头像图，缺图时回退到原职业字母。
 - 战斗头像增加缓存版本号，避免浏览器继续命中旧资源。
 - 新增 `tests/battle_canvas_renderer_test.js` 覆盖 hex 单位头像渲染路径。
-
-## 2026-05-31 - Strong-agent architecture recovery
-
-- Split config ownership into `ConfigSessionController` and network/P2P ownership into `NetworkSessionController`.
-- Kept the split safe by wiring config/network through AppRuntime providers and callbacks instead of direct imports.
-- Moved battle canvas drawing into `BattleCanvasRenderer` and `VisualEffects`.
 - Tightened architecture coverage with new config/network and canvas split tests.
 - Added browser coverage for config flow, network flow, and canvas rendering.
 - Updated the final architecture report and confirmed the full Playwright suite passes.
@@ -28,75 +27,115 @@
 - ?????????????????????????AI controller ???? 15 ???? 0.1 ???
 - `tests/ai_controller_test.js` ???? fallback ?????`tests/pve_ui_static_test.mjs` ?? CRLF ????????? master ?????
 
-## 2026-05-28 — 吉米呼吸法+洗髓实装 & 燕双鹰死亡如风
-
-- **吉米 呼吸法**: 每回合开始时（清理阶段后/战斗初始化时）根据奇偶切换[吸]/[呼]状态，在行动选择前即生效，通过 `ON_RESOURCE_GAIN` ±1怒气、`ON_RANGE_CALCULATE` ±1攻击距离
-- 修复呼吸法时机：从 `executeTurn` 开始移至回合清理后 `turnNumber++` 处，并新增 `initRolePassives()` 在 `initBattle` 时初始化首回合buff，确保玩家选择行动前buff已生效
-- **吉米 易经洗髓酒**: 回合清理阶段自动检测怒气阈值(6/8/10/12)，达标则扣除怒气并依次获得永久强化：怒气获得+1 / 攻击距离+1 / 移动距离+1 / 威力+100
-- 新增三个Hook: `ON_RANGE_CALCULATE`、`ON_MOVE_RANGE_CALCULATE`、`ON_POWER_CALCULATE`，统一由 BuffManager 提供 `getEffectiveRange/getEffectiveMoveRange/getEffectivePower` 便捷方法
-- TurnManager 攻击执行器（近战/弹体/AOE/静止AOE）均调度 ON_POWER_CALCULATE；移动执行器调度 ON_MOVE_RANGE_CALCULATE
-- GameEngine.getValidMoves/getValidTeleports 自动应用有效移动距离；index.html UI 目标选择使用 `engine.getEffectiveRange()`
-- **燕双鹰 死亡如风**: 新增被动特质 `YAN_DEATH_WIND`，对手攻击落空时获得1弹并自动装填（不占行动），通过 `ON_ATTACK_MISSED` hook 触发
-- TurnManager 在近战/AOE 攻击落空后立即调度 ON_ATTACK_MISSED，弹体攻击在 resolveStep 后批量检查落空
-- 更新 `role_mechanics_test.js` 断言（呼吸法+1怒气）
-- 回归验证已通过：`node tests/role_mechanics_test.js`、`node tests/role_loadout_test.js`、`node tests/skill_test.js`、`node test_signaling.js`、`node test_e2e.mjs`
-
-## 2026-05-28 — 法师技能图标集成
-
-- 24个法师技能在 SkillData.js 中统一添加 `icon` 字段，指向 `assets/skill-icons/mage/<id>.png`
-- `skillGlyph()` 自动读取 `skill.icon`，有图标显示图片，无图标回退文字首字
-- action dock 技能按钮图标 `object-fit: cover` 铺满，去 padding
-- deploy.sh / deploy.bat 加入 `assets/` 目录
-- 战士/射手出图标后只需在 SkillData 加 `icon` 字段
-
-## 2026-05-28 - 四个角色首版战斗机制
-
-- 吉米 `易经洗髓酒` 不再是占位：发动后获得 2 怒气和永久 `JIMMY_MARROW` 成长标记。
-- 新增 `ActionPointSystem`：每名角色每回合有 1 个主行动；枪侠通过 `灵巧` 特质每回合额外获得 1 个 cost0 行动，cost0 先交也不会阻止后续付费主行动。
-- 枪侠 `灵巧行动` 改为被动特质，不再作为主动技能出现在战斗技能栏，也不能直接提交。
-- 绝地潜兵 `呼叫补给` 获得背包弹药 +2，`精准轰炸` 改为目标点周围 1 格的静止 AOE，绝地潜兵每回合清理阶段自动获得 1 弹药。
-- 燕双鹰 `我赌你的枪里没有子弹` 不再是占位：标记目标并在其攻击命令执行前取消攻击；已支付费用不返还。
-- P2P 回合协议拆分为多条 `TURN_ACTION` 和一次 `TURN_READY`，支持同一角色在行动点允许时提交多个技能。
-- 新增 `tests/role_mechanics_test.js` 覆盖四个角色机制和枪侠行动点规则，并更新 `tests/role_loadout_test.js` 的角色技能断言。
-- 回归验证已通过：`node tests/role_mechanics_test.js`、`node tests/role_loadout_test.js`、`node tests/skill_test.js`、`node test_signaling.js`、`node test_e2e.mjs`。
-
-## 2026-05-28 - 战斗页 UI 指挥台改造
-
-- 战斗页改为“棋盘优先”布局：中央棋盘扩大，左侧默认不常驻信息栏。
-- 新增底部 `action-dock` 作为主控 UI，集中显示当前行动角色、资源、技能、目标提示和执行按钮。
-- 新增左侧 `selected-unit-drawer`，点击棋盘角色后展开，仅用于查看角色详情、特质、Buff 和技能列表，不承担主操作。
-- 新增右侧 `hover-inspector`，显示上一名指针停留角色的状态；日志和聊天改为右侧 tabs。
-- 修正 selected drawer 与底部 action dock 的重叠问题，并新增关闭按钮。
-- selected drawer 的技能列表现在可点击查看技能范围，但不会提交行动。
-- hover inspector 改为只显示角色状态，不再显示技能列表。
-- action dock 技能改为图标按钮，只显示技能首字、费用和速度；悬停时显示自定义技能详情浮层。
-- 更新 P2P E2E 断言，覆盖 action dock、selected drawer、hover inspector、log/chat tabs，并适配新棋盘尺寸。
-- 回归验证已通过：`node test_e2e.mjs`、`node tests/role_loadout_test.js`、`node tests/skill_test.js`、`node test_signaling.js`。
-
-## 2026-05-28 - 角色选择配置页 + 技能带入 + P2P 配置同步
-
-- 新增三段路由流程：`start -> config -> battle`，本地游玩和 P2P 加入后先进入出战配置页，再初始化战斗。
-- 新增配置页 UI：顶部职业标签，中部 3 张角色卡轮播和悬停详情，底部可展开的 8 格技能带入配置模块。
-- 本地模式支持 P1/P2 切换配置；P2P 模式仅允许编辑自己，同时展示对手职业、角色、带入摘要和锁定状态。
-- P2P 开局协议改为 `CONFIG_UPDATE`、`CONFIG_LOCK`、`BATTLE_START`；房主在双方锁定后发送最终 seed 和双方完整配置。
-- 结算后的重赛入口改为回到 `config` 页面，保留上一局配置继续调整。
-- 战斗 UI 使用 `engine.getState().characters[].skills` 渲染最终技能列表，支持角色专属技能 + 带入技能；角色特质展示在战斗面板。
-- `test_e2e.mjs` 已更新为独立脚本形式的新流程验证：创建房间、进入配置页、双方锁定、进入战斗、提交并执行一回合。
-- 回归验证已通过：`node tests/role_loadout_test.js`、`node tests/skill_test.js`、`node test_signaling.js`、`node test_e2e.mjs`。
-- 注意：`test_e2e.mjs` 不是 Playwright test spec，应使用 `node test_e2e.mjs`，不要用 `npx playwright test test_e2e.mjs`。
-
-## 2026-05-28 — 战士技能重做 + 法师新技能 + 弹体/UI改进
-
-- **居合斩**: 消耗纳刀强化为范围2/cost0, 否则范围1/cost3
-- **纳刀**: 斩破弹体获得永久buff (不再限1回合)
-- **御剑**: 速度 3→2
-- **新技能 折返跃迁**: 瞬移1格, 回合结束返回原位, 速3/cost0
-- **反应装甲**: 改为半径1展开7个静止弹体 (SPAWN_STATIONARY_AOE + includeCenter)
-- **弹体碰撞**: 大威力弹体贯穿不再降威 (移除 power -= weak.power)
-- **无情铁手**: 修复打断不生效 (cancelByActor 同步过滤 speedGroups)
-- **动画**: 修复跨步骤重复帧 (非首步骤跳过 sub=0)
-- **UI**: 同格角色分显+p1/p2角标, 对手技能查看, 非法格点击取消选择
-- 新增 RoleData.js + role_loadout_test.js
-- 新增 CLAUDE.md (项目规范 + 分支管理规则)
-- 新增 CHANGELOG.md (本文件)
-- 移除 ARCHITECTURE.md / RETROSPECTIVE.md
+## 2026-05-28 鈥?鍚夌背鍛煎惛娉?娲楅珦瀹炶 & 鐕曞弻楣版浜″椋?
+
+
+- **鍚夌背 鍛煎惛娉?*: 姣忓洖鍚堝紑濮嬫椂锛堟竻鐞嗛樁娈靛悗/鎴樻枟鍒濆鍖栨椂锛夋牴鎹鍋跺垏鎹鍚竇/[鍛糫鐘舵€侊紝鍦ㄨ鍔ㄩ€夋嫨鍓嶅嵆鐢熸晥锛岄€氳繃 `ON_RESOURCE_GAIN` 卤1鎬掓皵銆乣ON_RANGE_CALCULATE` 卤1鏀诲嚮璺濈
+
+- 淇鍛煎惛娉曟椂鏈猴細浠?`executeTurn` 寮€濮嬬Щ鑷冲洖鍚堟竻鐞嗗悗 `turnNumber++` 澶勶紝骞舵柊澧?`initRolePassives()` 鍦?`initBattle` 鏃跺垵濮嬪寲棣栧洖鍚坆uff锛岀‘淇濈帺瀹堕€夋嫨琛屽姩鍓峛uff宸茬敓鏁?
+- **鍚夌背 鏄撶粡娲楅珦閰?*: 鍥炲悎娓呯悊闃舵鑷姩妫€娴嬫€掓皵闃堝€?6/8/10/12)锛岃揪鏍囧垯鎵ｉ櫎鎬掓皵骞朵緷娆¤幏寰楁案涔呭己鍖栵細鎬掓皵鑾峰緱+1 / 鏀诲嚮璺濈+1 / 绉诲姩璺濈+1 / 濞佸姏+100
+
+- 鏂板涓変釜Hook: `ON_RANGE_CALCULATE`銆乣ON_MOVE_RANGE_CALCULATE`銆乣ON_POWER_CALCULATE`锛岀粺涓€鐢?BuffManager 鎻愪緵 `getEffectiveRange/getEffectiveMoveRange/getEffectivePower` 渚挎嵎鏂规硶
+
+- TurnManager 鏀诲嚮鎵ц鍣紙杩戞垬/寮逛綋/AOE/闈欐AOE锛夊潎璋冨害 ON_POWER_CALCULATE锛涚Щ鍔ㄦ墽琛屽櫒璋冨害 ON_MOVE_RANGE_CALCULATE
+
+- GameEngine.getValidMoves/getValidTeleports 鑷姩搴旂敤鏈夋晥绉诲姩璺濈锛沬ndex.html UI 鐩爣閫夋嫨浣跨敤 `engine.getEffectiveRange()`
+
+- **鐕曞弻楣?姝讳骸濡傞**: 鏂板琚姩鐗硅川 `YAN_DEATH_WIND`锛屽鎵嬫敾鍑昏惤绌烘椂鑾峰緱1寮瑰苟鑷姩瑁呭～锛堜笉鍗犺鍔級锛岄€氳繃 `ON_ATTACK_MISSED` hook 瑙﹀彂
+
+- TurnManager 鍦ㄨ繎鎴?AOE 鏀诲嚮钀界┖鍚庣珛鍗宠皟搴?ON_ATTACK_MISSED锛屽脊浣撴敾鍑诲湪 resolveStep 鍚庢壒閲忔鏌ヨ惤绌?
+- 鏇存柊 `role_mechanics_test.js` 鏂█锛堝懠鍚告硶+1鎬掓皵锛?
+- 鍥炲綊楠岃瘉宸查€氳繃锛歚node tests/role_mechanics_test.js`銆乣node tests/role_loadout_test.js`銆乣node tests/skill_test.js`銆乣node test_signaling.js`銆乣node test_e2e.mjs`
+
+
+
+## 2026-05-28 鈥?娉曞笀鎶€鑳藉浘鏍囬泦鎴?
+
+
+- 24涓硶甯堟妧鑳藉湪 SkillData.js 涓粺涓€娣诲姞 `icon` 瀛楁锛屾寚鍚?`assets/skill-icons/mage/<id>.png`
+
+- `skillGlyph()` 鑷姩璇诲彇 `skill.icon`锛屾湁鍥炬爣鏄剧ず鍥剧墖锛屾棤鍥炬爣鍥為€€鏂囧瓧棣栧瓧
+
+- action dock 鎶€鑳芥寜閽浘鏍?`object-fit: cover` 閾烘弧锛屽幓 padding
+
+- deploy.sh / deploy.bat 鍔犲叆 `assets/` 鐩綍
+
+- 鎴樺＋/灏勬墜鍑哄浘鏍囧悗鍙渶鍦?SkillData 鍔?`icon` 瀛楁
+
+
+
+## 2026-05-28 - 鍥涗釜瑙掕壊棣栫増鎴樻枟鏈哄埗
+
+
+
+- 鍚夌背 `鏄撶粡娲楅珦閰抈 涓嶅啀鏄崰浣嶏細鍙戝姩鍚庤幏寰?2 鎬掓皵鍜屾案涔?`JIMMY_MARROW` 鎴愰暱鏍囪銆?
+- 鏂板 `ActionPointSystem`锛氭瘡鍚嶈鑹叉瘡鍥炲悎鏈?1 涓富琛屽姩锛涙灙渚犻€氳繃 `鐏靛阀` 鐗硅川姣忓洖鍚堥澶栬幏寰?1 涓?cost0 琛屽姩锛宑ost0 鍏堜氦涔熶笉浼氶樆姝㈠悗缁粯璐逛富琛屽姩銆?
+- 鏋緺 `鐏靛阀琛屽姩` 鏀逛负琚姩鐗硅川锛屼笉鍐嶄綔涓轰富鍔ㄦ妧鑳藉嚭鐜板湪鎴樻枟鎶€鑳芥爮锛屼篃涓嶈兘鐩存帴鎻愪氦銆?
+- 缁濆湴娼滃叺 `鍛煎彨琛ョ粰` 鑾峰緱鑳屽寘寮硅嵂 +2锛宍绮惧噯杞扮偢` 鏀逛负鐩爣鐐瑰懆鍥?1 鏍肩殑闈欐 AOE锛岀粷鍦版綔鍏垫瘡鍥炲悎娓呯悊闃舵鑷姩鑾峰緱 1 寮硅嵂銆?
+- 鐕曞弻楣?`鎴戣祵浣犵殑鏋噷娌℃湁瀛愬脊` 涓嶅啀鏄崰浣嶏細鏍囪鐩爣骞跺湪鍏舵敾鍑诲懡浠ゆ墽琛屽墠鍙栨秷鏀诲嚮锛涘凡鏀粯璐圭敤涓嶈繑杩樸€?
+- P2P 鍥炲悎鍗忚鎷嗗垎涓哄鏉?`TURN_ACTION` 鍜屼竴娆?`TURN_READY`锛屾敮鎸佸悓涓€瑙掕壊鍦ㄨ鍔ㄧ偣鍏佽鏃舵彁浜ゅ涓妧鑳姐€?
+- 鏂板 `tests/role_mechanics_test.js` 瑕嗙洊鍥涗釜瑙掕壊鏈哄埗鍜屾灙渚犺鍔ㄧ偣瑙勫垯锛屽苟鏇存柊 `tests/role_loadout_test.js` 鐨勮鑹叉妧鑳芥柇瑷€銆?
+- 鍥炲綊楠岃瘉宸查€氳繃锛歚node tests/role_mechanics_test.js`銆乣node tests/role_loadout_test.js`銆乣node tests/skill_test.js`銆乣node test_signaling.js`銆乣node test_e2e.mjs`銆?
+
+
+## 2026-05-28 - 鎴樻枟椤?UI 鎸囨尌鍙版敼閫?
+
+
+- 鎴樻枟椤垫敼涓衡€滄鐩樹紭鍏堚€濆竷灞€锛氫腑澶鐩樻墿澶э紝宸︿晶榛樿涓嶅父椹讳俊鎭爮銆?
+- 鏂板搴曢儴 `action-dock` 浣滀负涓绘帶 UI锛岄泦涓樉绀哄綋鍓嶈鍔ㄨ鑹层€佽祫婧愩€佹妧鑳姐€佺洰鏍囨彁绀哄拰鎵ц鎸夐挳銆?
+- 鏂板宸︿晶 `selected-unit-drawer`锛岀偣鍑绘鐩樿鑹插悗灞曞紑锛屼粎鐢ㄤ簬鏌ョ湅瑙掕壊璇︽儏銆佺壒璐ㄣ€丅uff 鍜屾妧鑳藉垪琛紝涓嶆壙鎷呬富鎿嶄綔銆?
+- 鏂板鍙充晶 `hover-inspector`锛屾樉绀轰笂涓€鍚嶆寚閽堝仠鐣欒鑹茬殑鐘舵€侊紱鏃ュ織鍜岃亰澶╂敼涓哄彸渚?tabs銆?
+- 淇 selected drawer 涓庡簳閮?action dock 鐨勯噸鍙犻棶棰橈紝骞舵柊澧炲叧闂寜閽€?
+- selected drawer 鐨勬妧鑳藉垪琛ㄧ幇鍦ㄥ彲鐐瑰嚮鏌ョ湅鎶€鑳借寖鍥达紝浣嗕笉浼氭彁浜よ鍔ㄣ€?
+- hover inspector 鏀逛负鍙樉绀鸿鑹茬姸鎬侊紝涓嶅啀鏄剧ず鎶€鑳藉垪琛ㄣ€?
+- action dock 鎶€鑳芥敼涓哄浘鏍囨寜閽紝鍙樉绀烘妧鑳介瀛椼€佽垂鐢ㄥ拰閫熷害锛涙偓鍋滄椂鏄剧ず鑷畾涔夋妧鑳借鎯呮诞灞傘€?
+- 鏇存柊 P2P E2E 鏂█锛岃鐩?action dock銆乻elected drawer銆乭over inspector銆乴og/chat tabs锛屽苟閫傞厤鏂版鐩樺昂瀵搞€?
+- 鍥炲綊楠岃瘉宸查€氳繃锛歚node test_e2e.mjs`銆乣node tests/role_loadout_test.js`銆乣node tests/skill_test.js`銆乣node test_signaling.js`銆?
+
+
+## 2026-05-28 - 瑙掕壊閫夋嫨閰嶇疆椤?+ 鎶€鑳藉甫鍏?+ P2P 閰嶇疆鍚屾
+
+
+
+- 鏂板涓夋璺敱娴佺▼锛歚start -> config -> battle`锛屾湰鍦版父鐜╁拰 P2P 鍔犲叆鍚庡厛杩涘叆鍑烘垬閰嶇疆椤碉紝鍐嶅垵濮嬪寲鎴樻枟銆?
+- 鏂板閰嶇疆椤?UI锛氶《閮ㄨ亴涓氭爣绛撅紝涓儴 3 寮犺鑹插崱杞挱鍜屾偓鍋滆鎯咃紝搴曢儴鍙睍寮€鐨?8 鏍兼妧鑳藉甫鍏ラ厤缃ā鍧椼€?
+- 鏈湴妯″紡鏀寔 P1/P2 鍒囨崲閰嶇疆锛汸2P 妯″紡浠呭厑璁哥紪杈戣嚜宸憋紝鍚屾椂灞曠ず瀵规墜鑱屼笟銆佽鑹层€佸甫鍏ユ憳瑕佸拰閿佸畾鐘舵€併€?
+- P2P 寮€灞€鍗忚鏀逛负 `CONFIG_UPDATE`銆乣CONFIG_LOCK`銆乣BATTLE_START`锛涙埧涓诲湪鍙屾柟閿佸畾鍚庡彂閫佹渶缁?seed 鍜屽弻鏂瑰畬鏁撮厤缃€?
+- 缁撶畻鍚庣殑閲嶈禌鍏ュ彛鏀逛负鍥炲埌 `config` 椤甸潰锛屼繚鐣欎笂涓€灞€閰嶇疆缁х画璋冩暣銆?
+- 鎴樻枟 UI 浣跨敤 `engine.getState().characters[].skills` 娓叉煋鏈€缁堟妧鑳藉垪琛紝鏀寔瑙掕壊涓撳睘鎶€鑳?+ 甯﹀叆鎶€鑳斤紱瑙掕壊鐗硅川灞曠ず鍦ㄦ垬鏂楅潰鏉裤€?
+- `test_e2e.mjs` 宸叉洿鏂颁负鐙珛鑴氭湰褰㈠紡鐨勬柊娴佺▼楠岃瘉锛氬垱寤烘埧闂淬€佽繘鍏ラ厤缃〉銆佸弻鏂归攣瀹氥€佽繘鍏ユ垬鏂椼€佹彁浜ゅ苟鎵ц涓€鍥炲悎銆?
+- 鍥炲綊楠岃瘉宸查€氳繃锛歚node tests/role_loadout_test.js`銆乣node tests/skill_test.js`銆乣node test_signaling.js`銆乣node test_e2e.mjs`銆?
+- 娉ㄦ剰锛歚test_e2e.mjs` 涓嶆槸 Playwright test spec锛屽簲浣跨敤 `node test_e2e.mjs`锛屼笉瑕佺敤 `npx playwright test test_e2e.mjs`銆?
+
+
+## 2026-05-28 鈥?鎴樺＋鎶€鑳介噸鍋?+ 娉曞笀鏂版妧鑳?+ 寮逛綋/UI鏀硅繘
+
+
+
+- **灞呭悎鏂?*: 娑堣€楃撼鍒€寮哄寲涓鸿寖鍥?/cost0, 鍚﹀垯鑼冨洿1/cost3
+
+- **绾冲垁**: 鏂╃牬寮逛綋鑾峰緱姘镐箙buff (涓嶅啀闄?鍥炲悎)
+
+- **寰″墤**: 閫熷害 3鈫?
+
+- **鏂版妧鑳?鎶樿繑璺冭縼**: 鐬Щ1鏍? 鍥炲悎缁撴潫杩斿洖鍘熶綅, 閫?/cost0
+
+- **鍙嶅簲瑁呯敳**: 鏀逛负鍗婂緞1灞曞紑7涓潤姝㈠脊浣?(SPAWN_STATIONARY_AOE + includeCenter)
+
+- **寮逛綋纰版挒**: 澶у▉鍔涘脊浣撹疮绌夸笉鍐嶉檷濞?(绉婚櫎 power -= weak.power)
+
+- **鏃犳儏閾佹墜**: 淇鎵撴柇涓嶇敓鏁?(cancelByActor 鍚屾杩囨护 speedGroups)
+
+- **鍔ㄧ敾**: 淇璺ㄦ楠ら噸澶嶅抚 (闈為姝ラ璺宠繃 sub=0)
+
+- **UI**: 鍚屾牸瑙掕壊鍒嗘樉+p1/p2瑙掓爣, 瀵规墜鎶€鑳芥煡鐪? 闈炴硶鏍肩偣鍑诲彇娑堥€夋嫨
+
+- 鏂板 RoleData.js + role_loadout_test.js
+
+- 鏂板 CLAUDE.md (椤圭洰瑙勮寖 + 鍒嗘敮绠＄悊瑙勫垯)
+
+- 鏂板 CHANGELOG.md (鏈枃浠?
+
+- 绉婚櫎 ARCHITECTURE.md / RETROSPECTIVE.md
+
+

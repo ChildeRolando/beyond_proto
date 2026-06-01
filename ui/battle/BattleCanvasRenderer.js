@@ -15,7 +15,7 @@ export class BattleCanvasRenderer {
   getCharacterPortraitSrc(char) {
     const roleId = char?.roleId;
     if (!roleId) return null;
-    return `assets/character-portraits/icons/${roleId}.png?v=${this.portraitCacheVersion}`;
+    return `assets/character-portraits/icons/${roleId}.webp?v=${this.portraitCacheVersion}`;
   }
 
   getCharacterPortraitImage(char) {
