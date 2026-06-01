@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-06-01 - 配置页主图切回完整立绘
+
+- 配置界面的中央主图改为读取 `assets/character-portraits/originals/*.png`，列表缩略图继续使用 `assets/character-portraits/icons/*.png`。
+- 新增回归测试，断言主图与缩略图分别来自完整立绘和头像图标目录，避免后续回退。
+
 ## 2026-06-01 - 战斗界面角色头像
 
 - 配置界面角色立绘改为读取 `assets/character-portraits/icons/*.png`，与新裁切头像保持一致。

@@ -15,8 +15,12 @@ import {
 
 // ─── Helpers ───
 
-function getRolePortrait(roleId, cacheVersion) {
+function getRoleThumbnail(roleId, cacheVersion) {
   return `assets/character-portraits/icons/${roleId}.png?v=${cacheVersion}`;
+}
+
+function getRoleHeroPortrait(roleId, cacheVersion) {
+  return `assets/character-portraits/originals/${roleId}.png?v=${cacheVersion}`;
 }
 
 // ─── Sub-renderers ───
@@ -26,7 +30,7 @@ function renderRoleList(ctx) {
   document.getElementById('config-role-list').innerHTML = roles.map(role => {
     const isActive = role.id === ctx.cfg.roleId;
     return `<div class="config-role-list-item ${isActive ? 'active' : ''}" data-role="${role.id}">
-      <img class="config-role-list-thumb" src="${getRolePortrait(role.id, ctx.portraitCacheVersion)}" alt="${role.name}">
+      <img class="config-role-list-thumb" src="${getRoleThumbnail(role.id, ctx.portraitCacheVersion)}" alt="${role.name}">
       <div class="config-role-list-info">
         <div class="config-role-list-name">${role.name}</div>
         <div class="config-role-list-class">${role.class}</div>
@@ -38,7 +42,7 @@ function renderRoleList(ctx) {
 function renderRoleHero(role, ctx) {
   if (!role) return;
   document.getElementById('config-hero-glow').className = `config-hero-glow theme-${role.portraitTheme || 'steel'}`;
-  document.getElementById('config-hero-portrait').src = getRolePortrait(role.id, ctx.portraitCacheVersion);
+  document.getElementById('config-hero-portrait').src = getRoleHeroPortrait(role.id, ctx.portraitCacheVersion);
   document.getElementById('config-hero-portrait').alt = role.name;
   document.getElementById('config-hero-name').textContent = role.name;
   document.getElementById('config-hero-class').textContent = role.class;
