@@ -199,7 +199,7 @@ export class BattleSessionController {
     const result = this.engine.initBattle(players
       ? { players, seed: battleSeed }
       : { player1Class, player2Class, seed: battleSeed });
-    this.characterIds = [result.player1Id, result.player2Id];
+    this.characterIds = result.characterIds || [result.player1Id, result.player2Id].filter(Boolean);
     this.localSubmittedSet.clear();
     this.remoteSubmittedSet.clear();
     this.clearPlannedActions();

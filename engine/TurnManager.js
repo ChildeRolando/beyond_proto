@@ -5,6 +5,7 @@ import { HookName } from './BuffHooks.js';
 import { STATUS_DEFS } from './StatusEffectDefs.js';
 import { SKILLS } from './SkillData.js';
 import { getDefaultRoleLoadout } from './RoleData.js';
+import { getAliveTeamIds } from './TeamResolver.js';
 
 export const TurnPhase = Object.freeze({
   PLAN: 'PLAN',
@@ -1503,11 +1504,11 @@ export class TurnManager {
   }
 
   _checkWinCondition() {
-    const aliveChars = [...this.#registry.characters()].filter(c => c.alive !== false);
-    if (aliveChars.length <= 1) {
+    const aliveTeamIds = getAliveTeamIds(this.#registry);
+    if (aliveTeamIds.length <= 1) {
       this.#phase = TurnPhase.BATTLE_END;
-      const winner = aliveChars[0]?.ownerId || 'draw';
-      this.#eventBus.emit(EvtType.BATTLE_END, { winner });
+      const winner = aliveTeamIds[0] || 'draw';
+      this.#eventBus.emit(EvtType.BATTLE_END, { winner, winnerTeamId: winner });
       this.#logger?.log('\n⚡ 战斗结束！胜者: ' + winner, 'die');
       return true;
     }

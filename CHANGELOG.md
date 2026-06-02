@@ -1,5 +1,13 @@
 ﻿# Changelog
 
+## 2026-06-03 - PVE 多人 roster 地基
+
+- Added roster-based battle scenario foundation for `pve_multi` initialization.
+- Added `teamId` and `control` fields to combatants and exposed them through `getState()`.
+- Added team-elimination victory support with teamId winners while preserving legacy `winner`.
+- Preserved legacy 1v1 `initBattle` compatibility for class and player-config entry points.
+- Added tests for scenario normalization, multi-roster initialization/readiness, and team victory.
+
 ## 2026-06-01 - 战斗回合动画恢复
 
 - 将 `animateTurn` 作为会话级回调注入 `BattleSessionController`，让本地回合和 PVE 回合都走同一条动画链路。
