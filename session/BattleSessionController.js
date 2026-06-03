@@ -7,6 +7,8 @@ import { GameEngine } from '../engine/GameEngine.js';
 import { SKILLS } from '../engine/SkillData.js';
 import { getPlannedOriginForSkill } from '../engine/PlannedPositionPreview.js';
 import { isOnBoard, hexDistance, getSectorHexes } from '../engine/HexMath.js';
+import { HateSystem } from '../engine/ai/HateSystem.js';
+import { submitAiTeamActions } from '../engine/ai/TeamAiController.js';
 
 export class BattleSessionController {
   constructor(callbacks) {
@@ -30,6 +32,7 @@ export class BattleSessionController {
 
     // ─── Engine ───
     this.engine = new GameEngine();
+    this.hateSystem = new HateSystem();
 
     // ─── Battle session state ───
     this.characterIds = [];
@@ -195,6 +198,7 @@ export class BattleSessionController {
     this.battleActive = true;
     this.pveAiRunning = false;
     this.engine.reset();
+    this.hateSystem.clear();
     const battleSeed = seed || Date.now();
     const result = this.engine.initBattle(players
       ? { players, seed: battleSeed }
@@ -226,6 +230,7 @@ export class BattleSessionController {
     this.battleActive = false;
     this.battleEnded = false;
     this.pveAiRunning = false;
+    this.hateSystem.clear();
     this.characterIds = [];
     this.localSubmittedSet.clear();
     this.remoteSubmittedSet.clear();
@@ -756,16 +761,21 @@ export class BattleSessionController {
     return result;
   }
 
-  _getPveAiCharacterId() {
-    const ai = this.engine.getCharactersByOwner('player2').find(c => c.alive !== false);
-    return ai?.id || null;
+  _getPveAiCharacterIds() {
+    const teamEnemies = this.engine.getCharactersByTeam?.('enemies') || [];
+    const source = teamEnemies.length > 0 ? teamEnemies : this.engine.getCharactersByOwner('player2');
+    return source
+      .filter(c => c.alive !== false)
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map(c => c.id);
   }
 
   async submitAiAndExecutePveTurn() {
     if (!this._callbacks.isPveMode() || this.pveAiRunning || this.battleEnded) return;
     if (!this.areMyRequiredActionsReady()) return;
-    const aiId = this._getPveAiCharacterId();
-    if (!aiId) return;
+    const aiIds = this._getPveAiCharacterIds();
+    if (aiIds.length === 0) return;
+    const hasRosterEnemies = (this.engine.getCharactersByTeam?.('enemies') || []).length > 0;
 
     this.pveAiRunning = true;
     this.clearTurnTimeout();
@@ -774,40 +784,27 @@ export class BattleSessionController {
     this._callbacks.renderAll();
 
     try {
-      const aiResult = await Promise.race([
-        this.engine.submitAiAction(aiId, {
-          opponentId: this.getMyCharacterIds()[0],
-          policy: { maxOwnActions: 12, maxOpponentActions: 8, maxTargetsPerSkill: 1, opponentTemperature: 50, preserveSkillCoverage: true },
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('ai_timeout')), 15000))
-      ]);
-      if (aiResult.success) {
-        this.localSubmittedSet.add(aiId);
-        if (this.hasOptionalActionAvailable(aiId)) {
-          const fResult = await this.engine.submitAiAction(aiId, {
-            opponentId: this.getMyCharacterIds()[0],
-            policy: { maxOwnActions: 8, maxOpponentActions: 4, maxTargetsPerSkill: 1, opponentTemperature: 50, preserveSkillCoverage: true },
-            candidates: { excludeSkillIds: aiResult.action ? [aiResult.action.skillId] : [] },
-          });
-          if (fResult.success) this.localSubmittedSet.add(aiId);
-        }
+      const aiResult = await submitAiTeamActions(this.engine, {
+        hateSystem: this.hateSystem,
+        enemyOwnerId: hasRosterEnemies ? 'ai' : 'player2',
+        heroOwnerId: 'player1',
+        enemyTeamId: hasRosterEnemies ? 'enemies' : null,
+        heroTeamId: hasRosterEnemies ? 'heroes' : null,
+        policy: { maxOwnActions: 4, maxOpponentActions: 4, maxTargetsPerSkill: 1, opponentTemperature: 50, preserveSkillCoverage: true },
+        timeoutMs: 3000,
+      });
+      for (const entry of aiResult.submitted || []) {
+        if (entry.success) this.localSubmittedSet.add(entry.enemyId);
+      }
+      if (this.engine.areAllAliveRequiredActorsSubmitted()) {
         await this.executeLocalTurn();
       } else {
-        this._callbacks.setSubmitStatus(`PVE: AI 提交失败 ${aiResult.error || ''}`);
+        this._callbacks.setSubmitStatus(`PVE: AI 提交失败 ${aiResult.errors?.[0]?.error || ''}`);
         this._callbacks.setExecuteDisabled(false);
       }
     } catch (err) {
-      this._callbacks.setSubmitStatus('PVE: AI 超时，使用快速决策');
+      this._callbacks.setSubmitStatus(`PVE: AI 提交异常 ${err?.message || err}`);
       this._callbacks.setExecuteDisabled(false);
-      // Fast fallback: submit first candidate action
-      const { generateCandidateActions } = await import('../engine/ai/CandidateGenerator.js');
-      const candidates = generateCandidateActions(this.engine, aiId, { maxTargetsPerSkill: 1 });
-      if (candidates.length > 0) {
-        const fallback = candidates[0];
-        this.engine.submitAction(fallback.characterId, fallback.skillId, fallback.targetPos ?? null);
-        this.localSubmittedSet.add(aiId);
-        await this.executeLocalTurn();
-      }
     } finally {
       this.pveAiRunning = false;
     }

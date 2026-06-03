@@ -1,5 +1,13 @@
 ﻿# Changelog
 
+## 2026-06-03 - PVE 多敌人 AI 提交
+
+- Added `HateSystem` for deterministic enemy-to-hero target assignment and dead-target refresh.
+- Added `TeamAiController` to submit actions for multiple alive AI enemies through the existing one-ply AI.
+- Updated PVE session flow to submit all alive AI enemies before executing a turn.
+- Added tests for hate assignment, target refresh, team AI submissions, and PVE multi-AI session execution.
+- Preserved legacy 1v1 AI behavior by keeping `AiController` as the single-actor decision path.
+
 ## 2026-06-03 - 行动提交状态命名
 
 - Renamed the roster submission readiness API to `areAllAliveRequiredActorsSubmitted()`.
