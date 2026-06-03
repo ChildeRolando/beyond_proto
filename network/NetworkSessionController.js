@@ -4,6 +4,7 @@
 // Does NOT import main.js or AppRuntime.
 
 import { NetworkManager } from '../engine/NetworkManager.js';
+import { GameMode } from '../app/GameModes.js';
 
 export class NetworkSessionController {
   constructor(ctx) {
@@ -43,7 +44,7 @@ export class NetworkSessionController {
     this._ctx.callbacks.setModeBadge?.(`联机 ${this._networkManager.roomCode || ''}`, 'online');
     this._ctx.callbacks.setConnectionIndicator?.(true);
     this._ctx.callbacks.hideLobbyControls?.();
-    this._ctx.configSession.showConfigScreen('p2p');
+    this._ctx.configSession.showConfigScreen(GameMode.P2P_DUEL);
   }
 
   _resolveSignalingUrl(serverAddr) {

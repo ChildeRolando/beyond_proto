@@ -17,9 +17,18 @@
 <div id="start-screen">
   <h1>超越极限 · 战斗引擎</h1>
   <div class="subtitle">Hex-Grid Synchronous Turn-Based Combat</div>
-  <button class="mode-btn primary" id="btn-pve">PVE 模式</button>
-  <button class="mode-btn primary" id="btn-local">本地游玩</button>
-  <button class="mode-btn" id="btn-p2p">P2P 联机</button>
+  <div class="mode-group">
+    <div class="mode-group-title">本地模式</div>
+    <button class="mode-btn primary" id="btn-local-duel">本地对战</button>
+    <button class="mode-btn primary" id="btn-local-coop">本地合作</button>
+    <button class="mode-btn primary" id="btn-local-solo">本地单人</button>
+  </div>
+  <div class="mode-group">
+    <div class="mode-group-title">P2P模式</div>
+    <button class="mode-btn" id="btn-p2p-duel">联机对战</button>
+    <button class="mode-btn" id="btn-p2p-coop" disabled title="开发中">联机合作</button>
+  </div>
+  <button class="mode-btn" id="btn-pve" style="display:none;">PVE 模式</button>
   <button class="mode-btn" id="btn-tutorial">新手教学</button>
   <div id="room-setup">
     <div id="room-host-section" style="display:none">

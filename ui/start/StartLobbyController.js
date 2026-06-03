@@ -61,12 +61,16 @@ function resetConnectionUI(defaultAddr) {
 // ─── Public API ───
 
 export function initStartLobbyController(ctx) {
-  document.getElementById('btn-local').addEventListener('click', () => {
-    ctx.callbacks.onStartLocal();
+  document.getElementById('btn-local-duel').addEventListener('click', () => {
+    ctx.callbacks.onStartLocalDuel();
   });
 
-  document.getElementById('btn-pve').addEventListener('click', () => {
-    ctx.callbacks.onStartPve();
+  document.getElementById('btn-local-coop').addEventListener('click', () => {
+    ctx.callbacks.onStartLocalCoop();
+  });
+
+  document.getElementById('btn-local-solo').addEventListener('click', () => {
+    ctx.callbacks.onStartLocalSolo();
   });
 
   document.getElementById('btn-tutorial').addEventListener('click', showTutorial);
@@ -76,10 +80,22 @@ export function initStartLobbyController(ctx) {
   });
   document.getElementById('btn-help-top').addEventListener('click', showTutorial);
 
-  document.getElementById('btn-p2p').addEventListener('click', () => {
+  document.getElementById('btn-p2p-duel').addEventListener('click', () => {
     showRoomSetup();
     resetConnectionUI(ctx.defaultAddr);
+    ctx.callbacks.onStartP2PDuel?.();
   });
+
+  document.getElementById('btn-p2p-coop').addEventListener('click', () => {
+    ctx.callbacks.onStartP2PCoop?.();
+  });
+
+  const legacyPveButton = document.getElementById('btn-pve');
+  if (legacyPveButton) {
+    legacyPveButton.addEventListener('click', () => {
+      ctx.callbacks.onStartLocalCoop?.();
+    });
+  }
 
   document.getElementById('btn-back-start').addEventListener('click', () => {
     ctx.callbacks.onBackStart();

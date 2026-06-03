@@ -20,14 +20,14 @@ test.afterEach(async ({}, testInfo) => {
 
 async function enterP2PLobby(page) {
   await page.goto('/');
-  await page.locator('#btn-p2p').click();
+  await page.locator('#btn-p2p-duel').click();
   await expect(page.locator('#room-setup')).toBeVisible();
   await expect(page.locator('#room-error')).toHaveText('');
 }
 
 async function enterLocalConfig(page) {
   await page.goto('/');
-  await page.locator('#btn-local').click();
+  await page.locator('#btn-local-duel').click();
   await expect(page.locator('#config-screen')).toBeVisible();
   await page.waitForFunction(() => Boolean(window.__testHooks && window.__testHooks.routeNetworkMessage));
 }

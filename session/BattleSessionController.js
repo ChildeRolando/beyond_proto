@@ -202,7 +202,7 @@ export class BattleSessionController {
     const battleSeed = seed || Date.now();
     const result = this.engine.initBattle(players
       ? { players, seed: battleSeed }
-      : { player1Class, player2Class, seed: battleSeed });
+      : { player1Class: p1Class, player2Class: p2Class, seed: battleSeed });
     this.characterIds = result.characterIds || [result.player1Id, result.player2Id].filter(Boolean);
     this.localSubmittedSet.clear();
     this.remoteSubmittedSet.clear();
@@ -816,8 +816,15 @@ export class BattleSessionController {
         heroOwnerId: 'player1',
         enemyTeamId: hasRosterEnemies ? 'enemies' : null,
         heroTeamId: hasRosterEnemies ? 'heroes' : null,
-        policy: { maxOwnActions: 4, maxOpponentActions: 4, maxTargetsPerSkill: 1, opponentTemperature: 50, preserveSkillCoverage: true },
-        timeoutMs: 3000,
+        policy: {
+          maxOwnActions: 4,
+          maxOpponentActions: 4,
+          maxTargetsPerSkill: 1,
+          opponentTemperature: 50,
+          preserveSkillCoverage: true,
+          simulation: { autoFillMissingActors: true },
+        },
+        timeoutMs: 15000,
       });
       for (const entry of aiResult.submitted || []) {
         if (entry.success) this.localSubmittedSet.add(entry.enemyId);

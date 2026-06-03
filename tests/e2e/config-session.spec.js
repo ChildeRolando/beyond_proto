@@ -20,7 +20,7 @@ test.afterEach(async ({}, testInfo) => {
 
 async function enterLocalConfig(page) {
   await page.goto('/');
-  await page.locator('#btn-local').click();
+  await page.locator('#btn-local-duel').click();
   await expect(page.locator('#config-screen')).toBeVisible();
   await expect(page.locator('#start-screen')).not.toBeVisible();
 }
@@ -44,7 +44,7 @@ test('local config opens and renders the config view', async ({ page }) => {
 
 test('PVE config opens', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#btn-pve').click();
+  await page.locator('#btn-local-coop').click();
   await expect(page.locator('#config-screen')).toBeVisible();
   await expect(page.locator('#config-mode-label')).toContainText('PVE');
 });
@@ -128,7 +128,7 @@ test('start battle works and back returns to start', async ({ page }) => {
   await expect(page.locator('#config-screen')).not.toBeVisible();
 
   await page.goto('/');
-  await page.locator('#btn-local').click();
+  await page.locator('#btn-local-duel').click();
   await page.locator('#btn-config-back').click();
   await expect(page.locator('#start-screen')).toBeVisible();
   await expect(page.locator('#config-screen')).not.toBeVisible();
@@ -138,7 +138,7 @@ test('start battle works and back returns to start', async ({ page }) => {
 
 test('equipped class skills are highlighted in skill pool', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#btn-local').click();
+  await page.locator('#btn-local-duel').click();
   await page.locator('#btn-toggle-loadout').click();
   await page.waitForTimeout(200);
 
@@ -150,7 +150,7 @@ test('equipped class skills are highlighted in skill pool', async ({ page }) => 
 
 test('equipped role skills are highlighted in role skill pool', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#btn-local').click();
+  await page.locator('#btn-local-duel').click();
   await page.locator('#btn-toggle-loadout').click();
   await page.waitForTimeout(200);
 

@@ -26,6 +26,7 @@ import { SkillCooldowns } from './SkillCooldowns.js';
 import { normalizeBattleScenario } from './BattleScenario.js';
 import { getAliveTeamIds, getTeamId } from './TeamResolver.js';
 import { chooseAiAction as chooseAiActionForEngine, submitAiAction as submitAiActionForEngine } from './ai/AiController.js';
+import { autofillMissingActorActions } from './ai/SimulationAutofill.js';
 
 export class GameEngine {
   constructor() {
@@ -260,6 +261,14 @@ export class GameEngine {
       const result = sim.submitAction(action.characterId, action.skillId, action.targetPos ?? null);
       if (!result.success) {
         return { success: false, error: 'submit_failed', action, result, state: sim.getState(), snapshot: sim.createSnapshot() };
+      }
+    }
+    const missingActors = [...sim.registry.characters()]
+      .filter(character => character.alive !== false && !sim._submitted.has(character.id));
+    if (options.autoFillMissingActors && missingActors.length > 0) {
+      const autofillResult = autofillMissingActorActions(sim, options);
+      if (autofillResult.length === 0) {
+        return { success: false, error: 'not_all_submitted', state: sim.getState(), snapshot: sim.createSnapshot() };
       }
     }
     const result = await sim.executeTurn();

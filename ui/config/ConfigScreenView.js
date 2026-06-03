@@ -12,6 +12,7 @@ import {
   validateLoadout,
   validateRoleLoadout,
 } from '../../engine/RoleData.js';
+import { GameMode, normalizeConfigMode } from '../../app/GameModes.js';
 
 // ─── Helpers ───
 
@@ -68,7 +69,8 @@ function renderRoleDetail(role) {
 function renderTeamStatus(ctx) {
   const p1 = ctx.configPlayers.player1;
   const p2 = ctx.configPlayers.player2;
-  if (ctx.configMode === 'pve') {
+  const mode = normalizeConfigMode(ctx.configMode);
+  if (mode === GameMode.LOCAL_COOP) {
     const enemies = ctx.pveEnemyPresets || [];
     document.getElementById('team-status').innerHTML = `
       <h3>PVE 队伍</h3>
@@ -87,16 +89,16 @@ function renderTeamStatus(ctx) {
     `;
     return;
   }
-  const title = ctx.configMode === 'p2p' ? '联机队伍' : '队伍状态';
+  const title = mode === GameMode.P2P_DUEL || mode === GameMode.P2P_COOP ? '联机队伍' : mode === GameMode.LOCAL_SOLO ? '单人对战' : '本地对战';
   document.getElementById('team-status').innerHTML = `
     <h3>${title}</h3>
     <div class="config-team-row">
-      <span><span class="config-team-dot ${p1.locked ? 'ready' : 'waiting'}"></span>P1: ${ROLE_DEFS[p1.roleId]?.name || '未选择'} · ${p1.class}</span>
+      <span><span class="config-team-dot ${p1.locked ? 'ready' : 'waiting'}"></span>${mode === GameMode.LOCAL_SOLO ? '玩家' : 'P1'}: ${ROLE_DEFS[p1.roleId]?.name || '未选择'} · ${p1.class}</span>
       <span>${p1.locked ? '已锁定' : '配置中'}</span>
     </div>
     <div class="config-team-row">
-      <span><span class="config-team-dot ${p2.locked ? 'ready' : 'waiting'}"></span>P2: ${ROLE_DEFS[p2.roleId]?.name || '未选择'} · ${p2.class}</span>
-      <span>${p2.locked ? '已锁定' : '配置中'}</span>
+      <span><span class="config-team-dot ${p2.locked ? 'ready' : 'waiting'}"></span>${mode === GameMode.LOCAL_SOLO ? '敌方' : 'P2'}: ${ROLE_DEFS[p2.roleId]?.name || '未选择'} · ${p2.class}</span>
+      <span>${mode === GameMode.LOCAL_SOLO ? '固定 AI' : (p2.locked ? '已锁定' : '配置中')}</span>
     </div>
   `;
 }
@@ -143,6 +145,7 @@ function renderLoadout(ctx) {
 }
 
 function renderConfigFooter(ctx) {
+  const mode = normalizeConfigMode(ctx.configMode);
   const p1 = ctx.configPlayers.player1;
   const p2 = ctx.configPlayers.player2;
   const p1ClassOk = validateLoadout(p1.class, p1.loadoutSkillIds).ok &&
@@ -158,8 +161,10 @@ function renderConfigFooter(ctx) {
   const bothLocked = p1.locked && p2.locked;
   const cfg = ctx.cfg;
   document.getElementById('config-ready-status').textContent =
-    ctx.configMode === 'pve'
+    mode === GameMode.LOCAL_COOP
       ? `英雄1 ${p1.locked ? '已锁定' : '配置中'} / 英雄2 ${p2.locked ? '已锁定' : '配置中'}`
+      : mode === GameMode.LOCAL_SOLO
+      ? `玩家 ${p1.locked ? '已锁定' : '配置中'} / 敌方固定 AI`
       : `P1 ${p1.locked ? '已锁定' : '配置中'} / P2 ${p2.locked ? '已锁定' : '配置中'}`;
   const lockBtn = document.getElementById('btn-config-lock');
   lockBtn.style.display = ctx.editable ? '' : 'none';
@@ -167,8 +172,9 @@ function renderConfigFooter(ctx) {
   const ownClassOk = validateLoadout(cfg.class, cfg.loadoutSkillIds).ok && cfg.loadoutSkillIds.length === LOADOUT_SIZE;
   const ownRoleOk = validateRoleLoadout(cfg.roleId, cfg.roleLoadoutSkillIds || []).ok && (cfg.roleLoadoutSkillIds || []).length === ROLE_LOADOUT_SIZE;
   lockBtn.disabled = !(ownClassOk && ownRoleOk);
-  document.getElementById('btn-config-start').style.display = (ctx.configMode === 'local' || ctx.configMode === 'pve') ? '' : 'none';
-  document.getElementById('btn-config-start').disabled = !(p1Ok && p2Ok && bothLocked);
+  const startBtn = document.getElementById('btn-config-start');
+  startBtn.style.display = (mode === GameMode.LOCAL_DUEL || mode === GameMode.LOCAL_COOP || mode === GameMode.LOCAL_SOLO) ? '' : 'none';
+  startBtn.disabled = mode === GameMode.LOCAL_SOLO ? !p1Ok || !p1.locked : !(p1Ok && p2Ok && bothLocked);
 }
 
 function wireConfigEvents(ctx) {
@@ -200,15 +206,21 @@ function wireConfigEvents(ctx) {
 // ─── Public API ───
 
 export function renderConfigScreenView(ctx) {
+  const mode = normalizeConfigMode(ctx.configMode);
   document.getElementById('config-mode-label').textContent =
-    ctx.configMode === 'local' ? '本地配置' :
-    ctx.configMode === 'pve' ? 'PVE 配置' :
-    `联机配置 ${ctx.roomCode}`;
-  document.getElementById('config-player-switch').style.display = (ctx.configMode === 'p2p') ? 'none' : 'flex';
+    mode === GameMode.LOCAL_DUEL ? '本地对战' :
+    mode === GameMode.LOCAL_COOP ? '本地合作' :
+    mode === GameMode.LOCAL_SOLO ? '本地单人' :
+    mode === GameMode.P2P_DUEL ? `联机对战 ${ctx.roomCode}` :
+    '联机合作（开发中）';
+  document.getElementById('config-player-switch').style.display = (mode === GameMode.P2P_DUEL || mode === GameMode.P2P_COOP) ? 'none' : 'flex';
   document.querySelectorAll('#config-player-switch button').forEach((btn, index) => {
-    if (ctx.configMode === 'pve') {
+    if (mode === GameMode.LOCAL_COOP) {
       btn.dataset.player = index === 0 ? 'hero_1' : 'hero_2';
       btn.textContent = index === 0 ? '英雄1' : '英雄2';
+    } else if (mode === GameMode.LOCAL_SOLO) {
+      btn.dataset.player = index === 0 ? 'player1' : 'player2';
+      btn.textContent = index === 0 ? 'P1' : 'P2';
     } else {
       btn.dataset.player = index === 0 ? 'player1' : 'player2';
       btn.textContent = index === 0 ? 'P1' : 'P2';

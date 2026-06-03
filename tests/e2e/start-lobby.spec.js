@@ -33,9 +33,11 @@ test('start screen shows initial state', async ({ page }) => {
   await expect(page.locator('#start-screen')).toBeVisible();
   await expect(page.locator('#config-screen')).not.toBeVisible();
   await expect(page.locator('#app')).not.toBeVisible();
-  await expect(page.locator('#btn-local')).toBeVisible();
-  await expect(page.locator('#btn-pve')).toBeVisible();
-  await expect(page.locator('#btn-p2p')).toBeVisible();
+  await expect(page.locator('#btn-local-duel')).toBeVisible();
+  await expect(page.locator('#btn-local-coop')).toBeVisible();
+  await expect(page.locator('#btn-local-solo')).toBeVisible();
+  await expect(page.locator('#btn-p2p-duel')).toBeVisible();
+  await expect(page.locator('#btn-p2p-coop')).toBeVisible();
   await expect(page.locator('#btn-tutorial')).toBeVisible();
   await expect(page.locator('#room-setup')).not.toBeVisible();
 });
@@ -43,10 +45,10 @@ test('start screen shows initial state', async ({ page }) => {
 // A2: Local button enters config screen
 test('local button enters config screen', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#btn-local').click();
+  await page.locator('#btn-local-duel').click();
   await expect(page.locator('#config-screen')).toBeVisible();
   await expect(page.locator('#start-screen')).not.toBeVisible();
-  await expect(page.locator('#config-mode-label')).toContainText('本地配置');
+  await expect(page.locator('#config-mode-label')).toContainText('本地对战');
   await expect(page.locator('#config-player-switch')).toBeVisible();
   await expect(page.locator('#config-role-list')).toBeVisible();
 });
@@ -54,10 +56,10 @@ test('local button enters config screen', async ({ page }) => {
 // A3: PVE button enters config screen
 test('PVE button enters config screen', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#btn-pve').click();
+  await page.locator('#btn-local-coop').click();
   await expect(page.locator('#config-screen')).toBeVisible();
   await expect(page.locator('#start-screen')).not.toBeVisible();
-  await expect(page.locator('#config-mode-label')).toContainText('PVE');
+  await expect(page.locator('#config-mode-label')).toContainText('本地合作');
   await expect(page.locator('#config-role-list')).toBeVisible();
 });
 
@@ -77,7 +79,7 @@ test('tutorial modal opens and closes', async ({ page }) => {
 // A5: Top help button opens tutorial in battle
 test('top help button opens tutorial in battle', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#btn-local').click();
+  await page.locator('#btn-local-duel').click();
   await page.locator('#btn-config-lock').click();
   await page.locator('#config-player-switch button[data-player="player2"]').click();
   await page.locator('#btn-config-lock').click();
@@ -92,7 +94,7 @@ test('top help button opens tutorial in battle', async ({ page }) => {
 // A6: P2P lobby opens and back resets
 test('P2P lobby opens and back resets', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#btn-p2p').click();
+  await page.locator('#btn-p2p-duel').click();
   await expect(page.locator('#room-setup')).toBeVisible();
   await expect(page.locator('#room-host-section')).toBeVisible();
   await expect(page.locator('#room-join-section')).toBeVisible();
@@ -108,7 +110,7 @@ test('P2P lobby opens and back resets', async ({ page }) => {
 // A7: P2P join validates room code
 test('P2P join validates room code', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#btn-p2p').click();
+  await page.locator('#btn-p2p-duel').click();
   await page.locator('#room-code-input').fill('AB');
   await page.locator('#btn-join-room').click();
   await expect(page.locator('#room-error')).toContainText('请输入4位房间码');
@@ -117,7 +119,7 @@ test('P2P join validates room code', async ({ page }) => {
 // A8: Config back returns to start without error
 test('config back returns to start without error', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#btn-local').click();
+  await page.locator('#btn-local-duel').click();
   await expect(page.locator('#config-screen')).toBeVisible();
   await page.locator('#btn-config-back').click();
   await expect(page.locator('#start-screen')).toBeVisible();

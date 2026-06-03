@@ -63,7 +63,10 @@ export async function rankActionsOnePly(engine, actorId, opponentId, options = {
   for (const ownAction of ownCandidates) {
     const samples = [];
     for (const opponentAction of opponentCandidates) {
-      const sim = await engine.simulateTurnFromSnapshot(snapshot, [ownAction, opponentAction], options.simulation || {});
+      const sim = await engine.simulateTurnFromSnapshot(snapshot, [ownAction, opponentAction], {
+        ...(options.simulation || {}),
+        autoFillMissingActors: options.simulation?.autoFillMissingActors ?? options.autoFillMissingActors ?? false,
+      });
       if (!sim.success) continue;
       const actorEval = evaluateState(sim.state, actorOwner);
       const opponentEval = evaluateState(sim.state, opponentOwner);
@@ -294,5 +297,4 @@ function getAliveEnemies(engine, actor) {
     (c.position?.dim || 'real') === (actor.position?.dim || 'real')
   );
 }
-
 

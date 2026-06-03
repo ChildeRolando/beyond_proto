@@ -43,6 +43,9 @@ export async function submitAiTeamActions(engine, {
         targetId,
         success: true,
         action: result.action,
+        fallback: Boolean(result.fallback),
+        rankedCount: result.ranked?.length || 0,
+        samplesCount: result.samples?.length || 0,
       });
       continue;
     }
@@ -54,6 +57,9 @@ export async function submitAiTeamActions(engine, {
       success: fallback.success,
       action: fallback.action,
       error: fallback.success ? result.error : (fallback.error || result.error),
+      fallback: Boolean(fallback.fallback),
+      rankedCount: 0,
+      samplesCount: 0,
     };
     submitted.push(entry);
     if (!entry.success) errors.push(entry);

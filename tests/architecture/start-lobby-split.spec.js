@@ -33,8 +33,9 @@ for (const { name, re } of FORBIDDEN) {
 
 // Negative: must NOT directly addEventListener on these button IDs
 const FORBIDDEN_BTN = [
-  'btn-local', 'btn-pve', 'btn-tutorial', 'tutorial-close',
-  'btn-help-top', 'btn-p2p', 'btn-back-start',
+  'btn-local-duel', 'btn-local-coop', 'btn-local-solo', 'btn-p2p-duel',
+  'btn-p2p-coop', 'btn-tutorial', 'tutorial-close',
+  'btn-help-top', 'btn-back-start',
   'btn-create-room', 'btn-join-room',
 ];
 for (const id of FORBIDDEN_BTN) {

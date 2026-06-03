@@ -3,6 +3,14 @@
 
 import { ENEMY_PRESETS } from '../pve/EnemyPresets.js';
 import { buildPveRosterScenario } from '../pve/PveScenarioBuilder.js';
+import {
+  GameMode,
+  normalizeConfigMode,
+  isLocalMode,
+  isPveMode,
+  isCoopMode,
+  isP2PMode,
+} from '../app/GameModes.js';
 
 export class ConfigSessionController {
   constructor(ctx) {
@@ -23,7 +31,7 @@ export class ConfigSessionController {
     //   getRolesByClass, normalizePlayerConfig, cloneConfig,
     // }
 
-    this._configMode = 'local';
+    this._configMode = GameMode.LOCAL_DUEL;
     this._currentConfigPlayer = 'player1';
     this._configLoadoutOpen = false;
     this._hoverRoleId = null;
@@ -57,7 +65,7 @@ export class ConfigSessionController {
   // ─── State getters ───
 
   getConfigMode() { return this._configMode; }
-  setConfigMode(mode) { this._configMode = mode; }
+  setConfigMode(mode) { this._configMode = normalizeConfigMode(mode); }
   getCurrentConfigPlayer() { return this._currentConfigPlayer; }
   setCurrentConfigPlayer(p) { this._currentConfigPlayer = p; }
   getConfigPlayers() { return this._configPlayers; }
@@ -86,18 +94,21 @@ export class ConfigSessionController {
   }
 
   activeConfig() {
-    if (this._configMode === 'pve') return this.activePveHeroConfig();
+    if (normalizeConfigMode(this._configMode) === GameMode.LOCAL_COOP) return this.activePveHeroConfig();
     return this._configPlayers[this._currentConfigPlayer];
   }
 
   isConfigEditable(playerId) {
     const pid = playerId || this._currentConfigPlayer;
-    if (this._configMode === 'local' || this._configMode === 'pve') return true;
+    const mode = normalizeConfigMode(this._configMode);
+    if (mode === GameMode.LOCAL_DUEL || mode === GameMode.LOCAL_COOP) return true;
+    if (mode === GameMode.LOCAL_SOLO) return pid === 'player1';
+    if (mode === GameMode.P2P_COOP) return false;
     const nm = this._ctx.getNetworkManager();
     return nm?.myPlayerId === pid;
   }
 
-  isConfigMode(mode) { return this._configMode === mode; }
+  isConfigMode(mode) { return normalizeConfigMode(this._configMode) === normalizeConfigMode(mode); }
   getHoverRoleId() { return this._hoverRoleId; }
 
   // ─── Player config mutation ───
@@ -105,7 +116,7 @@ export class ConfigSessionController {
   setActiveClass(className) {
     const cfg = this.activeConfig();
     if (!this.isConfigEditable() || cfg.locked) return;
-    if (this._configMode === 'pve') {
+    if (normalizeConfigMode(this._configMode) === GameMode.LOCAL_COOP) {
       const index = this._pveHeroSlots.findIndex(slot => slot.playerId === this._currentConfigPlayer);
       if (index >= 0) this._pveHeroSlots[index] = this._makeDefaultConfig(this._currentConfigPlayer, className);
     } else {
@@ -182,12 +193,14 @@ export class ConfigSessionController {
 
   showConfigScreen(mode) {
     const nm = this._ctx.getNetworkManager();
-    this._configMode = mode || this._configMode || 'local';
+    this._configMode = normalizeConfigMode(mode || this._configMode || GameMode.LOCAL_DUEL);
     this._ctx.battleSession.resetForConfigScreen();
-    if (this._configMode === 'p2p' && nm?.myPlayerId) {
-      this._currentConfigPlayer = nm.myPlayerId;
-    } else if (this._configMode === 'pve') {
+    if (this._configMode === GameMode.P2P_DUEL || this._configMode === GameMode.P2P_COOP) {
+      this._currentConfigPlayer = nm?.myPlayerId || 'player1';
+    } else if (this._configMode === GameMode.LOCAL_COOP) {
       this._currentConfigPlayer = 'hero_1';
+    } else if (this._configMode === GameMode.LOCAL_SOLO) {
+      this._currentConfigPlayer = 'player1';
     } else if (!this._configPlayers[this._currentConfigPlayer]) {
       this._currentConfigPlayer = 'player1';
     }
@@ -219,8 +232,13 @@ export class ConfigSessionController {
   }
 
   canStartBattle() {
-    if (this._configMode === 'pve') return this._pveHeroSlots.every(slot => slot.locked);
-    return this._configPlayers.player1.locked && this._configPlayers.player2.locked;
+    const mode = normalizeConfigMode(this._configMode);
+    if (mode === GameMode.LOCAL_COOP) return this._pveHeroSlots.every(slot => slot.locked);
+    if (mode === GameMode.LOCAL_SOLO) return this._configPlayers.player1.locked;
+    if (mode === GameMode.LOCAL_DUEL || mode === GameMode.P2P_DUEL) {
+      return this._configPlayers.player1.locked && this._configPlayers.player2.locked;
+    }
+    return false;
   }
 
   // ─── Player config for battle ───
@@ -285,13 +303,14 @@ export class ConfigSessionController {
     const editable = this.isConfigEditable();
     const nm = this._ctx.getNetworkManager();
     const role = ROLE_DEFS[this._hoverRoleId] || ROLE_DEFS[cfg.roleId];
-    const viewConfigPlayers = this._configMode === 'pve'
+    const mode = normalizeConfigMode(this._configMode);
+    const viewConfigPlayers = mode === GameMode.LOCAL_COOP
       ? { player1: this._pveHeroSlots[0], player2: this._pveHeroSlots[1] }
       : this._configPlayers;
 
     return {
       classes: CLASSES, cfg, role,
-      configMode: this._configMode,
+      configMode: mode,
       roomCode: nm?.roomCode || '',
       currentConfigPlayer: this._currentConfigPlayer,
       configPlayers: viewConfigPlayers,
@@ -326,6 +345,10 @@ export class ConfigSessionController {
   // ─── Reset for config screen mode switch ───
 
   setConfigPlayerSwitch(playerId) {
+    const mode = normalizeConfigMode(this._configMode);
+    if (mode === GameMode.LOCAL_SOLO && playerId !== 'player1') return;
+    if (mode === GameMode.LOCAL_COOP && !this._pveHeroSlots.some(slot => slot.playerId === playerId)) return;
+    if ((mode === GameMode.LOCAL_DUEL || mode === GameMode.P2P_DUEL) && !this._configPlayers[playerId]) return;
     this._currentConfigPlayer = playerId;
     this._hoverRoleId = null;
     this._selectedPoolSkillId = null;

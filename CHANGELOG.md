@@ -1,4 +1,13 @@
-﻿# Changelog
+# Changelog
+
+## 2026-06-03 - PVE AI autofill 与模式拆分
+
+
+- Added simulation-only missing-actor autofill for one-ply AI evaluation so multi-roster PVE no longer falls back when extra alive actors have not yet submitted.
+- Threaded autofill through one-ply ranking and team AI submission, and increased multi-roster PVE AI timeout to 15000ms.
+- Split game modes into `local_duel`, `local_coop`, `local_solo`, `p2p_duel`, and `p2p_coop`, with legacy `local` / `pve` / `p2p` aliases normalized in the shared helper.
+- Updated the start lobby and config flow to expose local duel, local coop, local solo, P2P duel, and disabled P2P coop entry points.
+- Added regression coverage for multi-roster one-ply autofill, non-fallback team AI submission, mode normalization, local solo vs coop config behavior, local solo battle flow, and the new lobby UI.
 
 ## 2026-06-03 - PVE 2v2 roster 配置入口
 

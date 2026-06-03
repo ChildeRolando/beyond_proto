@@ -12,6 +12,7 @@ import { initGalaxyOverlayController } from '../ui/battle/GalaxyOverlayControlle
 import { initGameOverController } from '../ui/battle/GameOverController.js';
 import { initChatController } from '../ui/battle/ChatController.js';
 import { RouteController } from './RouteController.js';
+import { GameMode, normalizeConfigMode, isPveMode as isGameModePve } from './GameModes.js';
 import { SKILLS, SKILLS_BY_CLASS } from '../engine/SkillData.js';
 import {
   LOADOUT_SIZE,
@@ -64,7 +65,8 @@ export function createAppRuntime() {
   let handleNetworkMessage = () => {};
 
   const getNetworkManager = () => networkSession?.getNetworkManager() || null;
-  const isPveMode = () => configSession?.getConfigMode() === 'pve' && (!getNetworkManager() || getNetworkManager().mode === 'local');
+  const getCurrentGameMode = () => normalizeConfigMode(configSession?.getConfigMode());
+  const isPveMode = () => isGameModePve(getCurrentGameMode()) && (!getNetworkManager() || getNetworkManager().mode === 'local');
 
   const hideBattleHeaderControls = () => {
     setDisplay('p1-class-select', 'none');
@@ -254,17 +256,32 @@ export function createAppRuntime() {
   startLobbyUi = initStartLobbyController({
     defaultAddr: window.location.hostname.includes('ngrok-free') ? window.location.host : '120.77.178.15:8088',
     callbacks: {
-      onStartLocal() {
+      onStartLocalDuel() {
         networkSession?.disconnect();
         configSession.resetPlayerConfigs();
-        setBattleHeader('本地', 'local', false);
-        configSession.showConfigScreen('local');
+        setBattleHeader('本地对战', 'local', false);
+        configSession.showConfigScreen(GameMode.LOCAL_DUEL);
       },
-      onStartPve() {
+      onStartLocalCoop() {
         networkSession?.disconnect();
         configSession.resetPlayerConfigs();
-        setBattleHeader('PVE', 'local', false);
-        configSession.showConfigScreen('pve');
+        setBattleHeader('本地合作', 'local', false);
+        configSession.showConfigScreen(GameMode.LOCAL_COOP);
+      },
+      onStartLocalSolo() {
+        networkSession?.disconnect();
+        configSession.resetPlayerConfigs();
+        setBattleHeader('本地单人', 'local', false);
+        configSession.showConfigScreen(GameMode.LOCAL_SOLO);
+      },
+      onStartP2PDuel() {
+        networkSession?.disconnect();
+        configSession.resetPlayerConfigs();
+        configSession.setConfigMode(GameMode.P2P_DUEL);
+        setBattleHeader('联机对战', 'p2p', true);
+      },
+      onStartP2PCoop() {
+        alert('联机合作开发中');
       },
       onBackStart() {
         networkSession?.disconnect();
@@ -399,7 +416,7 @@ export function createAppRuntime() {
   getEl('btn-config-start')?.addEventListener('click', () => {
     if (!configSession.canStartBattle()) return;
     const seed = Date.now();
-    if (isPveMode() && typeof configSession.buildPveBattleScenario === 'function') {
+    if (getCurrentGameMode() === GameMode.LOCAL_COOP && typeof configSession.buildPveBattleScenario === 'function') {
       startBattleFromScenario(seed, configSession.buildPveBattleScenario(seed));
       return;
     }
@@ -420,7 +437,7 @@ export function createAppRuntime() {
   });
   getEl('btn-reset')?.addEventListener('click', () => {
     const configs = configSession.getBattleConfigs() || configSession.getBattlePlayerConfigs();
-    if (isPveMode() && configs?.mode === 'pve_multi') {
+    if (getCurrentGameMode() === GameMode.LOCAL_COOP && configs?.mode === 'pve_multi') {
       startBattleFromScenario(Date.now(), configs);
       return;
     }

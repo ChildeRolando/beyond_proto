@@ -37,7 +37,7 @@ test.afterEach(async ({}, testInfo) => {
 
 async function enterLocalBattle(page) {
   await page.goto('/');
-  await page.locator('#btn-local').click();
+  await page.locator('#btn-local-duel').click();
   await expect(page.locator('#config-screen')).toBeVisible();
 
   await page.locator('#btn-config-lock').click();

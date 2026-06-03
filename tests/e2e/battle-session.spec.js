@@ -35,7 +35,7 @@ test.afterEach(async ({ }, testInfo) => {
  */
 async function enterLocalBattle(page) {
   await page.goto('/');
-  await page.locator('#btn-local').click();
+  await page.locator('#btn-local-duel').click();
   await expect(page.locator('#config-screen')).toBeVisible();
 
   // Lock P1
@@ -276,7 +276,7 @@ test('A4: execute local turn advances game state', async ({ page }) => {
 
 test('A5: PVE battle starts and action dock renders', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#btn-pve').click();
+  await page.locator('#btn-local-coop').click();
   await expect(page.locator('#config-screen')).toBeVisible();
 
   // Lock P1

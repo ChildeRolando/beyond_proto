@@ -16,7 +16,12 @@ assert.equal(
   `main.js should parse\n${syntax.stderr || syntax.stdout}`
 );
 
-assert.match(html, /id="btn-pve"/, 'PVE mode button should exist');
+assert.match(html, /id="btn-local-duel"/, 'local duel button should exist');
+assert.match(html, /id="btn-local-coop"/, 'local coop button should exist');
+assert.match(html, /id="btn-local-solo"/, 'local solo button should exist');
+assert.match(html, /id="btn-p2p-duel"/, 'P2P duel button should exist');
+assert.match(html, /id="btn-p2p-coop"/, 'P2P coop button should exist');
+assert.match(html, /id="btn-pve"[^>]*display:none/, 'legacy PVE button should be hidden compatibility only');
 assert.match(html, /id="config-player-switch"/, 'config player switch container should exist');
 assert.match(mainSrc, /createAppRuntime/, 'main.js should start AppRuntime');
 
