@@ -52,8 +52,8 @@ console.log('=== PVE Multi-Roster Tests ===\n');
   submit = engine.submitAction('enemy_2', 'shooter_reload', null);
   check('second enemy can submit safe action', submit.success, JSON.stringify(submit));
 
-  check('isBothSubmitted means all alive required actors are submitted',
-    engine.isBothSubmitted() === true,
+  check('areAllAliveRequiredActorsSubmitted means all alive required actors are submitted',
+    engine.areAllAliveRequiredActorsSubmitted() === true,
     JSON.stringify(engine.getState().characters.map(c => ({ id: c.id, actionPoints: c.actionPoints }))));
 
   execute = await engine.executeTurn();

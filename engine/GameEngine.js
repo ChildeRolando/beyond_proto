@@ -161,9 +161,13 @@ export class GameEngine {
     return submitAiActionForEngine(this, characterId, options);
   }
 
-  isBothSubmitted() {
+  areAllAliveRequiredActorsSubmitted() {
     const aliveCount = [...this.registry.characters()].filter(c => c.alive !== false).length;
     return this._submitted.size >= aliveCount;
+  }
+
+  isBothSubmitted() {
+    return this.areAllAliveRequiredActorsSubmitted();
   }
 
   async executeTurn() {
@@ -173,7 +177,7 @@ export class GameEngine {
     }
     const autoSubmitted = this.turnManager.autoSubmitForcedActions();
     for (const id of autoSubmitted) this._submitted.add(id);
-    if (!this.isBothSubmitted()) {
+    if (!this.areAllAliveRequiredActorsSubmitted()) {
       return { success: false, error: 'not_all_submitted' };
     }
     await this.turnManager.executeTurn();

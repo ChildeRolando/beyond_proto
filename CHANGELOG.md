@@ -1,5 +1,11 @@
 ﻿# Changelog
 
+## 2026-06-03 - 行动提交状态命名
+
+- Renamed the roster submission readiness API to `areAllAliveRequiredActorsSubmitted()`.
+- Updated internal turn execution and AI/PVE tests to use the new all-alive-required-actors wording.
+- Kept `isBothSubmitted()` as a compatibility alias for older callers.
+
 ## 2026-06-03 - PVE 多人 roster 地基
 
 - Added roster-based battle scenario foundation for `pve_multi` initialization.

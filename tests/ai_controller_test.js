@@ -43,7 +43,7 @@ console.log('=== AI Controller Tests ===\n');
   check('AI controller choice does not submit or mutate live turn state',
     after.turn === before.turn &&
     findOwner(after, 'player1').resources.qi === findOwner(before, 'player1').resources.qi &&
-    engine.isBothSubmitted() === false);
+    engine.areAllAliveRequiredActorsSubmitted() === false);
 }
 
 {
@@ -67,7 +67,7 @@ console.log('=== AI Controller Tests ===\n');
     result.success && result.submitResult?.success === true,
     JSON.stringify(result));
   check('AI controller marks only the AI required action as ready',
-    ai.actionPoints.requiredReady === true && engine.isBothSubmitted() === false,
+    ai.actionPoints.requiredReady === true && engine.areAllAliveRequiredActorsSubmitted() === false,
     JSON.stringify(ai.actionPoints));
 }
 
@@ -136,6 +136,6 @@ console.log('=== AI Controller Tests ===\n');
     decision.samples.length === 0,
     JSON.stringify(decision));
   check('AI timeout fallback does not submit or mutate live turn state',
-    engine.isBothSubmitted() === false &&
+    engine.areAllAliveRequiredActorsSubmitted() === false &&
     findOwner(engine.getState(), 'player2').actionPoints.requiredReady === false);
 }
