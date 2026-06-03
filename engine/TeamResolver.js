@@ -14,6 +14,22 @@ export function isEnemy(a, b) {
   return Boolean(aTeam && bTeam && aTeam !== bTeam);
 }
 
+export function canAffectCharacter(input, maybeTarget, maybeOptions = {}) {
+  const source = input?.source || input;
+  const target = input?.target || maybeTarget;
+  const options = input?.source ? input : maybeOptions;
+  const policy = options.policy || 'enemyOnly';
+  const friendlyFire = Boolean(options.friendlyFire);
+  const allowSelf = Boolean(options.allowSelf);
+
+  if (!source || !target) return false;
+  if (source.id === target.id) return policy === 'self' || allowSelf;
+  if (policy === 'self') return false;
+  if (policy === 'allyOnly') return isSameTeam(source, target);
+  if (policy === 'allExceptSelf') return friendlyFire ? true : isEnemy(source, target);
+  return isEnemy(source, target);
+}
+
 export function getAliveTeamIds(registry) {
   const ids = [];
   for (const character of registry.characters()) {

@@ -5,7 +5,7 @@ import { HookName } from './BuffHooks.js';
 import { STATUS_DEFS } from './StatusEffectDefs.js';
 import { SKILLS } from './SkillData.js';
 import { getDefaultRoleLoadout } from './RoleData.js';
-import { getAliveTeamIds } from './TeamResolver.js';
+import { canAffectCharacter, getAliveTeamIds } from './TeamResolver.js';
 
 export const TurnPhase = Object.freeze({
   PLAN: 'PLAN',
@@ -31,6 +31,7 @@ export class TurnManager {
   #galaxyProvider = null;
   #dimensionSystem = null;
   #formationSystem = null;
+  #getRules = null;
   #turnNumber = 1;
   #phase = TurnPhase.PLAN;
   #delayedCommands = [];
@@ -60,6 +61,7 @@ export class TurnManager {
     this.#projectileCalculator = deps.projectileCalculator || null;
     this.#dimensionSystem = deps.dimensionSystem || null;
     this.#formationSystem = deps.formationSystem || null;
+    this.#getRules = deps.getRules || null;
 
     // Track shield hits for pendingQi resolution
     this.#eventBus.on(EvtType.SHIELD_ABSORBED, (data) => {
@@ -77,6 +79,21 @@ export class TurnManager {
   get phase() { return this.#phase; }
 
   setGalaxyProvider(fn) { this.#galaxyProvider = fn; }
+
+  _getRules() {
+    return this.#getRules?.() || {};
+  }
+
+  _canAttackAffect(source, target, policy = null) {
+    const rules = this._getRules();
+    const friendlyFire = Boolean(rules.friendlyFire);
+    return canAffectCharacter({
+      source,
+      target,
+      policy: policy || (friendlyFire ? 'allExceptSelf' : 'enemyOnly'),
+      friendlyFire,
+    });
+  }
 
   // Called by UI when both players have submitted
   async executeTurn() {
@@ -150,7 +167,7 @@ export class TurnManager {
       // Resolve projectiles at this speed tier (advance full path, check body contact)
       if (this.#projectileCalculator) {
         const results = this.#projectileCalculator.resolveStep(
-          spd, this.#registry, this.#damageCalculator, this.#buffManager
+          spd, this.#registry, this.#damageCalculator, this.#buffManager, { rules: this._getRules() }
         );
 
         for (const r of results.hits) {
@@ -554,6 +571,7 @@ export class TurnManager {
     let forceHit = false;
     for (const e of this.#registry.characters()) {
       if (e.alive === false || e.id === cmd.actorId) continue;
+      if (!this._canAttackAffect(actor, e)) continue;
       const acqCtx = this.#buffManager.dispatch(HookName.ON_TARGET_ACQUIRE, {
         sourceId: cmd.actorId, targetId: e.id, forceHit: false,
       });
@@ -618,6 +636,7 @@ export class TurnManager {
     // SURE_HIT: redirect projectile to target's current position (handles displacement)
     for (const e of this.#registry.characters()) {
       if (e.alive === false || e.id === cmd.actorId) continue;
+      if (!this._canAttackAffect(actor, e)) continue;
       const acqCtx = this.#buffManager.dispatch(HookName.ON_TARGET_ACQUIRE, {
         sourceId: cmd.actorId, targetId: e.id, forceHit: false,
       });
@@ -651,6 +670,7 @@ export class TurnManager {
     // SURE_HIT: redirect to target's current position
     for (const e of this.#registry.characters()) {
       if (e.alive === false || e.id === cmd.actorId) continue;
+      if (!this._canAttackAffect(actor, e)) continue;
       const acqCtx = this.#buffManager.dispatch(HookName.ON_TARGET_ACQUIRE, {
         sourceId: cmd.actorId, targetId: e.id, forceHit: false,
       });
@@ -688,6 +708,7 @@ export class TurnManager {
     const q = actor.position.q, r = actor.position.r;
     for (const e of this.#registry.entities()) {
       if (e.type !== 'CHARACTER' || e.id === cmd.actorId || e.alive === false) continue;
+      if (!this._canAttackAffect(actor, e)) continue;
       if (hexDistance(q, r, e.position.q, e.position.r) <= (cmd.payload.radius || 1)) {
         let targetPower = power;
         // Check sheathe/block interception per target (same hook as projectile system)
@@ -770,6 +791,7 @@ export class TurnManager {
       const entities = this.#registry.getAt(pq, pr);
       for (const e of entities) {
         if (e.type !== 'CHARACTER' || e.id === cmd.actorId || e.alive === false) continue;
+        if (!this._canAttackAffect(actor, e)) continue;
         const effectivePower = typeof cmd.payload.power === 'number'
           ? this.#buffManager.getEffectivePower(cmd.actorId, cmd.payload.power)
           : cmd.payload.power;
@@ -782,12 +804,17 @@ export class TurnManager {
   }
 
   _execApplyStatus(cmd) {
+    const actor = this.#registry.get(cmd.actorId);
     const targetRef = cmd.payload.targetRef || 'SELF';
     let targetId = cmd.actorId;
 
     if (targetRef === 'TARGET' && cmd.targetPos) {
       const entities = this.#registry.getAt(cmd.targetPos.q, cmd.targetPos.r);
-      const targetChar = entities.find(e => e.type === 'CHARACTER' && e.id !== cmd.actorId && e.alive !== false);
+      const targetChar = entities.find(e =>
+        e.type === 'CHARACTER' &&
+        e.alive !== false &&
+        this._canAttackAffect(actor, e)
+      );
       if (targetChar) targetId = targetChar.id;
     } else if (targetRef !== 'SELF') {
       targetId = cmd.targetIds?.[0] || cmd.actorId;
@@ -920,7 +947,7 @@ export class TurnManager {
     // Find the target entity at targetPos and pull it toward actor
     const entities = this.#registry.getAt(cmd.targetPos.q, cmd.targetPos.r);
     for (const e of entities) {
-      if (e.type === 'CHARACTER' && e.id !== cmd.actorId && e.alive !== false) {
+      if (e.type === 'CHARACTER' && e.alive !== false && this._canAttackAffect(actor, e)) {
         // Cancel target's pending commands at slower speed tiers (interrupt)
         this.#commandQueue.cancelByActor(e.id, cmd.speed);
         // Also cancel from current turn's speed groups (already built before tier loop)
@@ -984,6 +1011,7 @@ export class TurnManager {
           // 1-radius AOE 700
           for (const other of this.#registry.characters()) {
             if (other.id === e.id || other.alive === false) continue;
+            if (!this._canAttackAffect(e, other)) continue;
             if (hexDistance(meteor.data.targetQ, meteor.data.targetR, other.position.q, other.position.r) <= 1) {
               this.#damageCalculator.resolve(e.id, other.id, 700, 'PHYSICAL');
             }
@@ -1005,7 +1033,7 @@ export class TurnManager {
       if (sword && sword.data.targetQ != null) {
         const entities = this.#registry.getAt(sword.data.targetQ, sword.data.targetR);
         for (const target of entities) {
-          if (target.type === 'CHARACTER' && target.id !== e.id && target.alive !== false) {
+          if (target.type === 'CHARACTER' && target.alive !== false && this._canAttackAffect(e, target)) {
             target.alive = false;
             this.#eventBus.emit(EvtType.CHARACTER_DIED, { targetId: target.id, sourceId: e.id });
             this.#logger?.log('⚔ 落剑！即死', 'die');
@@ -1043,7 +1071,7 @@ export class TurnManager {
         if (flight.data.swordEnergy > 0) {
           const entitiesAt = this.#registry.getAt(nq, nr);
           for (const other of entitiesAt) {
-            if (other.type === 'CHARACTER' && other.id !== e.id && other.alive !== false) {
+            if (other.type === 'CHARACTER' && other.alive !== false && this._canAttackAffect(e, other)) {
               this.#damageCalculator.resolve(e.id, other.id, swordPower, 'PHYSICAL');
               flight.data.swordEnergy = Math.max(0, flight.data.swordEnergy - swordPower);
               this.#logger?.log('🗡 御剑撞击！威' + swordPower + ' 余能' + flight.data.swordEnergy, 'sh');
@@ -1133,7 +1161,7 @@ export class TurnManager {
 
         // Resolve projectiles from speed-2 galaxy commands
         if (this.#projectileCalculator) {
-          const projResults = this.#projectileCalculator.resolveStep(2, this.#registry, this.#damageCalculator, this.#buffManager);
+          const projResults = this.#projectileCalculator.resolveStep(2, this.#registry, this.#damageCalculator, this.#buffManager, { rules: this._getRules() });
           for (const r of projResults.hits) { if (r.hit) this.#lastHitByActor.set(r.ownerId, true); }
           for (const r of projResults.interceptions) { if (r.intercepted && r.interceptorId) this.#lastHitByActor.set(r.interceptorId, true); }
 
@@ -1405,7 +1433,7 @@ export class TurnManager {
     // Priority 1: enemy characters
     for (const e of this.#registry.characters()) {
       if (e.alive === false || e.id === cmd.actorId) continue;
-      if (e.ownerId === actor.ownerId) continue;
+      if (!this._canAttackAffect(actor, e)) continue;
       const d = hexDistance(toQ, toR, e.position.q, e.position.r);
       if (d <= radius && d < bestDist) {
         bestDist = d; bestTarget = e; bestIsChar = true;
@@ -1415,7 +1443,8 @@ export class TurnManager {
     if (!bestTarget && this.#projectileCalculator) {
       const projs = this.#projectileCalculator.getProjectiles?.() || [];
       for (const p of projs) {
-        if (!p.alive || p.ownerId === actor.ownerId) continue;
+        const owner = this.#registry.get(p.ownerId);
+        if (!p.alive || !owner || !this._canAttackAffect(actor, owner, 'enemyOnly')) continue;
         const pq = p.path?.[p.stepIndex]?.[0] ?? p.fromQ;
         const pr = p.path?.[p.stepIndex]?.[1] ?? p.fromR;
         const d = hexDistance(toQ, toR, pq, pr);
@@ -1655,7 +1684,7 @@ export class TurnManager {
     const allDirs = [0, 1, 2, 3, 4, 5];
     for (const enemy of this.#registry.characters()) {
       if (enemy.alive === false) continue;
-      if (duelists.some(d => d.ownerId === enemy.ownerId)) continue;
+      if (!duelists.some(d => this._canAttackAffect(d, enemy, 'enemyOnly'))) continue;
       // Apply or refresh weak points
       if (!this.#buffManager.hasStatus(enemy.id, 'WEAK_POINT')) {
         const shuffled = [...allDirs].sort(() => Math.random() - 0.5);

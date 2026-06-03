@@ -59,6 +59,7 @@ export class GameEngine {
       projectileCalculator: this.projectileCalculator,
       dimensionSystem: this.dimensionSystem,
       formationSystem: this.formationSystem,
+      getRules: () => this._rules,
     });
 
     // Track submitted players
@@ -159,6 +160,10 @@ export class GameEngine {
 
   submitAiAction(characterId, options = {}) {
     return submitAiActionForEngine(this, characterId, options);
+  }
+
+  getRules() {
+    return this._rules ? { ...this._rules } : {};
   }
 
   areAllAliveRequiredActorsSubmitted() {

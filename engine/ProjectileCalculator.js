@@ -2,6 +2,7 @@
 import { hexLine, hexDistance, hexSpiral, isOnBoard } from './HexMath.js';
 import { EvtType } from './CommandTypes.js';
 import { HookName } from './BuffHooks.js';
+import { canAffectCharacter } from './TeamResolver.js';
 
 let _projId = 0;
 
@@ -76,7 +77,7 @@ export class ProjectileCalculator {
   }
 
   // Comprehensive projectile resolution: advance through full path, checking body contact at each hex
-  resolveStep(speedTier, registry, damageCalculator, buffManager) {
+  resolveStep(speedTier, registry, damageCalculator, buffManager, options = {}) {
     this.#lastInterceptions = [];
     this.#lastHits = [];
     const active = this.#projectiles.filter(p => p.alive && p.speed === speedTier);
@@ -144,7 +145,7 @@ export class ProjectileCalculator {
       for (const proj of active) {
         if (!proj.alive) continue;
         const [q, r] = proj.path[proj.stepIndex];
-        this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager);
+        this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager, options);
       }
 
       // --- Same-hex collisions AFTER body contact (melee hits target before stationary collision) ---
@@ -162,7 +163,7 @@ export class ProjectileCalculator {
     );
     for (const proj of stationaryProjs) {
       const [q, r] = proj.path[proj.stepIndex];
-      this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager);
+      this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager, options);
     }
     this._checkCollisions();
     for (const proj of stationaryProjs) {
@@ -270,7 +271,7 @@ export class ProjectileCalculator {
   }
 
   // Check buff interception and body contact for a projectile at a specific hex
-  _checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager) {
+  _checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager, options = {}) {
     // Check buff interception at this hex
     let intercepted = false;
     for (const entity of registry.characters()) {
@@ -322,12 +323,21 @@ export class ProjectileCalculator {
     let hit = false;
     let targetId = null;
     const isAoe = proj.flags.includes('AOE_RADIUS_1');
+    const source = registry.get(proj.ownerId);
+    const friendlyFire = Boolean(options.rules?.friendlyFire);
+    const defaultPolicy = friendlyFire ? 'allExceptSelf' : 'enemyOnly';
+    const canHit = (target) => canAffectCharacter({
+      source,
+      target,
+      policy: options.policy || defaultPolicy,
+      friendlyFire,
+    });
 
     if (isAoe) {
-      const hasBody = entities.some(e => e.type === 'CHARACTER' && e.id !== proj.ownerId && e.alive !== false);
+      const hasBody = entities.some(e => e.type === 'CHARACTER' && e.alive !== false && canHit(e));
       if (hasBody) {
         for (const entity of registry.characters()) {
-          if (entity.alive === false || entity.id === proj.ownerId) continue;
+          if (entity.alive === false || !canHit(entity)) continue;
           if (hexDistance(entity.position.q, entity.position.r, q, r) <= 1) {
             const result = damageCalculator.resolve(
               proj.ownerId, entity.id, proj.power, 'PHYSICAL',
@@ -345,7 +355,7 @@ export class ProjectileCalculator {
       }
     } else {
       for (const e of entities) {
-        if (e.type !== 'CHARACTER' || e.id === proj.ownerId || e.alive === false) continue;
+        if (e.type !== 'CHARACTER' || e.alive === false || !canHit(e)) continue;
 
         const acqCtx = buffManager.dispatch(HookName.ON_TARGET_ACQUIRE, {
           sourceId: proj.ownerId, targetId: e.id, forceHit: false,

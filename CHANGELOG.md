@@ -1,5 +1,13 @@
 ﻿# Changelog
 
+## 2026-06-03 - PVE 目标策略与友伤过滤
+
+- Added team-aware target policy helpers with legacy ownerId fallback.
+- Applied `friendlyFire=false` filtering to projectile body contact and AOE explosion hit resolution.
+- Updated key TurnManager attack/control paths to use team-aware hit filtering instead of owner-only checks.
+- Added target policy regression tests for projectile, projectile AOE, self AOE, path AOE, legacy 1v1, and `friendlyFire=true` policy behavior.
+- Preserved legacy 1v1 hit behavior through teamId fallback to ownerId.
+
 ## 2026-06-03 - PVE 多敌人 AI 提交
 
 - Added `HateSystem` for deterministic enemy-to-hero target assignment and dead-target refresh.
