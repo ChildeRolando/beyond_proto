@@ -1,36 +1,32 @@
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const scriptMatch = html.match(/<script type="module">([\s\S]*?)<\/script>/);
-assert.ok(scriptMatch, 'index.html should contain a module script');
+const mainSrc = readFileSync(new URL('../main.js', import.meta.url), 'utf8');
+const appRuntimeSrc = readFileSync(new URL('../app/AppRuntime.js', import.meta.url), 'utf8');
+const configViewSrc = readFileSync(new URL('../ui/config/ConfigScreenView.js', import.meta.url), 'utf8');
 
-const tempPath = join(tmpdir(), `combat-engine-index-${process.pid}.mjs`);
-writeFileSync(tempPath, scriptMatch[1], 'utf8');
-try {
-  const syntax = spawnSync(process.execPath, ['--check', tempPath], { encoding: 'utf8' });
-  assert.equal(
-    syntax.status,
-    0,
-    `index.html module script should parse\n${syntax.stderr || syntax.stdout}`
-  );
-} finally {
-  unlinkSync(tempPath);
-}
-
-assert.match(html, /function isPveMode\(\)/, 'PVE mode guard should exist');
-assert.match(html, /submitAiAndExecutePveTurn/, 'PVE should submit AI and execute local turns');
-assert.match(html, /configMode === 'pve'/, 'PVE config route should be handled');
-
-const removeLoadoutMatch = html.match(/function removeLoadoutAt\([\s\S]*?\r?\n}\r?\n\r?\nfunction renderConfigScreen/);
-assert.ok(removeLoadoutMatch, 'removeLoadoutAt should be present');
-assert.doesNotMatch(
-  removeLoadoutMatch[0],
-  /getMyCharacterIds\(\)/,
-  'removeLoadoutAt should only edit config loadout state, not battle submit status'
+const mainPath = fileURLToPath(new URL('../main.js', import.meta.url));
+const syntax = spawnSync(process.execPath, ['--check', mainPath], { encoding: 'utf8' });
+assert.equal(
+  syntax.status,
+  0,
+  `main.js should parse\n${syntax.stderr || syntax.stdout}`
 );
+
+assert.match(html, /id="btn-pve"/, 'PVE mode button should exist');
+assert.match(html, /id="config-player-switch"/, 'config player switch container should exist');
+assert.match(mainSrc, /createAppRuntime/, 'main.js should start AppRuntime');
+
+assert.match(appRuntimeSrc, /isPveMode\s*=\s*\(\)\s*=>/, 'PVE mode guard should exist');
+assert.match(appRuntimeSrc, /submitAiAndExecutePveTurn/, 'PVE should submit AI and execute local turns');
+assert.match(appRuntimeSrc, /buildPveBattleScenario/, 'PVE config should build roster scenario');
+assert.match(appRuntimeSrc, /startBattleFromScenario/, 'PVE config should start battle from scenario');
+
+assert.match(configViewSrc, /hero_1/, 'PVE UI should expose hero_1 slot control');
+assert.match(configViewSrc, /英雄1/, 'PVE UI should label first hero slot');
+assert.match(configViewSrc, /pveEnemyPresets/, 'PVE UI should render fixed enemy presets');
 
 console.log('pve_ui_static_test: passed');

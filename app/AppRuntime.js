@@ -155,6 +155,17 @@ export function createAppRuntime() {
     battleSession.startTurnTimeout();
   }
 
+  function startBattleFromScenario(seed = Date.now(), scenario) {
+    const battleScenario = { ...scenario, seed };
+    configSession.setBattleConfigs(battleScenario);
+    battleSession.startBattleFromScenario(seed, battleScenario);
+    setExecuteDisabled(true);
+    setSubmitStatus('等待提交...');
+    clearLog();
+    battleSession.clearTurnTimeout();
+    battleSession.startTurnTimeout();
+  }
+
   function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
@@ -386,7 +397,13 @@ export function createAppRuntime() {
   getEl('btn-toggle-loadout')?.addEventListener('click', () => configSession.toggleLoadoutDrawer());
   getEl('btn-config-lock')?.addEventListener('click', () => configSession.toggleLockCurrent());
   getEl('btn-config-start')?.addEventListener('click', () => {
-    if (configSession.canStartBattle()) startBattleFromConfigs(Date.now(), configSession.getBattlePlayerConfigs());
+    if (!configSession.canStartBattle()) return;
+    const seed = Date.now();
+    if (isPveMode() && typeof configSession.buildPveBattleScenario === 'function') {
+      startBattleFromScenario(seed, configSession.buildPveBattleScenario(seed));
+      return;
+    }
+    startBattleFromConfigs(seed, configSession.getBattlePlayerConfigs());
   });
   getEl('btn-config-back')?.addEventListener('click', returnToStart);
   getEl('btn-execute')?.addEventListener('click', async () => {
@@ -403,6 +420,10 @@ export function createAppRuntime() {
   });
   getEl('btn-reset')?.addEventListener('click', () => {
     const configs = configSession.getBattleConfigs() || configSession.getBattlePlayerConfigs();
+    if (isPveMode() && configs?.mode === 'pve_multi') {
+      startBattleFromScenario(Date.now(), configs);
+      return;
+    }
     startBattleFromConfigs(Date.now(), configs);
   });
   getEl('btn-start')?.addEventListener('click', () => {

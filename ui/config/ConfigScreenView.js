@@ -68,6 +68,25 @@ function renderRoleDetail(role) {
 function renderTeamStatus(ctx) {
   const p1 = ctx.configPlayers.player1;
   const p2 = ctx.configPlayers.player2;
+  if (ctx.configMode === 'pve') {
+    const enemies = ctx.pveEnemyPresets || [];
+    document.getElementById('team-status').innerHTML = `
+      <h3>PVE 队伍</h3>
+      <div class="config-team-row">
+        <span><span class="config-team-dot ${p1.locked ? 'ready' : 'waiting'}"></span>英雄1: ${ROLE_DEFS[p1.roleId]?.name || '未选择'} · ${p1.class}</span>
+        <span>${p1.locked ? '已锁定' : '配置中'}</span>
+      </div>
+      <div class="config-team-row">
+        <span><span class="config-team-dot ${p2.locked ? 'ready' : 'waiting'}"></span>英雄2: ${ROLE_DEFS[p2.roleId]?.name || '未选择'} · ${p2.class}</span>
+        <span>${p2.locked ? '已锁定' : '配置中'}</span>
+      </div>
+      <div class="config-team-row">
+        <span>敌方: ${enemies.map(enemy => `${enemy.name} · ${enemy.class}`).join(' / ')}</span>
+        <span>固定预设</span>
+      </div>
+    `;
+    return;
+  }
   const title = ctx.configMode === 'p2p' ? '联机队伍' : '队伍状态';
   document.getElementById('team-status').innerHTML = `
     <h3>${title}</h3>
@@ -136,12 +155,12 @@ function renderConfigFooter(ctx) {
   const p2RoleOk = validateRoleLoadout(p2.roleId, p2.roleLoadoutSkillIds || []).ok &&
     (p2.roleLoadoutSkillIds || []).length === ROLE_LOADOUT_SIZE;
   const p2Ok = p2ClassOk && p2RoleOk;
-  const bothLocked = ctx.configMode === 'pve'
-    ? p1.locked
-    : p1.locked && p2.locked;
+  const bothLocked = p1.locked && p2.locked;
   const cfg = ctx.cfg;
   document.getElementById('config-ready-status').textContent =
-    `P1 ${p1.locked ? '已锁定' : '配置中'} / P2 ${p2.locked ? '已锁定' : '配置中'}`;
+    ctx.configMode === 'pve'
+      ? `英雄1 ${p1.locked ? '已锁定' : '配置中'} / 英雄2 ${p2.locked ? '已锁定' : '配置中'}`
+      : `P1 ${p1.locked ? '已锁定' : '配置中'} / P2 ${p2.locked ? '已锁定' : '配置中'}`;
   const lockBtn = document.getElementById('btn-config-lock');
   lockBtn.style.display = ctx.editable ? '' : 'none';
   lockBtn.textContent = cfg.locked ? '修改配置' : '锁定配置';
@@ -186,7 +205,14 @@ export function renderConfigScreenView(ctx) {
     ctx.configMode === 'pve' ? 'PVE 配置' :
     `联机配置 ${ctx.roomCode}`;
   document.getElementById('config-player-switch').style.display = (ctx.configMode === 'p2p') ? 'none' : 'flex';
-  document.querySelectorAll('#config-player-switch button').forEach(btn => {
+  document.querySelectorAll('#config-player-switch button').forEach((btn, index) => {
+    if (ctx.configMode === 'pve') {
+      btn.dataset.player = index === 0 ? 'hero_1' : 'hero_2';
+      btn.textContent = index === 0 ? '英雄1' : '英雄2';
+    } else {
+      btn.dataset.player = index === 0 ? 'player1' : 'player2';
+      btn.textContent = index === 0 ? 'P1' : 'P2';
+    }
     btn.classList.toggle('active', btn.dataset.player === ctx.currentConfigPlayer);
   });
   document.getElementById('config-class-tabs').innerHTML = ctx.classes.map(cls =>

@@ -1,6 +1,9 @@
 // ConfigSessionController — owns all config state and business logic.
 // Does NOT import AppRuntime, GameEngine, or any DOM modules.
 
+import { ENEMY_PRESETS } from '../pve/EnemyPresets.js';
+import { buildPveRosterScenario } from '../pve/PveScenarioBuilder.js';
+
 export class ConfigSessionController {
   constructor(ctx) {
     this._ctx = ctx;
@@ -31,6 +34,10 @@ export class ConfigSessionController {
       player1: this._makeDefaultConfig('player1', '法师'),
       player2: this._makeDefaultConfig('player2', '战士'),
     };
+    this._pveHeroSlots = [
+      this._makeDefaultConfig('hero_1', '法师'),
+      this._makeDefaultConfig('hero_2', '战士'),
+    ];
   }
 
   // ─── Helpers ───
@@ -65,7 +72,21 @@ export class ConfigSessionController {
     return this._ctx.normalizePlayerConfig(config, playerId);
   }
 
+  getPveHeroSlots() {
+    return this._pveHeroSlots;
+  }
+
+  setCurrentPveHeroSlot(slotId) {
+    if (!this._pveHeroSlots.some(slot => slot.playerId === slotId)) return;
+    this.setConfigPlayerSwitch(slotId);
+  }
+
+  activePveHeroConfig() {
+    return this._pveHeroSlots.find(slot => slot.playerId === this._currentConfigPlayer) || this._pveHeroSlots[0];
+  }
+
   activeConfig() {
+    if (this._configMode === 'pve') return this.activePveHeroConfig();
     return this._configPlayers[this._currentConfigPlayer];
   }
 
@@ -84,7 +105,12 @@ export class ConfigSessionController {
   setActiveClass(className) {
     const cfg = this.activeConfig();
     if (!this.isConfigEditable() || cfg.locked) return;
-    this._configPlayers[this._currentConfigPlayer] = this._makeDefaultConfig(this._currentConfigPlayer, className);
+    if (this._configMode === 'pve') {
+      const index = this._pveHeroSlots.findIndex(slot => slot.playerId === this._currentConfigPlayer);
+      if (index >= 0) this._pveHeroSlots[index] = this._makeDefaultConfig(this._currentConfigPlayer, className);
+    } else {
+      this._configPlayers[this._currentConfigPlayer] = this._makeDefaultConfig(this._currentConfigPlayer, className);
+    }
     this._hoverRoleId = null;
     this._selectedPoolSkillId = null;
     this._selectedPoolType = null;
@@ -160,9 +186,16 @@ export class ConfigSessionController {
     this._ctx.battleSession.resetForConfigScreen();
     if (this._configMode === 'p2p' && nm?.myPlayerId) {
       this._currentConfigPlayer = nm.myPlayerId;
+    } else if (this._configMode === 'pve') {
+      this._currentConfigPlayer = 'hero_1';
+    } else if (!this._configPlayers[this._currentConfigPlayer]) {
+      this._currentConfigPlayer = 'player1';
     }
     for (const pid of ['player1', 'player2']) {
       this._configPlayers[pid].locked = false;
+    }
+    for (const slot of this._pveHeroSlots) {
+      slot.locked = false;
     }
     this._ctx.callbacks.hideGameOver?.();
     this._ctx.routeController.setRoute('config');
@@ -186,7 +219,7 @@ export class ConfigSessionController {
   }
 
   canStartBattle() {
-    if (this._configMode === 'pve') return this._configPlayers.player1.locked;
+    if (this._configMode === 'pve') return this._pveHeroSlots.every(slot => slot.locked);
     return this._configPlayers.player1.locked && this._configPlayers.player2.locked;
   }
 
@@ -200,6 +233,19 @@ export class ConfigSessionController {
       locked: Boolean(c.locked),
     });
     return [cloneCfg(this._configPlayers.player1), cloneCfg(this._configPlayers.player2)];
+  }
+
+  buildPveBattleScenario(seed = Date.now()) {
+    return buildPveRosterScenario({
+      seed,
+      heroConfigs: this._pveHeroSlots.map(slot => ({
+        playerId: slot.playerId,
+        class: slot.class,
+        roleId: slot.roleId,
+        loadoutSkillIds: [...slot.loadoutSkillIds],
+        roleLoadoutSkillIds: [...(slot.roleLoadoutSkillIds || [])],
+      })),
+    });
   }
 
   // ─── Remote config ───
@@ -225,6 +271,10 @@ export class ConfigSessionController {
   resetPlayerConfigs(p1Class, p2Class) {
     this._configPlayers.player1 = this._makeDefaultConfig('player1', p1Class || this._configPlayers.player1.class);
     this._configPlayers.player2 = this._makeDefaultConfig('player2', p2Class || this._configPlayers.player2.class);
+    this._pveHeroSlots = [
+      this._makeDefaultConfig('hero_1', '法师'),
+      this._makeDefaultConfig('hero_2', '战士'),
+    ];
   }
 
   // ─── Build view context for ConfigScreenView ───
@@ -235,13 +285,18 @@ export class ConfigSessionController {
     const editable = this.isConfigEditable();
     const nm = this._ctx.getNetworkManager();
     const role = ROLE_DEFS[this._hoverRoleId] || ROLE_DEFS[cfg.roleId];
+    const viewConfigPlayers = this._configMode === 'pve'
+      ? { player1: this._pveHeroSlots[0], player2: this._pveHeroSlots[1] }
+      : this._configPlayers;
 
     return {
       classes: CLASSES, cfg, role,
       configMode: this._configMode,
       roomCode: nm?.roomCode || '',
       currentConfigPlayer: this._currentConfigPlayer,
-      configPlayers: this._configPlayers,
+      configPlayers: viewConfigPlayers,
+      pveHeroSlots: this._pveHeroSlots,
+      pveEnemyPresets: Object.values(ENEMY_PRESETS),
       configLoadoutOpen: this._configLoadoutOpen,
       selectedPoolSkillId: this._selectedPoolSkillId,
       selectedPoolType: this._selectedPoolType,

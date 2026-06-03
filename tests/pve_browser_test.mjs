@@ -7,6 +7,9 @@ async function startPveBattle(page) {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await page.click('#btn-pve');
   await page.waitForSelector('#config-screen', { state: 'visible' });
+  await page.waitForSelector('#config-player-switch button[data-player="hero_1"]');
+  await page.click('#btn-config-lock');
+  await page.click('#config-player-switch button[data-player="hero_2"]');
   await page.click('#btn-config-lock');
   await page.click('#btn-config-start');
   await page.waitForSelector('#app', { state: 'visible' });
@@ -22,10 +25,13 @@ async function main() {
     await startPveBattle(page);
     assert.deepEqual(pageErrors, [], 'PVE should start without page errors');
 
-    const p2Buttons = await page.locator('#action-dock .skill-icon-btn[data-char*="p2"]').count();
-    assert.equal(p2Buttons, 0, 'PVE action dock should not expose AI skill buttons');
+    const enemyButtons = await page.locator('#action-dock .skill-icon-btn[data-char^="enemy_"]').count();
+    assert.equal(enemyButtons, 0, 'PVE action dock should not expose AI skill buttons');
 
-    await page.click('#action-dock .skill-icon-btn[data-skill="mage_gather"]');
+    await page.click('#action-dock .skill-icon-btn[data-char="hero_1"][data-skill="mage_gather"]');
+    await page.click('#board', { position: { x: 640, y: 320 } });
+    await page.waitForSelector('#action-dock .skill-icon-btn[data-char="hero_2"][data-skill="warrior_rage"]');
+    await page.click('#action-dock .skill-icon-btn[data-char="hero_2"][data-skill="warrior_rage"]');
     await page.click('#board', { position: { x: 640, y: 320 } });
     await page.waitForFunction(
       () => Number(document.querySelector('#turn-num')?.textContent || '0') >= 2,

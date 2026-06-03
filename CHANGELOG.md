@@ -1,5 +1,13 @@
 ﻿# Changelog
 
+## 2026-06-03 - PVE 2v2 roster 配置入口
+
+- Added PVE roster scenario builder and fixed enemy presets for initial 2v2 battles.
+- Added PVE hero slot configuration for `hero_1` and `hero_2`, including independent class/role/loadout state.
+- Updated PVE config UI to switch between 英雄1/英雄2 and display fixed enemy presets read-only.
+- Added `BattleSessionController.startBattleFromScenario()` and wired AppRuntime PVE start/reset through `pve_multi` scenarios.
+- Added scenario builder, config session, roster battle session, static UI, and browser smoke coverage.
+
 ## 2026-06-03 - PVE 目标策略与友伤过滤
 
 - Added team-aware target policy helpers with legacy ownerId fallback.

@@ -226,6 +226,32 @@ export class BattleSessionController {
     this.initGame(p1.class, p2.class, seed, players);
   }
 
+  startBattleFromScenario(seed, scenario) {
+    this._callbacks.setRoute('battle');
+    this.battleEnded = false;
+    this.battleActive = true;
+    this.pveAiRunning = false;
+    this.engine.reset();
+    this.hateSystem.clear();
+    const battleSeed = seed || scenario?.seed || Date.now();
+    const result = this.engine.initBattle({ ...scenario, seed: battleSeed });
+    this.characterIds = result.characterIds || [];
+    this.localSubmittedSet.clear();
+    this.remoteSubmittedSet.clear();
+    this.clearPlannedActions();
+    this.selectedSkill = null;
+    this.viewingSkill = null;
+    this.validTargets = [];
+    this.hoverEffectArea = [];
+    this.hoveredHex = null;
+    this.selectedCharacterId = null;
+    this.lastHoveredCharacterId = null;
+    this.activeSidebarTab = 'log';
+    this.skillPages.clear();
+    if (this._callbacks.resizeCanvas) this._callbacks.resizeCanvas();
+    this._callbacks.renderAll();
+  }
+
   resetBattleSession() {
     this.battleActive = false;
     this.battleEnded = false;
