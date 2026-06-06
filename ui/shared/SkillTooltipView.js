@@ -52,6 +52,12 @@ function displayValue(value, fallback = '0') {
   return String(value);
 }
 
+function cooldownStatusLabel(remaining, base) {
+  const remainingText = displayValue(remaining, '0');
+  const baseText = displayValue(base, '0');
+  return `${remainingText}/${baseText}回合`;
+}
+
 function parseSkillTooltipDesc(skill, desc = '') {
   const lines = String(desc).split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const title = lines[0] && !/^—+$/.test(lines[0]) ? lines[0] : skill.name;
@@ -75,7 +81,7 @@ export function renderSkillTooltipCard(skill, desc = '', options = {}) {
   const parsed = parseSkillTooltipDesc(skill, desc || skill.desc || '');
   const typeLabel = [skill.class, skill.type].filter(Boolean).join(' / ') || '技能';
   const costLabel = resourceCostLabel(skill, parsed.cost);
-  const cooldownStatus = displayValue(options.cdRemaining, '0');
+  const cooldownStatus = cooldownStatusLabel(options.cdRemaining, parsed.cd);
   const remainingUses = displayValue(options.usesRemaining, skill.maxUses ? String(skill.maxUses) : '∞');
   const icon = skill.icon
     ? `<img src="${escapeHTML(skill.icon)}" alt="${escapeHTML(skill.name)}">`

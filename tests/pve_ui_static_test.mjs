@@ -68,7 +68,9 @@ assert.match(configViewSrc, /showSkillTooltip/, 'config skill pool hover should 
 assert.match(configViewSrc, /config-loadout-slot-btn[^`]+data-skill/, 'config loadout slots should expose skill ids for hover cards');
 assert.match(battlePanelsViewSrc, /inline:\s*true/, 'selected unit drawer should request inline skill cards instead of plain desc text');
 assert.match(skillTooltipViewSrc, /resourceCostLabel/, 'skill tooltip should format resource cost labels');
+assert.match(skillTooltipViewSrc, /cooldownStatusLabel/, 'skill tooltip should format cooldown as remaining/base turns');
 assert.match(skillTooltipViewSrc, /CD状况/, 'skill tooltip stat grid should show cooldown status');
+assert.match(skillTooltipViewSrc, /回合/, 'skill tooltip cooldown status should include turn unit');
 assert.match(skillTooltipViewSrc, /剩余发动次数/, 'skill tooltip stat grid should show remaining uses');
 assert.match(battlePanelsViewSrc, /data-cd-remaining/, 'battle skill buttons should expose live cooldown remaining');
 assert.match(battlePanelsViewSrc, /data-uses-remaining/, 'battle skill buttons should expose live remaining uses');
