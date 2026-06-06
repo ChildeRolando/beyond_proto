@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-06-06 - 技能提示卡片化
+
+- 将战斗技能悬停提示从纯文本改为结构化卡片，展示技能图标、职业/类型、技能名、速度/CD/cost 和自然语言描述。
+- Tooltip 现在从 `data-skill` 读取 canonical 技能数据并解析四行技能描述，正文保留自然语言，同时高亮范围、威力、资源、状态和数值关键词。
+- 更新战斗界面 tooltip 样式为暗色技能说明框，并增加静态 UI 回归覆盖，防止退回纯文本渲染。
+
 ## 2026-06-06 - 启动页资源预热
 
 - Added a shared asset preloader so battle skill icons and role portraits start loading from the start screen instead of waiting for the battle HUD to render.

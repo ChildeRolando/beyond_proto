@@ -46,18 +46,83 @@ export function skillCostLabel(skill, char) {
 }
 
 export function skillGlyph(skill) {
-  if (skill.icon) return `<img src="${skill.icon}" alt="${skill.name}" style="width:100%;height:100%;object-fit:contain;">`;
-  return (skill.name || '?').slice(0, 1);
+  if (skill.icon) return `<img src="${escapeHTML(skill.icon)}" alt="${escapeHTML(skill.name)}" style="width:100%;height:100%;object-fit:contain;">`;
+  return escapeHTML((skill.name || '?').slice(0, 1));
 }
 
 // ─── Skill tooltip ───
 
+function escapeHTML(value = '') {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function fallbackCostText(skill) {
+  const entries = Object.entries(skill.cost || {});
+  if (!entries.length) return '无';
+  const names = { qi: '气', rage: '怒气', ammo: '弹药' };
+  return entries.map(([res, amount]) => `${names[res] || res}${amount}`).join('、');
+}
+
+function parseSkillTooltipDesc(skill, desc = '') {
+  const lines = String(desc).split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const title = lines[0] && !/^—+$/.test(lines[0]) ? lines[0] : skill.name;
+  const metaIndex = lines.findIndex(line => /速度\s*\S+/i.test(line) && /CD\s*\S+/i.test(line) && /cost\s*\S+/i.test(line));
+  const metaLine = metaIndex >= 0 ? lines[metaIndex] : '';
+  const speed = metaLine.match(/速度\s*([^\s]+)/)?.[1] || String(skill.speed ?? '-');
+  const cd = metaLine.match(/CD\s*([^\s]+)/i)?.[1] || String(skill.cooldown ?? '无');
+  const cost = metaLine.match(/cost\s*(.+)$/i)?.[1]?.trim() || fallbackCostText(skill);
+  const bodyStart = metaIndex >= 0 ? metaIndex + 1 : 1;
+  const body = lines.slice(bodyStart).filter(line => !/^—+$/.test(line)).join(' ') || desc || skill.name;
+  return { title, speed, cd, cost, body };
+}
+
+function highlightTooltipText(text) {
+  const escaped = escapeHTML(text);
+  const tokens = /(施法范围|作用范围|威力为|威力|冷却|速度|命中|即死|必中|穿甲|碎盾|定身|锁定|护盾|怒气|弹药|格挡|无敌|AOE|气|无限|∞|[+-]?\d+(?:\.\d+)?(?:×\d+)?)/g;
+  return escaped.replace(tokens, '<span class="skill-tooltip-highlight">$1</span>');
+}
+
+export function renderSkillTooltipCard(skill, desc = '') {
+  const parsed = parseSkillTooltipDesc(skill, desc || skill.desc || '');
+  const typeLabel = [skill.class, skill.type].filter(Boolean).join(' / ') || '技能';
+  const icon = skill.icon
+    ? `<img src="${escapeHTML(skill.icon)}" alt="${escapeHTML(skill.name)}">`
+    : `<span>${escapeHTML((skill.name || '?').slice(0, 1))}</span>`;
+  return `
+    <div class="skill-tooltip-card ${classPanelKey(skill.class)}">
+      <div class="skill-tooltip-header">
+        <div class="skill-tooltip-icon">${icon}</div>
+        <div class="skill-tooltip-title-wrap">
+          <div class="skill-tooltip-kicker">${escapeHTML(typeLabel)}</div>
+          <div class="skill-tooltip-title">${escapeHTML(parsed.title)}</div>
+        </div>
+        <div class="skill-tooltip-meta">
+          <span>速度 ${escapeHTML(parsed.speed)}</span>
+          <strong>${escapeHTML(parsed.cost)}</strong>
+        </div>
+      </div>
+      <div class="skill-tooltip-rule"></div>
+      <div class="skill-tooltip-body">${highlightTooltipText(parsed.body)}</div>
+      <div class="skill-tooltip-stat-grid">
+        <span><b>速度</b>${escapeHTML(parsed.speed)}</span>
+        <span><b>CD</b>${escapeHTML(parsed.cd)}</span>
+        <span><b>cost</b>${escapeHTML(parsed.cost)}</span>
+      </div>
+    </div>`;
+}
+
 export function showSkillTooltip(e, btn) {
   const tooltip = document.getElementById('skill-tooltip');
   if (!tooltip) return;
-  const title = btn.dataset.tooltipTitle || '';
-  const body = btn.dataset.tooltip || btn.getAttribute('title') || '';
-  tooltip.innerHTML = `${title ? `<strong>${title}</strong>` : ''}<span>${body}</span>`;
+  const skillId = btn.dataset.skill;
+  const skill = skillId ? SKILLS[skillId] : null;
+  if (!skill) return;
+  tooltip.innerHTML = renderSkillTooltipCard(skill, skill.desc || btn.dataset.tooltip || '');
   tooltip.classList.add('visible');
   positionSkillTooltip(e);
 }
@@ -90,8 +155,8 @@ function renderInfoPanel(char, title, ctx, options = {}) {
   const skillRows = h.visibleSkillsForChar(char).map(s => {
     const skill = SKILLS[s.id];
     const selected = ctx.viewingSkill?.charId === char.id && ctx.viewingSkill?.skillId === s.id ? ' selected' : '';
-    return `<button class="drawer-skill-btn${selected}" data-skill="${s.id}" data-char="${char.id}" title="${skill.desc || ''}">
-      <span>${skill.name}</span><small>${skill.desc || ''}</small>
+    return `<button class="drawer-skill-btn${selected}" data-skill="${s.id}" data-char="${char.id}" title="${escapeHTML(skill.desc || '')}">
+      <span>${escapeHTML(skill.name)}</span><small>${escapeHTML(skill.desc || '')}</small>
     </button>`;
   }).join('');
   return `
@@ -184,7 +249,8 @@ function renderActionDock(ctx) {
     const sel = ctx.selectedSkill?.charId === actor.id && ctx.selectedSkill?.skillId === s.id ? ' selected' : '';
     const used = !h.canSubmitForChar(actor.id, s.id) ? ' used' : '';
     const noAfford = !canAfford(skill) ? ' unaffordable' : '';
-    return `<button class="skill-btn skill-icon-btn${sel}${used}${noAfford}" data-skill="${s.id}" data-char="${actor.id}" title="${skill.desc || ''}" data-tooltip="${skill.desc || ''}">
+    const label = `${skill.name}：${skill.desc || ''}`;
+    return `<button class="skill-btn skill-icon-btn${sel}${used}${noAfford}" data-skill="${s.id}" data-char="${actor.id}" aria-label="${escapeHTML(label)}" data-tooltip="${escapeHTML(skill.desc || '')}">
       <div class="skill-glyph">${skillGlyph(skill)}</div>
       <div class="skill-meta"><span>${skillCostLabel(skill, actor)}</span><span>S${skill.speed ?? '-'}</span></div>
     </button>`;
