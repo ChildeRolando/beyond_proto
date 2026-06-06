@@ -88,7 +88,16 @@ test('description has no structured stat labels', () => {
   }
 });
 
-// -- Test 7: cost only appears in metadata line ------------------------
+// -- Test 7: no "不造成直接威力" disclaimer ------------------------------
+test('No "不造成直接威力" disclaimer', () => {
+  for (const id of allSkillIds) {
+    const skill = SKILLS[id];
+    assert(!skill.desc.includes('不造成直接威力'),
+      `${id}: desc still contains "不造成直接威力": "${skill.desc}"`);
+  }
+});
+
+// -- Test 8: cost only appears in metadata line ------------------------
 test('cost only appears in metadata line', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -98,7 +107,7 @@ test('cost only appears in metadata line', () => {
   }
 });
 
-// -- Test 8: No old-format separator " | cost" or " | " patterns -----
+// -- Test 9: No old-format separator " | cost" or " | " patterns -----
 test('No old-format separators like " | cost"', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -108,7 +117,7 @@ test('No old-format separators like " | cost"', () => {
   }
 });
 
-// -- Test 9: No empty lines ------------------------------------------
+// -- Test 10: No empty lines ------------------------------------------
 test('No empty lines', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -120,7 +129,7 @@ test('No empty lines', () => {
   }
 });
 
-// -- Test 10: No placeholder / TODO / 待补充 / 未知 ------------------
+// -- Test 11: No placeholder / TODO / 待补充 / 未知 ------------------
 test('No placeholders (待补充/TODO/未知)', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -130,7 +139,19 @@ test('No placeholders (待补充/TODO/未知)', () => {
   }
 });
 
-// -- Test 11: No English field names outside metadata -------------------
+// -- Test 12: Infinite-range skills say 施法范围为无限 --------------------
+test('Infinite-range skills say 施法范围为无限', () => {
+  for (const id of allSkillIds) {
+    const skill = SKILLS[id];
+    const body = skill.desc.split('\n')[3] || '';
+    if (skill.targeting?.range === 99) {
+      assert(body.includes('施法范围为无限'),
+        `${id}: infinite-range skill body should say "施法范围为无限": "${body}"`);
+    }
+  }
+});
+
+// -- Test 13: No English field names outside metadata -------------------
 test('No English field names outside metadata', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -142,7 +163,7 @@ test('No English field names outside metadata', () => {
   }
 });
 
-// -- Test 12: No 威力｜速度｜费用 old-format prefix in desc ----------
+// -- Test 14: No 威力｜速度｜费用 old-format prefix in desc ----------
 test('No old 威力｜速度｜费用 prefix in desc', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];

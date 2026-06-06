@@ -824,16 +824,35 @@ function parseSpecText(specText) {
   return spec;
 }
 
-function rangeSentence(range) {
-  if (!range) return '';
-  if (range === '自身') return '作用于自身。';
-  return `作用范围为${range}。`;
+function castRangeSentence(skill) {
+  const targeting = skill.targeting || {};
+  if (targeting.shape === 'SELF' || targeting.shape === 'AOE_SELF') return '施法范围为自身';
+  const range = targeting.range;
+  if (range === 99) return '施法范围为无限';
+  if (range === undefined || range === null || range === '') return '';
+  if (targeting.shape === 'DIRECTION') return `施法范围为${range}格（方向）`;
+  return `施法范围为${range}格`;
 }
 
 function powerSentence(power) {
-  if (!power) return '';
-  if (power === '无') return '不造成直接威力。';
+  if (!power || power === '无' || power === '0' || power === 0) return '';
   return `威力为${power}。`;
+}
+
+function cleanupNaturalText(text) {
+  return text
+    .replace(/射程(?:无限|\d+)/g, '')
+    .replace(/(?<!半径)\d+范围内/g, '')
+    .replace(/，{2,}/g, '，')
+    .replace(/；{2,}/g, '；')
+    .replace(/，；/g, '，')
+    .replace(/；，/g, '，')
+    .replace(/，\s*。/g, '。')
+    .replace(/；\s*。/g, '。')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/，$/g, '')
+    .replace(/；$/g, '')
+    .trim();
 }
 
 function normalizeSkillDesc(skill) {
@@ -847,7 +866,11 @@ function normalizeSkillDesc(skill) {
   if (parts.length >= 3) {
     const spec = parseSpecText(parts.slice(2).join('；'));
     const prose = parts.slice(0, 2).map(trimSentence).join('，');
-    const body = `${prose}。${rangeSentence(spec['范围'])}${powerSentence(spec['威力'])}`;
+    const intro = cleanupNaturalText([castRangeSentence(skill), prose].filter(Boolean).join('，'));
+    const power = powerSentence(spec['威力']);
+    const bodyParts = [intro];
+    if (power) bodyParts.push(power);
+    const body = bodyParts.join('。').replace(/[。]+$/u, '') + '。';
     const speed = skill.speed ?? spec['速度'] ?? '-';
     const cooldown = skill.cooldown ?? '无';
     const cost = spec['费用'] || costTextFromSkill(skill);
