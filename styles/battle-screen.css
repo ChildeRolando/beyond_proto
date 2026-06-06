@@ -579,6 +579,62 @@ canvas {
   font-size: 10px;
   font-weight: 700;
 }
+.skill-tooltip-card--inline {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid rgba(132,153,166,0.22);
+  background: linear-gradient(180deg, rgba(14,22,29,0.95), rgba(6,9,13,0.9));
+}
+.skill-tooltip-card--inline::before {
+  inset: 0;
+  border-color: rgba(98,209,200,0.08);
+}
+.skill-tooltip-card--inline .skill-tooltip-header {
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 7px;
+}
+.skill-tooltip-card--inline .skill-tooltip-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 5px;
+  font-size: 18px;
+}
+.skill-tooltip-card--inline .skill-tooltip-kicker {
+  font-size: 10px;
+  margin-bottom: 1px;
+}
+.skill-tooltip-card--inline .skill-tooltip-title {
+  font-size: 15px;
+  letter-spacing: 0;
+}
+.skill-tooltip-card--inline .skill-tooltip-meta {
+  min-width: 54px;
+  gap: 3px;
+  font-size: 10px;
+}
+.skill-tooltip-card--inline .skill-tooltip-meta span,
+.skill-tooltip-card--inline .skill-tooltip-meta strong {
+  max-width: 76px;
+  padding: 3px 5px;
+}
+.skill-tooltip-card--inline .skill-tooltip-rule {
+  margin: 7px 0;
+}
+.skill-tooltip-card--inline .skill-tooltip-body {
+  font-size: 11px;
+  line-height: 1.45;
+}
+.skill-tooltip-card--inline .skill-tooltip-stat-grid {
+  gap: 4px;
+  margin-top: 8px;
+}
+.skill-tooltip-card--inline .skill-tooltip-stat-grid span {
+  padding: 4px 3px;
+  font-size: 11px;
+}
+.skill-tooltip-card--inline .skill-tooltip-stat-grid b {
+  font-size: 9px;
+}
 
 @keyframes tooltip-rise {
   from {

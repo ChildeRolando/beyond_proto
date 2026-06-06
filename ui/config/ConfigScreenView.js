@@ -13,6 +13,12 @@ import {
   validateRoleLoadout,
 } from '../../engine/RoleData.js';
 import { GameMode, normalizeConfigMode } from '../../app/GameModes.js';
+import {
+  escapeHTML,
+  hideSkillTooltip,
+  positionSkillTooltip,
+  showSkillTooltip,
+} from '../shared/SkillTooltipView.js';
 
 // ─── Helpers ───
 
@@ -117,13 +123,15 @@ function renderLoadout(ctx) {
   document.getElementById('loadout-slots').innerHTML = Array.from({ length: LOADOUT_SIZE }, (_, i) => {
     const sid = cfg.loadoutSkillIds[i];
     const label = sid ? SKILLS[sid]?.name || sid : '空槽';
-    return `<button class="config-loadout-slot-btn ${sid ? '' : 'empty'}" data-slot="${i}" data-pool="class">${i + 1}. ${label}</button>`;
+    const skillAttr = sid ? ` data-skill="${escapeHTML(sid)}" aria-label="${escapeHTML(`${label}：${SKILLS[sid]?.desc || ''}`)}"` : '';
+    return `<button class="config-loadout-slot-btn ${sid ? '' : 'empty'}" data-slot="${i}" data-pool="class"${skillAttr}>${i + 1}. ${escapeHTML(label)}</button>`;
   }).join('');
 
   document.getElementById('role-loadout-slots').innerHTML = Array.from({ length: ROLE_LOADOUT_SIZE }, (_, i) => {
     const sid = (cfg.roleLoadoutSkillIds || [])[i];
     const label = sid ? SKILLS[sid]?.name || sid : '空槽';
-    return `<button class="config-loadout-slot-btn ${sid ? '' : 'empty'}" data-slot="${i}" data-pool="role">${i + 1}. ${label}</button>`;
+    const skillAttr = sid ? ` data-skill="${escapeHTML(sid)}" aria-label="${escapeHTML(`${label}：${SKILLS[sid]?.desc || ''}`)}"` : '';
+    return `<button class="config-loadout-slot-btn ${sid ? '' : 'empty'}" data-slot="${i}" data-pool="role"${skillAttr}>${i + 1}. ${escapeHTML(label)}</button>`;
   }).join('');
 
   const rolePool = getRoleSkillPool(cfg.roleId);
@@ -135,12 +143,14 @@ function renderLoadout(ctx) {
   });
   document.getElementById('skill-pool').innerHTML = classPool.map(id => {
     const isEquipped = classEquipped.has(id);
-    return `<button class="config-pool-skill-btn${isEquipped ? ' equipped' : ''}" data-skill="${id}" data-pool="class" title="${SKILLS[id].desc || ''}">${SKILLS[id].name}</button>`;
+    const skill = SKILLS[id];
+    return `<button class="config-pool-skill-btn${isEquipped ? ' equipped' : ''}" data-skill="${escapeHTML(id)}" data-pool="class" aria-label="${escapeHTML(`${skill.name}：${skill.desc || ''}`)}">${escapeHTML(skill.name)}</button>`;
   }).join('');
 
   document.getElementById('role-skill-pool').innerHTML = rolePool.map(id => {
     const isEquipped = roleEquipped.has(id);
-    return `<button class="config-pool-skill-btn${isEquipped ? ' equipped' : ''}${SKILLS[id].isTrait ? ' trait-btn' : ''}" data-skill="${id}" data-pool="role" title="${SKILLS[id].desc || ''}">${SKILLS[id].name}${SKILLS[id].isTrait ? ' <span class="config-trait-badge">被动</span>' : ''}</button>`;
+    const skill = SKILLS[id];
+    return `<button class="config-pool-skill-btn${isEquipped ? ' equipped' : ''}${skill.isTrait ? ' trait-btn' : ''}" data-skill="${escapeHTML(id)}" data-pool="role" aria-label="${escapeHTML(`${skill.name}：${skill.desc || ''}`)}">${escapeHTML(skill.name)}${skill.isTrait ? ' <span class="config-trait-badge">被动</span>' : ''}</button>`;
   }).join('');
 }
 
@@ -200,6 +210,13 @@ function wireConfigEvents(ctx) {
   });
   document.querySelectorAll('.config-loadout-slot-btn').forEach(btn => {
     btn.onclick = () => cb.onSlotRemove(Number(btn.dataset.slot), btn.dataset.pool || 'class');
+  });
+  document.querySelectorAll('.config-pool-skill-btn[data-skill], .config-loadout-slot-btn[data-skill]').forEach(btn => {
+    btn.addEventListener('mouseenter', (e) => showSkillTooltip(e, btn));
+    btn.addEventListener('mousemove', (e) => positionSkillTooltip(e, btn));
+    btn.addEventListener('mouseleave', hideSkillTooltip);
+    btn.addEventListener('focus', (e) => showSkillTooltip(e, btn));
+    btn.addEventListener('blur', hideSkillTooltip);
   });
 }
 

@@ -168,10 +168,27 @@
 .drawer-skill-btn {
   cursor: pointer;
 }
+.drawer-skill-btn.skill-card-btn {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+}
 .drawer-skill-btn.selected,
 .drawer-skill-btn:hover {
   border-color: var(--accent-2);
   background: rgba(98,209,200,0.08);
+}
+.drawer-skill-btn.skill-card-btn.selected,
+.drawer-skill-btn.skill-card-btn:hover {
+  background: transparent;
+}
+.drawer-skill-btn.skill-card-btn.selected .skill-tooltip-card--inline,
+.drawer-skill-btn.skill-card-btn:hover .skill-tooltip-card--inline {
+  border-color: rgba(98,209,200,0.66);
+  background: linear-gradient(180deg, rgba(19,34,42,0.96), rgba(8,15,20,0.94));
+  box-shadow: 0 0 0 1px rgba(98,209,200,0.1), 0 10px 24px rgba(0,0,0,0.24);
 }
 .info-skill span {
   display: block;
