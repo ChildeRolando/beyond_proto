@@ -1,39 +1,46 @@
 :root {
-  --bg: #2b2a33;
-  --surface: #35344a;
-  --surface-raised: #3e3d54;
-  --border: #535164;
-  --text: #c4c0d0;
-  --text-dim: #7a768a;
-  --accent: #DDBB99;
-  --purple: #8b5cf6;
-  --purple-glow: rgba(139,92,246,0.25);
-  --red: #e05555;
-  --red-glow: rgba(224,85,85,0.25);
-  --amber: #d4943a;
-  --amber-glow: rgba(212,148,58,0.25);
-  --jade: #5a9e7e;
+  --bg: #080c10;
+  --bg-2: #0d141a;
+  --surface: #111922;
+  --surface-raised: #17232d;
+  --surface-hot: #211b16;
+  --border: #2c3a45;
+  --border-strong: #556574;
+  --text: #eef3f2;
+  --text-dim: #9aa8a8;
+  --text-muted: #6f7f81;
+  --accent: #f0b35a;
+  --accent-2: #62d1c8;
+  --accent-blue: #5e8dff;
+  --purple: #a879ff;
+  --purple-glow: rgba(168,121,255,0.24);
+  --red: #ef6461;
+  --red-glow: rgba(239,100,97,0.24);
+  --amber: #f0b35a;
+  --amber-glow: rgba(240,179,90,0.24);
+  --jade: #55c98c;
 
   /* Config screen palette */
-  --cfg-bg: #080811;
-  --cfg-surface: rgba(18,18,30,0.82);
-  --cfg-surface-2: rgba(28,26,42,0.88);
-  --cfg-surface-3: rgba(42,38,60,0.82);
-  --cfg-border-soft: rgba(255,255,255,0.08);
-  --cfg-border-strong: rgba(230,189,131,0.45);
-  --cfg-gold: #e6bd83;
+  --cfg-bg: #070b10;
+  --cfg-surface: rgba(13,19,26,0.94);
+  --cfg-surface-2: rgba(18,27,36,0.94);
+  --cfg-surface-3: rgba(28,40,51,0.94);
+  --cfg-border-soft: rgba(132,153,166,0.22);
+  --cfg-border-strong: rgba(240,179,90,0.62);
+  --cfg-gold: #f0b35a;
   --cfg-mage: #a879ff;
-  --cfg-warrior: #e05f5f;
-  --cfg-shooter: #d4943a;
-  --cfg-cyan: #49c7d8;
-  --cfg-text: #eee8f5;
-  --cfg-text-dim: #8f879d;
-  --cfg-text-muted: #625c70;
-  --cfg-glow-mage: rgba(168,121,255,0.3);
-  --cfg-glow-gold: rgba(230,189,131,0.25);
+  --cfg-warrior: #ef6461;
+  --cfg-shooter: #f0b35a;
+  --cfg-cyan: #62d1c8;
+  --cfg-text: #eef3f2;
+  --cfg-text-dim: #a6b3b2;
+  --cfg-text-muted: #748487;
+  --cfg-glow-mage: rgba(168,121,255,0.28);
+  --cfg-glow-gold: rgba(240,179,90,0.26);
 
   --font-display: 'KaiTi', 'STKaiti', '楷体', 'FangSong', '仿宋', serif;
-  --font-body: 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+  --font-body: 'Microsoft YaHei', 'PingFang SC', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Cascadia Code', 'Consolas', monospace;
 }
 
 @keyframes cloud-drift {
@@ -67,10 +74,24 @@
   100% { transform: scale(3); opacity: 0; }
 }
 
+@keyframes tactical-scan {
+  0% { transform: translateY(-120%); opacity: 0; }
+  18%, 72% { opacity: 0.22; }
+  100% { transform: translateY(120%); opacity: 0; }
+}
+
+@keyframes field-breathe {
+  0%, 100% { opacity: 0.6; filter: saturate(0.9); }
+  50% { opacity: 1; filter: saturate(1.18); }
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(98,209,200,0.13), transparent 34%),
+    radial-gradient(circle at 82% 78%, rgba(240,179,90,0.12), transparent 30%),
+    linear-gradient(140deg, #06090d 0%, #0b1117 48%, #0a0e12 100%);
   color: var(--text);
   font-family: var(--font-body);
   display: flex;
@@ -80,3 +101,38 @@ body {
   overflow: hidden;
 }
 
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: 32px 32px, 32px 32px;
+  mask-image: radial-gradient(circle at center, black 0%, transparent 76%);
+}
+
+button,
+select,
+input {
+  font: inherit;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

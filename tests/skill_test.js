@@ -1145,7 +1145,7 @@ REPORT.push(`\n**总计: ${passCount} 通过, ${failCount} 失败**\n`);
 
 const reportText = '# 黄粱一梦 战斗引擎技能测试报告\n' + REPORT.join('\n');
 
-writeFileSync('F:/Beyond/claude-code-game-studios/tools/combat-engine/tests/skill_test_report.md', reportText, 'utf-8');
+writeFileSync('./tests/skill_test_report.md', reportText, 'utf-8');
 console.log(`\n报告已写入 tests/skill_test_report.md`);
 console.log(`通过: ${passCount}, 失败: ${failCount}`);
 
