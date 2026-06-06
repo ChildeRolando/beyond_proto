@@ -1,7 +1,7 @@
 import { setCanvasSize } from '../../engine/HexMath.js';
 
 export class BattleCanvasRenderer {
-  constructor({ canvas, context, battleSession, getEngine, geometry, visualEffects, portraitCacheVersion = '3' }) {
+  constructor({ canvas, context, battleSession, getEngine, geometry, visualEffects, portraitCacheVersion = '3', assetImageCache = new Map() }) {
     this.canvas = canvas;
     this.context = context;
     this.battleSession = battleSession;
@@ -9,7 +9,7 @@ export class BattleCanvasRenderer {
     this.geometry = geometry;
     this.visualEffects = visualEffects;
     this.portraitCacheVersion = portraitCacheVersion;
-    this.portraitImageCache = new Map();
+    this.assetImageCache = assetImageCache;
   }
 
   getCharacterPortraitSrc(char) {
@@ -22,15 +22,24 @@ export class BattleCanvasRenderer {
     const roleId = char?.roleId;
     const src = this.getCharacterPortraitSrc(char);
     if (!roleId || !src || typeof Image === 'undefined') return null;
-    if (!this.portraitImageCache.has(roleId)) {
+    if (this.assetImageCache.has(src)) {
+      const cached = this.assetImageCache.get(src);
+      if (cached && (!cached.complete || cached.naturalWidth <= 0)) {
+        cached.onload = () => {
+          if (typeof this.renderBoard === 'function') this.renderBoard();
+        };
+      }
+      return cached;
+    }
+    if (!this.assetImageCache.has(src)) {
       const img = new Image();
       img.onload = () => {
         if (typeof this.renderBoard === 'function') this.renderBoard();
       };
       img.src = src;
-      this.portraitImageCache.set(roleId, img);
+      this.assetImageCache.set(src, img);
     }
-    return this.portraitImageCache.get(roleId);
+    return this.assetImageCache.get(src);
   }
 
   resize() {

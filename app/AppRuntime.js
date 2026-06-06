@@ -14,6 +14,7 @@ import { initChatController } from '../ui/battle/ChatController.js';
 import { RouteController } from './RouteController.js';
 import { GameMode, normalizeConfigMode, isPveMode as isGameModePve } from './GameModes.js';
 import { SKILLS, SKILLS_BY_CLASS } from '../engine/SkillData.js';
+import { createAssetPreloader } from '../ui/shared/AssetPreloader.js';
 import {
   LOADOUT_SIZE,
   ROLE_LOADOUT_SIZE,
@@ -37,6 +38,12 @@ import { computeEffectArea } from '../ui/battle/EffectAreaCalculator.js';
 export function createAppRuntime() {
   const PORTRAIT_CACHE_VERSION = '3';
   const CLASSES = ['法师', '战士', '射手'];
+  const assetPreloader = createAssetPreloader();
+  assetPreloader.preloadBattleAssets({
+    skills: SKILLS,
+    roles: ROLE_DEFS,
+    portraitCacheVersion: PORTRAIT_CACHE_VERSION,
+  });
 
   const getEl = (id) => document.getElementById(id);
   const setText = (id, text) => { const el = getEl(id); if (el) el.textContent = text; };
@@ -251,6 +258,7 @@ export function createAppRuntime() {
     geometry,
     visualEffects,
     portraitCacheVersion: PORTRAIT_CACHE_VERSION,
+    assetImageCache: assetPreloader.cache,
   });
 
   startLobbyUi = initStartLobbyController({
@@ -333,7 +341,7 @@ export function createAppRuntime() {
   gameOverController = initGameOverController({
     battleSession,
     getNetworkManager,
-    isPveMode,
+    getCurrentGameMode,
     startLobbyUi,
     callbacks: {
       setRoute: (route) => routeController.setRoute(route),
