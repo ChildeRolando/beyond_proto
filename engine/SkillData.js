@@ -805,6 +805,20 @@ export const SKILLS = {
   },
 };
 
+function normalizeSkillDesc(desc) {
+  return desc
+    .split('\n')
+    .map(part => part.trim().replace(/[。；;]+$/u, ''))
+    .filter(Boolean)
+    .join('；') + '。';
+}
+
+for (const skill of Object.values(SKILLS)) {
+  if (typeof skill.desc === 'string' && skill.desc.includes('\n')) {
+    skill.desc = normalizeSkillDesc(skill.desc);
+  }
+}
+
 // Skill lists by class for UI
 export const SKILLS_BY_CLASS = {
   '法师': [

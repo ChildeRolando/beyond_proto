@@ -1,5 +1,5 @@
 // skill_desc_format_test.js
-// Verify all skill descriptions follow the normalized 3-line format.
+// Verify all skill descriptions follow the normalized single-paragraph format.
 // Run: node tests/skill_desc_format_test.js
 
 import { SKILLS } from '../engine/SkillData.js';
@@ -37,75 +37,63 @@ test('All skills have desc', () => {
   }
 });
 
-// -- Test 2: desc contains exactly 3 lines (separated by \n) ---------
-test('desc has exactly 3 lines', () => {
+// -- Test 2: desc contains exactly 1 line --------------------------------
+test('desc has exactly 1 line', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
     const lines = skill.desc.split('\n');
-    assert(lines.length === 3,
-      `${id}: expected 3 lines, got ${lines.length}: "${skill.desc}"`);
+    assert(lines.length === 1,
+      `${id}: expected 1 line, got ${lines.length}: "${skill.desc}"`);
   }
 });
 
-// -- Test 3: Line 1 starts with "技能概念：" --------------------------
-test('Line 1 starts with 技能概念：', () => {
+// -- Test 3: desc starts with "技能概念：" -------------------------------
+test('desc starts with 技能概念：', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    const lines = skill.desc.split('\n');
-    if (lines.length >= 1) {
-      assert(lines[0].startsWith('技能概念：'),
-        `${id}: line 1 does not start with "技能概念：": "${lines[0]}"`);
-    }
+    assert(skill.desc.startsWith('技能概念：'),
+      `${id}: desc does not start with "技能概念：": "${skill.desc}"`);
   }
 });
 
-// -- Test 4: Line 2 starts with "游戏作用：" --------------------------
-test('Line 2 starts with 游戏作用：', () => {
+// -- Test 4: desc contains "游戏作用：" ---------------------------------
+test('desc contains 游戏作用：', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    const lines = skill.desc.split('\n');
-    if (lines.length >= 2) {
-      assert(lines[1].startsWith('游戏作用：'),
-        `${id}: line 2 does not start with "游戏作用：": "${lines[1]}"`);
-    }
+    assert(skill.desc.includes('游戏作用：'),
+      `${id}: desc missing "游戏作用：": "${skill.desc}"`);
   }
 });
 
-// -- Test 5: Line 3 starts with "范围：" ------------------------------
-test('Line 3 starts with 范围：', () => {
+// -- Test 5: desc contains "范围：" ------------------------------------
+test('desc contains 范围：', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    const lines = skill.desc.split('\n');
-    if (lines.length >= 3) {
-      assert(lines[2].startsWith('范围：'),
-        `${id}: line 3 does not start with "范围：": "${lines[2]}"`);
-    }
+    assert(skill.desc.includes('范围：'),
+      `${id}: desc missing "范围：": "${skill.desc}"`);
   }
 });
 
-// -- Test 6: Line 3 contains all four sub-fields in order -------------
-test('Line 3 contains 范围：, 威力：, 速度：, 费用： in order', () => {
+// -- Test 6: desc contains all four sub-fields in order -----------------
+test('desc contains 范围：, 威力：, 速度：, 费用： in order', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    const lines = skill.desc.split('\n');
-    if (lines.length >= 3) {
-      const line3 = lines[2];
-      assert(line3.includes('范围：'),
-        `${id}: line 3 missing "范围：": "${line3}"`);
-      assert(line3.includes('威力：'),
-        `${id}: line 3 missing "威力：": "${line3}"`);
-      assert(line3.includes('速度：'),
-        `${id}: line 3 missing "速度：": "${line3}"`);
-      assert(line3.includes('费用：'),
-        `${id}: line 3 missing "费用：": "${line3}"`);
-      // Verify order: 范围 before 威力 before 速度 before 费用
-      const idxRange = line3.indexOf('范围：');
-      const idxPower = line3.indexOf('威力：');
-      const idxSpeed = line3.indexOf('速度：');
-      const idxCost  = line3.indexOf('费用：');
-      assert(idxRange < idxPower && idxPower < idxSpeed && idxSpeed < idxCost,
-        `${id}: line 3 field order wrong (expected 范围→威力→速度→费用): "${line3}"`);
-    }
+    const line = skill.desc;
+    assert(line.includes('范围：'),
+      `${id}: desc missing "范围：": "${line}"`);
+    assert(line.includes('威力：'),
+      `${id}: desc missing "威力：": "${line}"`);
+    assert(line.includes('速度：'),
+      `${id}: desc missing "速度：": "${line}"`);
+    assert(line.includes('费用：'),
+      `${id}: desc missing "费用：": "${line}"`);
+    // Verify order: 范围 before 威力 before 速度 before 费用
+    const idxRange = line.indexOf('范围：');
+    const idxPower = line.indexOf('威力：');
+    const idxSpeed = line.indexOf('速度：');
+    const idxCost  = line.indexOf('费用：');
+    assert(idxRange < idxPower && idxPower < idxSpeed && idxSpeed < idxCost,
+      `${id}: field order wrong (expected 范围→威力→速度→费用): "${line}"`);
   }
 });
 
@@ -151,31 +139,25 @@ test('No placeholders (待补充/TODO/未知)', () => {
   }
 });
 
-// -- Test 11: No English field names in line 3 -----------------------
-test('No English field names in line 3', () => {
+// -- Test 11: No English field names in desc ---------------------------
+test('No English field names in desc', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    const lines = skill.desc.split('\n');
-    if (lines.length >= 3) {
-      const line3 = lines[2];
-      assert(!line3.includes('cost:'), `${id}: line 3 uses "cost:"`);
-      assert(!line3.includes('power:'), `${id}: line 3 uses "power:"`);
-      assert(!line3.includes('speed:'), `${id}: line 3 uses "speed:"`);
-      assert(!line3.includes('range:'), `${id}: line 3 uses "range:"`);
-    }
+    const line = skill.desc;
+    assert(!line.includes('cost:'), `${id}: desc uses "cost:"`);
+    assert(!line.includes('power:'), `${id}: desc uses "power:"`);
+    assert(!line.includes('speed:'), `${id}: desc uses "speed:"`);
+    assert(!line.includes('range:'), `${id}: desc uses "range:"`);
   }
 });
 
-// -- Test 12: No 威力｜速度｜费用 old-format prefix in line 3 ---------
-test('No old 威力｜速度｜费用 prefix in line 3', () => {
+// -- Test 12: No 威力｜速度｜费用 old-format prefix in desc ----------
+test('No old 威力｜速度｜费用 prefix in desc', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    const lines = skill.desc.split('\n');
-    if (lines.length >= 3) {
-      const hasOldPrefix = lines[2].includes('威力｜速度｜费用');
-      assert(!hasOldPrefix,
-        `${id}: line 3 uses old "威力｜速度｜费用" prefix: "${lines[2]}"`);
-    }
+    const hasOldPrefix = skill.desc.includes('威力｜速度｜费用');
+    assert(!hasOldPrefix,
+      `${id}: desc uses old "威力｜速度｜费用" prefix: "${skill.desc}"`);
   }
 });
 

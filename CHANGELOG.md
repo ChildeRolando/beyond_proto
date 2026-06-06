@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-06-06 - 启动页资源预热
+
+- Added a shared asset preloader so battle skill icons and role portraits start loading from the start screen instead of waiting for the battle HUD to render.
+- Shared the portrait image cache with `BattleCanvasRenderer` so preloaded role portraits are reused in battle instead of creating a fresh `Image` instance.
+- Added regression coverage for asset URL collection, image cache reuse, and renderer cache reuse.
+
+## 2026-06-06 - 技能文案单段化
+
+- 技能描述统一压平成单段格式：`SkillData.desc` 在模块初始化时自动折叠换行，技能 tooltip、配置池和角色详情现在显示同一段文案。
+- 更新 `tests/skill_desc_format_test.js` 为单段格式校验，并保留“技能概念 / 游戏作用 / 范围 / 威力 / 速度 / 费用”的顺序检查。
+
+## 2026-06-05 - 战斗 UI 视觉重塑
+
+- Added `PRODUCT.md` to capture the combat engine's product register, users, tone, anti-references, and UI design principles.
+- Reworked the start screen into a tactical mode-selection console with responsive layout, higher contrast, and reduced generic card styling.
+- Restyled config, battle, sidebar, overlay, tutorial, and action dock surfaces around a dark tactical tabletop palette with cyan/amber combat-state accents.
+- Added responsive CSS for narrow screens, reduced-motion fallbacks, visible focus states, and removed a stray CSS `</style>` token from `styles/overlays.css`.
+- Verified the redesigned UI with static UI checks, PVE browser smoke coverage, rematch mode regression, and Playwright screenshots across desktop and mobile widths.
+
 ## 2026-06-03 - PVE AI autofill 与模式拆分
 
 
