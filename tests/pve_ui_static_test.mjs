@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const mainSrc = readFileSync(new URL('../main.js', import.meta.url), 'utf8');
 const appRuntimeSrc = readFileSync(new URL('../app/AppRuntime.js', import.meta.url), 'utf8');
+const battleSessionSrc = readFileSync(new URL('../session/BattleSessionController.js', import.meta.url), 'utf8');
 const configViewSrc = readFileSync(new URL('../ui/config/ConfigScreenView.js', import.meta.url), 'utf8');
 const battlePanelsViewSrc = readFileSync(new URL('../ui/battle/BattlePanelsView.js', import.meta.url), 'utf8');
 const skillTooltipViewSrc = readFileSync(new URL('../ui/shared/SkillTooltipView.js', import.meta.url), 'utf8');
@@ -66,10 +67,27 @@ assert.match(skillTooltipViewSrc, /SKILLS\[skillId\]/, 'skill tooltip should rea
 assert.match(configViewSrc, /showSkillTooltip/, 'config skill pool hover should use the shared card tooltip');
 assert.match(configViewSrc, /config-loadout-slot-btn[^`]+data-skill/, 'config loadout slots should expose skill ids for hover cards');
 assert.match(battlePanelsViewSrc, /inline:\s*true/, 'selected unit drawer should request inline skill cards instead of plain desc text');
+assert.match(skillTooltipViewSrc, /resourceCostLabel/, 'skill tooltip should format resource cost labels');
+assert.match(skillTooltipViewSrc, /CD状况/, 'skill tooltip stat grid should show cooldown status');
+assert.match(skillTooltipViewSrc, /剩余发动次数/, 'skill tooltip stat grid should show remaining uses');
+assert.match(battlePanelsViewSrc, /data-cd-remaining/, 'battle skill buttons should expose live cooldown remaining');
+assert.match(battlePanelsViewSrc, /data-uses-remaining/, 'battle skill buttons should expose live remaining uses');
+assert.match(battleSessionSrc, /getSkillCooldownRemaining/, 'battle panel context should expose cooldown helper');
+assert.match(battleSessionSrc, /getSkillRemainingUses/, 'battle panel context should expose remaining uses helper');
 assert.doesNotMatch(
   battlePanelsViewSrc + configViewSrc,
   /tooltip\.innerHTML\s*=\s*`\$\{title\s*\?\s*`<strong>/,
   'skill tooltip should not render as a plain title/body text box'
+);
+assert.doesNotMatch(
+  skillTooltipViewSrc,
+  /<span><b>速度<\/b>/,
+  'skill tooltip bottom stats should not repeat speed'
+);
+assert.doesNotMatch(
+  skillTooltipViewSrc,
+  /<span><b>cost<\/b>/i,
+  'skill tooltip bottom stats should not repeat cost'
 );
 assert.doesNotMatch(
   configViewSrc,

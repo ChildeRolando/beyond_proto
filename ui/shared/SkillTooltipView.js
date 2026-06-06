@@ -19,9 +19,37 @@ export function escapeHTML(value = '') {
 
 function fallbackCostText(skill) {
   const entries = Object.entries(skill.cost || {});
-  if (!entries.length) return '无';
+  if (!entries.length) return '0';
   const names = { qi: '气', rage: '怒气', ammo: '弹药' };
   return entries.map(([res, amount]) => `${names[res] || res}${amount}`).join('、');
+}
+
+function defaultResourceName(skill) {
+  if (skill.class === '战士') return '怒气';
+  if (skill.class === '射手') return '弹药';
+  return '气';
+}
+
+function resourceCostLabel(skill, rawCost) {
+  const names = { qi: '气', rage: '怒气', ammo: '弹药' };
+  const entries = Object.entries(skill.cost || {});
+  if (entries.length > 0) {
+    return entries.map(([res, amount]) => `${names[res] || res} ${amount}`).join(' / ');
+  }
+
+  const cost = String(rawCost ?? '').trim();
+  if (!cost || cost === '0' || cost === '无') return `${defaultResourceName(skill)} 0`;
+  const normalized = cost
+    .replace(/^(气|怒气|弹药|次元token)\s*[×x]?\s*(\d+)$/u, '$1 $2')
+    .replace(/^(qi|rage|ammo)\s*(\d+)$/iu, (_, res, amount) => `${names[res.toLowerCase()] || res} ${amount}`);
+  if (/^\d+$/.test(normalized)) return `${defaultResourceName(skill)} ${normalized}`;
+  return normalized;
+}
+
+function displayValue(value, fallback = '0') {
+  if (value === undefined || value === null || value === '' || value === '无') return fallback;
+  if (value === Infinity || value === 'Infinity') return '∞';
+  return String(value);
 }
 
 function parseSkillTooltipDesc(skill, desc = '') {
@@ -30,7 +58,7 @@ function parseSkillTooltipDesc(skill, desc = '') {
   const metaIndex = lines.findIndex(line => /速度\s*\S+/i.test(line) && /CD\s*\S+/i.test(line) && /cost\s*\S+/i.test(line));
   const metaLine = metaIndex >= 0 ? lines[metaIndex] : '';
   const speed = metaLine.match(/速度\s*([^\s]+)/)?.[1] || String(skill.speed ?? '-');
-  const cd = metaLine.match(/CD\s*([^\s]+)/i)?.[1] || String(skill.cooldown ?? '无');
+  const cd = metaLine.match(/CD\s*([^\s]+)/i)?.[1] || String(skill.cooldown ?? '0');
   const cost = metaLine.match(/cost\s*(.+)$/i)?.[1]?.trim() || fallbackCostText(skill);
   const bodyStart = metaIndex >= 0 ? metaIndex + 1 : 1;
   const body = lines.slice(bodyStart).filter(line => !/^—+$/.test(line)).join(' ') || desc || skill.name;
@@ -46,6 +74,9 @@ function highlightTooltipText(text) {
 export function renderSkillTooltipCard(skill, desc = '', options = {}) {
   const parsed = parseSkillTooltipDesc(skill, desc || skill.desc || '');
   const typeLabel = [skill.class, skill.type].filter(Boolean).join(' / ') || '技能';
+  const costLabel = resourceCostLabel(skill, parsed.cost);
+  const cooldownStatus = displayValue(options.cdRemaining, '0');
+  const remainingUses = displayValue(options.usesRemaining, skill.maxUses ? String(skill.maxUses) : '∞');
   const icon = skill.icon
     ? `<img src="${escapeHTML(skill.icon)}" alt="${escapeHTML(skill.name)}">`
     : `<span>${escapeHTML((skill.name || '?').slice(0, 1))}</span>`;
@@ -60,15 +91,14 @@ export function renderSkillTooltipCard(skill, desc = '', options = {}) {
         </div>
         <div class="skill-tooltip-meta">
           <span>速度 ${escapeHTML(parsed.speed)}</span>
-          <strong>${escapeHTML(parsed.cost)}</strong>
+          <strong>${escapeHTML(costLabel)}</strong>
         </div>
       </div>
       <div class="skill-tooltip-rule"></div>
       <div class="skill-tooltip-body">${highlightTooltipText(parsed.body)}</div>
       <div class="skill-tooltip-stat-grid">
-        <span><b>速度</b>${escapeHTML(parsed.speed)}</span>
-        <span><b>CD</b>${escapeHTML(parsed.cd)}</span>
-        <span><b>cost</b>${escapeHTML(parsed.cost)}</span>
+        <span><b>CD状况</b>${escapeHTML(cooldownStatus)}</span>
+        <span><b>剩余发动次数</b>${escapeHTML(remainingUses)}</span>
       </div>
     </div>`;
 }
@@ -79,7 +109,10 @@ export function showSkillTooltip(e, btn) {
   const skillId = btn.dataset.skill;
   const skill = skillId ? SKILLS[skillId] : null;
   if (!skill) return;
-  tooltip.innerHTML = renderSkillTooltipCard(skill, skill.desc || btn.dataset.tooltip || '');
+  tooltip.innerHTML = renderSkillTooltipCard(skill, skill.desc || btn.dataset.tooltip || '', {
+    cdRemaining: btn.dataset.cdRemaining,
+    usesRemaining: btn.dataset.usesRemaining,
+  });
   tooltip.classList.add('visible');
   positionSkillTooltip(e, btn);
 }

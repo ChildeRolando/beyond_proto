@@ -57,6 +57,10 @@ export function skillGlyph(skill) {
   return escapeHTML((skill.name || '?').slice(0, 1));
 }
 
+function finiteOrInfinityText(value) {
+  return value === Infinity ? 'Infinity' : String(value ?? 0);
+}
+
 // ─── Private panel renderers (use local helpers, business helpers from ctx) ───
 
 function renderInfoPanel(char, title, ctx, options = {}) {
@@ -69,8 +73,10 @@ function renderInfoPanel(char, title, ctx, options = {}) {
     const skill = SKILLS[s.id];
     const selected = ctx.viewingSkill?.charId === char.id && ctx.viewingSkill?.skillId === s.id ? ' selected' : '';
     const label = `${skill.name}：${skill.desc || ''}`;
-    return `<button class="drawer-skill-btn skill-card-btn${selected}" data-skill="${s.id}" data-char="${char.id}" aria-label="${escapeHTML(label)}">
-      ${renderSkillTooltipCard(skill, skill.desc || '', { inline: true })}
+    const cdRemaining = h.getSkillCooldownRemaining?.(char.id, s.id) ?? 0;
+    const usesRemaining = h.getSkillRemainingUses?.(char.id, s.id) ?? Infinity;
+    return `<button class="drawer-skill-btn skill-card-btn${selected}" data-skill="${s.id}" data-char="${char.id}" data-cd-remaining="${escapeHTML(cdRemaining)}" data-uses-remaining="${escapeHTML(finiteOrInfinityText(usesRemaining))}" aria-label="${escapeHTML(label)}">
+      ${renderSkillTooltipCard(skill, skill.desc || '', { inline: true, cdRemaining, usesRemaining })}
     </button>`;
   }).join('');
   return `
@@ -164,7 +170,9 @@ function renderActionDock(ctx) {
     const used = !h.canSubmitForChar(actor.id, s.id) ? ' used' : '';
     const noAfford = !canAfford(skill) ? ' unaffordable' : '';
     const label = `${skill.name}：${skill.desc || ''}`;
-    return `<button class="skill-btn skill-icon-btn${sel}${used}${noAfford}" data-skill="${s.id}" data-char="${actor.id}" aria-label="${escapeHTML(label)}" data-tooltip="${escapeHTML(skill.desc || '')}">
+    const cdRemaining = h.getSkillCooldownRemaining?.(actor.id, s.id) ?? 0;
+    const usesRemaining = h.getSkillRemainingUses?.(actor.id, s.id) ?? Infinity;
+    return `<button class="skill-btn skill-icon-btn${sel}${used}${noAfford}" data-skill="${s.id}" data-char="${actor.id}" data-cd-remaining="${escapeHTML(cdRemaining)}" data-uses-remaining="${escapeHTML(finiteOrInfinityText(usesRemaining))}" aria-label="${escapeHTML(label)}" data-tooltip="${escapeHTML(skill.desc || '')}">
       <div class="skill-glyph">${skillGlyph(skill)}</div>
       <div class="skill-meta"><span>${skillCostLabel(skill, actor)}</span><span>S${skill.speed ?? '-'}</span></div>
     </button>`;

@@ -811,7 +811,7 @@ function trimSentence(text) {
 
 function costTextFromSkill(skill) {
   const entries = Object.entries(skill.cost || {});
-  if (entries.length === 0) return '无';
+  if (entries.length === 0) return '0';
   return entries.map(([resource, amount]) => `${resource}${amount}`).join('/');
 }
 
@@ -872,8 +872,8 @@ function normalizeSkillDesc(skill) {
     if (power) bodyParts.push(power);
     const body = bodyParts.join('。').replace(/[。]+$/u, '') + '。';
     const speed = skill.speed ?? spec['速度'] ?? '-';
-    const cooldown = skill.cooldown ?? '无';
-    const cost = spec['费用'] || costTextFromSkill(skill);
+    const cooldown = skill.cooldown ?? spec['CD'] ?? '0';
+    const cost = spec['费用'] && spec['费用'] !== '无' ? spec['费用'] : costTextFromSkill(skill);
     return [
       skill.name,
       '——————————————',
@@ -885,7 +885,7 @@ function normalizeSkillDesc(skill) {
   return [
     skill.name,
     '——————————————',
-    `速度 ${skill.speed ?? '-'}               CD ${skill.cooldown ?? '无'}                  cost ${costTextFromSkill(skill)}`,
+    `速度 ${skill.speed ?? '-'}               CD ${skill.cooldown ?? '0'}                  cost ${costTextFromSkill(skill)}`,
     parts.map(trimSentence).join('；') + '。',
   ].join('\n');
 }

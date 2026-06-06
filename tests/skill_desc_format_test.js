@@ -77,6 +77,18 @@ test('line 3 contains 速度, CD, cost headers', () => {
   }
 });
 
+// -- Test 5b: metadata uses 0 instead of 无 ----------------------------
+test('metadata uses 0 instead of 无', () => {
+  for (const id of allSkillIds) {
+    const skill = SKILLS[id];
+    const metadata = skill.desc.split('\n')[2] || '';
+    assert(!/CD\s+无/.test(metadata),
+      `${id}: CD metadata should use 0 instead of 无: "${metadata}"`);
+    assert(!/cost\s+无/i.test(metadata),
+      `${id}: cost metadata should use 0 instead of 无: "${metadata}"`);
+  }
+});
+
 // -- Test 6: natural description contains no structured stat labels ------
 test('description has no structured stat labels', () => {
   for (const id of allSkillIds) {

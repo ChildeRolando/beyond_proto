@@ -150,6 +150,8 @@ export class BattleSessionController {
         visibleSkillsForChar: (char) => this.visibleSkillsForChar(char),
         getForcedSkillId: (charId) => this.engine.getForcedSkillId(charId),
         getPendingResourceGains: (charId) => this.engine.getPendingResourceGains?.(charId) || {},
+        getSkillCooldownRemaining: (charId, skillId) => this.engine.skillCooldowns?.getRemaining(charId, skillId) ?? 0,
+        getSkillRemainingUses: (charId, skillId) => this.engine.skillCooldowns?.getRemainingUses(charId, skillId) ?? Infinity,
       },
       callbacks: {
         onCloseSelectedUnit: () => {
