@@ -1,5 +1,5 @@
 // skill_desc_format_test.js
-// Verify all skill descriptions follow the normalized single-paragraph format.
+// Verify all skill descriptions follow the normalized display-card format.
 // Run: node tests/skill_desc_format_test.js
 
 import { SKILLS } from '../engine/SkillData.js';
@@ -37,73 +37,64 @@ test('All skills have desc', () => {
   }
 });
 
-// -- Test 2: desc contains exactly 1 line --------------------------------
-test('desc has exactly 1 line', () => {
+// -- Test 2: desc contains exactly 4 lines -------------------------------
+test('desc has exactly 4 lines', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
     const lines = skill.desc.split('\n');
-    assert(lines.length === 1,
-      `${id}: expected 1 line, got ${lines.length}: "${skill.desc}"`);
+    assert(lines.length === 4,
+      `${id}: expected 4 lines, got ${lines.length}: "${skill.desc}"`);
   }
 });
 
-// -- Test 3: desc starts with "技能概念：" -------------------------------
-test('desc starts with 技能概念：', () => {
+// -- Test 3: line 1 is the skill name ------------------------------------
+test('line 1 is skill name', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    assert(skill.desc.startsWith('技能概念：'),
-      `${id}: desc does not start with "技能概念：": "${skill.desc}"`);
+    const lines = skill.desc.split('\n');
+    assert(lines[0] === skill.name,
+      `${id}: line 1 should be skill name "${skill.name}", got "${lines[0]}"`);
   }
 });
 
-// -- Test 4: desc contains "游戏作用：" ---------------------------------
-test('desc contains 游戏作用：', () => {
+// -- Test 4: line 2 is the separator -------------------------------------
+test('line 2 is separator', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    assert(skill.desc.includes('游戏作用：'),
-      `${id}: desc missing "游戏作用：": "${skill.desc}"`);
+    const lines = skill.desc.split('\n');
+    assert(lines[1] === '——————————————',
+      `${id}: line 2 should be separator, got "${lines[1]}"`);
   }
 });
 
-// -- Test 5: desc contains "范围：" ------------------------------------
-test('desc contains 范围：', () => {
+// -- Test 5: line 3 contains speed/CD/cost headers -----------------------
+test('line 3 contains 速度, CD, cost headers', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    assert(skill.desc.includes('范围：'),
-      `${id}: desc missing "范围：": "${skill.desc}"`);
+    const lines = skill.desc.split('\n');
+    assert(/^速度\s+\S+\s+CD\s+\S+\s+cost\s+\S+/.test(lines[2]),
+      `${id}: line 3 should contain speed/CD/cost metadata: "${lines[2]}"`);
   }
 });
 
-// -- Test 6: desc contains all four sub-fields in order -----------------
-test('desc contains 范围：, 威力：, 速度：, 费用： in order', () => {
+// -- Test 6: natural description contains no structured stat labels ------
+test('description has no structured stat labels', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    const line = skill.desc;
-    assert(line.includes('范围：'),
-      `${id}: desc missing "范围：": "${line}"`);
-    assert(line.includes('威力：'),
-      `${id}: desc missing "威力：": "${line}"`);
-    assert(line.includes('速度：'),
-      `${id}: desc missing "速度：": "${line}"`);
-    assert(line.includes('费用：'),
-      `${id}: desc missing "费用：": "${line}"`);
-    // Verify order: 范围 before 威力 before 速度 before 费用
-    const idxRange = line.indexOf('范围：');
-    const idxPower = line.indexOf('威力：');
-    const idxSpeed = line.indexOf('速度：');
-    const idxCost  = line.indexOf('费用：');
-    assert(idxRange < idxPower && idxPower < idxSpeed && idxSpeed < idxCost,
-      `${id}: field order wrong (expected 范围→威力→速度→费用): "${line}"`);
+    const lines = skill.desc.split('\n');
+    const body = lines[3] || '';
+    assert(!/(技能概念|游戏作用|范围|威力|速度|费用)：/.test(body),
+      `${id}: description still contains structured labels: "${body}"`);
   }
 });
 
-// -- Test 7: No English word "cost" in desc --------------------------
-test('No "cost" in desc', () => {
+// -- Test 7: cost only appears in metadata line ------------------------
+test('cost only appears in metadata line', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    const hasCost = /\bcost\b/i.test(skill.desc);
-    assert(!hasCost,
-      `${id}: desc contains "cost": "${skill.desc}"`);
+    const lines = skill.desc.split('\n');
+    assert(lines.filter(line => /\bcost\b/i.test(line)).length === 1,
+      `${id}: cost should appear exactly once in metadata line: "${skill.desc}"`);
   }
 });
 
@@ -139,15 +130,15 @@ test('No placeholders (待补充/TODO/未知)', () => {
   }
 });
 
-// -- Test 11: No English field names in desc ---------------------------
-test('No English field names in desc', () => {
+// -- Test 11: No English field names outside metadata -------------------
+test('No English field names outside metadata', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    const line = skill.desc;
-    assert(!line.includes('cost:'), `${id}: desc uses "cost:"`);
-    assert(!line.includes('power:'), `${id}: desc uses "power:"`);
-    assert(!line.includes('speed:'), `${id}: desc uses "speed:"`);
-    assert(!line.includes('range:'), `${id}: desc uses "range:"`);
+    const body = skill.desc.split('\n')[3] || '';
+    assert(!body.includes('cost:'), `${id}: description uses "cost:"`);
+    assert(!body.includes('power:'), `${id}: description uses "power:"`);
+    assert(!body.includes('speed:'), `${id}: description uses "speed:"`);
+    assert(!body.includes('range:'), `${id}: description uses "range:"`);
   }
 });
 

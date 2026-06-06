@@ -805,17 +805,71 @@ export const SKILLS = {
   },
 };
 
-function normalizeSkillDesc(desc) {
-  return desc
+function trimSentence(text) {
+  return (text || '').trim().replace(/[。；;]+$/u, '');
+}
+
+function costTextFromSkill(skill) {
+  const entries = Object.entries(skill.cost || {});
+  if (entries.length === 0) return '无';
+  return entries.map(([resource, amount]) => `${resource}${amount}`).join('/');
+}
+
+function parseSpecText(specText) {
+  const spec = {};
+  for (const part of specText.split('；')) {
+    const [key, ...rest] = part.split('：');
+    if (key && rest.length > 0) spec[key.trim()] = rest.join('：').trim();
+  }
+  return spec;
+}
+
+function rangeSentence(range) {
+  if (!range) return '';
+  if (range === '自身') return '作用于自身。';
+  return `作用范围为${range}。`;
+}
+
+function powerSentence(power) {
+  if (!power) return '';
+  if (power === '无') return '不造成直接威力。';
+  return `威力为${power}。`;
+}
+
+function normalizeSkillDesc(skill) {
+  const parts = skill.desc
     .split('\n')
-    .map(part => part.trim().replace(/[。；;]+$/u, ''))
+    .map(part => part.trim()
+      .replace(/^(技能概念|游戏作用)：/u, '')
+      .replace(/[。；;]+$/u, ''))
     .filter(Boolean)
-    .join('；') + '。';
+
+  if (parts.length >= 3) {
+    const spec = parseSpecText(parts.slice(2).join('；'));
+    const prose = parts.slice(0, 2).map(trimSentence).join('，');
+    const body = `${prose}。${rangeSentence(spec['范围'])}${powerSentence(spec['威力'])}`;
+    const speed = skill.speed ?? spec['速度'] ?? '-';
+    const cooldown = skill.cooldown ?? '无';
+    const cost = spec['费用'] || costTextFromSkill(skill);
+    return [
+      skill.name,
+      '——————————————',
+      `速度 ${speed}               CD ${cooldown}                  cost ${cost}`,
+      body,
+    ].join('\n');
+  }
+
+  return [
+    skill.name,
+    '——————————————',
+    `速度 ${skill.speed ?? '-'}               CD ${skill.cooldown ?? '无'}                  cost ${costTextFromSkill(skill)}`,
+    parts.map(trimSentence).join('；') + '。',
+  ].join('\n');
 }
 
 for (const skill of Object.values(SKILLS)) {
   if (typeof skill.desc === 'string' && skill.desc.includes('\n')) {
-    skill.desc = normalizeSkillDesc(skill.desc);
+    skill.desc = normalizeSkillDesc(skill);
   }
 }
 

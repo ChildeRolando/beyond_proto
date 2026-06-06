@@ -57,7 +57,7 @@ export function showSkillTooltip(e, btn) {
   if (!tooltip) return;
   const title = btn.dataset.tooltipTitle || '';
   const body = btn.dataset.tooltip || btn.getAttribute('title') || '';
-  tooltip.innerHTML = `<strong>${title}</strong><span>${body}</span>`;
+  tooltip.innerHTML = `${title ? `<strong>${title}</strong>` : ''}<span>${body}</span>`;
   tooltip.classList.add('visible');
   positionSkillTooltip(e);
 }
@@ -184,7 +184,7 @@ function renderActionDock(ctx) {
     const sel = ctx.selectedSkill?.charId === actor.id && ctx.selectedSkill?.skillId === s.id ? ' selected' : '';
     const used = !h.canSubmitForChar(actor.id, s.id) ? ' used' : '';
     const noAfford = !canAfford(skill) ? ' unaffordable' : '';
-    return `<button class="skill-btn skill-icon-btn${sel}${used}${noAfford}" data-skill="${s.id}" data-char="${actor.id}" title="${skill.name}: ${skill.desc || ''}" data-tooltip-title="${skill.name}" data-tooltip="${skill.desc || ''}">
+    return `<button class="skill-btn skill-icon-btn${sel}${used}${noAfford}" data-skill="${s.id}" data-char="${actor.id}" title="${skill.desc || ''}" data-tooltip="${skill.desc || ''}">
       <div class="skill-glyph">${skillGlyph(skill)}</div>
       <div class="skill-meta"><span>${skillCostLabel(skill, actor)}</span><span>S${skill.speed ?? '-'}</span></div>
     </button>`;
