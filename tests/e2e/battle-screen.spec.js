@@ -64,6 +64,20 @@ test('action dock shows skill buttons', async ({ page }) => {
   await expect(actionDock.locator('.skill-icon-btn[data-skill]').first()).toBeVisible();
 });
 
+test('skill icons use stable cached src after rerender', async ({ page }) => {
+  await lockBothAndStart(page);
+
+  const actionDock = page.locator('#action-dock');
+  const firstSrcs = await actionDock.locator('.skill-icon-img').evaluateAll(imgs => imgs.map(img => img.src));
+  expect(firstSrcs.length).toBeGreaterThan(0);
+
+  await page.locator('#tab-chat').click();
+  await page.locator('#tab-log').click();
+
+  const secondSrcs = await actionDock.locator('.skill-icon-img').evaluateAll(imgs => imgs.map(img => img.src));
+  expect(secondSrcs).toEqual(firstSrcs);
+});
+
 // ─── 3. Right sidebar tab switching ───
 
 test('right sidebar tabs switch between chat and log', async ({ page }) => {

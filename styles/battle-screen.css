@@ -388,7 +388,13 @@ canvas {
 .skill-glyph img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  display: block;
+}
+.skill-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   display: block;
 }
 .skill-glyph span {

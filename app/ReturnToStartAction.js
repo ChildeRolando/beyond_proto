@@ -7,6 +7,7 @@ export function createReturnToStartAction({
   getGameOverController,
   getStartLobbyUi,
   getTutorialManager,
+  battleRender,
   routeController,
 }) {
   return function returnToStart() {
@@ -17,6 +18,9 @@ export function createReturnToStartAction({
     getEl('disconnect-overlay')?.classList.remove('show');
     getEl('tutorial-overlay')?.classList.remove('show');
     getEl('galaxy-overlay')?.classList.remove('show');
+    battleRender?.hideTutorialHud?.();
+    const tutorialHud = getEl('tutorial-hud');
+    if (tutorialHud) tutorialHud.style.display = 'none';
     getGameOverController()?.hide();
     routeController.setRoute('start');
     // Prefer structured reset through the start lobby UI

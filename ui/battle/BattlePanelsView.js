@@ -10,6 +10,7 @@ import {
   renderSkillTooltipCard,
   showSkillTooltip,
 } from '../shared/SkillTooltipView.js';
+import { getSkillIconSrc } from '../shared/SkillIconAssets.js';
 
 // ─── Pure DOM helpers ───
 
@@ -53,7 +54,8 @@ export function skillCostLabel(skill, char) {
 }
 
 export function skillGlyph(skill) {
-  if (skill.icon) return `<img src="${escapeHTML(skill.icon)}" alt="${escapeHTML(skill.name)}" style="width:100%;height:100%;object-fit:contain;">`;
+  const src = getSkillIconSrc(skill);
+  if (src) return `<img class="skill-icon-img" src="${escapeHTML(src)}" alt="${escapeHTML(skill.name)}" loading="eager" decoding="async">`;
   return escapeHTML((skill.name || '?').slice(0, 1));
 }
 

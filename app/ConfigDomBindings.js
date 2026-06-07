@@ -43,8 +43,10 @@ export function bindConfigDomEvents({
 
   // Tutorial HUD buttons
   getEl('tutorial-next')?.addEventListener('click', () => {
-    const nextLevelId = lifecycle.advanceTutorialLevel();
-    if (nextLevelId === null) returnToStart();
+    const btn = getEl('tutorial-next');
+    if (btn?.dataset.ready !== '1') return;
+    const advanced = lifecycle.advanceTutorialLevel();
+    if (advanced === null) returnToStart();
   });
 
   getEl('tutorial-skip')?.addEventListener('click', () => {

@@ -115,12 +115,14 @@ export function createBattleLifecycleService({
 
   function advanceTutorialLevel() {
     const tutorialManager = getTutorialManager();
+    const state = tutorialManager?.getState?.();
+    if (!state?.levelComplete) return false;
     const nextLevelId = tutorialManager?.getNextLevelId?.();
     if (nextLevelId) {
       startTutorialLevel(nextLevelId);
-    } else {
-      return null; // caller should handle returnToStart
+      return true;
     }
+    return null; // caller should handle returnToStart
   }
 
   return {

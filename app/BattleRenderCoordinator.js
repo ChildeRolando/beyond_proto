@@ -31,6 +31,10 @@ export function createBattleRenderCoordinator({
   const setSubmitStatus = (text) => setText('submit-status', text);
   const setExecuteDisabled = (disabled) => { const btn = getEl('btn-execute'); if (btn) btn.disabled = disabled; };
   const clearLog = () => { const log = getEl('log'); if (log) log.innerHTML = ''; };
+  const hideTutorialHud = () => {
+    const hud = getEl('tutorial-hud');
+    if (hud) hud.style.display = 'none';
+  };
 
   const setModeBadge = (text, className) => {
     const badge = getEl('mode-badge');
@@ -101,10 +105,11 @@ export function createBattleRenderCoordinator({
     if (nextBtn) {
       nextBtn.textContent = state.nextLabel || '下一关';
       nextBtn.style.display = 'inline-flex';
-      nextBtn.style.opacity = state.showNext ? '1' : '0.45';
-      nextBtn.style.pointerEvents = 'auto';
-      nextBtn.dataset.ready = state.showNext ? '1' : '0';
-      nextBtn.disabled = false;
+      const canAdvance = Boolean(state.showNext);
+      nextBtn.style.opacity = canAdvance ? '1' : '0.45';
+      nextBtn.style.pointerEvents = canAdvance ? 'auto' : 'none';
+      nextBtn.dataset.ready = canAdvance ? '1' : '0';
+      nextBtn.disabled = !canAdvance;
     }
 
     const skipBtn = getEl('tutorial-skip');
@@ -142,6 +147,7 @@ export function createBattleRenderCoordinator({
     setSubmitStatus,
     setExecuteDisabled,
     clearLog,
+    hideTutorialHud,
     renderPanels,
     renderLog,
     updateTurnUi,

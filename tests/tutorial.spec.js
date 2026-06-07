@@ -44,7 +44,9 @@ async function tutorialState(page) {
 
 async function clickNext(page) {
   const currentLevel = await page.evaluate(() => window.__tutorialTest.getCurrentLevel());
-  await page.locator('[data-testid="tutorial-next"]').click();
+  const next = page.locator('[data-testid="tutorial-next"]');
+  await expect(next).toBeEnabled();
+  await next.click();
   await page.waitForFunction(prevLevel => window.__tutorialTest.getCurrentLevel() !== prevLevel, currentLevel);
 }
 
@@ -88,11 +90,14 @@ test('tutorial level 1 delays movement until execute', async ({ page }) => {
   const after = await page.evaluate(() => window.__tutorialTest.getUnit('tutorial_hero'));
   expect(after.position).toEqual({ q: 1, r: 0, dim: 'real' });
   await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('教程 1 完成');
+  await expect(page.locator('[data-testid="tutorial-next"]')).toBeEnabled();
 });
 
 test('tutorial level 2 blocks wrong target and resolves attack on execute', async ({ page }) => {
   await enterTutorial(page);
 
+  await page.evaluate(() => window.__tutorialTest.selectSkill('warrior_move'));
+  await page.evaluate(() => window.__tutorialTest.chooseHex(1, 0));
   await page.evaluate(() => window.__tutorialTest.executeTurn());
   await clickNext(page);
 
@@ -128,6 +133,8 @@ test('tutorial level 2 blocks wrong target and resolves attack on execute', asyn
 test('tutorial level 3 teaches speed priority with a safe move', async ({ page }) => {
   await enterTutorial(page);
 
+  await page.evaluate(() => window.__tutorialTest.selectSkill('warrior_move'));
+  await page.evaluate(() => window.__tutorialTest.chooseHex(1, 0));
   await page.evaluate(() => window.__tutorialTest.executeTurn());
   await clickNext(page);
   await page.evaluate(() => window.__tutorialTest.selectSkill('warrior_slash'));
@@ -192,6 +199,7 @@ test('tutorial skip returns to start and hides tutorial overlay', async ({ page 
 
   await expect(page.locator('#start-screen')).toBeVisible();
   await expect(page.locator('#tutorial-overlay')).not.toHaveClass(/show/);
+  await expect(page.locator('#tutorial-hud')).not.toBeVisible();
   await expect(page.locator('#app')).not.toBeVisible();
   await expect(page.locator('#config-screen')).not.toBeVisible();
 });
@@ -206,6 +214,21 @@ test('tutorial returnToStart programmatic call cleans overlays', async ({ page }
 
   await expect(page.locator('#start-screen')).toBeVisible();
   await expect(page.locator('#tutorial-overlay')).not.toHaveClass(/show/);
+  await expect(page.locator('#tutorial-hud')).not.toBeVisible();
+  await expect(page.locator('#galaxy-overlay')).not.toHaveClass(/show/);
   await expect(page.locator('#app')).not.toBeVisible();
   await expect(page.locator('#disconnect-overlay')).not.toHaveClass(/show/);
+});
+
+test('tutorial next is disabled until level complete', async ({ page }) => {
+  await enterTutorial(page);
+
+  const next = page.locator('[data-testid="tutorial-next"]');
+  await expect(next).toBeDisabled();
+
+  const before = await page.evaluate(() => window.__tutorialTest.getCurrentLevel());
+  await next.click({ force: true });
+  const after = await page.evaluate(() => window.__tutorialTest.getCurrentLevel());
+
+  expect(after).toBe(before);
 });

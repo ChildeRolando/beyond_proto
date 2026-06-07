@@ -44,6 +44,7 @@ import { initSkillRippleController } from '../ui/battle/SkillRippleController.js
 import { installRuntimeDomDefaults } from './RuntimeDomDefaults.js';
 import { installRuntimeTestHooks } from './RuntimeTestHooks.js';
 import { PORTRAIT_CACHE_VERSION } from '../ui/portrait/PortraitAssets.js';
+import { seedSkillIconCacheFromPreloader } from '../ui/shared/SkillIconAssets.js';
 
 export function createAppRuntime() {
   const CLASSES = ['法师', '战士', '射手'];
@@ -53,6 +54,7 @@ export function createAppRuntime() {
     roles: ROLE_DEFS,
     portraitCacheVersion: PORTRAIT_CACHE_VERSION,
   });
+  seedSkillIconCacheFromPreloader(assetPreloader.cache);
 
   const getEl = (id) => document.getElementById(id);
   const getDefaultAddr = () => window.location.hostname.includes('ngrok-free') ? window.location.host : '120.77.178.15:8088';
@@ -180,9 +182,7 @@ export function createAppRuntime() {
     defaultAddr: getDefaultAddr(),
     callbacks: {
       onStartTutorial() {
-        networkSession?.disconnect();
-        tutorialManager.reset();
-        lifecycle.startTutorialLevel('tutorial_move_execute');
+        startModeActions.startTutorial();
       },
       onStartLocalDuel() {
         startModeActions.startLocalConfig(GameMode.LOCAL_DUEL, '本地对战');
@@ -309,6 +309,7 @@ export function createAppRuntime() {
     getGameOverController,
     getStartLobbyUi,
     getTutorialManager,
+    battleRender,
     routeController,
   });
 
