@@ -30,6 +30,20 @@ export class DamageCalculator {
         const pool = this.resourceSystem.getAll(targetId);
         if (pool && pool.rage !== undefined) this.resourceSystem.set(targetId, 'rage', 0);
         this.eventBus.emit(EvtType.ARMOR_PIERCED, { targetId, damage: remaining, breakArmor: true });
+      } else if (flags.flags?.includes?.('DRAIN_COST')) {
+        // 破气针重做：清空目标所有可消耗资源（气/怒/弹）
+        const pool = this.resourceSystem.getAll(targetId);
+        if (pool) {
+          if (pool.qi !== undefined) this.resourceSystem.set(targetId, 'qi', 0);
+          if (pool.rage !== undefined) this.resourceSystem.set(targetId, 'rage', 0);
+          if (pool.ammo !== undefined) this.resourceSystem.set(targetId, 'ammo', 0);
+        }
+        this.eventBus.emit(EvtType.ARMOR_PIERCED, { targetId, damage: remaining, drainCost: true });
+      } else if (flags.flags?.includes?.('COST_SEAL')) {
+        // 引气针：撤销目标本回合已获得的cost，并封印后续获得
+        const drained = this.resourceSystem.drainTurnCostGains(targetId);
+        if (this.buffManager) this.buffManager.apply(targetId, 'COST_SEALED', 1, sourceId);
+        this.eventBus.emit(EvtType.ARMOR_PIERCED, { targetId, damage: remaining, costSeal: true, drained });
       } else {
         this.eventBus.emit(EvtType.ARMOR_PIERCED, { targetId, damage: remaining });
       }

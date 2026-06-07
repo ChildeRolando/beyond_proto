@@ -330,6 +330,15 @@ export class BuffManager {
         });
         break;
 
+      case 'COST_SEALED':
+        this.registerHook(buffId, HookName.ON_RESOURCE_GAIN, (ctx) => {
+          if (ctx.entityId === entityId && (ctx.resource === 'qi' || ctx.resource === 'rage' || ctx.resource === 'ammo')) {
+            return { ...ctx, amount: 0 };
+          }
+          return ctx;
+        });
+        break;
+
       case 'JIMMY_MARROW_RANGE':
         this.registerHook(buffId, HookName.ON_RANGE_CALCULATE, (ctx) => {
           if (ctx.entityId === entityId) return { ...ctx, range: (ctx.range || 1) + 1 };

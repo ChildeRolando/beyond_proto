@@ -215,7 +215,7 @@ async function testMageSkills() {
     await doTurn(e, { id: m, skill: 'mage_armor_breaker', target: { q:0, r:2 } }, { id: w, skill: 'warrior_rage' });
     const qi = e.resourceSystem.get(m, 'qi');
     result('破气针消耗2气', qi === 0, `qi=${qi}`);
-    result('穿甲+碎甲标记(怒气清空)', e.resourceSystem.getRage(w) === 0, `rage=${e.resourceSystem.getRage(w)}`);
+    result('穿甲+泄气标记(清空目标资源)', e.resourceSystem.getRage(w) === 0, `qi=${e.resourceSystem.get(w, 'qi')} rage=${e.resourceSystem.getRage(w)}`);
   }
 
   // --- mage_sword_flight: 御剑 ---

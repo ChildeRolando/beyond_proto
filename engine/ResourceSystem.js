@@ -10,6 +10,7 @@ const CLASS_DEFAULTS = {
 export class ResourceSystem {
   #pools = new Map();  // entityId → resource pool
   #eventBus;
+  #turnCostGains = new Map();  // entityId → { qi: number, rage: number, ammo: number } per-turn tracking
 
   constructor(eventBus) {
     this.#eventBus = eventBus;
@@ -178,6 +179,46 @@ export class ResourceSystem {
   }
 
   // Drain all spendable resources (qi, rage, ammo, backpackAmmo) — used by Yan's empty gun
+  // --- Turn cost-gain tracking (for 引气针 retroactive drain) ---
+  recordCostGain(entityId, resource, amount) {
+    if (amount <= 0) return;
+    const costResources = ['qi', 'rage', 'ammo'];
+    if (!costResources.includes(resource)) return;
+    if (!this.#turnCostGains.has(entityId)) {
+      this.#turnCostGains.set(entityId, { qi: 0, rage: 0, ammo: 0 });
+    }
+    const gains = this.#turnCostGains.get(entityId);
+    gains[resource] += amount;
+  }
+
+  getTurnCostGains(entityId) {
+    return this.#turnCostGains.get(entityId) || { qi: 0, rage: 0, ammo: 0 };
+  }
+
+  // Drain all cost resources gained this turn (retroactive undo for 引气针)
+  drainTurnCostGains(entityId) {
+    const gains = this.#turnCostGains.get(entityId);
+    if (!gains) return { qi: 0, rage: 0, ammo: 0 };
+    const drained = {};
+    for (const res of ['qi', 'rage', 'ammo']) {
+      if (gains[res] > 0) {
+        const current = this.get(entityId, res);
+        const toDrain = Math.min(gains[res], current);
+        this.set(entityId, res, current - toDrain);
+        drained[res] = toDrain;
+        this.#eventBus.emit(EvtType.RESOURCE_CHANGED, { entityId, resource: res, old: current, new: current - toDrain, delta: -toDrain });
+      } else {
+        drained[res] = 0;
+      }
+    }
+    this.#turnCostGains.delete(entityId); // prevent double-drain
+    return drained;
+  }
+
+  clearTurnCostGains() {
+    this.#turnCostGains.clear();
+  }
+
   drainAll(entityId) {
     const pool = this.#pools.get(entityId);
     if (!pool) return { qi: 0, rage: 0, ammo: 0, backpackAmmo: 0 };

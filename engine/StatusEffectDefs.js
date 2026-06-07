@@ -224,6 +224,13 @@ export const STATUS_DEFS = {
     duration: -1,
     blocking: false,
   },
+  COST_SEALED: {
+    id: 'COST_SEALED',
+    name: '封脉',
+    desc: '本回合无法获得气、怒或弹',
+    duration: 1,
+    blocking: false,
+  },
 };
 
 // Get default duration for a status type

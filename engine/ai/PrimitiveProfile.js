@@ -193,6 +193,12 @@ function applyAttackEffect(profile, effect, skill) {
   if ((effect.flags || []).includes('BREAK_ARMOR')) {
     addTag(profile, PrimitiveTag.BREAK_DEFENSE);
   }
+  if ((effect.flags || []).includes('DRAIN_COST')) {
+    addTag(profile, PrimitiveTag.DISRUPT);
+  }
+  if ((effect.flags || []).includes('COST_SEAL')) {
+    addTag(profile, PrimitiveTag.DISRUPT);
+  }
   if (effect.power === 'SHIELD_CURRENT') {
     addTag(profile, PrimitiveTag.COUNTER);
     addTag(profile, PrimitiveTag.REACTION_THREAT);

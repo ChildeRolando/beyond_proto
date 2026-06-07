@@ -51,7 +51,7 @@
 ### mage_armor_breaker — 破气针
 
 ✅ 破气针消耗2气 — qi=0
-✅ 穿甲+碎甲标记(怒气清空) — rage=0
+✅ 穿甲+泄气标记(清空目标资源) — qi=0 rage=0
 
 ### mage_sword_flight — 御剑
 

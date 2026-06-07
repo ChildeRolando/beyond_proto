@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-06-07 - 引气针技能图标
+
+- Added a dedicated `mage_qi_siphon` skill icon and wired 引气针 to use it instead of reusing 破气针.
+- Recorded the 引气针 icon generation prompt in the skill icon prompt document.
+
 ## 2026-06-07 - 技能卡片数值显示调整
 
 - 技能描述元数据中的默认 CD 和 cost 从 `无` 改为 `0`，保持数值化展示。

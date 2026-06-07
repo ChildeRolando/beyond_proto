@@ -115,12 +115,22 @@ export const SKILLS = {
 
   mage_armor_breaker: {
     id: 'mage_armor_breaker', name: '破气针', icon: 'assets/skill-icons/mage/mage_armor_breaker.png', class: '法师', type: '攻击',
-    cost: { qi: 2 }, speed: 1, targeting: { shape: 'HEX', range: 4 },
+    cost: { qi: 2 }, speed: 1, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 2 },
-      { cmd: 'ATTACK_PROJECTILE', power: 0, flags: ['ARMOR_PIERCE', 'BREAK_ARMOR'] },
+      { cmd: 'ATTACK_PROJECTILE', power: 0, flags: ['ARMOR_PIERCE', 'DRAIN_COST'] },
     ],
-    desc: '技能概念：发射一枚专门破除防御的气功针。\n游戏作用：生成直线飞行弹体，射程4；弹体具有碎盾、消除怒气效果。\n范围：4；威力：0；速度：1；费用：气2',
+    desc: '技能概念：发射一枚破气针，命中后目标失去所有资源。\n游戏作用：生成直线飞行弹体，无限射程；弹体命中后清空目标所有气/怒/弹。\n范围：无限；威力：0；速度：1；CD：0；费用：气2',
+  },
+
+  mage_qi_siphon: {
+    id: 'mage_qi_siphon', name: '引气针', icon: 'assets/skill-icons/mage/mage_qi_siphon.png', class: '法师', type: '攻击',
+    cost: {}, speed: 1, cooldown: 3, targeting: { shape: 'HEX', range: 99 },
+    effects: [
+      { cmd: 'ATTACK_PROJECTILE', power: 0, flags: ['ARMOR_PIERCE', 'COST_SEAL'] },
+      { cmd: 'GAIN_RESOURCE', resource: 'qi', amount: 1, condition: 'ON_HIT' },
+    ],
+    desc: '技能概念：发射一枚引气针，命中后封住目标经脉并为自己引气。\n游戏作用：生成直线飞行弹体，无限射程；命中后目标本回合无法获得资源，自身获得1气。\n范围：无限；威力：0；速度：1；CD：3；费用：0',
   },
 
   mage_jump: {
@@ -298,7 +308,7 @@ export const SKILLS = {
 
   warrior_sheathe: {
     id: 'warrior_sheathe', name: '纳刀', icon: 'assets/skill-icons/warrior/warrior_sheathe.png', class: '战士', type: '防御',
-    cost: {}, speed: 3, targeting: { shape: 'SELF' },
+    cost: {}, speed: 3, targeting: { shape: 'SELF' }, cooldown: 2,
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SHEATHED', target: 'SELF' },
     ],
@@ -343,7 +353,7 @@ export const SKILLS = {
 
   warrior_hook: {
     id: 'warrior_hook', name: '无情铁手', icon: 'assets/skill-icons/warrior/warrior_hook.png', class: '战士', type: '特殊',
-    cost: { rage: 2 }, speed: 2, targeting: { shape: 'FAN', range: 3 },
+    cost: { rage: 2 }, speed: 2, targeting: { shape: 'FAN', range: 3 }, cooldown: 6,
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 2 },
       { cmd: 'MOVE_PULL', target: 'FAN_AREA' },
@@ -363,7 +373,7 @@ export const SKILLS = {
 
   warrior_blink_strike: {
     id: 'warrior_blink_strike', name: '冷血追命', icon: 'assets/skill-icons/warrior/warrior_blink_strike.png', class: '战士', type: '攻击',
-    cost: { rage: 3 }, speed: 1, targeting: { shape: 'HEX', range: 5 },
+    cost: { rage: 3 }, speed: 1, targeting: { shape: 'HEX', range: 5 }, cooldown: 6,
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 3 },
       { cmd: 'MOVE_TELEPORT', target: 'BEHIND_TARGET' },
@@ -495,7 +505,7 @@ export const SKILLS = {
 
   shooter_hook: {
     id: 'shooter_hook', name: '钩锁', icon: 'assets/skill-icons/shooter/shooter_hook.png', class: '射手', type: '移动',
-    cost: { ammo: 1 }, speed: 2, targeting: { shape: 'HEX', range: 5 },
+    cost: { ammo: 1 }, speed: 2, targeting: { shape: 'HEX', range: 5 }, cooldown: 1,
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 1 },
       { cmd: 'MOVE_GRAPNEL' },
@@ -527,7 +537,7 @@ export const SKILLS = {
 
   shooter_cover_fire: {
     id: 'shooter_cover_fire', name: '掩护射击', icon: 'assets/skill-icons/shooter/shooter_cover_fire.png', class: '射手', type: '防御',
-    cost: { ammo: 3 }, speed: 3, targeting: { shape: 'SELF' },
+    cost: { ammo: 3 }, speed: 3, targeting: { shape: 'SELF' }, cooldown: 3,
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 3 },
       { cmd: 'APPLY_STATUS', status: 'COVERING_FIRE', target: 'SELF', duration: 1 },
@@ -537,7 +547,7 @@ export const SKILLS = {
 
   shooter_gun_dance: {
     id: 'shooter_gun_dance', name: '枪舞', icon: 'assets/skill-icons/shooter/shooter_gun_dance.png', class: '射手', type: '攻击',
-    cost: { ammo: 4 }, speed: 1, targeting: { shape: 'AOE_SELF', radius: 2 },
+    cost: { ammo: 4 }, speed: 1, targeting: { shape: 'AOE_SELF', radius: 2 }, cooldown: 4,
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 4 },
       { cmd: 'SPAWN_STATIONARY_AOE', power: 100, radius: 2, dropCasing: true },
@@ -902,7 +912,7 @@ export const SKILLS_BY_CLASS = {
     'mage_gather', 'mage_small_blast', 'mage_blast', 'mage_bigblast',
     'mage_burst',
     'mage_realm_sweep', 'mage_buddha_palm',
-    'mage_jump', 'mage_teleport', 'mage_shield_repair', 'mage_armor_breaker',
+    'mage_jump', 'mage_teleport', 'mage_shield_repair', 'mage_armor_breaker', 'mage_qi_siphon',
     'mage_sword_flight', 'mage_dimension_gate',
     'mage_breath_small', 'mage_breath_big', 'mage_breath_tide',
     'mage_lion_roar', 'mage_double_cast', 'mage_triple_cast',

@@ -439,6 +439,7 @@ export class TurnManager {
       return;
     }
     this.#resourceSystem.add(cmd.actorId, resource, finalAmount);
+    this.#resourceSystem.recordCostGain(cmd.actorId, resource, finalAmount);
     // Record gather animation event
     if (finalAmount > 0 && resource !== 'ammo') {
       const actor = this.#registry.get(cmd.actorId);
@@ -1275,6 +1276,8 @@ export class TurnManager {
     this._clearEndOfTurnRoleStatuses();
     // Clear queue
     this.#commandQueue.clearAll();
+    // Clear per-turn cost gain tracking
+    this.#resourceSystem.clearTurnCostGains();
     // Respawn wild bullets if shooter present
     if (this.#projectileCalculator) {
       const shooter = [...this.#registry.characters()].find(

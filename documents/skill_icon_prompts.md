@@ -46,6 +46,9 @@
 ### mage_armor_breaker — 破气针
 **prompt:** A single thin sharp needle penetrating through a cracked shield icon, needle tip glowing hot white, shield fragments flying outward from impact point, precision piercing feel, silver-white and crimson palette, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast
 
+### mage_qi_siphon — 引气针
+**prompt:** A single thin qi needle piercing into a glowing meridian energy node and drawing a stream of cyan qi back along the needle, needle tip bright white, target node ring briefly sealed with a small lock-like energy glyph, precision siphoning feel distinct from shield breaking, cyan, pale gold, and white palette with subtle violet shadows, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast, no text, no letters, centered composition, black background
+
 ### mage_jump — 折返跃迁
 **prompt:** An arrow curving forward to a point then snapping back along the same path, elastic band visual, forward-then-return trajectory with ghost afterimage at midpoint, jade green and violet palette, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast
 
