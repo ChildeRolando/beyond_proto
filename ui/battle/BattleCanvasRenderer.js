@@ -1,7 +1,8 @@
 import { setCanvasSize } from '../../engine/HexMath.js';
+import { PORTRAIT_CACHE_VERSION, getBattlePortraitSrc, getCachedBattlePortraitImage, getPortraitImageCache } from '../portrait/PortraitAssets.js';
 
 export class BattleCanvasRenderer {
-  constructor({ canvas, context, battleSession, getEngine, geometry, visualEffects, portraitCacheVersion = '3', assetImageCache = new Map() }) {
+  constructor({ canvas, context, battleSession, getEngine, geometry, visualEffects, portraitCacheVersion = PORTRAIT_CACHE_VERSION, assetImageCache = new Map() }) {
     this.canvas = canvas;
     this.context = context;
     this.battleSession = battleSession;
@@ -9,37 +10,26 @@ export class BattleCanvasRenderer {
     this.geometry = geometry;
     this.visualEffects = visualEffects;
     this.portraitCacheVersion = portraitCacheVersion;
-    this.assetImageCache = assetImageCache;
+    // Seed the shared portrait cache from any preloaded images
+    const sharedCache = getPortraitImageCache();
+    for (const [key, img] of assetImageCache) {
+      if (!sharedCache.has(key)) sharedCache.set(key, img);
+    }
   }
 
   getCharacterPortraitSrc(char) {
     const roleId = char?.roleId;
     if (!roleId) return null;
-    return `assets/character-portraits/icons/${roleId}.webp?v=${this.portraitCacheVersion}`;
+    return getBattlePortraitSrc(roleId, this.portraitCacheVersion);
   }
 
   getCharacterPortraitImage(char) {
     const roleId = char?.roleId;
-    const src = this.getCharacterPortraitSrc(char);
-    if (!roleId || !src || typeof Image === 'undefined') return null;
-    if (this.assetImageCache.has(src)) {
-      const cached = this.assetImageCache.get(src);
-      if (cached && (!cached.complete || cached.naturalWidth <= 0)) {
-        cached.onload = () => {
-          if (typeof this.renderBoard === 'function') this.renderBoard();
-        };
-      }
-      return cached;
-    }
-    if (!this.assetImageCache.has(src)) {
-      const img = new Image();
-      img.onload = () => {
-        if (typeof this.renderBoard === 'function') this.renderBoard();
-      };
-      img.src = src;
-      this.assetImageCache.set(src, img);
-    }
-    return this.assetImageCache.get(src);
+    if (!roleId) return null;
+    const onLoad = () => {
+      if (typeof this.renderBoard === 'function') this.renderBoard();
+    };
+    return getCachedBattlePortraitImage(roleId, { cacheVersion: this.portraitCacheVersion, onLoad });
   }
 
   resize() {

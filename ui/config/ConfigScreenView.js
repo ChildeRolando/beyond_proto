@@ -19,16 +19,7 @@ import {
   positionSkillTooltip,
   showSkillTooltip,
 } from '../shared/SkillTooltipView.js';
-
-// ─── Helpers ───
-
-function getRoleThumbnail(roleId, cacheVersion) {
-  return `assets/character-portraits/icons/${roleId}.webp?v=${cacheVersion}`;
-}
-
-function getRoleHeroPortrait(roleId, cacheVersion) {
-  return `assets/character-portraits/${roleId}.webp?v=${cacheVersion}`;
-}
+import { getRoleThumbnailSrc, getRoleHeroPortraitSrc } from '../portrait/PortraitAssets.js';
 
 // ─── Sub-renderers ───
 
@@ -37,7 +28,7 @@ function renderRoleList(ctx) {
   document.getElementById('config-role-list').innerHTML = roles.map(role => {
     const isActive = role.id === ctx.cfg.roleId;
     return `<div class="config-role-list-item ${isActive ? 'active' : ''}" data-role="${role.id}">
-      <img class="config-role-list-thumb" src="${getRoleThumbnail(role.id, ctx.portraitCacheVersion)}" alt="${role.name}">
+      <img class="config-role-list-thumb" src="${getRoleThumbnailSrc(role.id, ctx.portraitCacheVersion)}" alt="${role.name}">
       <div class="config-role-list-info">
         <div class="config-role-list-name">${role.name}</div>
         <div class="config-role-list-class">${role.class}</div>
@@ -50,7 +41,7 @@ function renderRoleHero(role, ctx) {
   if (!role) return;
   document.getElementById('config-hero-glow').className = `config-hero-glow theme-${role.portraitTheme || 'steel'}`;
   const portraitEl = document.getElementById('config-hero-portrait');
-  portraitEl.src = getRoleHeroPortrait(role.id, ctx.portraitCacheVersion);
+  portraitEl.src = getRoleHeroPortraitSrc(role.id, ctx.portraitCacheVersion);
   portraitEl.alt = role.name;
   document.getElementById('config-hero-name').textContent = role.name;
   document.getElementById('config-hero-class').textContent = role.class;

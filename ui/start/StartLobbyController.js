@@ -73,7 +73,9 @@ export function initStartLobbyController(ctx) {
     ctx.callbacks.onStartLocalSolo();
   });
 
-  document.getElementById('btn-tutorial').addEventListener('click', showTutorial);
+  document.getElementById('btn-tutorial').addEventListener('click', () => {
+    ctx.callbacks.onStartTutorial?.();
+  });
   document.getElementById('tutorial-close').addEventListener('click', hideTutorial);
   document.getElementById('tutorial-overlay').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) hideTutorial();
@@ -141,6 +143,13 @@ export function initStartLobbyController(ctx) {
 
   return {
     hideRoomSetup,
+    hideTutorial,
+    showTutorial,
+    resetTransientUi() {
+      hideTutorial();
+      hideRoomSetup();
+      resetConnectionUI(ctx.defaultAddr);
+    },
     resetConnectionUI: () => resetConnectionUI(ctx.defaultAddr),
   };
 }

@@ -43,9 +43,9 @@ import { bindBattleDomEvents } from './BattleDomBindings.js';
 import { initSkillRippleController } from '../ui/battle/SkillRippleController.js';
 import { installRuntimeDomDefaults } from './RuntimeDomDefaults.js';
 import { installRuntimeTestHooks } from './RuntimeTestHooks.js';
+import { PORTRAIT_CACHE_VERSION } from '../ui/portrait/PortraitAssets.js';
 
 export function createAppRuntime() {
-  const PORTRAIT_CACHE_VERSION = '3';
   const CLASSES = ['法师', '战士', '射手'];
   const assetPreloader = createAssetPreloader();
   assetPreloader.preloadBattleAssets({

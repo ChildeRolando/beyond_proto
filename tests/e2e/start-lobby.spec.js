@@ -53,31 +53,21 @@ test('local button enters config screen', async ({ page }) => {
   await expect(page.locator('#config-role-list')).toBeVisible();
 });
 
-// A3: PVE button enters config screen
-test('PVE button enters config screen', async ({ page }) => {
+// A3: Coop button enters PVE setup
+test('co-op button enters PVE setup', async ({ page }) => {
   await page.goto('/');
   await page.locator('#btn-local-coop').click();
   await expect(page.locator('#config-screen')).toBeVisible();
   await expect(page.locator('#start-screen')).not.toBeVisible();
   await expect(page.locator('#config-mode-label')).toContainText('本地合作');
+  await expect(page.locator('#team-status')).toContainText('PVE 队伍');
   await expect(page.locator('#config-role-list')).toBeVisible();
+  await expect(page.locator('#config-player-switch button[data-player="hero_1"]')).toBeVisible();
+  await expect(page.locator('#config-player-switch button[data-player="hero_2"]')).toBeVisible();
 });
 
-// A4: Tutorial modal opens and closes
-test('tutorial modal opens and closes', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('#btn-tutorial').click();
-  await expect(page.locator('#tutorial-overlay')).toHaveClass(/show/);
-  await page.locator('#tutorial-close').click();
-  await expect(page.locator('#tutorial-overlay')).not.toHaveClass(/show/);
-  await page.locator('#btn-tutorial').click();
-  await expect(page.locator('#tutorial-overlay')).toHaveClass(/show/);
-  await page.locator('#tutorial-overlay').click({ position: { x: 10, y: 10 } });
-  await expect(page.locator('#tutorial-overlay')).not.toHaveClass(/show/);
-});
-
-// A5: Top help button opens tutorial in battle
-test('top help button opens tutorial in battle', async ({ page }) => {
+// A4: Battle help button opens and closes tutorial modal
+test('battle help button opens and closes tutorial modal', async ({ page }) => {
   await page.goto('/');
   await page.locator('#btn-local-duel').click();
   await page.locator('#btn-config-lock').click();
@@ -89,6 +79,15 @@ test('top help button opens tutorial in battle', async ({ page }) => {
   await expect(page.locator('#tutorial-overlay')).toHaveClass(/show/);
   await page.locator('#tutorial-close').click();
   await expect(page.locator('#tutorial-overlay')).not.toHaveClass(/show/);
+});
+
+// A5: Tutorial button enters tutorial battle
+test('tutorial button enters tutorial battle', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#btn-tutorial').click();
+  await expect(page.locator('#app')).toBeVisible();
+  await expect(page.locator('#tutorial-hud')).toBeVisible();
+  await expect(page.locator('#tutorial-overlay')).not.toBeVisible();
 });
 
 // A6: P2P lobby opens and back resets
@@ -125,4 +124,23 @@ test('config back returns to start without error', async ({ page }) => {
   await expect(page.locator('#start-screen')).toBeVisible();
   await expect(page.locator('#config-screen')).not.toBeVisible();
   await expect(page.locator('#room-setup')).not.toBeVisible();
+});
+
+// A9: tutorial overlay opens, then returnToStart hides it
+test('tutorial overlay hide on returnToStart', async ({ page }) => {
+  await page.goto('/');
+  // Enter a local duel to reach battle screen where btn-help-top is visible
+  await page.locator('#btn-local-duel').click();
+  await page.locator('#btn-config-lock').click();
+  await page.locator('#config-player-switch button[data-player="player2"]').click();
+  await page.locator('#btn-config-lock').click();
+  await page.locator('#btn-config-start').click();
+  await expect(page.locator('#app')).toBeVisible();
+  // Open the tutorial/help overlay
+  await page.locator('#btn-help-top').click();
+  await expect(page.locator('#tutorial-overlay')).toHaveClass(/show/);
+  // Call returnToStart
+  await page.evaluate(() => window.returnToStart());
+  await expect(page.locator('#tutorial-overlay')).not.toHaveClass(/show/);
+  await expect(page.locator('#start-screen')).toBeVisible();
 });

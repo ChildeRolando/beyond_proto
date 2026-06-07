@@ -13,10 +13,18 @@ export function createReturnToStartAction({
     getBattleSession()?.resetForReturnToStart();
     getTutorialManager()?.reset();
     getBattleSession()?.setTutorialManager(null);
+    // Clean all overlays
     getEl('disconnect-overlay')?.classList.remove('show');
+    getEl('tutorial-overlay')?.classList.remove('show');
+    getEl('galaxy-overlay')?.classList.remove('show');
     getGameOverController()?.hide();
     routeController.setRoute('start');
-    getStartLobbyUi()?.hideRoomSetup();
-    getStartLobbyUi()?.resetConnectionUI();
+    // Prefer structured reset through the start lobby UI
+    if (getStartLobbyUi()?.resetTransientUi) {
+      getStartLobbyUi().resetTransientUi();
+    } else {
+      getStartLobbyUi()?.hideRoomSetup();
+      getStartLobbyUi()?.resetConnectionUI();
+    }
   };
 }
