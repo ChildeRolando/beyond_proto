@@ -15,6 +15,7 @@ function nonEmptyLineCount(src) {
 
 const mainSrc = read('../../main.js');
 const appSrc = read('../../app/AppRuntime.js');
+const renderCoordSrc = read('../../app/BattleRenderCoordinator.js');
 
 test('main.js stays tiny', () => {
   expect(nonEmptyLineCount(mainSrc)).toBeLessThanOrEqual(3);
@@ -30,11 +31,14 @@ test('AppRuntime wires controllers and renderers instead of owning gameplay stat
   expect(appSrc).toMatch(/import\s+\{\s*createNetworkMessageRouter\s*\}\s+from\s+['"]\.\.\/network\/NetworkMessageRouter\.js['"]/);
   expect(appSrc).toMatch(/import\s+\{\s*BattleCanvasRenderer\s*\}\s+from\s+['"]\.\.\/ui\/battle\/BattleCanvasRenderer\.js['"]/);
   expect(appSrc).toMatch(/import\s+\{\s*createVisualEffects\s*\}\s+from\s+['"]\.\.\/ui\/battle\/VisualEffects\.js['"]/);
+  expect(appSrc).toMatch(/import\s+\{\s*createBattleRenderCoordinator\s*\}\s+from\s+['"]\.\/BattleRenderCoordinator\.js['"]/);
   expect(appSrc).toMatch(/new\s+ConfigSessionController\s*\(/);
   expect(appSrc).toMatch(/new\s+NetworkSessionController\s*\(/);
   expect(appSrc).toMatch(/new\s+BattleCanvasRenderer\s*\(/);
   expect(appSrc).toMatch(/createNetworkMessageRouter\s*\(/);
-  expect(appSrc).toMatch(/battleCanvasRenderer(?:\?\.|\.)renderBoard\s*\(/);
+  expect(appSrc).toMatch(/createBattleRenderCoordinator\s*\(/);
+  // renderBoard must live in BattleRenderCoordinator, not AppRuntime
+  expect(renderCoordSrc).toMatch(/getBattleCanvasRenderer\s*\(\s*\)\s*\?\.\s*renderBoard\s*\(/);
   expect(appSrc).not.toMatch(/\blet\s+configPlayers\b/);
   expect(appSrc).not.toMatch(/\blet\s+configMode\b/);
   expect(appSrc).not.toMatch(/\blet\s+networkManager\b/);

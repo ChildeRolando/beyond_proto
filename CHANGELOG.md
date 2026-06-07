@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-06-07 - AppRuntime 瘦身：拆分为 9 个模块
+
+- `app/AppRuntime.js` 从 ~538 行降至 326 行（non-empty），恢复为纯 composition root。
+- 新增模块：
+  - `app/BattleRenderCoordinator.js` — 战斗 UI 渲染协调（renderPanels/renderLog/updateTurnUi/renderAll/resizeCanvas/showDisconnect 等）
+  - `app/BattleLifecycleService.js` — 战斗生命周期管理（startBattleFromConfigs/startBattleFromScenario/animateTurn/executeCurrentTurn/resetCurrentBattle）
+  - `app/StartModeActions.js` — 开始大厅模式切换动作
+  - `app/ReturnToStartAction.js` — returnToStart 业务逻辑
+  - `app/ConfigDomBindings.js` — 配置页 DOM 事件绑定
+  - `app/BattleDomBindings.js` — 战斗页 DOM 事件绑定
+  - `app/RuntimeDomDefaults.js` — DOMContentLoaded 默认服务器地址填充
+  - `app/RuntimeTestHooks.js` — window.__testHooks / window.__tutorialTest / window.returnToStart 安装
+  - `ui/battle/SkillRippleController.js` — 技能按钮水波纹效果
+- 更新架构测试语义：renderBoard / renderBattlePanelsView / returnToStart 的断言跟随代码搬迁更新。
+- 架构测试中 renderBoard 不再要求 AppRuntime 直接调用，改为检查 BattleRenderCoordinator。
+
+## 2026-06-07 - 教程分支限流修复
+
+- 修复 `BattleSessionController` 在非教学战斗里误用 `TutorialManager` 的问题，普通 PVE / 本地合作现在能正确渲染可操作角色和技能栏。
+- 这次修复解除了一组 E2E 回归中的空 action dock 问题，已验证相关战斗与 PVE 配置测试通过。
+
+## 2026-06-07 - 新手教学可玩化
+
+- 新增可直接从开始页进入的真实教程战斗流程，`新手教学` 现在进入 Tutorial 1-3 的实战场景而不是规则弹窗。
+- 教程 1、2、3 分别覆盖移动与执行回合、技能目标格、速度优先级，并通过稳定的 Playwright 测试 API 暴露状态。
+- 保留了顶部栏 `?` 的旧规则说明弹窗入口，同时补充了教程 HUD、错误提示和关卡完成状态。
+
 ## 2026-06-07 - 技能文案收口
 
 - 精简了部分技能描述中的重复前缀、职责说明和占位性表述，保持技能卡文案更贴近最终展示。

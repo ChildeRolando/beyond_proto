@@ -240,11 +240,14 @@ test('main.js does NOT call battleSession.clearPlannedActions', () => {
 
 // ─── NEW: Ban bare returnToStart() call in main.js ───
 
-test('AppRuntime.js returnToStart has lexical binding (function declaration exists)', () => {
-  const hasDeclaration = /function\s+returnToStart\s*\(/.test(appSrc);
-  const hasWindowAssign = /window\.returnToStart\s*=/.test(appSrc);
-  expect(hasDeclaration).toBe(true);
-  expect(hasWindowAssign).toBe(true);
+test('AppRuntime.js returnToStart has lexical binding (const + createReturnToStartAction)', () => {
+  // returnToStart is now created via createReturnToStartAction and assigned via installRuntimeTestHooks.
+  const hasConstBinding = /const\s+returnToStart\s*=/.test(appSrc);
+  const hasImportAction = /import\s+\{\s*createReturnToStartAction\s*\}\s+from/.test(appSrc);
+  const hasImportHooks = /import\s+\{\s*installRuntimeTestHooks\s*\}\s+from/.test(appSrc);
+  expect(hasConstBinding).toBe(true);
+  expect(hasImportAction).toBe(true);
+  expect(hasImportHooks).toBe(true);
 });
 
 // ─── NEW: Required encapsulation methods in BattleSessionController ───

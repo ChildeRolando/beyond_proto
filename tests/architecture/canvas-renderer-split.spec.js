@@ -16,13 +16,15 @@ function read(path) {
 const appSrc = read('../../app/AppRuntime.js');
 const rendererSrc = read('../../ui/battle/BattleCanvasRenderer.js');
 const effectsSrc = read('../../ui/battle/VisualEffects.js');
+const renderCoordSrc = read('../../app/BattleRenderCoordinator.js');
 
 test('AppRuntime wires the battle canvas renderer split', () => {
   expect(appSrc).toMatch(/import\s+\{\s*BattleCanvasRenderer\s*\}\s+from\s+['"]\.\.\/ui\/battle\/BattleCanvasRenderer\.js['"]/);
   expect(appSrc).toMatch(/import\s+\{\s*createVisualEffects\s*\}\s+from\s+['"]\.\.\/ui\/battle\/VisualEffects\.js['"]/);
   expect(appSrc).toMatch(/new\s+BattleCanvasRenderer\s*\(/);
   expect(appSrc).toMatch(/createVisualEffects\s*\(/);
-  expect(appSrc).toMatch(/battleCanvasRenderer(?:\?\.|\.)renderBoard\s*\(/);
+  // renderBoard now delegates through BattleRenderCoordinator
+  expect(renderCoordSrc).toMatch(/getBattleCanvasRenderer\s*\(\s*\)\s*\?\.\s*renderBoard\s*\(/);
   expect(appSrc).not.toMatch(/\bfunction\s+renderBoard\b/);
   expect(appSrc).not.toMatch(/\bfunction\s+drawSlashArc\b/);
   expect(appSrc).not.toMatch(/\bfunction\s+drawImpactEffect\b/);

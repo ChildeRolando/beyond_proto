@@ -13,12 +13,19 @@ try { appJsContent = readFileSync(appRuntimePath, 'utf-8'); } catch (e) { consol
 
 // ─── Positive assertions (must pass after refactor) ───
 
-test('AppRuntime.js imports renderBattlePanelsView from BattlePanelsView.js', () => {
-  expect(appJsContent).toMatch(/import\s+\{[^}]*renderBattlePanelsView[^}]*\}\s+from\s+['"]\.\.\/ui\/battle\/BattlePanelsView\.js['"]/);
+test('BattleRenderCoordinator.js imports renderBattlePanelsView from BattlePanelsView.js', () => {
+  // renderBattlePanelsView moved to BattleRenderCoordinator as part of codex/tutorial-levels refactor.
+  const renderCoordPath = resolve(__dirname, '../../app/BattleRenderCoordinator.js');
+  let renderCoordContent = '';
+  try { renderCoordContent = readFileSync(renderCoordPath, 'utf-8'); } catch (e) { console.error('Cannot read BattleRenderCoordinator.js:', e.message); }
+  expect(renderCoordContent).toMatch(/import\s+\{[^}]*renderBattlePanelsView[^}]*\}\s+from\s+['"]\.\.\/ui\/battle\/BattlePanelsView\.js['"]/);
 });
 
-test('AppRuntime.js calls renderBattlePanelsView', () => {
-  expect(appJsContent).toMatch(/renderBattlePanelsView\s*\(/);
+test('BattleRenderCoordinator.js calls renderBattlePanelsView', () => {
+  const renderCoordPath = resolve(__dirname, '../../app/BattleRenderCoordinator.js');
+  let renderCoordContent = '';
+  try { renderCoordContent = readFileSync(renderCoordPath, 'utf-8'); } catch (e) { console.error('Cannot read BattleRenderCoordinator.js:', e.message); }
+  expect(renderCoordContent).toMatch(/renderBattlePanelsView\s*\(/);
 });
 
 // ─── Negative assertions (must NOT contain old function definitions) ───
