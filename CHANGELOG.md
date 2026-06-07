@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-07 - 技能文案收口
+
+- 精简了部分技能描述中的重复前缀、职责说明和占位性表述，保持技能卡文案更贴近最终展示。
+
 ## 2026-06-07 - 引气针技能图标
 
 - Added a dedicated `mage_qi_siphon` skill icon and wired 引气针 to use it instead of reusing 破气针.

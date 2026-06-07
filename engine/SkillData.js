@@ -629,7 +629,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'MARROW_UPGRADE' },
     ],
-    desc: '技能概念：饮用洗髓酒永久提升自身洗髓层数。\n游戏作用：增加JIMMY_MARROW层数；层数越高后续饮酒费用越高；依次获得5层强化（怒+1/攻击距离+1/移动视为灵巧/怒+1/威力+100）。\n范围：自身；威力：无；速度：1；费用：怒气按层数递增，3/4/4/5/5',
+    desc: '技能概念：饮用洗髓酒永久提升自身洗髓层数。\n游戏作用：增加洗髓层数；层数越高后续饮酒费用越高；依次获得5层强化（怒气获得+1/攻击距离+1/移动和饮酒视为灵巧/怒气获得+1/威力+100）。\n范围：自身；威力：无；速度：1；费用：怒气按层数递增，3/4/4/5/5',
   },
   role_duelist_windstep: {
     id: 'role_duelist_windstep', name: '逐风步', icon: 'assets/skill-icons/role/role_duelist_windstep.png', class: '战士', type: '角色',
@@ -664,7 +664,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'DROP_SUPPLY_CRATE' },
     ],
-    desc: '技能概念：呼叫空投补给箱到目标位置。\n游戏作用：目标格空投降落补给箱；角色移至该格可拾取，背包弹药+3。冷却6回合。\n范围：6；威力：无；速度：1；费用：无',
+    desc: '技能概念：呼叫空投补给箱到目标位置。\n游戏作用：目标格空投降落补给箱；可被角色拾取，角色拾取后背包弹药+3。\n范围：6；威力：无；速度：1；费用：无',
   },
   role_helldiver_bombardment: {
     id: 'role_helldiver_bombardment', name: '呼叫轰炸', icon: 'assets/skill-icons/role/role_helldiver_supply_drop.png', class: '射手', type: '角色',
@@ -673,7 +673,7 @@ export const SKILLS = {
       { cmd: 'DELAYED_SKILL', resolveInTurns: 1, skillId: 'role_helldiver_bombardment_resolve' },
       { cmd: 'APPLY_STATUS', status: 'BOMBARDMENT_PENDING', target: 'SELF', duration: 1 },
     ],
-    desc: '技能概念：呼叫延迟轰炸，下回合对目标位置发射弹体。\n游戏作用：标记目标位置并获得轰炸待发状态（持续1回合）；下回合自动发射弹体。冷却6回合。\n范围：6；威力：100（下回合结算）；速度：1；费用：无',
+    desc: '技能概念：呼叫延迟轰炸，下回合对目标位置发射弹体。\n游戏作用：标记目标位置并获得轰炸待发状态（持续1回合）；下回合自动发射弹体。\n范围：6；威力：100（下回合结算）；速度：1；费用：无',
   },
   role_helldiver_bombardment_resolve: {
     id: 'role_helldiver_bombardment_resolve', name: '轰炸·弹', class: '射手', type: '角色',
@@ -699,11 +699,11 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '呼吸法：奇数回合吸(怒+1/距-1)，偶数回合呼(距+1/怒-1)' },
     ],
-    desc: '技能概念：吉米被动呼吸法，回合交替切换攻防状态。\n游戏作用：奇数回合进入"吸"状态（怒气获得+1，攻击距离-1）；偶数回合进入"呼"状态（攻击距离+1，怒气获得-1）。此技能为被动特质，自动生效。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：吉米被动呼吸法，回合交替切换攻防状态。\n游戏作用：奇数回合进入"吸"状态（怒气获得+1，攻击距离-1）；偶数回合进入"呼"状态（攻击距离+1，怒气获得-1）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_jimmy_marrow: {
     id: 'trait_jimmy_marrow', name: '易经洗髓酒', class: '战士', type: '特质',
-    isTrait: true, hidden: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
+    isTrait: true, hidden: true, cost: {}, speed: 3, targeting: { shape: 'SELF' }, maxUses: 5,
     effects: [
       { cmd: 'PASS', placeholderMessage: '易经洗髓酒：回合结束时若怒气达标(5/6/7/8/9)自动扣除怒气并获得永久强化' },
     ],
@@ -715,7 +715,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '灵巧：每两回合获得一个灵巧行动点，可提交一个额外cost0行动' },
     ],
-    desc: '技能概念：枪侠被动，每两回合获得一个灵巧行动点。\n游戏作用：每两回合获得一个灵巧行动点，可额外提交一个费用为0的行动，不占用主行动点数。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：每两回合获得一个灵巧行动点。\n游戏作用：每两回合获得一个灵巧行动点，可额外提交一个费用为0的行动，不占用主行动点数。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_gunfighter_strong: {
     id: 'trait_gunfighter_strong', name: '强者', icon: 'assets/skill-icons/shooter/shooter_attack.png', class: '射手', type: '特质',
@@ -731,7 +731,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '死亡如风：对手攻击落空时自动装填' },
     ],
-    desc: '技能概念：燕被动，对手攻击落空时自动装填弹药。\n游戏作用：每当对手发起攻击但未命中时，获得1子弹并立即执行一次上膛（不占用行动）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：对手攻击落空时自动装填弹药。\n游戏作用：每当对手发起攻击但未命中时，获得1子弹并立即执行一次上膛（不占用行动）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_helldiver_laser_weapon: {
     id: 'trait_helldiver_laser_weapon', name: '激光武器', icon: 'assets/skill-icons/shooter/shooter_aim.png', class: '射手', type: '特质',
@@ -739,7 +739,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '激光武器：每回合结束背包弹药+1，无上限' },
     ],
-    desc: '技能概念：地狱伞兵被动，每回合自动获得背包弹药。\n游戏作用：每回合结束时背包弹药+1，无弹药上限。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：每回合自动获得背包弹药。\n游戏作用：每回合结束时背包弹药+1，无弹药上限。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_helldiver_priority_ready: {
     id: 'trait_helldiver_priority_ready', name: '优先战备', icon: 'assets/skill-icons/shooter/shooter_bell.png', class: '射手', type: '特质',
@@ -747,7 +747,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '优先战备：呼叫技能延迟-1回合，本回合即结算' },
     ],
-    desc: '技能概念：地狱伞兵被动，呼叫类技能延迟减少。\n游戏作用：呼叫类技能（轰炸、补给）延迟-1回合，即本回合提交后当回合立即结算。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：呼叫类技能延迟减少。\n游戏作用：呼叫类技能（轰炸、补给）延迟-1回合，即本回合提交后当回合立即结算。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_helldiver_fast_ready: {
     id: 'trait_helldiver_fast_ready', name: '快速战备', icon: 'assets/skill-icons/shooter/shooter_gun_dance.png', class: '射手', type: '特质',
@@ -755,7 +755,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '快速战备：呼叫技能+50技能急速' },
     ],
-    desc: '技能概念：地狱伞兵被动，呼叫类技能冷却缩短。\n游戏作用：呼叫技能+50技能急速，冷却时间从6回合缩短为4回合。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：呼叫类技能冷却缩短。\n游戏作用：呼叫技能+50技能急速，冷却时间从6回合缩短为4回合。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_helldiver_speed_draw: {
     id: 'trait_helldiver_speed_draw', name: '全凭手速', icon: 'assets/skill-icons/shooter/shooter_hook.png', class: '射手', type: '特质',
@@ -763,7 +763,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '全凭手速：呼叫行动视为灵巧行动，每回合无限灵巧呼叫点' },
     ],
-    desc: '技能概念：地狱伞兵被动，呼叫行动视为灵巧行动。\n游戏作用：呼叫类技能视为灵巧行动，每回合可使用无限个灵巧呼叫行动点。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：呼叫行动视为灵巧行动。\n游戏作用：呼叫类技能视为灵巧行动，每回合可使用无限个灵巧呼叫行动点。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_mirror_slippery: {
     id: 'trait_mirror_slippery', name: '脚底抹油', class: '法师', type: '特质',
@@ -771,7 +771,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '脚底抹油：次元之门不占用行动点（机制占位）' },
     ],
-    desc: '技能概念：镜被动，次元之门不占用行动点。\n游戏作用：使用次元之门时不消耗行动点数（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：次元之门不占用行动点。\n游戏作用：使用次元之门时不消耗行动点数（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_mirror_dimension_child: {
     id: 'trait_mirror_dimension_child', name: '次元之子', class: '法师', type: '特质',
@@ -779,7 +779,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '次元之子：独处于次元时获得次元token（机制占位）' },
     ],
-    desc: '技能概念：镜被动，独处于次元时获得次元token。\n游戏作用：角色独自存在于次元中时获得次元token（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：独处于次元时获得次元token。\n游戏作用：角色独自存在于次元中时获得次元token（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_mirror_dimension_lord: {
     id: 'trait_mirror_dimension_lord', name: '次元之主', class: '法师', type: '特质',
@@ -787,7 +787,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '次元之主：积累token后解锁次元系永久强化（机制占位）' },
     ],
-    desc: '技能概念：镜被动，积累token解锁次元系永久强化。\n游戏作用：积累次元token后解锁次元系永久强化（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：积累token解锁次元系永久强化。\n游戏作用：积累次元token后解锁次元系永久强化（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_mirror_phase_sling: {
     id: 'trait_mirror_phase_sling', name: '相位弹弓', class: '法师', type: '特质',
@@ -795,7 +795,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '相位弹弓：技能穿过次元门后加速并提高威力（机制占位）' },
     ],
-    desc: '技能概念：镜被动，技能穿过次元门后加速并提高威力。\n游戏作用：技能弹体穿过次元门后获得加速和威力提升（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：技能穿过次元门后加速并提高威力。\n游戏作用：技能弹体穿过次元门后获得加速和威力提升（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_duelist_minds_eye: {
     id: 'trait_duelist_minds_eye', name: '心眼', class: '战士', type: '特质',
@@ -803,7 +803,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '心眼：敌人总有2个方向生成弱点，弱点方向击中+1怒/逐风步CD-1' },
     ],
-    desc: '技能概念：剑客被动，识破敌人弱点以获得战斗优势。\n游戏作用：所有敌人随机2个方向有弱点标记；弱点方向击中回复1怒且逐风步CD-1；命中后弱点刷新。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：识破敌人弱点以获得战斗优势。\n游戏作用：所有敌人随机2个方向有弱点标记；弱点方向击中回复1怒且逐风步CD-1；命中后弱点刷新。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_placeholder_adapt: {
     id: 'trait_placeholder_adapt', name: '预留特质', class: '法师', type: '特质',
