@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-06-07 - 教程分支限流修复
+
+- 修复 `BattleSessionController` 在非教学战斗里误用 `TutorialManager` 的问题，普通 PVE / 本地合作现在能正确渲染可操作角色和技能栏。
+- 这次修复解除了一组 E2E 回归中的空 action dock 问题，已验证相关战斗与 PVE 配置测试通过。
+
 ## 2026-06-07 - AppRuntime 瘦身：拆分为 9 个模块
 
 - `app/AppRuntime.js` 从 ~538 行降至 326 行（non-empty），恢复为纯 composition root。

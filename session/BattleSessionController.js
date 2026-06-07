@@ -53,6 +53,7 @@ export class BattleSessionController {
     this.pveAiRunning = false;
     this.skillPages = new Map();
     this.skillsPerPage = 10;
+    this.tutorialManager = null;
 
     // ─── Galaxy sub-phase state ───
     this.galaxyActive = false;
@@ -90,6 +91,18 @@ export class BattleSessionController {
 
   get player1Class() { return this._player1Class; }
   get player2Class() { return this._player2Class; }
+
+  setTutorialManager(tutorialManager) {
+    this.tutorialManager = tutorialManager || null;
+  }
+
+  getTutorialState() {
+    return this.tutorialManager?.getState?.() || null;
+  }
+
+  _isTutorialActive() {
+    return Boolean(this.tutorialManager?.getCurrentLevel?.());
+  }
 
   getState() {
     return this.engine.getState();
@@ -252,6 +265,10 @@ export class BattleSessionController {
     this.skillPages.clear();
     if (this._callbacks.resizeCanvas) this._callbacks.resizeCanvas();
     this._callbacks.renderAll();
+    if (scenario?.mode === 'tutorial') {
+      this.tutorialManager?.primeBattle?.(this);
+      this.updateSubmitStatus();
+    }
   }
 
   resetBattleSession() {
@@ -303,6 +320,9 @@ export class BattleSessionController {
   // ═══════════════════════════════════════════════════
 
   getMyCharacterIds() {
+    if (this._isTutorialActive() && this.tutorialManager?.getPlayerCharacterIds) {
+      return this.tutorialManager.getPlayerCharacterIds();
+    }
     if (this._callbacks.isPveMode()) return this.engine.getCharactersByOwner('player1').map(c => c.id);
     const nm = this._callbacks.getNetworkManager();
     if (!nm || nm.mode === 'local') return this.characterIds;
@@ -310,6 +330,9 @@ export class BattleSessionController {
   }
 
   isMyCharacter(charId) {
+    if (this._isTutorialActive() && this.tutorialManager?.isPlayerCharacter) {
+      return this.tutorialManager.isPlayerCharacter(charId);
+    }
     if (this._callbacks.isPveMode()) return this.engine.getCharacterOwner(charId) === 'player1';
     const nm = this._callbacks.getNetworkManager();
     if (!nm || nm.mode === 'local') return true;
@@ -395,6 +418,12 @@ export class BattleSessionController {
       this.validTargets = [];
       this.hoverEffectArea = [];
       this.hoveredHex = null;
+      this._callbacks.renderAll();
+      return;
+    }
+
+    if (this._isTutorialActive() && this.tutorialManager?.onSkillSelected && !this.tutorialManager.onSkillSelected(skillId)) {
+      this._callbacks.setSubmitStatus(this.tutorialManager.getErrorText?.() || '请选择教学要求的技能。');
       this._callbacks.renderAll();
       return;
     }
@@ -543,6 +572,8 @@ export class BattleSessionController {
   setSelectedCharacterId(charId) {
     this.selectedCharacterId = charId;
     this.lastHoveredCharacterId = charId;
+    this._callbacks.renderAll();
+    return true;
   }
 
   setLastHoveredCharacterId(charId) {
@@ -555,6 +586,12 @@ export class BattleSessionController {
   }
 
   handleInvalidTargetClick() {
+    if (this._isTutorialActive() && this.tutorialManager?.setError) {
+      this.tutorialManager.setError(this.tutorialManager.getErrorText?.() || '目标无效。');
+      this._callbacks.setSubmitStatus(this.tutorialManager.getErrorText?.() || '目标无效。');
+      this._callbacks.renderAll();
+      return;
+    }
     this.clearSelection();
     this._callbacks.renderAll();
   }
@@ -632,9 +669,25 @@ export class BattleSessionController {
   // Action submission
   // ═══════════════════════════════════════════════════
 
-  submitAction(charId, skillId, targetPos) {
+  submitAction(charId, skillId, targetPos, options = {}) {
     if (this.battleEnded) return { success: false, error: 'battle ended' };
-    if (!this.isMyCharacter(charId)) return { success: false, error: 'not my char' };
+    if (!options.bypassTutorial && !this.isMyCharacter(charId)) return { success: false, error: 'not my char' };
+
+    if (!options.bypassTutorial && this._isTutorialActive() && this.tutorialManager?.validateAction) {
+      const validation = this.tutorialManager.validateAction({ charId, skillId, targetPos });
+      if (!validation.ok) {
+        if (!this.tutorialManager) {
+          this.selectedSkill = null;
+          this.validTargets = [];
+          this.hoverEffectArea = [];
+          this.hoveredHex = null;
+        }
+        this.tutorialManager.setError?.(validation.error || '提交失败');
+        this._callbacks.setSubmitStatus(validation.error || '提交失败');
+        this._callbacks.renderAll();
+        return { success: false, error: validation.error || 'tutorial_blocked' };
+      }
+    }
 
     const result = this.engine.submitAction(charId, skillId, targetPos);
     if (result.success) {
@@ -654,6 +707,9 @@ export class BattleSessionController {
       if (nm && nm.mode !== 'local') {
         nm.submitMyAction(charId, skillId, targetPos);
         this.maybeAutoReadyP2P(nm);
+      }
+      if (!options.bypassTutorial) {
+        this.tutorialManager?.onActionSubmitted?.({ charId, skillId, targetPos, result, source: options.source || 'manual' });
       }
       this.updateSubmitStatus(nm);
       if (this._callbacks.isPveMode() && this.areMyRequiredActionsReady() && !this.hasAnyMyOptionalActionAvailable()) {
@@ -776,6 +832,8 @@ export class BattleSessionController {
     this._callbacks.setExecuteDisabled(true);
 
     await this._callbacks.animateTurn?.();
+
+    this.tutorialManager?.onTurnExecuted?.(result);
 
     if (result.battleEnded) {
       this._callbacks.renderAll();
