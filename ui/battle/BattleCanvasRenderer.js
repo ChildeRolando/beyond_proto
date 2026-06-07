@@ -54,19 +54,14 @@ export class BattleCanvasRenderer {
     const hoveredHex = renderView.hoveredHex;
     const localSubmittedCharacterIds = new Set(renderView.localSubmittedCharacterIds || []);
     const remoteSubmittedCharacterIds = new Set(renderView.remoteSubmittedCharacterIds || []);
+    const state = this.battleSession.getRenderState?.() || engine.getState();
 
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 1000);
-    const state = engine.getState();
-    const projectileCalculator = engine.projectileCalculator;
-    const projs = projectileCalculator.projectiles || [];
-    const keyframes = typeof projectileCalculator.generateKeyframes === 'function'
-      ? projectileCalculator.generateKeyframes()
-      : [];
-    const animEvents = typeof projectileCalculator.getAnimEvents === 'function'
-      ? projectileCalculator.getAnimEvents()
-      : [];
+    const projs = state.projectiles || [];
+    const keyframes = state.keyframes || [];
+    const animEvents = state.animEvents || [];
 
     const projPositions = new Map();
     const hitEvents = [];
@@ -231,7 +226,7 @@ export class BattleCanvasRenderer {
     }
 
     const chars = [];
-    for (const e of engine.registry.characters()) {
+    for (const e of state.characters || []) {
       if (e.alive === false) continue;
       chars.push(e);
     }
@@ -259,7 +254,7 @@ export class BattleCanvasRenderer {
       }
     }
 
-    for (const e of engine.registry.entities()) {
+    for (const e of state.entities || []) {
       if (e.alive === false) continue;
 
       if (e.type === 'CHARACTER') {
@@ -309,7 +304,7 @@ export class BattleCanvasRenderer {
         ctx.textBaseline = 'top';
         ctx.fillText(badge, cx + 13, cy + 10);
 
-        const pool = engine.resourceSystem.getAll(e.id);
+        const pool = e.resources || {};
         if (pool.shieldActive) {
           ctx.beginPath();
           ctx.arc(cx, cy, 23, 0, Math.PI * 2);
@@ -429,7 +424,7 @@ export class BattleCanvasRenderer {
       ctx.fillText('W', cx - 10, cy + 10);
     }
 
-    for (const c of engine.registry.characters()) {
+    for (const c of state.characters || []) {
       if (c.alive === false) continue;
       if (localSubmittedCharacterIds.has(c.id) || remoteSubmittedCharacterIds.has(c.id)) {
         const [cx, cy] = hexCenter(c.position.q, c.position.r);

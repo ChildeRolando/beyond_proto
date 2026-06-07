@@ -34,6 +34,7 @@ export class TurnManager {
   #getRules = null;
   #turnNumber = 1;
   #phase = TurnPhase.PLAN;
+  #resolutionRecorder = null;
   #delayedCommands = [];
   #pendingFlags = new Map(); // entityId → { pendingQi, ... }
   #jumpReturns = new Map();  // entityId → { q, r } for end-of-turn jump return
@@ -79,6 +80,8 @@ export class TurnManager {
   get phase() { return this.#phase; }
 
   setGalaxyProvider(fn) { this.#galaxyProvider = fn; }
+  setResolutionRecorder(recorder = null) { this.#resolutionRecorder = recorder; }
+  clearResolutionRecorder() { this.#resolutionRecorder = null; }
 
   _getRules() {
     return this.#getRules?.() || {};
@@ -105,6 +108,7 @@ export class TurnManager {
     this.#logger?.setTurn(this.#turnNumber);
     this.#logger?.log(`=== 第 ${this.#turnNumber} 回合 ===`, 'turn');
     this.#phase = TurnPhase.RESOLVE;
+    this.#resolutionRecorder?.onTurnStart?.({ turnNumber: this.#turnNumber });
 
     // Set current turn for buff timing (buffs applied this turn won't be ticked)
     this.#buffManager.setCurrentTurn(this.#turnNumber);
@@ -149,6 +153,10 @@ export class TurnManager {
       this.#eventBus.emit(EvtType.SPEED_TIER_START, { speed: spd });
 
       const cmds = groups[spd];
+      let phaseRecord = null;
+      if (cmds.length > 0) {
+        phaseRecord = this.#resolutionRecorder?.onPhaseStart?.({ speed: spd, commandCount: cmds.length }) || null;
+      }
       // 悬剑落剑 at speed 2 (runs before commands)
       if (spd === 2) { this._resolveSwordHangingDrop(); }
 
@@ -161,7 +169,11 @@ export class TurnManager {
           deferredGains.push(cmd);
           continue;
         }
+        const beforeActor = this.#registry.get(cmd.actorId);
         this._executeCommand(cmd);
+        if (phaseRecord) {
+          phaseRecord.events.push(this._createResolutionEvent(cmd, spd, phaseRecord.events.length, beforeActor));
+        }
       }
 
       // Resolve projectiles at this speed tier (advance full path, check body contact)
@@ -182,8 +194,19 @@ export class TurnManager {
         // Dispatch ON_ATTACK_MISSED for projectile attackers that didn't hit
         for (const attackerId of this.#projectileAttackers) {
           if (!this.#lastHitByActor.get(attackerId)) {
+            const attacker = this.#registry.get(attackerId);
+            this.#logger?.log(`${attacker?.name || attackerId} 🔮 挥空`, 's');
             const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, { attackerId });
             this._processDeathWindReloads(missCtx);
+          }
+        }
+      }
+
+      if (phaseRecord) {
+        for (const evt of phaseRecord.events) {
+          if (evt.type !== 'attack' || evt.result !== 'pending') continue;
+          if (this.#lastHitByActor.has(evt.actorId)) {
+            evt.result = this.#lastHitByActor.get(evt.actorId) ? 'hit' : 'miss';
           }
         }
       }
@@ -192,7 +215,11 @@ export class TurnManager {
       // Now execute deferred ON_HIT GAIN_RESOURCE commands
       for (const cmd of deferredGains) {
         if (this.#phase === TurnPhase.BATTLE_END) break;
+        const beforeActor = this.#registry.get(cmd.actorId);
         this._executeCommand(cmd);
+        if (phaseRecord) {
+          phaseRecord.events.push(this._createResolutionEvent(cmd, spd, phaseRecord.events.length, beforeActor));
+        }
       }
 
       // 御剑 auto-move at speed 2 — runs AFTER commands so freshly-applied SWORD_FLIGHT is visible
@@ -207,6 +234,9 @@ export class TurnManager {
       }
 
       this.#eventBus.emit(EvtType.SPEED_TIER_END, { speed: spd });
+      if (phaseRecord) {
+        this.#resolutionRecorder?.onPhaseEnd?.(phaseRecord);
+      }
     }
 
     // If battle ended during the speed-tier loop, preserve BATTLE_END phase
@@ -398,6 +428,80 @@ export class TurnManager {
       CmdType.ATTACK_AOE_PATH,
       CmdType.WINDSTEP_SLASH,
     ].includes(cmd.type);
+  }
+
+  _getResolutionEventType(cmd) {
+    switch (cmd.type) {
+      case CmdType.MOVE_WALK:
+      case CmdType.MOVE_TELEPORT:
+      case CmdType.MOVE_DASH:
+      case CmdType.MOVE_PULL:
+      case CmdType.MOVE_GRAPNEL:
+      case CmdType.WINDSTEP_SLASH:
+        return 'move';
+      case CmdType.ATTACK_MELEE:
+      case CmdType.ATTACK_PROJECTILE:
+      case CmdType.ATTACK_AOE_SELF:
+      case CmdType.ATTACK_AOE_PATH:
+      case CmdType.ATTACK_AOE_TARGET:
+      case CmdType.SPAWN_STATIONARY_AOE:
+        return 'attack';
+      case CmdType.GAIN_RESOURCE:
+      case CmdType.CONSUME_RESOURCE:
+        return 'resource';
+      case CmdType.APPLY_STATUS:
+      case CmdType.REMOVE_STATUS:
+        return 'status';
+      case CmdType.CREATE_GATE:
+      case CmdType.CREATE_FORMATION:
+      case CmdType.BREAK_FORMATION:
+      case CmdType.DROP_SUPPLY_CRATE:
+      case CmdType.DELAYED_SKILL:
+      case CmdType.GALAXY_SUBTURN:
+      case CmdType.MARROW_UPGRADE:
+      case CmdType.MULTI_CAST:
+      case CmdType.PASS:
+        return 'utility';
+      default:
+        return 'command';
+    }
+  }
+
+  _createResolutionEvent(cmd, speed, index, beforeActor) {
+    const afterActor = this.#registry.get(cmd.actorId);
+    const event = {
+      id: cmd.sequenceId ? `${cmd.sequenceId}:${index}` : `${this.#turnNumber}-${speed}-${index}-${cmd.type}-${cmd.actorId || 'system'}`,
+      type: this._getResolutionEventType(cmd),
+      actorId: cmd.actorId || null,
+      skillId: cmd.skillId || null,
+      speed,
+    };
+
+    if (cmd.targetPos) {
+      event.targetPos = { q: cmd.targetPos.q, r: cmd.targetPos.r };
+    }
+
+    if (event.type === 'move') {
+      const beforePos = beforeActor?.position;
+      const afterPos = afterActor?.position;
+      if (beforePos) event.from = { q: beforePos.q, r: beforePos.r };
+      if (afterPos) event.to = { q: afterPos.q, r: afterPos.r };
+      if (!event.to && event.targetPos) event.to = { ...event.targetPos };
+    }
+
+    if (event.type === 'attack') {
+      event.result = this.#lastHitByActor.has(cmd.actorId)
+        ? (this.#lastHitByActor.get(cmd.actorId) ? 'hit' : 'miss')
+        : 'pending';
+    }
+
+    if (event.type === 'resource') {
+      event.resource = cmd.payload?.resource || null;
+      event.amount = cmd.payload?.amount ?? null;
+      event.condition = cmd.payload?.condition || null;
+    }
+
+    return event;
   }
 
   _processDeathWindReloads(ctx) {
@@ -1717,6 +1821,7 @@ export class TurnManager {
   reset() {
     this.#turnNumber = 1;
     this.#phase = TurnPhase.PLAN;
+    this.#resolutionRecorder = null;
     this.#delayedCommands.length = 0;
     this.#pendingFlags.clear();
     this.#lastHitByActor.clear();

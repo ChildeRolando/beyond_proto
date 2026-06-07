@@ -505,7 +505,7 @@ export const SKILLS = {
 
   shooter_hook: {
     id: 'shooter_hook', name: '钩锁', icon: 'assets/skill-icons/shooter/shooter_hook.png', class: '射手', type: '移动',
-    cost: { ammo: 1 }, speed: 2, targeting: { shape: 'HEX', range: 5 }, cooldown: 1,
+    cost: { ammo: 1 }, speed: 2, targeting: { shape: 'HEX', range: 5 }, cooldown: 2,
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 1 },
       { cmd: 'MOVE_GRAPNEL' },

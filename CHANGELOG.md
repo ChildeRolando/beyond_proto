@@ -290,3 +290,10 @@
 - 鏂板 CHANGELOG.md (鏈枃浠?
 
 - 绉婚櫎 ARCHITECTURE.md / RETROSPECTIVE.md
+
+## 2026-06-08 - Turn Resolution Timeline
+
+- Added structured turn-resolution playback with speed phases and simultaneous same-speed event playback.
+- Added playback locking, skip handling, and visible timeline state hooks for Playwright coverage.
+- Added deterministic resolution timeline tests, including a safe move-before-attack miss scenario.
+- Logged projectile misses so safe-move scenarios surface stable miss text in the combat log.

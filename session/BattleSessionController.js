@@ -54,6 +54,9 @@ export class BattleSessionController {
     this.skillPages = new Map();
     this.skillsPerPage = 10;
     this.tutorialManager = null;
+    this.lastTurnResolution = null;
+    this._resolutionPlaybackState = null;
+    this._resolutionPlaybackLocked = false;
 
     // ─── Galaxy sub-phase state ───
     this.galaxyActive = false;
@@ -108,9 +111,40 @@ export class BattleSessionController {
     return this.engine.getState();
   }
 
+  getRenderState() {
+    return this._resolutionPlaybackState?.viewState || this.engine.getState();
+  }
+
+  getLastTurnResolution() {
+    return this.lastTurnResolution ? structuredClone(this.lastTurnResolution) : null;
+  }
+
+  async buildCurrentTurnResolution() {
+    if (!this._callbacks.buildTurnResolution) return null;
+    const preview = await this._callbacks.buildTurnResolution();
+    this.lastTurnResolution = preview?.resolution ? structuredClone(preview.resolution) : null;
+    return preview;
+  }
+
+  isResolutionPlaybackActive() {
+    return this._resolutionPlaybackLocked;
+  }
+
+  setResolutionPlaybackLocked(locked) {
+    this._resolutionPlaybackLocked = Boolean(locked);
+  }
+
+  setResolutionPlaybackState(state) {
+    this._resolutionPlaybackState = state ? structuredClone(state) : null;
+  }
+
+  clearResolutionPlaybackState() {
+    this._resolutionPlaybackState = null;
+  }
+
   getViewState() {
     return {
-      state: this.engine.getState(),
+      state: this.getRenderState(),
       selectedSkill: this.selectedSkill,
       viewingSkill: this.viewingSkill,
       validTargets: this.validTargets,
@@ -144,7 +178,7 @@ export class BattleSessionController {
   }
 
   getBattlePanelsContext(extra = {}) {
-    const state = this.engine.getState();
+    const state = this.getRenderState();
     return {
       state,
       selectedCharacterId: this.selectedCharacterId,
@@ -209,6 +243,7 @@ export class BattleSessionController {
     this._player1Class = p1Class || this._player1Class;
     this._player2Class = p2Class || this._player2Class;
     this._callbacks.setRoute('battle');
+    this._callbacks.resetResolutionPlayback?.();
     this.battleEnded = false;
     this.battleActive = true;
     this.pveAiRunning = false;
@@ -231,6 +266,9 @@ export class BattleSessionController {
     this.lastHoveredCharacterId = null;
     this.activeSidebarTab = 'log';
     this.skillPages.clear();
+    this.lastTurnResolution = null;
+    this.clearResolutionPlaybackState();
+    this.setResolutionPlaybackLocked(false);
     if (this._callbacks.resizeCanvas) this._callbacks.resizeCanvas();
     this._callbacks.renderAll();
   }
@@ -243,6 +281,7 @@ export class BattleSessionController {
 
   startBattleFromScenario(seed, scenario) {
     this._callbacks.setRoute('battle');
+    this._callbacks.resetResolutionPlayback?.();
     this.battleEnded = false;
     this.battleActive = true;
     this.pveAiRunning = false;
@@ -263,6 +302,9 @@ export class BattleSessionController {
     this.lastHoveredCharacterId = null;
     this.activeSidebarTab = 'log';
     this.skillPages.clear();
+    this.lastTurnResolution = null;
+    this.clearResolutionPlaybackState();
+    this.setResolutionPlaybackLocked(false);
     if (this._callbacks.resizeCanvas) this._callbacks.resizeCanvas();
     this._callbacks.renderAll();
     if (scenario?.mode === 'tutorial') {
@@ -294,6 +336,9 @@ export class BattleSessionController {
     this.galaxySelectedSkill = null;
     this.galaxyActionIndex = 0;
     this.galaxyActionTotal = 0;
+    this.lastTurnResolution = null;
+    this.clearResolutionPlaybackState();
+    this.setResolutionPlaybackLocked(false);
   }
 
   startTurnTimeout() {
@@ -358,6 +403,7 @@ export class BattleSessionController {
   // ═══════════════════════════════════════════════════
 
   canSubmitForChar(charId, skillId = null) {
+    if (this._resolutionPlaybackLocked) return false;
     const nm = this._callbacks.getNetworkManager();
     if (nm && nm.mode !== 'local' && nm.iSubmitted) return false;
     const result = this.engine.canSubmitAction?.(charId, skillId);
@@ -409,7 +455,7 @@ export class BattleSessionController {
   // ═══════════════════════════════════════════════════
 
   selectSkill(charId, skillId) {
-    if (this.battleEnded) return;
+    if (this.battleEnded || this._resolutionPlaybackLocked) return;
     if (!this.isMyCharacter(charId)) return;
 
     // Clicking an already-selected skill deselects it
@@ -467,7 +513,7 @@ export class BattleSessionController {
   }
 
   viewOpponentSkill(charId, skillId) {
-    if (this.battleEnded) return;
+    if (this.battleEnded || this._resolutionPlaybackLocked) return;
     const skill = SKILLS[skillId];
     if (!skill) return;
 
@@ -513,6 +559,7 @@ export class BattleSessionController {
   }
 
   clearSelection() {
+    if (this._resolutionPlaybackLocked) return;
     this.selectedSkill = null;
     this.viewingSkill = null;
     this.validTargets = [];
@@ -550,6 +597,9 @@ export class BattleSessionController {
     this.galaxyCharId = null;
     this.galaxySelectedSkill = null;
     this.galaxyTargetPos = null;
+    this.lastTurnResolution = null;
+    this.clearResolutionPlaybackState();
+    this.setResolutionPlaybackLocked(false);
   }
 
   resetForReturnToStart() {
@@ -567,9 +617,13 @@ export class BattleSessionController {
     this.galaxyTargetPos = null;
     this.galaxyActionIndex = 0;
     this.galaxyActionTotal = 0;
+    this.lastTurnResolution = null;
+    this.clearResolutionPlaybackState();
+    this.setResolutionPlaybackLocked(false);
   }
 
   setSelectedCharacterId(charId) {
+    if (this._resolutionPlaybackLocked) return false;
     this.selectedCharacterId = charId;
     this.lastHoveredCharacterId = charId;
     this._callbacks.renderAll();
@@ -581,6 +635,7 @@ export class BattleSessionController {
   }
 
   cancelCurrentSelection() {
+    if (this._resolutionPlaybackLocked) return;
     this.clearSelection();
     this._callbacks.renderAll();
   }
@@ -671,6 +726,7 @@ export class BattleSessionController {
 
   submitAction(charId, skillId, targetPos, options = {}) {
     if (this.battleEnded) return { success: false, error: 'battle ended' };
+    if (this._resolutionPlaybackLocked) return { success: false, error: 'resolution_playback_locked' };
     if (!options.bypassTutorial && !this.isMyCharacter(charId)) return { success: false, error: 'not my char' };
 
     if (!options.bypassTutorial && this._isTutorialActive() && this.tutorialManager?.validateAction) {
@@ -733,6 +789,11 @@ export class BattleSessionController {
   updateSubmitStatus(nm) {
     // If no nm passed, get from callback
     if (nm === undefined) nm = this._callbacks.getNetworkManager();
+    if (this._resolutionPlaybackLocked) {
+      this._callbacks.setExecuteDisabled(true);
+      this._callbacks.setSubmitStatus('回放中...');
+      return;
+    }
     const allAlive = this.characterIds.filter(id => this.engine.registry.get(id)?.alive !== false);
     if (nm && nm.mode !== 'local') {
       const localCount = allAlive.filter(id => this.localSubmittedSet.has(id)).length;
@@ -802,16 +863,42 @@ export class BattleSessionController {
 
   async executeP2PTurn(nm, options = {}) {
     this.clearTurnTimeout();
-    const result = await this.engine.executeTurn();
+    const preview = this._callbacks.buildTurnResolution
+      ? await this._callbacks.buildTurnResolution()
+      : null;
+    const result = preview || await this.engine.executeTurn();
     if (!result.success) return result;
+    if (preview) {
+      this.lastTurnResolution = preview.resolution;
+      this.setResolutionPlaybackLocked(true);
+      this._callbacks.setExecuteDisabled(true);
+      this._callbacks.setSubmitStatus('回放中...');
+      this._callbacks.renderAll();
+      try {
+        await this._callbacks.animateTurn?.(preview);
+      } finally {
+        this.engine.restoreSnapshot(preview.finalSnapshot);
+        this.clearResolutionPlaybackState();
+        this.setResolutionPlaybackLocked(false);
+      }
+    } else if (options.animateTurn) {
+      await options.animateTurn();
+    }
+
     this.resetSubmissions();
     nm.clearTurn();
+    this.tutorialManager?.onTurnExecuted?.(result);
+
     if (result.battleEnded) {
+      this.battleEnded = true;
+      this.battleActive = false;
+      const winner = this.engine.getAliveTeams?.()?.[0] || 'draw';
+      this._callbacks.showGameOverPanel?.(winner);
       this._callbacks.renderAll();
       return result;
     }
+
     this._callbacks.setSubmitStatus('等待双方提交...');
-    if (options.animateTurn) await options.animateTurn();
     this._callbacks.renderAll();
     this.startTurnTimeout();
     this.updateSubmitStatus(nm);
@@ -824,18 +911,39 @@ export class BattleSessionController {
 
   async executeLocalTurn() {
     this.clearTurnTimeout();
-    const result = await this.engine.executeTurn();
+    const preview = this._callbacks.buildTurnResolution
+      ? await this._callbacks.buildTurnResolution()
+      : null;
+    const result = preview || await this.engine.executeTurn();
     if (!result.success) return result;
 
     this.localSubmittedSet.clear();
     this.clearPlannedActions();
     this._callbacks.setExecuteDisabled(true);
 
-    await this._callbacks.animateTurn?.();
+    if (preview) {
+      this.lastTurnResolution = preview.resolution;
+      this.setResolutionPlaybackLocked(true);
+      this._callbacks.setSubmitStatus('回放中...');
+      this._callbacks.renderAll();
+      try {
+        await this._callbacks.animateTurn?.(preview);
+      } finally {
+        this.engine.restoreSnapshot(preview.finalSnapshot);
+        this.clearResolutionPlaybackState();
+        this.setResolutionPlaybackLocked(false);
+      }
+    } else {
+      await this._callbacks.animateTurn?.();
+    }
 
     this.tutorialManager?.onTurnExecuted?.(result);
 
     if (result.battleEnded) {
+      this.battleEnded = true;
+      this.battleActive = false;
+      const winner = this.engine.getAliveTeams?.()?.[0] || 'draw';
+      this._callbacks.showGameOverPanel?.(winner);
       this._callbacks.renderAll();
       return result;
     }

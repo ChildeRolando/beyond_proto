@@ -63,7 +63,8 @@ export function createBattleRenderCoordinator({
     const logEl = getEl('log');
     if (!logEl) return;
     const battleSession = getBattleSession();
-    const entries = battleSession.engine.logger.getEntries();
+    const state = battleSession.getRenderState?.() || battleSession.engine?.getState?.();
+    const entries = state?.logs || battleSession.engine.logger.getEntries();
     logEl.innerHTML = entries.map(e => `<div class="log-entry log-${e.category || 's'}">[${e.turn || '-'}] ${e.message}</div>`).join('');
     logEl.scrollTop = logEl.scrollHeight;
   }
@@ -75,6 +76,12 @@ export function createBattleRenderCoordinator({
     setText('turn-num', engine.turnManager.turnNumber);
     const phaseEl = getEl('phase-text');
     if (!phaseEl) return;
+    if (battleSession?.isResolutionPlaybackActive?.()) {
+      phaseEl.textContent = '回放';
+      phaseEl.style.color = '#e05555';
+      phaseEl.style.animation = 'phase-pulse 0.6s ease-in-out';
+      return;
+    }
     const phase = engine.turnManager.phase;
     phaseEl.textContent = phase;
     if (phase === 'EXECUTE') {

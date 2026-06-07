@@ -1,37 +1,48 @@
 #!/usr/bin/env bash
-# Deploy combat-engine to cloud server via SCP.
-# Usage: ./deploy.sh [--assets] [--full]
-#   (no flag)  Push only deployable files changed since last deploy.
-#   --assets   Also push assets/ (art/skill-icons/portraits).
-#   --full     Push all deployable files, ignoring the deploy marker.
+# Deploy combat-engine to the Windows cloud server.
 #
-# The server-side .deploy-marker stores the last deployed commit hash. Delta mode
-# combines committed changes since that marker with local staged/unstaged changes
-# and untracked files, preserving the old "deploy current working tree" behavior.
+# Safer than the old git-diff + deploy-marker delta deploy:
+# - does not rely on remote marker state
+# - includes assets/ by default
+# - stages files locally, uploads once, then publishes on the server
+#
+# Usage:
+#   ./deploy.sh [--dry-run] [--skip-restart] [--pause] [--no-assets]
+#
+# Run from Git Bash on Windows. If cmd.exe resolves `bash` to WSL, use:
+#   "C:\Program Files\Git\bin\bash.exe" -lc "cd /f/Beyond/combat-engine && ./deploy.sh"
 
 set -euo pipefail
 
 SERVER="${DEPLOY_SERVER:-Administrator@120.77.178.15}"
 SSH_KEY="${DEPLOY_SSH_KEY:-$HOME/.ssh/id_ed25519}"
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-C:/Users/Administrator/Desktop/combat-engine}"
-MARKER_FILE="$REMOTE_DIR/.deploy-marker"
 
 SSH_BIN="${DEPLOY_SSH_BIN:-ssh}"
 SCP_BIN="${DEPLOY_SCP_BIN:-scp}"
 DEPLOY_DRY_RUN="${DEPLOY_DRY_RUN:-false}"
 DEPLOY_SKIP_RESTART="${DEPLOY_SKIP_RESTART:-false}"
-DEPLOY_LAST_HASH="${DEPLOY_LAST_HASH:-}"
+DEPLOY_PAUSE_ON_EXIT="${DEPLOY_PAUSE_ON_EXIT:-false}"
+INCLUDE_ASSETS=true
 
 SSH_OPTS=(-i "$SSH_KEY" -o IdentitiesOnly=yes)
-
-PUSH_ASSETS=false
-FORCE_FULL=false
+STAGE_DIR=""
+REMOTE_STAGE=""
 
 usage() {
-  echo "Usage: ./deploy.sh [--assets] [--full]"
-  echo "  Push changed files to server via git diff + scp."
-  echo "  --assets  also push assets/ (art, skill icons, portraits)"
-  echo "  --full    force full deploy (ignore deploy marker)"
+  cat <<'USAGE'
+Usage: ./deploy.sh [--dry-run] [--skip-restart] [--pause] [--no-assets]
+
+Options:
+  --dry-run        Print what would be deployed; do not ssh/scp.
+  --skip-restart   Upload files but do not schedule server restart.
+  --pause          Wait for Enter before exiting.
+  --no-assets      Exclude assets/. Not recommended when icons/portraits changed.
+
+Backward-compatible flags:
+  --assets         Accepted; assets are now included by default.
+  --full           Accepted; deploy is always manifest-based full publish.
+USAGE
 }
 
 die() {
@@ -39,10 +50,41 @@ die() {
   exit 1
 }
 
+on_exit() {
+  local code=$?
+  if [ -n "${STAGE_DIR:-}" ] && [ -d "$STAGE_DIR" ]; then
+    rm -rf "$STAGE_DIR"
+  fi
+
+  echo ""
+  echo "=== deploy.sh exited with code $code ==="
+  if [ "$code" -ne 0 ]; then
+    echo "Deploy failed. Check the error above."
+  fi
+
+  if [ "$DEPLOY_PAUSE_ON_EXIT" = "true" ]; then
+    read -r -p "Press Enter to close..." || true
+  fi
+}
+trap on_exit EXIT
+
 for arg in "$@"; do
   case "$arg" in
-    --assets) PUSH_ASSETS=true ;;
-    --full) FORCE_FULL=true ;;
+    --assets|--full)
+      # Kept for old muscle memory. Assets are included by default; deploy is full-staged.
+      ;;
+    --no-assets)
+      INCLUDE_ASSETS=false
+      ;;
+    --dry-run)
+      DEPLOY_DRY_RUN=true
+      ;;
+    --skip-restart)
+      DEPLOY_SKIP_RESTART=true
+      ;;
+    --pause)
+      DEPLOY_PAUSE_ON_EXIT=true
+      ;;
     --help|-h)
       usage
       exit 0
@@ -53,42 +95,6 @@ for arg in "$@"; do
       ;;
   esac
 done
-
-exclude_path() {
-  case "$1" in
-    docs/*|docs_for_human/*|documents/*|pics/*|test-results/*|.git/*|.claude/*|node_modules/*|ngrok.exe)
-      return 0
-      ;;
-    assets/*)
-      if ! $PUSH_ASSETS; then
-        return 0
-      fi
-      ;;
-  esac
-  return 1
-}
-
-filter_paths() {
-  while IFS= read -r path; do
-    [ -n "$path" ] || continue
-    if ! exclude_path "$path"; then
-      printf '%s\n' "$path"
-    fi
-  done
-}
-
-unique_paths() {
-  filter_paths | awk '!seen[$0]++'
-}
-
-line_count() {
-  local text="$1"
-  if [ -z "$text" ]; then
-    echo 0
-  else
-    printf '%s\n' "$text" | wc -l | tr -d ' '
-  fi
-}
 
 ps_quote() {
   local escaped
@@ -104,44 +110,29 @@ run_ssh() {
   "$SSH_BIN" "${SSH_OPTS[@]}" "$SERVER" "$@"
 }
 
-run_scp() {
+run_scp_recursive() {
   local local_path="$1"
   local remote_path="$2"
 
   if [ "$DEPLOY_DRY_RUN" = "true" ]; then
-    echo "[dry-run] scp $local_path $SERVER:$remote_path"
-    return 0
-  fi
-  "$SCP_BIN" "${SSH_OPTS[@]}" "$local_path" "$SERVER:$remote_path"
-}
-
-read_deploy_marker() {
-  if [ -n "$DEPLOY_LAST_HASH" ]; then
-    printf '%s\n' "$DEPLOY_LAST_HASH"
+    echo "[dry-run] scp -r $local_path $SERVER:$remote_path"
     return 0
   fi
 
-  "$SSH_BIN" "${SSH_OPTS[@]}" "$SERVER" "type \"$MARKER_FILE\" 2>nul" 2>/dev/null | head -1
+  "$SCP_BIN" "${SSH_OPTS[@]}" -r "$local_path" "$SERVER:$remote_path"
 }
 
-remote_mkdir() {
-  local path="$1"
-  local quoted
-  quoted=$(ps_quote "$path")
-  run_ssh "powershell -NoProfile -Command \"New-Item -ItemType Directory -Force -LiteralPath $quoted | Out-Null\""
+ps_encode() {
+  command -v iconv >/dev/null 2>&1 || die "iconv is not available in PATH"
+  command -v base64 >/dev/null 2>&1 || die "base64 is not available in PATH"
+  printf '%s' "$1" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\r\n'
 }
 
-remote_rm() {
-  local path="$1"
-  local quoted
-  quoted=$(ps_quote "$path")
-  run_ssh "powershell -NoProfile -Command \"Remove-Item -Force -LiteralPath $quoted -ErrorAction SilentlyContinue\""
-}
-
-remote_set_marker() {
-  local quoted
-  quoted=$(ps_quote "$MARKER_FILE")
-  run_ssh "powershell -NoProfile -Command \"Set-Content -LiteralPath $quoted -Value '$CURRENT_HASH' -NoNewline\""
+remote_exec_ps() {
+  local script="$1"
+  local encoded
+  encoded=$(ps_encode "\$ProgressPreference='SilentlyContinue'; $script")
+  run_ssh "powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand $encoded"
 }
 
 schedule_restart() {
@@ -150,137 +141,168 @@ schedule_restart() {
     return 0
   fi
 
-  run_ssh "powershell -NoProfile -Command \"\$t = (Get-Date).AddMinutes(1); schtasks /create /tn CombatDeploy /tr 'powershell -ExecutionPolicy Bypass -File $REMOTE_DIR\server\start-servers.ps1' /sc ONCE /st \$t.ToString('HH:mm') /sd \$t.ToString('yyyy/MM/dd') /f\""
+  remote_exec_ps "\$t = (Get-Date).AddMinutes(1); schtasks /create /tn CombatDeploy /tr 'powershell -ExecutionPolicy Bypass -File $REMOTE_DIR\server\start-servers.ps1' /sc ONCE /st \$t.ToString('HH:mm') /sd \$t.ToString('yyyy/MM/dd') /f"
 }
 
-git_paths() {
-  git "$@"
+exclude_path() {
+  local path="$1"
+  case "$path" in
+    .git/*|.github/*|.claude/*|.agents/*|node_modules/*|test-results/*|playwright-report/*)
+      return 0
+      ;;
+    docs/*|docs_for_human/*|documents/*|pics/*)
+      return 0
+      ;;
+    tests/*|*_out.txt|deploy.log|deploy-dry.log|ngrok.exe)
+      return 0
+      ;;
+    assets/*)
+      if [ "$INCLUDE_ASSETS" != "true" ]; then
+        return 0
+      fi
+      ;;
+  esac
+  return 1
 }
 
-diff_uploads() {
-  git_paths diff -M --name-only --diff-filter=ACMRTUXB "$@"
+collect_manifest() {
+  git ls-files --cached --others --exclude-standard | while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    if ! exclude_path "$path" && [ -f "$path" ]; then
+      printf '%s\n' "$path"
+    fi
+  done | awk '!seen[$0]++'
 }
 
-diff_deletes() {
-  git_paths diff -M --name-only --diff-filter=D "$@"
-  git_paths diff -M --name-status --diff-filter=R "$@" | awk -F '\t' '{ print $2 }'
+copy_manifest_to_stage() {
+  local manifest="$1"
+
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    mkdir -p "$STAGE_DIR/$(dirname "$path")"
+    cp -p "$path" "$STAGE_DIR/$path"
+  done <<< "$manifest"
+}
+
+remote_prepare_stage() {
+  local remote_stage_q remote_dir_q
+  remote_stage_q=$(ps_quote "$REMOTE_STAGE")
+  remote_dir_q=$(ps_quote "$REMOTE_DIR")
+
+  remote_exec_ps "\
+New-Item -ItemType Directory -Force -Path $remote_dir_q | ForEach-Object { \$null }; \
+Remove-Item -Recurse -Force -Path $remote_stage_q -ErrorAction SilentlyContinue; \
+New-Item -ItemType Directory -Force -Path $remote_stage_q | ForEach-Object { \$null }"
+}
+
+remote_publish_stage() {
+  local remote_stage_q remote_dir_q
+  remote_stage_q=$(ps_quote "$REMOTE_STAGE")
+  remote_dir_q=$(ps_quote "$REMOTE_DIR")
+
+  remote_exec_ps "\
+\$remote = $remote_dir_q; \
+\$stage = $remote_stage_q; \
+\$dirs = @('app','assets','engine','network','server','session','styles','tutorial','ui'); \
+foreach (\$d in \$dirs) { Remove-Item -Recurse -Force -Path (Join-Path \$remote \$d) -ErrorAction SilentlyContinue }; \
+\$files = @('index.html','main.js','package.json','package-lock.json','playwright.config.js'); \
+foreach (\$f in \$files) { Remove-Item -Force -Path (Join-Path \$remote \$f) -ErrorAction SilentlyContinue }; \
+Get-ChildItem -Path \$stage -Force | Copy-Item -Destination \$remote -Recurse -Force; \
+Remove-Item -Recurse -Force -Path \$stage -ErrorAction SilentlyContinue"
+}
+
+line_count() {
+  local text="$1"
+  if [ -z "$text" ]; then
+    echo 0
+  else
+    printf '%s\n' "$text" | wc -l | tr -d ' '
+  fi
+}
+
+require_tools() {
+  command -v git >/dev/null 2>&1 || die "git is not available in PATH"
+  command -v awk >/dev/null 2>&1 || die "awk is not available in PATH"
+  command -v cp >/dev/null 2>&1 || die "cp is not available in PATH"
+  command -v iconv >/dev/null 2>&1 || die "iconv is not available in PATH"
+  command -v base64 >/dev/null 2>&1 || die "base64 is not available in PATH"
+  command -v "$SSH_BIN" >/dev/null 2>&1 || die "$SSH_BIN is not available in PATH"
+  command -v "$SCP_BIN" >/dev/null 2>&1 || die "$SCP_BIN is not available in PATH"
+  [ -f "$SSH_KEY" ] || die "SSH key not found: $SSH_KEY"
 }
 
 echo "=== Deploying combat-engine to $SERVER ==="
+echo "Mode: staged manifest sync"
+echo "Remote dir: $REMOTE_DIR"
+echo "Dry run: $DEPLOY_DRY_RUN"
+echo "Include assets: $INCLUDE_ASSETS"
+echo "Skip restart: $DEPLOY_SKIP_RESTART"
+echo "SSH key: $SSH_KEY"
+echo ""
 
-command -v git >/dev/null 2>&1 || die "git is not available in PATH"
-command -v awk >/dev/null 2>&1 || die "awk is not available in PATH"
+require_tools
 
-CURRENT_HASH=$(git rev-parse HEAD 2>/dev/null) || die "not a git repository or no commits"
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "not a git repository"
+CURRENT_HASH=$(git rev-parse HEAD 2>/dev/null) || die "no commits found"
+echo "Current HEAD: ${CURRENT_HASH:0:7}"
 
-if $FORCE_FULL; then
-  echo "Mode: FULL (--full flag)"
-  UPLOAD_FILES=$(git_paths ls-files --cached --others --exclude-standard | unique_paths)
-  DELETE_FILES=""
-  LAST_HASH=""
-else
-  RAW_LAST_HASH=$(read_deploy_marker | tr -d '\r' || true)
-  LAST_HASH=$(printf '%s\n' "$RAW_LAST_HASH" | grep -E '^[0-9a-f]{7,40}$' | head -1 || true)
+MANIFEST=$(collect_manifest)
+COUNT=$(line_count "$MANIFEST")
+[ "$COUNT" -gt 0 ] || die "deploy manifest is empty"
 
-  if [ -n "$LAST_HASH" ] && git cat-file -e "$LAST_HASH" 2>/dev/null; then
-    echo "Last deployed: ${LAST_HASH:0:7}"
-    echo "Current HEAD:  ${CURRENT_HASH:0:7}"
+echo "Files to publish: $COUNT"
+printf '%s\n' "$MANIFEST" | sed 's/^/  /'
+echo ""
 
-    COMMITTED_UPLOADS=$(diff_uploads "$LAST_HASH" HEAD)
-    COMMITTED_DELETES=$(diff_deletes "$LAST_HASH" HEAD)
-  else
-    echo "Mode: FULL (no deploy marker or marker invalid)"
-    COMMITTED_UPLOADS=$(git_paths ls-files --cached)
-    COMMITTED_DELETES=""
-    LAST_HASH=""
+if [ "$INCLUDE_ASSETS" != "true" ]; then
+  ASSET_CHANGES=$(git ls-files --cached --others --exclude-standard assets 2>/dev/null || true)
+  if [ -n "$ASSET_CHANGES" ]; then
+    echo "Warning: assets/ is excluded by --no-assets. Runtime icons/portraits may be stale."
   fi
-
-  WORKTREE_UPLOADS=$(
-    {
-      diff_uploads HEAD
-      diff_uploads --cached HEAD
-      git_paths ls-files --others --exclude-standard
-    } | unique_paths
-  )
-  WORKTREE_DELETES=$(
-    {
-      diff_deletes HEAD
-      diff_deletes --cached HEAD
-    } | unique_paths
-  )
-
-  UPLOAD_FILES=$(
-    {
-      printf '%s\n' "$COMMITTED_UPLOADS"
-      printf '%s\n' "$WORKTREE_UPLOADS"
-    } | unique_paths
-  )
-  DELETE_FILES=$(
-    {
-      printf '%s\n' "$COMMITTED_DELETES"
-      printf '%s\n' "$WORKTREE_DELETES"
-    } | unique_paths
-  )
 fi
 
-UPLOAD_COUNT=$(line_count "$UPLOAD_FILES")
-DELETE_COUNT=$(line_count "$DELETE_FILES")
-
-if [ "$UPLOAD_COUNT" -eq 0 ] && [ "$DELETE_COUNT" -eq 0 ]; then
-  echo "No deployable file changes."
-  if [ -n "${LAST_HASH:-}" ] && [ "$LAST_HASH" != "$CURRENT_HASH" ]; then
-    echo "Updating deploy marker to ${CURRENT_HASH:0:7}."
-    remote_set_marker || die "failed to update deploy marker"
-  fi
+if [ "$DEPLOY_DRY_RUN" = "true" ]; then
+  echo "Dry run complete; no files uploaded."
   exit 0
 fi
 
-echo "Files to push: $UPLOAD_COUNT"
-if [ "$UPLOAD_COUNT" -gt 0 ]; then
-  printf '%s\n' "$UPLOAD_FILES" | while IFS= read -r path; do
-    [ -n "$path" ] && echo "  $path"
+STAGE_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t combat-deploy)
+REMOTE_STAGE="${REMOTE_DIR}.__incoming_${CURRENT_HASH:0:7}_$(date +%Y%m%d%H%M%S)"
+
+echo "Building local stage: $STAGE_DIR"
+copy_manifest_to_stage "$MANIFEST"
+
+echo "Preparing remote stage: $REMOTE_STAGE"
+remote_prepare_stage
+
+upload_stage_contents() {
+  local item
+  local uploaded=false
+
+  for item in "$STAGE_DIR"/* "$STAGE_DIR"/.[!.]* "$STAGE_DIR"/..?*; do
+    [ -e "$item" ] || continue
+    uploaded=true
+    echo "  upload: $(basename "$item")"
+    run_scp_recursive "$item" "$REMOTE_STAGE/" || die "failed to upload staged item: $item"
   done
-fi
 
-if [ "$DELETE_COUNT" -gt 0 ]; then
-  echo "Files to remove: $DELETE_COUNT"
-  printf '%s\n' "$DELETE_FILES" | while IFS= read -r path; do
-    [ -n "$path" ] && echo "  $path"
-  done
-fi
-
-while IFS= read -r path; do
-  [ -n "$path" ] || continue
-  if [ ! -f "$path" ]; then
-    die "upload candidate is missing locally: $path"
+  if [ "$uploaded" != "true" ]; then
+    die "local stage is empty: $STAGE_DIR"
   fi
+}
+echo "Uploading staged bundle..."
+upload_stage_contents
 
-  parent=$(dirname "$path")
-  if [ "$parent" = "." ]; then
-    remote_parent="$REMOTE_DIR"
-  else
-    remote_parent="$REMOTE_DIR/$parent"
-  fi
+echo "Publishing staged bundle..."
+remote_publish_stage || die "failed to publish staged bundle"
 
-  remote_mkdir "$remote_parent" || die "failed to create remote directory: $remote_parent"
-  echo "  upload: $path"
-  run_scp "$path" "$REMOTE_DIR/$path" || die "failed to upload: $path"
-done <<< "$UPLOAD_FILES"
-
-while IFS= read -r path; do
-  [ -n "$path" ] || continue
-  echo "  remove: $path"
-  remote_rm "$REMOTE_DIR/$path" || die "failed to remove remote file: $path"
-done <<< "$DELETE_FILES"
-
+echo "Scheduling restart..."
 schedule_restart || die "failed to schedule server restart"
-remote_set_marker || die "failed to update deploy marker"
 
 echo ""
-echo "=== Deploy complete ($UPLOAD_COUNT uploaded, $DELETE_COUNT removed) ==="
+echo "=== Deploy complete ($COUNT files published) ==="
 echo "Servers will restart in ~1 minute."
 echo "Game:      http://120.77.178.15:3000"
 echo "Signaling: ws://120.77.178.15:8088"
 echo ""
-echo "窗口将在5秒后关闭..."
-sleep 5
+sleep 3

@@ -139,6 +139,15 @@
     <button id="btn-reset">重置</button>
     <button id="btn-help-top" title="规则说明">?</button>
   </div>
+  <div id="resolution-timeline" data-testid="resolution-timeline" aria-live="polite">
+    <div class="resolution-timeline-head">
+      <div id="resolution-active-speed" class="resolution-active-speed" data-testid="resolution-active-speed">等待回放</div>
+      <button id="resolution-skip" class="resolution-skip" data-testid="resolution-skip" type="button">跳过</button>
+    </div>
+    <div class="resolution-axis" id="resolution-axis"></div>
+    <div id="resolution-phase-summary" class="resolution-phase-summary" data-testid="resolution-phase-summary"></div>
+    <div id="resolution-complete" class="resolution-complete" data-testid="resolution-complete" hidden>回放完成</div>
+  </div>
   <div id="selected-unit-drawer"></div>
   <div id="canvas-wrap"><canvas id="board"></canvas></div>
   <div id="action-dock"></div>
