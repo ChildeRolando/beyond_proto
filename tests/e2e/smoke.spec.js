@@ -75,28 +75,19 @@ test('start screen shows initial UI', async ({ page }) => {
   await expect(page.locator('#config-screen')).not.toBeVisible();
   await expect(page.locator('#app')).not.toBeVisible();
 
-  await expect(page.locator('text=本地游玩').first()).toBeVisible();
-  await expect(page.locator('text=PVE 模式').first()).toBeVisible();
-  await expect(page.locator('text=新手教学').first()).toBeVisible();
+  await expect(page.locator('#btn-local-duel')).toBeVisible();
+  await expect(page.locator('#btn-local-coop')).toBeVisible();
+  await expect(page.locator('#btn-tutorial')).toBeVisible();
 });
 
-// ─── 3. Tutorial modal ───
+// ─── 3. Tutorial entry ───
 
-test('tutorial modal opens and closes', async ({ page }) => {
+test('tutorial button starts playable tutorial battle', async ({ page }) => {
   await page.goto('/');
 
-  // Open tutorial
-  const tutorialBtn = page.locator('text=新手教学').first();
-  await tutorialBtn.click();
-
-  // Tutorial overlay should appear
-  const overlay = page.locator('#tutorial-overlay');
-  await expect(overlay).toBeVisible();
-
-  // Close it — find close button
-  const closeBtn = overlay.locator('button, .close-btn, [class*="close"]').first();
-  if (await closeBtn.isVisible()) {
-    await closeBtn.click();
-    await expect(overlay).not.toBeVisible();
-  }
+  await page.locator('#btn-tutorial').click();
+  await expect(page.locator('#app')).toBeVisible();
+  await expect(page.locator('#tutorial-hud')).toBeVisible();
+  await expect(page.locator('#tutorial-overlay')).not.toBeVisible();
+  await expect(page.locator('[data-testid="tutorial-title"]')).toContainText('教学 1/3');
 });

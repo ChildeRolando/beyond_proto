@@ -31,10 +31,11 @@ test.afterEach(async ({ }, testInfo) => {
 
 async function enterBattle(page) {
   await page.goto('/');
-  await page.locator('text=本地游玩').first().click();
+  await page.locator('#btn-local-coop').click();
   await expect(page.locator('#config-screen')).toBeVisible();
+  await page.waitForSelector('#config-player-switch button[data-player="hero_1"]');
   await page.locator('#btn-config-lock').click();
-  await page.locator('#config-player-switch button[data-player="player2"]').click();
+  await page.locator('#config-player-switch button[data-player="hero_2"]').click();
   await page.locator('#btn-config-lock').click();
   await page.locator('#btn-config-start').click();
   await expect(page.locator('#app')).toBeVisible();
@@ -63,7 +64,7 @@ test('battle screen shows all panels with content', async ({ page }) => {
   await expect(page.locator('#action-dock .dock-control')).toBeVisible();
 
   // Action dock MUST have skill buttons
-  const skillCount = await page.locator('#action-dock .skill-btn').count();
+  const skillCount = await page.locator('#action-dock .skill-icon-btn[data-skill]').count();
   expect(skillCount).toBeGreaterThan(0);
 
   // Right sidebar tabs
@@ -81,7 +82,7 @@ test('battle screen shows all panels with content', async ({ page }) => {
 test('skill tooltip appears on hover', async ({ page }) => {
   await enterBattle(page);
 
-  const skillBtns = page.locator('#action-dock .skill-btn');
+  const skillBtns = page.locator('#action-dock .skill-icon-btn[data-skill]');
   const count = await skillBtns.count();
   expect(count).toBeGreaterThan(0);
 

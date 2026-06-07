@@ -37,11 +37,12 @@ test.afterEach(async ({}, testInfo) => {
 
 async function enterLocalBattle(page) {
   await page.goto('/');
-  await page.locator('#btn-local-duel').click();
+  await page.locator('#btn-local-coop').click();
   await expect(page.locator('#config-screen')).toBeVisible();
+  await page.waitForSelector('#config-player-switch button[data-player="hero_1"]');
 
   await page.locator('#btn-config-lock').click();
-  await page.locator('#config-player-switch button[data-player="player2"]').click();
+  await page.locator('#config-player-switch button[data-player="hero_2"]').click();
   await page.locator('#btn-config-lock').click();
   await page.locator('#btn-config-start').click();
 
@@ -74,7 +75,7 @@ async function selectSkillForCharacterAt(page, offsetX) {
   await page.mouse.click(box.x + box.width / 2 + offsetX, box.y + box.height / 2);
   await page.waitForTimeout(200);
 
-  const skillBtns = page.locator('#action-dock .skill-btn:not(.used)');
+  const skillBtns = page.locator('#action-dock .skill-icon-btn[data-skill]:not(.used):not([disabled])');
   await expect(skillBtns.first()).toBeVisible();
   await skillBtns.first().click();
   await page.waitForTimeout(200);

@@ -46,7 +46,10 @@ test('PVE config opens', async ({ page }) => {
   await page.goto('/');
   await page.locator('#btn-local-coop').click();
   await expect(page.locator('#config-screen')).toBeVisible();
-  await expect(page.locator('#config-mode-label')).toContainText('PVE');
+  await expect(page.locator('#config-mode-label')).toContainText('本地合作');
+  await expect(page.locator('#team-status')).toContainText('PVE 队伍');
+  await expect(page.locator('#config-player-switch button[data-player="hero_1"]')).toBeVisible();
+  await expect(page.locator('#config-player-switch button[data-player="hero_2"]')).toBeVisible();
 });
 
 test('player switch, class switch, hover preview, and click select work', async ({ page }) => {

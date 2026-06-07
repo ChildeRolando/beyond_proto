@@ -20,7 +20,7 @@ test.afterEach(async ({ }, testInfo) => {
 
 async function enterLocalConfig(page) {
   await page.goto('/');
-  await page.locator('text=本地游玩').first().click();
+  await page.locator('#btn-local-duel').click();
   await expect(page.locator('#config-screen')).toBeVisible();
   await expect(page.locator('#start-screen')).not.toBeVisible();
 }
@@ -188,7 +188,11 @@ test('lock config toggles button text', async ({ page }) => {
 
 test('PVE config screen loads', async ({ page }) => {
   await page.goto('/');
-  await page.locator('text=PVE 模式').first().click();
+  await page.locator('#btn-local-coop').click();
   await expect(page.locator('#config-screen')).toBeVisible();
+  await expect(page.locator('#config-mode-label')).toContainText('本地合作');
+  await expect(page.locator('#team-status')).toContainText('PVE 队伍');
   await expect(page.locator('#config-role-list')).toBeVisible();
+  await expect(page.locator('#config-player-switch button[data-player="hero_1"]')).toBeVisible();
+  await expect(page.locator('#config-player-switch button[data-player="hero_2"]')).toBeVisible();
 });

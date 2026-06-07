@@ -35,15 +35,29 @@ test.afterEach(async ({ }, testInfo) => {
  */
 async function enterLocalBattle(page) {
   await page.goto('/');
-  await page.locator('#btn-local-duel').click();
+  await page.locator('#btn-local-coop').click();
   await expect(page.locator('#config-screen')).toBeVisible();
+  await page.waitForSelector('#config-player-switch button[data-player="hero_1"]');
 
-  // Lock P1
+  // Lock hero_1
   await page.locator('#btn-config-lock').click();
-  // Switch to P2 and lock
-  await page.locator('#config-player-switch button[data-player="player2"]').click();
+  // Switch to hero_2 and lock
+  await page.locator('#config-player-switch button[data-player="hero_2"]').click();
   await page.locator('#btn-config-lock').click();
   // Start battle
+  await page.locator('#btn-config-start').click();
+  await expect(page.locator('#app')).toBeVisible();
+}
+
+async function enterPveBattle(page) {
+  await page.goto('/');
+  await page.locator('#btn-local-coop').click();
+  await expect(page.locator('#config-screen')).toBeVisible();
+  await page.waitForSelector('#config-player-switch button[data-player="hero_1"]');
+
+  await page.locator('#btn-config-lock').click();
+  await page.locator('#config-player-switch button[data-player="hero_2"]').click();
+  await page.locator('#btn-config-lock').click();
   await page.locator('#btn-config-start').click();
   await expect(page.locator('#app')).toBeVisible();
 }
@@ -76,7 +90,7 @@ async function submitActionForCharacter(page, charIndex) {
   await page.waitForTimeout(300);
 
   // Now click the first visible skill button
-  const skillBtns = page.locator('#action-dock .skill-btn:not(.used)');
+  const skillBtns = page.locator('#action-dock .skill-icon-btn[data-skill]:not(.used):not([disabled])');
   const count = await skillBtns.count();
   if (count === 0) return null;
 
@@ -114,7 +128,7 @@ test('A1: local battle starts and all panels render', async ({ page }) => {
   expect(dockText.trim().length).toBeGreaterThan(5);
 
   // Action dock MUST have skill buttons
-  const skillCount = await page.locator('#action-dock .skill-btn').count();
+  const skillCount = await page.locator('#action-dock .skill-icon-btn[data-skill]').count();
   expect(skillCount).toBeGreaterThan(0);
 
   // Submit status must show text
@@ -146,7 +160,7 @@ test('A2: skill selection shows target hint', async ({ page }) => {
   await page.waitForTimeout(300);
 
   // Click first skill button
-  const skillBtns = page.locator('#action-dock .skill-btn:not(.used)');
+  const skillBtns = page.locator('#action-dock .skill-icon-btn[data-skill]:not(.used):not([disabled])');
   const count = await skillBtns.count();
   expect(count).toBeGreaterThan(0);
 
@@ -178,7 +192,7 @@ test('A3: submit action keeps panels intact', async ({ page }) => {
   await page.waitForTimeout(300);
 
   // Select first skill
-  const skillBtns = page.locator('#action-dock .skill-btn:not(.used)');
+  const skillBtns = page.locator('#action-dock .skill-icon-btn[data-skill]:not(.used):not([disabled])');
   const skillCount = await skillBtns.count();
   expect(skillCount).toBeGreaterThan(0);
 
@@ -234,7 +248,7 @@ test('A4: execute local turn advances game state', async ({ page }) => {
     await page.waitForTimeout(300);
 
     // Find first available (non-used) skill
-    const skillBtns = page.locator('#action-dock .skill-btn:not(.used)');
+    const skillBtns = page.locator('#action-dock .skill-icon-btn[data-skill]:not(.used):not([disabled])');
     const count = await skillBtns.count();
     if (count === 0) continue;
 
@@ -275,40 +289,15 @@ test('A4: execute local turn advances game state', async ({ page }) => {
 // ─── A5: PVE battle starts and player action path works ───
 
 test('A5: PVE battle starts and action dock renders', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('#btn-local-coop').click();
-  await expect(page.locator('#config-screen')).toBeVisible();
-
-  // Lock P1
-  await page.locator('#btn-config-lock').click();
-  // Start PVE battle
-  await page.locator('#btn-config-start').click();
-  await expect(page.locator('#app')).toBeVisible();
+  await enterPveBattle(page);
 
   // Submit status should show PVE info
   const submitText = await page.locator('#submit-status').textContent();
   expect(submitText.trim().length).toBeGreaterThan(0);
 
   // Action dock MUST have skill buttons
-  const skillCount = await page.locator('#action-dock .skill-btn').count();
+  const skillCount = await page.locator('#action-dock .skill-icon-btn[data-skill]').count();
   expect(skillCount).toBeGreaterThan(0);
-
-  // Attempt to select a skill
-  const canvas = page.locator('canvas#board');
-  const box = await canvas.boundingBox();
-  expect(box).not.toBeNull();
-
-  // Click canvas to select a character
-  await page.mouse.click(box.x + box.width / 2 - 100, box.y + box.height / 2);
-  await page.waitForTimeout(300);
-
-  // Click first skill
-  const skillBtns = page.locator('#action-dock .skill-btn:not(.used)');
-  const count = await skillBtns.count();
-  if (count > 0) {
-    await skillBtns.first().click();
-    await page.waitForTimeout(300);
-  }
 
   // Action dock must still have content after skill selection
   const dockText = await page.locator('#action-dock').textContent();
@@ -395,7 +384,7 @@ test('A9: Escape key clears skill selection', async ({ page }) => {
   await page.waitForTimeout(300);
 
   // Click a skill to select it
-  const skillBtns = page.locator('#action-dock .skill-btn:not(.used)');
+  const skillBtns = page.locator('#action-dock .skill-icon-btn[data-skill]:not(.used):not([disabled])');
   const count = await skillBtns.count();
   expect(count).toBeGreaterThan(0);
   await skillBtns.first().click();

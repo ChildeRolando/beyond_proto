@@ -148,6 +148,16 @@ export class DamageCalculator {
   _applyDamage(target, targetId, damage, sourceId, flags) {
     if (damage <= 0) return false;
 
+    const pool = this.resourceSystem.getAll(targetId);
+    if (pool && Object.prototype.hasOwnProperty.call(pool, 'hp')) {
+      const currentHp = pool.hp ?? 0;
+      const nextHp = Math.max(0, currentHp - damage);
+      this.resourceSystem.set(targetId, 'hp', nextHp);
+      if (nextHp > 0) {
+        return false;
+      }
+    }
+
     if (damage > 0) {
       target.alive = false;
       this.eventBus.emit(EvtType.CHARACTER_DIED, { targetId, sourceId, finalDamage: damage });

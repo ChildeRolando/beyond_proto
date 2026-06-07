@@ -137,7 +137,7 @@
     <span class="info" id="submit-status">等待双方提交...</span>
     <button id="btn-execute" disabled>执行回合</button>
     <button id="btn-reset">重置</button>
-    <button id="btn-help-top" title="新手教学">?</button>
+    <button id="btn-help-top" title="规则说明">?</button>
   </div>
   <div id="selected-unit-drawer"></div>
   <div id="canvas-wrap"><canvas id="board"></canvas></div>
@@ -185,6 +185,22 @@
 </div>
 
 <div id="skill-tooltip"></div>
+
+<div id="tutorial-hud" data-testid="tutorial-hud" style="display:none;">
+  <div class="tutorial-hud-panel">
+    <div class="tutorial-hud-header">
+      <div id="tutorial-title" class="tutorial-hud-title" data-testid="tutorial-title"></div>
+      <div id="tutorial-hud-step" class="tutorial-hud-step"></div>
+    </div>
+    <div id="tutorial-objective" class="tutorial-hud-objective" data-testid="tutorial-objective"></div>
+    <div id="tutorial-error" class="tutorial-hud-error" data-testid="tutorial-error"></div>
+    <div id="tutorial-level-complete" class="tutorial-hud-complete" data-testid="tutorial-level-complete"></div>
+    <div class="tutorial-hud-actions">
+      <button id="tutorial-next" data-testid="tutorial-next" type="button">下一关</button>
+      <button id="tutorial-skip" data-testid="tutorial-skip" type="button">返回大厅</button>
+    </div>
+  </div>
+</div>
 
 <!-- Tutorial modal -->
 <div id="tutorial-overlay">

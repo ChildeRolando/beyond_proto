@@ -137,6 +137,11 @@ export class GameEngine {
     this.registry.register(entity);
     this._playerClass.set(entity.id, entity.class);
     this.resourceSystem.initCharacter(entity.id, entity.class);
+    if (combatant.resources && typeof combatant.resources === 'object') {
+      for (const [resource, value] of Object.entries(combatant.resources)) {
+        this.resourceSystem.set(entity.id, resource, value);
+      }
+    }
   }
 
   _friendlyHalfForShooter(combatant) {

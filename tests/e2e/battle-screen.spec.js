@@ -20,15 +20,16 @@ test.afterEach(async ({ }, testInfo) => {
 
 async function lockBothAndStart(page) {
   await page.goto('/');
-  await page.locator('text=本地游玩').first().click();
+  await page.locator('#btn-local-coop').click();
   await expect(page.locator('#config-screen')).toBeVisible();
+  await page.waitForSelector('#config-player-switch button[data-player="hero_1"]');
 
-  // Lock P1
+  // Lock hero_1
   await page.locator('#btn-config-lock').click();
   await expect(page.locator('#btn-config-lock')).toHaveText('修改配置');
 
-  // Switch to P2 and lock
-  await page.locator('#config-player-switch button[data-player="player2"]').click();
+  // Switch to hero_2 and lock
+  await page.locator('#config-player-switch button[data-player="hero_2"]').click();
   await page.locator('#btn-config-lock').click();
   await expect(page.locator('#btn-config-lock')).toHaveText('修改配置');
 
@@ -60,9 +61,7 @@ test('action dock shows skill buttons', async ({ page }) => {
   await expect(actionDock).toBeVisible();
 
   // Should have skill buttons or action indicators
-  const skillButtons = actionDock.locator('button, .skill-btn, [class*="skill"]');
-  // At least some interactive element in the dock
-  await expect(actionDock.locator('*').first()).toBeVisible();
+  await expect(actionDock.locator('.skill-icon-btn[data-skill]').first()).toBeVisible();
 });
 
 // ─── 3. Right sidebar tab switching ───
@@ -70,22 +69,11 @@ test('action dock shows skill buttons', async ({ page }) => {
 test('right sidebar tabs switch between chat and log', async ({ page }) => {
   await lockBothAndStart(page);
 
-  // Find tabs in right sidebar
-  const sidebar = page.locator('#right-sidebar');
+  await page.locator('#tab-chat').click();
+  await expect(page.locator('#chat-box')).toHaveClass(/active/);
 
-  // Try clicking a chat tab if it exists
-  const chatTab = sidebar.locator('text=聊天').first();
-  if (await chatTab.isVisible()) {
-    await chatTab.click();
-    await expect(page.locator('#chat-box')).toBeVisible();
-  }
-
-  // Click log tab
-  const logTab = sidebar.locator('text=日志').first();
-  if (await logTab.isVisible()) {
-    await logTab.click();
-    await expect(page.locator('#log')).toBeVisible();
-  }
+  await page.locator('#tab-log').click();
+  await expect(page.locator('#log')).toHaveClass(/active/);
 });
 
 // ─── 4. Execute button exists ───

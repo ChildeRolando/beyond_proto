@@ -56,6 +56,7 @@ export function normalizeCombatantConfig(combatant, fallbackIndex = 0) {
     roleLoadoutSkillIds,
     allowedSkillIds: buildAllowedSkillIds(charClass, roleId, loadoutSkillIds, roleLoadoutSkillIds),
     position: { q: position.q ?? 0, r: position.r ?? 0 },
+    resources: combatant?.resources ? { ...combatant.resources } : undefined,
   };
 }
 

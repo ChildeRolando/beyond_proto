@@ -131,3 +131,109 @@
 .log-action { color: #7bb8cf; }
 .log-ai { color: #5a9e7e; }
 
+#tutorial-hud {
+  position: fixed;
+  top: 66px;
+  right: 18px;
+  z-index: 2400;
+  width: min(380px, calc(100vw - 24px));
+  pointer-events: none;
+}
+
+.tutorial-hud-panel {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  background: linear-gradient(180deg, rgba(18, 20, 28, 0.96), rgba(25, 27, 36, 0.94));
+  border: 1px solid rgba(221, 187, 153, 0.34);
+  border-radius: 12px;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(8px);
+}
+
+.tutorial-hud-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.tutorial-hud-title {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 1.5px;
+}
+
+.tutorial-hud-step {
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.tutorial-hud-objective {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.tutorial-hud-error {
+  color: #ff8686;
+  font-size: 12px;
+  min-height: 18px;
+}
+
+.tutorial-hud-complete {
+  color: #f0cf88;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  min-height: 18px;
+}
+
+.tutorial-hud-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tutorial-hud-actions button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
+}
+
+.tutorial-hud-actions button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+#tutorial-next {
+  border-color: var(--accent);
+  color: var(--bg);
+  background: var(--accent);
+}
+
+#tutorial-next:hover {
+  color: var(--bg);
+  filter: brightness(1.05);
+}
+
+@media (max-width: 900px) {
+  #tutorial-hud {
+    top: auto;
+    right: 12px;
+    left: 12px;
+    bottom: 12px;
+    width: auto;
+  }
+}
