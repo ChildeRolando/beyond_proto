@@ -281,3 +281,6 @@ echo "=== Deploy complete ($UPLOAD_COUNT uploaded, $DELETE_COUNT removed) ==="
 echo "Servers will restart in ~1 minute."
 echo "Game:      http://120.77.178.15:3000"
 echo "Signaling: ws://120.77.178.15:8088"
+echo ""
+echo "窗口将在5秒后关闭..."
+sleep 5
