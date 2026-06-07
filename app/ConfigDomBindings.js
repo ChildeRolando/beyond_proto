@@ -23,7 +23,7 @@ export function bindConfigDomEvents({
     const configSession = getConfigSession();
     if (!configSession.canStartBattle()) return;
     const seed = Date.now();
-    if (isPveMode() && typeof configSession.buildPveBattleScenario === 'function') {
+    if (configSession.isLegacyPveMode?.() && typeof configSession.buildPveBattleScenario === 'function') {
       lifecycle.startBattleFromScenario(seed, configSession.buildPveBattleScenario(seed));
       return;
     }

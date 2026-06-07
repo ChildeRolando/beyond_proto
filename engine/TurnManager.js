@@ -469,8 +469,10 @@ export class TurnManager {
 
   _createResolutionEvent(cmd, speed, index, beforeActor) {
     const afterActor = this.#registry.get(cmd.actorId);
+    const actionId = cmd.actionId || cmd.sequenceId || cmd.id || null;
     const event = {
       id: cmd.sequenceId ? `${cmd.sequenceId}:${index}` : `${this.#turnNumber}-${speed}-${index}-${cmd.type}-${cmd.actorId || 'system'}`,
+      actionId,
       type: this._getResolutionEventType(cmd),
       actorId: cmd.actorId || null,
       skillId: cmd.skillId || null,
@@ -1726,6 +1728,12 @@ export class TurnManager {
       this.#buffManager.removeByType(characterId, 'MULTI_CAST_PENDING');
     } else {
       finalSequence = result.sequence;
+    }
+
+    const actionId = finalSequence.id || `action_${this.#turnNumber}_${characterId}_${Date.now()}`;
+    finalSequence.actionId = actionId;
+    for (const cmd of finalSequence.commands) {
+      cmd.actionId = actionId;
     }
 
     // Apply speed buffs (SPEED_BOOST: +1 speed tier)

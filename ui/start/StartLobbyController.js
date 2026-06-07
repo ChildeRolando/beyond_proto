@@ -95,7 +95,7 @@ export function initStartLobbyController(ctx) {
   const legacyPveButton = document.getElementById('btn-pve');
   if (legacyPveButton) {
     legacyPveButton.addEventListener('click', () => {
-      ctx.callbacks.onStartLocalCoop?.();
+      ctx.callbacks.onStartLegacyPve?.();
     });
   }
 

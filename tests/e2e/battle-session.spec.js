@@ -35,23 +35,23 @@ test.afterEach(async ({ }, testInfo) => {
  */
 async function enterLocalBattle(page) {
   await page.goto('/');
-  await page.locator('#btn-local-coop').click();
+  await page.locator('#btn-local-duel').click();
   await expect(page.locator('#config-screen')).toBeVisible();
-  await page.waitForSelector('#config-player-switch button[data-player="hero_1"]');
+  await page.waitForSelector('#config-player-switch button[data-player="player1"]');
 
-  // Lock hero_1
+  // Lock player1
   await page.locator('#btn-config-lock').click();
-  // Switch to hero_2 and lock
-  await page.locator('#config-player-switch button[data-player="hero_2"]').click();
+  // Switch to player2 and lock
+  await page.locator('#config-player-switch button[data-player="player2"]').click();
   await page.locator('#btn-config-lock').click();
   // Start battle
   await page.locator('#btn-config-start').click();
   await expect(page.locator('#app')).toBeVisible();
 }
 
-async function enterPveBattle(page) {
+async function enterLegacyPveBattle(page) {
   await page.goto('/');
-  await page.locator('#btn-local-coop').click();
+  await page.evaluate(() => document.getElementById('btn-pve')?.click());
   await expect(page.locator('#config-screen')).toBeVisible();
   await page.waitForSelector('#config-player-switch button[data-player="hero_1"]');
 
@@ -289,7 +289,7 @@ test('A4: execute local turn advances game state', async ({ page }) => {
 // ─── A5: PVE battle starts and player action path works ───
 
 test('A5: PVE battle starts and action dock renders', async ({ page }) => {
-  await enterPveBattle(page);
+  await enterLegacyPveBattle(page);
 
   // Submit status should show PVE info
   const submitText = await page.locator('#submit-status').textContent();

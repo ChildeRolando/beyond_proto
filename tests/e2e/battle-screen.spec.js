@@ -20,16 +20,16 @@ test.afterEach(async ({ }, testInfo) => {
 
 async function lockBothAndStart(page) {
   await page.goto('/');
-  await page.locator('#btn-local-coop').click();
+  await page.locator('#btn-local-duel').click();
   await expect(page.locator('#config-screen')).toBeVisible();
-  await page.waitForSelector('#config-player-switch button[data-player="hero_1"]');
+  await page.waitForSelector('#config-player-switch button[data-player="player1"]');
 
-  // Lock hero_1
+  // Lock player1
   await page.locator('#btn-config-lock').click();
   await expect(page.locator('#btn-config-lock')).toHaveText('修改配置');
 
-  // Switch to hero_2 and lock
-  await page.locator('#config-player-switch button[data-player="hero_2"]').click();
+  // Switch to player2 and lock
+  await page.locator('#config-player-switch button[data-player="player2"]').click();
   await page.locator('#btn-config-lock').click();
   await expect(page.locator('#btn-config-lock')).toHaveText('修改配置');
 

@@ -118,14 +118,14 @@
     <h1>超越极限 · 战斗引擎</h1>
     <span id="mode-badge" class="local">本地</span>
     <span class="info" id="conn-indicator" style="display:none"><span class="dot green"></span>已连接</span>
-    <span class="info">P1</span>
+    <span class="info" id="battle-left-label">P1</span>
     <select id="p1-class-select">
       <option value="法师" selected>法师</option>
       <option value="战士">战士</option>
       <option value="射手">射手</option>
     </select>
-    <span class="info">vs</span>
-    <span class="info">P2</span>
+    <span class="info" id="battle-vs-label">vs</span>
+    <span class="info" id="battle-right-label">P2</span>
     <select id="p2-class-select">
       <option value="法师">法师</option>
       <option value="战士" selected>战士</option>
@@ -139,19 +139,27 @@
     <button id="btn-reset">重置</button>
     <button id="btn-help-top" title="规则说明">?</button>
   </div>
-  <div id="resolution-timeline" data-testid="resolution-timeline" aria-live="polite">
-    <div class="resolution-timeline-head">
-      <div id="resolution-active-speed" class="resolution-active-speed" data-testid="resolution-active-speed">等待回放</div>
-      <button id="resolution-skip" class="resolution-skip" data-testid="resolution-skip" type="button">跳过</button>
-    </div>
-    <div class="resolution-axis" id="resolution-axis"></div>
-    <div id="resolution-phase-summary" class="resolution-phase-summary" data-testid="resolution-phase-summary"></div>
-    <div id="resolution-complete" class="resolution-complete" data-testid="resolution-complete" hidden>回放完成</div>
-  </div>
   <div id="selected-unit-drawer"></div>
   <div id="canvas-wrap"><canvas id="board"></canvas></div>
   <div id="action-dock"></div>
   <div id="right-sidebar">
+    <div id="resolution-timeline" data-testid="resolution-timeline" data-orientation="vertical" aria-live="polite">
+      <div class="resolution-timeline-head">
+        <div class="resolution-timeline-title">
+          <div id="resolution-active-speed" class="resolution-active-speed" data-testid="resolution-active-speed">等待回放</div>
+          <div id="resolution-phase-summary" class="resolution-phase-summary" data-testid="resolution-phase-summary"></div>
+        </div>
+        <div class="resolution-timeline-actions">
+          <button id="resolution-timeline-close" class="resolution-timeline-toggle" data-testid="resolution-timeline-close" type="button">收起</button>
+          <button id="resolution-timeline-open" class="resolution-timeline-toggle" data-testid="resolution-timeline-open" type="button" hidden>展开</button>
+          <button id="resolution-skip" class="resolution-skip" data-testid="resolution-skip" type="button">跳过</button>
+        </div>
+      </div>
+      <div class="resolution-timeline-body">
+        <div class="resolution-axis" id="resolution-axis"></div>
+        <div id="resolution-complete" class="resolution-complete" data-testid="resolution-complete" hidden>回放完成</div>
+      </div>
+    </div>
     <div id="hover-inspector"></div>
     <div id="right-sidebar-tabs">
       <button id="tab-log" class="active" data-tab="log">日志</button>

@@ -53,13 +53,13 @@ test('local button enters config screen', async ({ page }) => {
   await expect(page.locator('#config-role-list')).toBeVisible();
 });
 
-// A3: Coop button enters PVE setup
-test('co-op button enters PVE setup', async ({ page }) => {
+// A3: Legacy PVE button enters PVE setup
+test('legacy PVE button enters PVE setup', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#btn-local-coop').click();
+  await page.evaluate(() => document.getElementById('btn-pve')?.click());
   await expect(page.locator('#config-screen')).toBeVisible();
   await expect(page.locator('#start-screen')).not.toBeVisible();
-  await expect(page.locator('#config-mode-label')).toContainText('本地合作');
+  await expect(page.locator('#config-mode-label')).toContainText('PVE');
   await expect(page.locator('#team-status')).toContainText('PVE 队伍');
   await expect(page.locator('#config-role-list')).toBeVisible();
   await expect(page.locator('#config-player-switch button[data-player="hero_1"]')).toBeVisible();

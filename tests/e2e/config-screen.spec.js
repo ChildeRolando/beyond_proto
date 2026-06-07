@@ -184,13 +184,13 @@ test('lock config toggles button text', async ({ page }) => {
   await expect(lockBtn).toHaveText('锁定配置');
 });
 
-// ─── 9. PVE config loads ───
+// ─── 9. Legacy PVE config loads ───
 
-test('PVE config screen loads', async ({ page }) => {
+test('legacy PVE config screen loads', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#btn-local-coop').click();
+  await page.evaluate(() => document.getElementById('btn-pve')?.click());
   await expect(page.locator('#config-screen')).toBeVisible();
-  await expect(page.locator('#config-mode-label')).toContainText('本地合作');
+  await expect(page.locator('#config-mode-label')).toContainText('PVE');
   await expect(page.locator('#team-status')).toContainText('PVE 队伍');
   await expect(page.locator('#config-role-list')).toBeVisible();
   await expect(page.locator('#config-player-switch button[data-player="hero_1"]')).toBeVisible();

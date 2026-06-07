@@ -86,7 +86,8 @@ export function createAppRuntime() {
   const getNetworkManager = () => networkSession?.getNetworkManager() || null;
   const getCurrentGameMode = () => normalizeConfigMode(configSession?.getConfigMode());
   const getTutorialManager = () => tutorialManager;
-  const isPveMode = () => isGameModePve(getCurrentGameMode()) && (!getNetworkManager() || getNetworkManager().mode === 'local');
+  const isPveMode = () => Boolean(configSession?.isLegacyPveMode?.()) ||
+    (isGameModePve(getCurrentGameMode()) && (!getNetworkManager() || getNetworkManager().mode === 'local'));
   const getBattleCanvasRenderer = () => battleCanvasRenderer;
   const getGameOverController = () => gameOverController;
   const getStartLobbyUi = () => startLobbyUi;
@@ -138,6 +139,8 @@ export function createAppRuntime() {
   turnPlaybackController = createTurnPlaybackController({
     getBattleSession: () => battleSession,
     getEl,
+    getCharacterPortraitSrc: (char) => battleCanvasRenderer?.getCharacterPortraitSrc?.(char) || '',
+    getCurrentGameMode,
     renderAll: () => battleRender.renderAll(),
     setSubmitStatus: battleRender.setSubmitStatus,
     setExecuteDisabled: battleRender.setExecuteDisabled,
@@ -199,13 +202,16 @@ export function createAppRuntime() {
         startModeActions.startTutorial();
       },
       onStartLocalDuel() {
-        startModeActions.startLocalConfig(GameMode.LOCAL_DUEL, '本地对战');
+        startModeActions.startLocalConfig(GameMode.LOCAL_DUEL, '本地对战', { leftLabel: 'P1', rightLabel: 'P2' });
       },
       onStartLocalCoop() {
-        startModeActions.startLocalConfig(GameMode.LOCAL_COOP, '本地合作');
+        startModeActions.startLocalConfig(GameMode.LOCAL_COOP, '本地合作', { leftLabel: 'P1', rightLabel: 'P2' });
       },
       onStartLocalSolo() {
-        startModeActions.startLocalConfig(GameMode.LOCAL_SOLO, '本地单人');
+        startModeActions.startLocalConfig(GameMode.LOCAL_SOLO, '本地单人', { leftLabel: 'P1', rightLabel: 'AI' });
+      },
+      onStartLegacyPve() {
+        startModeActions.startLegacyPveConfig();
       },
       onStartP2PDuel() {
         startModeActions.startP2PConfig(GameMode.P2P_DUEL, '联机对战');

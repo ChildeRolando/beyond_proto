@@ -23,8 +23,7 @@ export function isLocalMode(mode) {
 
 export function isPveMode(mode) {
   const normalized = normalizeConfigMode(mode);
-  return normalized === GameMode.LOCAL_COOP ||
-    normalized === GameMode.LOCAL_SOLO;
+  return normalized === GameMode.LOCAL_SOLO;
 }
 
 export function isCoopMode(mode) {

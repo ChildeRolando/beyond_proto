@@ -136,6 +136,34 @@ export function installRuntimeTestHooks({
           },
         ],
       },
+      line_attack: {
+        mode: 'duel',
+        teams: commonTeams,
+        rules: { friendlyFire: false },
+        combatants: [
+          {
+            id: 'hero_line',
+            teamId: 'player1',
+            ownerId: 'player1',
+            control: 'human',
+            class: '法师',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['mage_dimension_slash'],
+            position: { q: 0, r: 0 },
+            resources: { qi: 10 },
+          },
+          {
+            id: 'enemy_line',
+            teamId: 'player2',
+            ownerId: 'player2',
+            control: 'human',
+            class: '战士',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['warrior_slash'],
+            position: { q: 2, r: 0 },
+          },
+        ],
+      },
     };
 
     return structuredClone(scenarios[kind] || scenarios.phase_order);

@@ -8,8 +8,11 @@ export function createBattleRenderCoordinator({
   getBattleSession,
   getBattleCanvasRenderer,
 }) {
-  const setText = (id, text) => { const el = getEl(id); if (el) el.textContent = text; };
   const setDisplay = (id, value) => { const el = getEl(id); if (el) el.style.display = value; };
+  const setText = (id, text) => {
+    const el = getEl(id);
+    if (el) el.textContent = text;
+  };
 
   const hideBattleHeaderControls = () => {
     setDisplay('p1-class-select', 'none');
@@ -18,13 +21,16 @@ export function createBattleRenderCoordinator({
     setDisplay('btn-reset', '');
   };
 
-  const setBattleHeader = (modeText, modeClass, connected = false) => {
+  const setBattleHeader = (modeText, modeClass, connected = false, headerLabels = {}) => {
     const badge = getEl('mode-badge');
     if (badge) {
       badge.textContent = modeText;
       badge.className = modeClass;
     }
     setDisplay('conn-indicator', connected ? '' : 'none');
+    setText('battle-left-label', headerLabels.leftLabel || 'P1');
+    setText('battle-vs-label', headerLabels.vsLabel || 'vs');
+    setText('battle-right-label', headerLabels.rightLabel || 'P2');
     hideBattleHeaderControls();
   };
 

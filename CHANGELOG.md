@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-08 - Turn Resolution Timeline 交互与模式分流修复
+
+- 修复本地单人/本地合作模式分流：`local_solo` 保持 PVE / AI 对手，`local_coop` 保持纯 P1 vs P2，本地单人不再误进本地合作式战斗页。
+- 将回放 dock 移到右侧战斗栏并改为纵向布局，加入收起/展开按钮，收起后不跳过回放且可重新打开。
+- 结算时间轴改为按 `TurnResolution` phases 渲染动作卡片，显示头像、玩家标签、技能图标、技能名和结果摘要。
+- 动作计数改为基于唯一 `actionId`，不再按结算事件条数统计；`End` 仅在所有 speed phase 完成后激活。
+- 新增/更新 Playwright 覆盖：本地单人模式、timeline 布局、收起/展开、动作卡片、动作计数、phase 状态。
+
 ## 2026-06-08 - 教程返回大厅残留回归测试
 
 - `tests/tutorial.spec.js`：补充第 3 关完成后点击 `tutorial-next` 的返回大厅回归，确认 `returnToStart` 会清掉 tutorial HUD、overlay 和战斗区。

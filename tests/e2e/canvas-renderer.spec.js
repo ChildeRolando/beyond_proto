@@ -37,12 +37,12 @@ test.afterEach(async ({}, testInfo) => {
 
 async function enterLocalBattle(page) {
   await page.goto('/');
-  await page.locator('#btn-local-coop').click();
+  await page.locator('#btn-local-duel').click();
   await expect(page.locator('#config-screen')).toBeVisible();
-  await page.waitForSelector('#config-player-switch button[data-player="hero_1"]');
+  await page.waitForSelector('#config-player-switch button[data-player="player1"]');
 
   await page.locator('#btn-config-lock').click();
-  await page.locator('#config-player-switch button[data-player="hero_2"]').click();
+  await page.locator('#config-player-switch button[data-player="player2"]').click();
   await page.locator('#btn-config-lock').click();
   await page.locator('#btn-config-start').click();
 

@@ -8,7 +8,7 @@ assert.equal(normalizeConfigMode('pve'), GameMode.LOCAL_COOP);
 assert.equal(normalizeConfigMode('p2p'), GameMode.P2P_DUEL);
 
 assert.equal(isPveMode(GameMode.LOCAL_SOLO), true);
-assert.equal(isPveMode(GameMode.LOCAL_COOP), true);
+assert.equal(isPveMode(GameMode.LOCAL_COOP), false);
 assert.equal(isPveMode(GameMode.LOCAL_DUEL), false);
 assert.equal(isPveMode(GameMode.P2P_DUEL), false);
 

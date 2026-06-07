@@ -1,3 +1,7 @@
+import { SKILLS } from '../engine/SkillData.js';
+import { GameMode } from './GameModes.js';
+import { getSkillIconSrc } from '../ui/shared/SkillIconAssets.js';
+
 function createCountdownWait(ms, shouldAbort) {
   const start = performance.now();
   return new Promise(resolve => {
@@ -34,15 +38,20 @@ function phaseDuration(event) {
 export function createTurnPlaybackController({
   getBattleSession,
   getEl,
+  getCharacterPortraitSrc,
+  getCurrentGameMode,
   renderAll,
   setSubmitStatus,
   setExecuteDisabled,
 } = {}) {
   const state = {
     playing: false,
+    playbackStatus: 'idle',
     skipRequested: false,
     resolution: null,
     activeSpeed: null,
+    selectedSpeed: null,
+    collapsed: false,
     startedEventIdsInCurrentPhase: [],
     completedEventIdsInCurrentPhase: [],
     phaseStartCountBySpeed: new Map(),
@@ -54,12 +63,99 @@ export function createTurnPlaybackController({
   const getSummaryEl = () => getEl?.('resolution-phase-summary') || null;
   const getCompleteEl = () => getEl?.('resolution-complete') || null;
   const getSkipEl = () => getEl?.('resolution-skip') || null;
+  const getCloseEl = () => getEl?.('resolution-timeline-close') || null;
+  const getOpenEl = () => getEl?.('resolution-timeline-open') || null;
+
+  function getActorForAction(phase, action) {
+    const characters = phase?.viewState?.characters || [];
+    return characters.find(char => char.id === action.actorId) || null;
+  }
+
+  function getAvatarSrc(phase, action) {
+    const actor = getActorForAction(phase, action);
+    return getCharacterPortraitSrc?.(actor) || '';
+  }
+
+  function getSkillSrc(action) {
+    const skill = action.skillId ? SKILLS[action.skillId] : null;
+    return getSkillIconSrc(skill);
+  }
+
+  function getTimelineActionLabel(action) {
+    if (action.ownerId === 'ai') return 'AI';
+    if (getCurrentGameMode?.() === GameMode.LOCAL_SOLO && action.ownerId === 'player2') {
+      return 'AI';
+    }
+    return action.playerLabel || '—';
+  }
+
+  function applyCollapsedState() {
+    const timeline = getTimelineEl();
+    if (!timeline) return;
+    const collapsed = Boolean(state.collapsed);
+    timeline.dataset.collapsed = collapsed ? '1' : '0';
+    const closeBtn = getCloseEl();
+    const openBtn = getOpenEl();
+    if (closeBtn) closeBtn.hidden = collapsed;
+    if (openBtn) openBtn.hidden = !collapsed;
+  }
+
+  function setCollapsed(collapsed) {
+    state.collapsed = Boolean(collapsed);
+    applyCollapsedState();
+  }
+
+  function renderActionCard(phase, action) {
+    const avatarSrc = getAvatarSrc(phase, action);
+    const skillSrc = getSkillSrc(action);
+    const actor = getActorForAction(phase, action);
+    const actorInitial = (actor?.name || action.actorName || action.actorId || '?').slice(0, 1);
+    const avatarHtml = avatarSrc
+      ? `<img class="resolution-action-avatar" src="${avatarSrc}" alt="${action.actorName || action.actorId || '角色'}">`
+      : `<div class="resolution-action-avatar-fallback">${actorInitial}</div>`;
+    const skillIconHtml = skillSrc
+      ? `<img class="resolution-action-skill-icon" src="${skillSrc}" alt="${action.skillName || '技能'}">`
+      : '';
+
+    return `
+      <article class="resolution-action-card" data-testid="resolution-action-card" data-action-id="${action.actionId}">
+        ${avatarHtml}
+        <div class="resolution-action-main">
+          <div class="resolution-action-topline">
+            <span class="resolution-action-actor">${action.actorName || action.actorId || '未知角色'}</span>
+            <span class="resolution-action-player">${getTimelineActionLabel(action)}</span>
+          </div>
+          <div class="resolution-action-subline">
+            ${skillIconHtml}
+            <span class="resolution-action-skill-name">${action.skillName || '未知技能'}</span>
+          </div>
+          <div class="resolution-action-summary">${action.summaryText || action.targetSummary || '无详细结果'}</div>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderPhaseCard(phase) {
+    const actions = Array.isArray(phase.actions) ? phase.actions : [];
+    const actionCards = actions.map(action => renderActionCard(phase, action)).join('');
+    const actionCount = typeof phase.actionCount === 'number' ? phase.actionCount : actions.length;
+    return `
+      <div class="resolution-phase" data-testid="resolution-phase-speed-${phase.speed}" data-speed="${phase.speed}">
+        <div class="resolution-phase-head">
+          <span class="resolution-phase-label">Speed ${phase.speed}</span>
+          <span class="resolution-phase-count">${actionCount} ${actionCount === 1 ? 'action' : 'actions'}</span>
+        </div>
+        <div class="resolution-action-list">${actionCards || '<div class="resolution-action-summary">无动作</div>'}</div>
+      </div>
+    `;
+  }
 
   function resetTimelineDom() {
     const timeline = getTimelineEl();
     if (!timeline) return;
     timeline.classList.remove('show', 'complete');
     timeline.dataset.playing = '0';
+    timeline.dataset.collapsed = '0';
     const axis = getAxisEl();
     if (axis) axis.innerHTML = '';
     const activeSpeedEl = getActiveSpeedEl();
@@ -68,13 +164,22 @@ export function createTurnPlaybackController({
     if (summaryEl) summaryEl.textContent = '';
     const completeEl = getCompleteEl();
     if (completeEl) completeEl.hidden = true;
+    const skipBtn = getSkipEl();
+    if (skipBtn) skipBtn.hidden = false;
+    const closeBtn = getCloseEl();
+    if (closeBtn) closeBtn.hidden = false;
+    const openBtn = getOpenEl();
+    if (openBtn) openBtn.hidden = true;
   }
 
   function reset() {
     state.playing = false;
+    state.playbackStatus = 'idle';
     state.skipRequested = false;
     state.resolution = null;
     state.activeSpeed = null;
+    state.selectedSpeed = null;
+    state.collapsed = false;
     state.startedEventIdsInCurrentPhase = [];
     state.completedEventIdsInCurrentPhase = [];
     state.phaseStartCountBySpeed = new Map();
@@ -86,15 +191,15 @@ export function createTurnPlaybackController({
     const axis = getAxisEl();
     if (!timeline || !axis) return;
 
-    axis.innerHTML = phases.map(phase => `
-      <div class="resolution-phase" data-testid="resolution-phase-speed-${phase.speed}" data-speed="${phase.speed}">
-        <span class="resolution-phase-label">Speed ${phase.speed}</span>
-        <span class="resolution-phase-count">${phase.summary || `Speed ${phase.speed}`}</span>
-      </div>
-    `).join('') + `
+    axis.innerHTML = phases.map(renderPhaseCard).join('') + `
       <div class="resolution-phase resolution-phase-end" data-testid="resolution-phase-end" data-speed="end">
-        <span class="resolution-phase-label">End</span>
-        <span class="resolution-phase-count">完成</span>
+        <div class="resolution-phase-head">
+          <span class="resolution-phase-label">End</span>
+          <span class="resolution-phase-count">${state.playbackStatus === 'complete' ? '完成' : '等待'}</span>
+        </div>
+        <div class="resolution-action-list">
+          <div class="resolution-action-summary">全部速度阶段播放完成后激活。</div>
+        </div>
       </div>
     `;
 
@@ -104,14 +209,21 @@ export function createTurnPlaybackController({
     if (skipBtn) skipBtn.hidden = false;
     const completeEl = getCompleteEl();
     if (completeEl) completeEl.hidden = true;
+    applyCollapsedState();
   }
 
   function setActiveSpeed(speed, summary = '') {
     state.activeSpeed = speed;
+    state.selectedSpeed = speed;
     const timeline = getTimelineEl();
     if (!timeline) return;
     timeline.querySelectorAll('.resolution-phase').forEach(node => {
-      node.classList.toggle('active', node.dataset.speed === String(speed));
+      const isSpeed = node.dataset.speed === String(speed);
+      node.classList.toggle('active', isSpeed && speed !== 'end');
+      node.classList.toggle('selected', isSpeed);
+      if (node.dataset.speed === 'end') {
+        node.classList.toggle('active', speed === 'end');
+      }
     });
     const activeSpeedEl = getActiveSpeedEl();
     if (activeSpeedEl) activeSpeedEl.textContent = speed === 'end' ? 'End' : `Speed ${speed}`;
@@ -131,6 +243,9 @@ export function createTurnPlaybackController({
     if (!timeline) return;
     timeline.classList.add('complete', 'show');
     timeline.dataset.playing = '0';
+    state.playbackStatus = 'complete';
+    state.activeSpeed = 'end';
+    state.selectedSpeed = 'end';
     const activeSpeedEl = getActiveSpeedEl();
     if (activeSpeedEl) activeSpeedEl.textContent = 'End';
     const summaryEl = getSummaryEl();
@@ -146,6 +261,10 @@ export function createTurnPlaybackController({
     state.skipRequested = true;
   }
 
+  function toggleCollapsed() {
+    setCollapsed(!state.collapsed);
+  }
+
   async function play(turnData) {
     if (!turnData?.resolution) return { success: false, error: 'missing_resolution' };
     if (state.playing) return { success: false, error: 'playback_in_progress' };
@@ -154,19 +273,21 @@ export function createTurnPlaybackController({
     if (!battleSession) return { success: false, error: 'no_battle_session' };
 
     state.playing = true;
+    state.playbackStatus = 'playing';
     state.skipRequested = false;
     state.resolution = structuredClone(turnData.resolution);
     state.activeSpeed = null;
+    state.selectedSpeed = null;
     state.startedEventIdsInCurrentPhase = [];
     state.completedEventIdsInCurrentPhase = [];
     state.phaseStartCountBySpeed = new Map();
 
     battleSession.setResolutionPlaybackLocked?.(true);
-    battleSession.setResolutionPlaybackState?.({
-      viewState: battleSession.getRenderState?.() || battleSession.getState?.() || battleSession.engine?.getState?.(),
-      resolution: state.resolution,
-      activeSpeed: null,
-    });
+      battleSession.setResolutionPlaybackState?.({
+        viewState: battleSession.getRenderState?.() || battleSession.getState?.() || battleSession.engine?.getState?.(),
+        resolution: state.resolution,
+        activeSpeed: null,
+      });
     setExecuteDisabled?.(true);
     setSubmitStatus?.('回放中...');
 
@@ -210,6 +331,7 @@ export function createTurnPlaybackController({
         activeSpeed: 'end',
         complete: true,
       });
+      state.playbackStatus = state.skipRequested ? 'skipped' : 'complete';
       setActiveSpeed('end', state.skipRequested ? '已跳过' : '回放完成');
       markComplete(state.skipRequested ? '已跳过' : '回放完成');
       renderAll?.();
@@ -223,7 +345,10 @@ export function createTurnPlaybackController({
   function getTimelineState() {
     return {
       playing: state.playing,
+      playbackStatus: state.playbackStatus,
       activeSpeed: state.activeSpeed,
+      selectedSpeed: state.selectedSpeed,
+      collapsed: state.collapsed,
       startedEventIdsInCurrentPhase: [...state.startedEventIdsInCurrentPhase],
       completedEventIdsInCurrentPhase: [...state.completedEventIdsInCurrentPhase],
       phaseStartCountBySpeed: Object.fromEntries(state.phaseStartCountBySpeed.entries()),
@@ -244,11 +369,15 @@ export function createTurnPlaybackController({
   }
 
   getSkipEl()?.addEventListener('click', skip);
+  getCloseEl()?.addEventListener('click', () => setCollapsed(true));
+  getOpenEl()?.addEventListener('click', () => setCollapsed(false));
   reset();
 
   return {
     play,
     skip,
+    toggleCollapsed,
+    setCollapsed,
     reset,
     resetTimelineDom,
     renderTimeline,
@@ -259,6 +388,7 @@ export function createTurnPlaybackController({
     getResolution,
     isPlaying,
     setResolution,
+    getPlaybackStatus: () => state.playbackStatus,
     get skipRequested() { return state.skipRequested; },
   };
 }

@@ -9,12 +9,20 @@ export function createStartModeActions({
   lifecycle,
   getGameModeEnum,
 }) {
-  function startLocalConfig(mode, headerText) {
+  function startLocalConfig(mode, headerText, headerLabels = {}) {
     getNetworkSession()?.disconnect();
     const configSession = getConfigSession();
     configSession.resetPlayerConfigs();
-    battleRender.setBattleHeader(headerText, 'local', false);
+    battleRender.setBattleHeader(headerText, 'local', false, headerLabels);
     configSession.showConfigScreen(mode);
+  }
+
+  function startLegacyPveConfig() {
+    getNetworkSession()?.disconnect();
+    const configSession = getConfigSession();
+    configSession.resetPlayerConfigs();
+    battleRender.setBattleHeader('PVE', 'local', false, { leftLabel: 'P1', rightLabel: 'AI' });
+    configSession.showConfigScreen('pve');
   }
 
   function startP2PConfig(mode, headerText) {
@@ -45,6 +53,7 @@ export function createStartModeActions({
 
   return {
     startLocalConfig,
+    startLegacyPveConfig,
     startP2PConfig,
     startTutorial,
     backStart,

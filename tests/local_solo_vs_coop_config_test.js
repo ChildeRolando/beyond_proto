@@ -46,22 +46,26 @@ console.log('=== Local Solo vs Coop Config Tests ===\n');
   const { controller, renderContexts } = createController();
   controller.showConfigScreen('local_coop');
 
-  assert.equal(controller.getCurrentConfigPlayer(), 'hero_1');
-  assert.equal(controller.getPveHeroSlots().length, 2);
+  assert.equal(controller.getCurrentConfigPlayer(), 'player1');
+  assert.equal(renderContexts.at(-1)?.legacyPveMode, false);
+  assert.equal(renderContexts.at(-1)?.configPlayers?.player1?.playerId, 'player1');
+  assert.equal(renderContexts.at(-1)?.configPlayers?.player2?.playerId, 'player2');
   assert.equal(controller.canStartBattle(), false);
 
-  controller.setCurrentPveHeroSlot('hero_1');
+  controller.setActiveClass('射手');
   controller.toggleLockCurrent();
   assert.equal(controller.canStartBattle(), false);
 
-  controller.setCurrentPveHeroSlot('hero_2');
+  controller.setCurrentConfigPlayer('player2');
+  controller.setActiveClass('法师');
   controller.toggleLockCurrent();
   assert.equal(controller.canStartBattle(), true);
 
-  const scenario = controller.buildPveBattleScenario(88);
-  assert.equal(scenario.mode, 'pve_multi');
-  assert.equal(scenario.combatants.length, 4);
-  assert.equal(renderContexts.at(-1)?.pveHeroSlots?.length, 2);
+  const configs = controller.getBattlePlayerConfigs();
+  assert.equal(configs.length, 2);
+  assert.equal(configs[0].playerId, 'player1');
+  assert.equal(configs[1].playerId, 'player2');
+  assert.notEqual(configs[0].class, configs[1].class);
 }
 
 {
@@ -70,7 +74,7 @@ console.log('=== Local Solo vs Coop Config Tests ===\n');
 
   assert.equal(controller.getCurrentConfigPlayer(), 'player1');
   assert.equal(controller.activeConfig().playerId, 'player1');
-  assert.equal(controller.activeConfig().playerId === 'hero_1', false);
+  assert.equal(controller.activeConfig().playerId === 'player1', true);
 
   controller.toggleLockCurrent();
   assert.equal(controller.canStartBattle(), true);
