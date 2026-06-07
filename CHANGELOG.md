@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-06-08 - GameOverController 返回大厅走统一 ReturnToStartAction
+
+- `ui/battle/GameOverController.js`：#btn-lobby 改为调用 `callbacks.returnToStart()`，不再手写 hide/resetNetworkState/setRoute/startLobbyUi 这套逻辑
+- `app/AppRuntime.js`：returnToStart 改为 lazy 声明（`let returnToStart = () => {}`），先传给 initGameOverController，后用 `createReturnToStartAction` 赋值，保证单一统一入口
+- `app/ReturnToStartAction.js`：清理逻辑已完备（battle session reset、tutorialManager reset、所有 overlay/hud 清理、route + startLobbyUi 重置）
+- `tests/tutorial.spec.js`：新增 lobby 按钮清理所有 overlay 的测试（8 tests passed）
+- `tests/architecture/battle-session-split.spec.js`：适配新的 lazy binding 模式
+
+## 2026-06-07 - deploy.sh 差异部署加固
+
+- `deploy.sh` 改为 marker + git diff 的差异化 SCP 部署，同时合并 staged、unstaged 和 untracked 文件，避免漏传未提交工作区修改。
+- 上传列表和删除列表分离，远端目录创建、文件删除、重启调度和 marker 更新均失败即停止，避免失败部署误推进 `.deploy-marker`。
+- 保留 `--assets` / `--full`，默认继续排除文档、图片资源、测试产物、`.claude/`、`node_modules/` 和 `ngrok.exe`。
+- 新增 `tests/deploy_script_test.mjs`，用 dry-run 临时仓库覆盖 committed diff、dirty diff、删除、untracked 和排除规则。
+
 ## 2026-06-07 - 教程分支限流修复
 
 - 修复 `BattleSessionController` 在非教学战斗里误用 `TutorialManager` 的问题，普通 PVE / 本地合作现在能正确渲染可操作角色和技能栏。

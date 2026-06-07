@@ -243,6 +243,9 @@ export function createAppRuntime() {
     getCurrentRoute: () => routeController.getRoute(),
   });
 
+  // ── Return to start (lazy init, assigned after createReturnToStartAction) ──
+  let returnToStart = () => {};
+
   // ── Game over controller ──
   gameOverController = initGameOverController({
     battleSession,
@@ -258,6 +261,7 @@ export function createAppRuntime() {
         getEl('disconnect-overlay')?.classList.remove('show');
       },
       getBattlePlayerConfigs: () => configSession.getBattlePlayerConfigs(),
+      returnToStart: () => returnToStart(),
     },
   });
 
@@ -303,7 +307,7 @@ export function createAppRuntime() {
   });
 
   // ── Return to start action ──
-  const returnToStart = createReturnToStartAction({
+  returnToStart = createReturnToStartAction({
     getEl,
     getBattleSession,
     getGameOverController,

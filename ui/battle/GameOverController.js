@@ -17,11 +17,12 @@
  * @param {Function} ctx.callbacks.startBattleFromConfigs - (seed, players) => void
  * @param {Function} ctx.callbacks.resetNetworkState - () => void (resets rematch state, disconnects)
  * @param {Function} ctx.callbacks.getBattlePlayerConfigs - () => config[]
+ * @param {Function} ctx.callbacks.returnToStart - () => void (unified return to start screen)
  * @returns {Object} controller handle
  */
 export function initGameOverController(ctx) {
   const { battleSession, getNetworkManager, getCurrentGameMode, startLobbyUi, callbacks } = ctx;
-  const { setRoute, showConfigScreen, startBattleFromConfigs, resetNetworkState, getBattlePlayerConfigs } = callbacks;
+  const { setRoute, showConfigScreen, startBattleFromConfigs, resetNetworkState, getBattlePlayerConfigs, returnToStart } = callbacks;
 
   let opponentReadyForRematch = false;
 
@@ -79,11 +80,7 @@ export function initGameOverController(ctx) {
   // ─── Lobby button ───
 
   document.getElementById('btn-lobby').addEventListener('click', () => {
-    hide();
-    resetNetworkState();
-    setRoute('start');
-    startLobbyUi.hideRoomSetup();
-    startLobbyUi.resetConnectionUI();
+    returnToStart();
   });
 
   // ─── Expose test hook for E2E ───

@@ -240,12 +240,15 @@ test('main.js does NOT call battleSession.clearPlannedActions', () => {
 
 // ─── NEW: Ban bare returnToStart() call in main.js ───
 
-test('AppRuntime.js returnToStart has lexical binding (const + createReturnToStartAction)', () => {
-  // returnToStart is now created via createReturnToStartAction and assigned via installRuntimeTestHooks.
-  const hasConstBinding = /const\s+returnToStart\s*=/.test(appSrc);
+test('AppRuntime.js returnToStart has lazy binding (let + assignment via createReturnToStartAction)', () => {
+  // returnToStart is declared as let then assigned after initGameOverController.
+  // Pattern: let returnToStart = () => {};  ...  returnToStart = createReturnToStartAction(...)
+  const hasLazyInit = /let\s+returnToStart\s*=\s*\(\)\s*=>/.test(appSrc);
+  const hasAssignment = /returnToStart\s*=\s*createReturnToStartAction\s*\(/.test(appSrc);
   const hasImportAction = /import\s+\{\s*createReturnToStartAction\s*\}\s+from/.test(appSrc);
   const hasImportHooks = /import\s+\{\s*installRuntimeTestHooks\s*\}\s+from/.test(appSrc);
-  expect(hasConstBinding).toBe(true);
+  expect(hasLazyInit).toBe(true);
+  expect(hasAssignment).toBe(true);
   expect(hasImportAction).toBe(true);
   expect(hasImportHooks).toBe(true);
 });

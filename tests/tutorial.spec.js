@@ -232,3 +232,29 @@ test('tutorial next is disabled until level complete', async ({ page }) => {
 
   expect(after).toBe(before);
 });
+
+test('gameover lobby button calls returnToStart and cleans all overlays', async ({ page }) => {
+  await enterTutorial(page);
+
+  await expect(page.locator('#tutorial-hud')).toBeVisible();
+  await expect(page.locator('#app')).toBeVisible();
+
+  // Manually show overlays that could leak
+  await page.evaluate(() => {
+    document.getElementById('tutorial-overlay')?.classList.add('show');
+    document.getElementById('galaxy-overlay')?.classList.add('show');
+    document.getElementById('gameover-panel')?.classList.add('show');
+  });
+
+  // Click lobby button (calls returnToStart via callback)
+  // Use dispatchEvent to bypass tutorial-overlay intercepting pointer events
+  await page.evaluate(() => document.getElementById('btn-lobby').click());
+
+  // All overlays must be cleaned
+  await expect(page.locator('#start-screen')).toBeVisible();
+  await expect(page.locator('#app')).not.toBeVisible();
+  await expect(page.locator('#tutorial-hud')).not.toBeVisible();
+  await expect(page.locator('#tutorial-overlay')).not.toHaveClass(/show/);
+  await expect(page.locator('#galaxy-overlay')).not.toHaveClass(/show/);
+  await expect(page.locator('#gameover-panel')).not.toHaveClass(/show/);
+});
