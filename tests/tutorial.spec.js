@@ -220,6 +220,36 @@ test('tutorial returnToStart programmatic call cleans overlays', async ({ page }
   await expect(page.locator('#disconnect-overlay')).not.toHaveClass(/show/);
 });
 
+test('tutorial final return button cleans the HUD and returns to lobby', async ({ page }) => {
+  await enterTutorial(page);
+
+  await page.evaluate(() => window.__tutorialTest.selectSkill('warrior_move'));
+  await page.evaluate(() => window.__tutorialTest.chooseHex(1, 0));
+  await page.evaluate(() => window.__tutorialTest.executeTurn());
+  await clickNext(page);
+
+  await page.evaluate(() => window.__tutorialTest.selectSkill('warrior_slash'));
+  await page.evaluate(() => window.__tutorialTest.chooseHex(1, 0));
+  await page.evaluate(() => window.__tutorialTest.executeTurn());
+  await clickNext(page);
+
+  await page.evaluate(() => window.__tutorialTest.selectSkill('warrior_move'));
+  await page.evaluate(() => window.__tutorialTest.chooseHex(1, 0));
+  await expect(page.locator('[data-testid="tutorial-objective"]')).toContainText('行动已提交。点击执行回合后才会真正结算。');
+  await page.evaluate(() => window.__tutorialTest.executeTurn());
+
+  await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('基础教学完成');
+  await expect(page.locator('[data-testid="tutorial-next"]')).toBeEnabled();
+  await expect(page.locator('[data-testid="tutorial-next"]')).toHaveText('返回大厅');
+
+  await page.locator('[data-testid="tutorial-next"]').click();
+
+  await expect(page.locator('#start-screen')).toBeVisible();
+  await expect(page.locator('#app')).not.toBeVisible();
+  await expect(page.locator('#tutorial-hud')).not.toBeVisible();
+  await expect(page.locator('#tutorial-overlay')).not.toHaveClass(/show/);
+});
+
 test('tutorial next is disabled until level complete', async ({ page }) => {
   await enterTutorial(page);
 

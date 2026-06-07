@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-06-08 - 教程返回大厅残留回归测试
+
+- `tests/tutorial.spec.js`：补充第 3 关完成后点击 `tutorial-next` 的返回大厅回归，确认 `returnToStart` 会清掉 tutorial HUD、overlay 和战斗区。
+- 已用 `npx playwright test tests/tutorial.spec.js` 验证 9/9 通过。
+
 ## 2026-06-08 - GameOverController 返回大厅走统一 ReturnToStartAction
 
 - `ui/battle/GameOverController.js`：#btn-lobby 改为调用 `callbacks.returnToStart()`，不再手写 hide/resetNetworkState/setRoute/startLobbyUi 这套逻辑
