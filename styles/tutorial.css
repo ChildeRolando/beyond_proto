@@ -134,10 +134,20 @@
 #tutorial-hud {
   position: fixed;
   top: 66px;
-  right: 18px;
+  left: 18px;
   z-index: 2400;
   width: min(380px, calc(100vw - 24px));
   pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  #tutorial-hud {
+    top: auto;
+    right: 12px;
+    left: 12px;
+    bottom: 12px;
+    width: auto;
+  }
 }
 
 .tutorial-hud-panel {
@@ -226,14 +236,4 @@
 #tutorial-next:hover {
   color: var(--bg);
   filter: brightness(1.05);
-}
-
-@media (max-width: 900px) {
-  #tutorial-hud {
-    top: auto;
-    right: 12px;
-    left: 12px;
-    bottom: 12px;
-    width: auto;
-  }
 }
