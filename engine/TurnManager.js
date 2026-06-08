@@ -191,30 +191,8 @@ export class TurnManager {
           }
         }
 
-        // Dispatch ON_ATTACK_MISSED for projectile / AOE attackers that didn't hit
-        for (const attackerId of this.#projectileAttackers) {
-          if (!this.#lastHitByActor.get(attackerId)) {
-            const attacker = this.#registry.get(attackerId);
-            this.#logger?.log(`${attacker?.name || attackerId} 🔮 挥空`, 's');
-            const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, { attackerId });
-            this._processDeathWindReloads(missCtx);
-          }
-        }
-
-        // Also dispatch for melee attackers in phaseRecord whose pending event resolved to miss
-        if (phaseRecord) {
-          for (const evt of phaseRecord.events) {
-            if (evt.type !== 'attack' || evt.result !== 'pending') continue;
-            if (!this.#lastHitByActor.get(evt.actorId)) {
-              const attacker = this.#registry.get(evt.actorId);
-              if (attacker) {
-                this.#logger?.log(`${attacker.name || evt.actorId} ⚔ 挥空`, 's');
-                const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, { attackerId: evt.actorId });
-                this._processDeathWindReloads(missCtx);
-              }
-            }
-          }
-        }
+        // ON_ATTACK_MISSED is now dispatched per-action after finalization below,
+        // not per-actor here. This ensures same-actor mixed hit/miss is correct.
         // Build per-action result map: actionId → { hit, targetId, targetName, killed, damage }
         // Records BOTH hits and misses so same-actor mixed hit/miss is correctly attributed.
         const resultByAction = new Map();
@@ -263,6 +241,25 @@ export class TurnManager {
               }
             }
           }
+        }
+      }
+
+      // Dispatch ON_ATTACK_MISSED per-action (not per-actor) so same-actor
+      // mixed hit/miss is correctly attributed to each action.
+      if (phaseRecord) {
+        for (const evt of phaseRecord.events) {
+          if (evt.type !== 'attack') continue;
+          if (evt.result !== 'miss') continue;
+          const attacker = this.#registry.get(evt.actorId);
+          if (attacker) {
+            const icon = evt.skillId && SKILLS[evt.skillId]?.type === '射击' ? '🔮' : '⚔';
+            this.#logger?.log(`${attacker.name || evt.actorId} ${icon} 挥空`, 's');
+          }
+          const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, {
+            attackerId: evt.actorId,
+            actionId: evt.actionId,
+          });
+          this._processDeathWindReloads(missCtx);
         }
       }
       this.#projectileAttackers.clear();
@@ -477,11 +474,12 @@ export class TurnManager {
   }
 
   _isImmediateAttack(cmd) {
+    // Only attacks whose result is known at execution time.
+    // ATTACK_MELEE / WINDSTEP_SLASH create projectiles for body-contact
+    // resolution — they are deferred, not immediate.
     return [
-      CmdType.ATTACK_MELEE,
       CmdType.ATTACK_AOE_SELF,
       CmdType.ATTACK_AOE_PATH,
-      CmdType.WINDSTEP_SLASH,
     ].includes(cmd.type);
   }
 
@@ -1348,7 +1346,9 @@ export class TurnManager {
           for (const r of projResults.hits) { if (r.hit) this.#lastHitByActor.set(r.ownerId, true); }
           for (const r of projResults.interceptions) { if (r.intercepted && r.interceptorId) this.#lastHitByActor.set(r.interceptorId, true); }
 
-          // Dispatch ON_ATTACK_MISSED for galaxy projectile attackers that didn't hit
+          // Dispatch ON_ATTACK_MISSED for galaxy projectile attackers.
+          // Actor-level check is safe here: galaxy subturns are single-character,
+          // so same-actor multi-attack attribution is not applicable.
           for (const attackerId of this.#projectileAttackers) {
             if (!this.#lastHitByActor.get(attackerId)) {
               const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, { attackerId });

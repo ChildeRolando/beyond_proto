@@ -188,6 +188,15 @@ test('Test 3: same actor two attacks — results are per-event not per-actor', a
   expect(hitEvent.actorId).toBe('attacker');
   expect(missEvent.actorId).toBe('attacker');
   expect(hitEvent.actionId).not.toBe(missEvent.actionId);
+
+  // ON_ATTACK_MISSED dispatched per-action: combat log must contain miss for the
+  // attack that missed (not suppressed by the hit from the same actor).
+  const logText = await page.evaluate(() => window.__resolutionTest.getCombatLogText());
+  expect(logText).toMatch(/挥空/);
+
+  // The miss event must carry actionId so ON_ATTACK_MISSED hook receivers
+  // can identify which specific attack missed (action-level, not actor-level).
+  expect(missEvent.actionId).toBeTruthy();
 });
 
 // ─── Test 4: tutorial battle-end suppression ───
