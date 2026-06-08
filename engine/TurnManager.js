@@ -6,6 +6,7 @@ import { STATUS_DEFS } from './StatusEffectDefs.js';
 import { SKILLS } from './SkillData.js';
 import { getDefaultRoleLoadout } from './RoleData.js';
 import { canAffectCharacter, getAliveTeamIds } from './TeamResolver.js';
+import { ResolutionEventRecorder } from './resolution/ResolutionEventRecorder.js';
 
 export const TurnPhase = Object.freeze({
   PLAN: 'PLAN',
@@ -35,6 +36,7 @@ export class TurnManager {
   #turnNumber = 1;
   #phase = TurnPhase.PLAN;
   #resolutionRecorder = null;
+  #eventRecorder = null;  // ResolutionEventRecorder — structured EventBus-based events
   #delayedCommands = [];
   #pendingFlags = new Map(); // entityId → { pendingQi, ... }
   #jumpReturns = new Map();  // entityId → { q, r } for end-of-turn jump return
@@ -74,6 +76,9 @@ export class TurnManager {
         this._checkMindsEyeOnDamage(data.sourceId, data.targetId);
       }
     });
+
+    // Structured event recorder — captures EventBus events as ResolutionEvents
+    this.#eventRecorder = new ResolutionEventRecorder(this.#eventBus, this.#registry);
   }
 
   get turnNumber() { return this.#turnNumber; }
@@ -109,6 +114,7 @@ export class TurnManager {
     this.#logger?.log(`=== 第 ${this.#turnNumber} 回合 ===`, 'turn');
     this.#phase = TurnPhase.RESOLVE;
     this.#resolutionRecorder?.onTurnStart?.({ turnNumber: this.#turnNumber });
+    this.#eventRecorder?.startTurn(this.#turnNumber);
 
     // Set current turn for buff timing (buffs applied this turn won't be ticked)
     this.#buffManager.setCurrentTurn(this.#turnNumber);
@@ -156,6 +162,9 @@ export class TurnManager {
       let phaseRecord = null;
       if (cmds.length > 0) {
         phaseRecord = this.#resolutionRecorder?.onPhaseStart?.({ speed: spd, commandCount: cmds.length }) || null;
+        if (phaseRecord && this.#eventRecorder) {
+          this.#eventRecorder.setCurrentPhaseRecord(phaseRecord);
+        }
       }
       // 悬剑落剑 at speed 2 (runs before commands)
       if (spd === 2) { this._resolveSwordHangingDrop(); }
@@ -170,6 +179,15 @@ export class TurnManager {
           continue;
         }
         const beforeActor = this.#registry.get(cmd.actorId);
+        // Record action_declared before execution (canonical event stream)
+        if (phaseRecord && this.#eventRecorder) {
+          const actionId = cmd.actionId || cmd.sequenceId || cmd.id || null;
+          const skill = cmd.skillId ? SKILLS[cmd.skillId] : null;
+          this.#eventRecorder.setActionContext(actionId, cmd.actorId, cmd.skillId, cmd.sequenceId);
+          this.#eventRecorder.recordActionDeclared(
+            cmd.actorId, cmd.skillId, actionId, cmd.targetPos || null, skill?.name || null
+          );
+        }
         this._executeCommand(cmd);
         if (phaseRecord) {
           phaseRecord.events.push(this._createResolutionEvent(cmd, spd, phaseRecord.events.length, beforeActor));
@@ -298,10 +316,26 @@ export class TurnManager {
       return;
     }
 
+    // --- END OF TURN phase (recorded as structured events) ---
+    // Open an end_of_turn phase so delayed gains, buff ticks, etc.
+    // are captured as ResolutionEvents.
+    let eotPhaseRecord = null;
+    if (this.#eventRecorder) {
+      eotPhaseRecord = this.#eventRecorder.startPhase(null, 'end_of_turn', 0);
+      if (this.#resolutionRecorder) {
+        this.#eventRecorder.setCurrentPhaseRecord(eotPhaseRecord);
+      }
+    }
+
     // --- EFFECTS ---
     this.#phase = TurnPhase.EFFECTS;
     this._processDelayedCommands();
     this._resolveEndOfTurnEffects();
+
+    // Close the end_of_turn phase
+    if (eotPhaseRecord && this.#resolutionRecorder) {
+      this.#resolutionRecorder?.onPhaseEnd?.(eotPhaseRecord);
+    }
 
     // --- CLEANUP ---
     this.#phase = TurnPhase.CLEANUP;
@@ -523,10 +557,12 @@ export class TurnManager {
   _createResolutionEvent(cmd, speed, index, beforeActor) {
     const afterActor = this.#registry.get(cmd.actorId);
     const actionId = cmd.actionId || cmd.sequenceId || cmd.id || null;
+    const legacyType = this._getResolutionEventType(cmd);
     const event = {
       id: cmd.sequenceId ? `${cmd.sequenceId}:${index}` : `${this.#turnNumber}-${speed}-${index}-${cmd.type}-${cmd.actorId || 'system'}`,
       actionId,
-      type: this._getResolutionEventType(cmd),
+      eventType: this._mapLegacyTypeToEventType(legacyType, cmd),
+      type: legacyType,  // legacy compatibility
       actorId: cmd.actorId || null,
       skillId: cmd.skillId || null,
       speed,
@@ -536,7 +572,8 @@ export class TurnManager {
       event.targetPos = { q: cmd.targetPos.q, r: cmd.targetPos.r };
     }
 
-    if (event.type === 'move') {
+    if (legacyType === 'move') {
+      event.eventType = 'character_moved';
       const beforePos = beforeActor?.position;
       const afterPos = afterActor?.position;
       if (beforePos) event.from = { q: beforePos.q, r: beforePos.r };
@@ -544,7 +581,7 @@ export class TurnManager {
       if (!event.to && event.targetPos) event.to = { ...event.targetPos };
     }
 
-    if (event.type === 'attack') {
+    if (legacyType === 'attack') {
       // Capture target info from the registry at event creation time
       if (cmd.targetPos) {
         const targetChar = this.#registry.characters().find(
@@ -569,13 +606,28 @@ export class TurnManager {
       }
     }
 
-    if (event.type === 'resource') {
+    if (legacyType === 'resource') {
+      // Do NOT auto-promote to resource_changed — these legacy events lack delta.
+      // The EventBus RESOURCE_CHANGED → resource_changed events (from the
+      // ResolutionEventRecorder) have correct signed delta and take precedence.
+      event.eventType = null;
       event.resource = cmd.payload?.resource || null;
       event.amount = cmd.payload?.amount ?? null;
       event.condition = cmd.payload?.condition || null;
     }
 
     return event;
+  }
+
+  /** Map legacy coarse type to canonical ResolutionEventType. */
+  _mapLegacyTypeToEventType(legacyType, _cmd) {
+    switch (legacyType) {
+      case 'move': return 'character_moved';
+      case 'resource': return 'resource_changed';
+      case 'status': return 'status_applied';
+      // 'attack' and 'utility' don't map 1:1 — set by finalizer or recorder
+      default: return null;
+    }
   }
 
   _processDeathWindReloads(ctx) {

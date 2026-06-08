@@ -31,8 +31,103 @@ function formatPoint(pos) {
  * @param {Map} charById — id → character lookup from viewState
  * @returns {{ actionId: string, text: string, type: string } | null}
  */
+/**
+ * Render a single ResolutionEvent into a player-facing log entry.
+ * Prefers event.eventType (canonical) over event.type (legacy).
+ */
 export function renderEventLogEntry(event, charById = new Map()) {
   const actorName = actorNameFor(event, charById);
+  const targetName = event.targetName
+    || (charById.get(event.targetId)?.name)
+    || (event.targetPos ? `(${event.targetPos.q},${event.targetPos.r})` : null);
+  const et = event.eventType || null;
+
+  // ── Canonical eventType path ──
+
+  if (et === 'action_declared') {
+    const skillName = event.skillName || event.skillId || '技能';
+    const tgt = event.targetPos ? formatPoint(event.targetPos) : '';
+    return { actionId: event.actionId || null, text: `${actorName} → ${skillName}${tgt ? ' ' + tgt : ''}`, type: 'declare' };
+  }
+
+  if (et === 'resource_changed') {
+    const res = event.resource || '资源';
+    const d = event.delta;
+    if (d != null && d < 0) {
+      return { actionId: event.actionId || null, text: `${actorName} 消耗 ${res} ${Math.abs(d)}`, type: 'resource' };
+    }
+    if (d != null && d > 0) {
+      return { actionId: event.actionId || null, text: `${actorName} 获得 ${res} +${d}`, type: 'resource' };
+    }
+    // fallback for legacy amount field
+    const amt = event.amount;
+    if (amt != null) {
+      const sign = amt >= 0 ? '+' : '';
+      return { actionId: event.actionId || null, text: `${actorName} → ${res}${sign}${amt}`, type: 'resource' };
+    }
+    return { actionId: event.actionId || null, text: `${actorName} → ${res} 变化`, type: 'resource' };
+  }
+
+  if (et === 'character_moved') {
+    const from = event.from ? formatPoint(event.from) : '';
+    const to = event.to || event.targetPos;
+    const dest = to ? formatPoint(to) : '未知';
+    if (from) {
+      return { actionId: event.actionId || null, text: `${actorName} 移动 ${from}→${dest}`, type: 'move' };
+    }
+    return { actionId: event.actionId || null, text: `${actorName} 移动至 ${dest}`, type: 'move' };
+  }
+
+  if (et === 'damage_applied') {
+    const dmg = event.finalDamage ?? event.damage ?? 0;
+    const tgt = targetName || '目标';
+    return { actionId: event.actionId || null, text: `${tgt} 受到 ${dmg} 伤害`, type: 'hit' };
+  }
+
+  if (et === 'damage_absorbed') {
+    const layer = event.layer || '防御';
+    const absorbed = event.absorbed ?? 0;
+    const tgt = targetName || event.actorId || '目标';
+    return { actionId: event.actionId || null, text: `${tgt} ${layer}抵消 ${absorbed} 伤害`, type: 'absorb' };
+  }
+
+  if (et === 'character_died') {
+    const tgt = targetName || event.targetId || '角色';
+    return { actionId: event.actionId || null, text: `${tgt} 被击杀`, type: 'kill' };
+  }
+
+  if (et === 'status_applied') {
+    const sName = event.statusName || event.statusId || '状态';
+    const tgt = targetName || actorName;
+    return { actionId: event.actionId || null, text: `${tgt} 获得状态 ${sName}`, type: 'status' };
+  }
+
+  if (et === 'status_expired' || et === 'status_removed') {
+    const sName = event.statusName || event.statusId || '状态';
+    const tgt = targetName || actorName;
+    return { actionId: event.actionId || null, text: `${tgt} 失去状态 ${sName}`, type: 'status' };
+  }
+
+  if (et === 'action_failed') {
+    const reason = event.reason || '未知原因';
+    return { actionId: event.actionId || null, text: `${actorName} 技能发动失败：${reason}`, type: 'fail' };
+  }
+
+  if (et === 'battle_ended') {
+    // battle_ended handled in renderTurnLog, not per-event
+    return null;
+  }
+
+  if (et === 'projectile_created') {
+    return { actionId: event.actionId || null, text: `${actorName} 🔮 发射弹体`, type: 'attack' };
+  }
+
+  if (et === 'projectile_collided') {
+    const tgt = targetName || '目标';
+    return { actionId: event.actionId || null, text: `弹体碰撞：${tgt}`, type: 'attack' };
+  }
+
+  // ── Legacy type fallback (events without canonical eventType) ──
 
   switch (event.type) {
     case 'move': {
@@ -57,13 +152,18 @@ export function renderEventLogEntry(event, charById = new Map()) {
       if (event.result === 'miss') {
         return { actionId: event.actionId || null, text: `${actorName} ${icon} 挥空`, type: 'miss' };
       }
-      // pending
       return { actionId: event.actionId || null, text: `${actorName} ${icon} → ${targetRef} 结算中`, type: 'attack' };
     }
 
     case 'resource': {
+      // Legacy resource events — only render if no canonical resource_changed exists
+      // for the same resource change. These have unsigned amount without delta.
+      // The canonical resource_changed (from EventBus) takes precedence.
       const res = event.resource || '资源';
       const amount = event.amount;
+      // Skip legacy resource events that lack a delta (they have wrong signs)
+      // The EventBus-recorded resource_changed events have correct delta.
+      if (event.delta == null) return null;
       const amtStr = amount != null ? `${amount >= 0 ? '+' : ''}${amount}` : '';
       return { actionId: event.actionId || null, text: `${actorName} → ${res}${amtStr}`, type: 'resource' };
     }

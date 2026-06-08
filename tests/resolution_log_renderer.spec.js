@@ -254,13 +254,21 @@ console.log('\n[2c] renderEventLogEntry — individual events');
   assertEquals(missEntry.type, 'miss', 'miss type');
   assert(missEntry.text.includes('挥空'), 'miss says 挥空');
 
-  // resource
+  // resource (with delta — canonical event type)
   const resEntry = renderEventLogEntry(
-    { id: 'e4', actionId: 'a4', actorId: 'hero', type: 'resource', resource: 'rage', amount: 3 },
+    { id: 'e4', actionId: 'a4', actorId: 'hero', eventType: 'resource_changed', resource: 'rage', delta: -1 },
     charById
   );
   assertEquals(resEntry.type, 'resource', 'resource type');
-  assert(resEntry.text.includes('+3'), 'resource shows +3');
+  assert(resEntry.text.includes('消耗'), 'negative delta shows 消耗');
+
+  // resource (with positive delta — gain)
+  const gainEntry = renderEventLogEntry(
+    { id: 'e4b', actionId: 'a4b', actorId: 'hero', eventType: 'resource_changed', resource: 'qi', delta: 1 },
+    charById
+  );
+  assertEquals(gainEntry.type, 'resource', 'gain type');
+  assert(gainEntry.text.includes('获得') || gainEntry.text.includes('+1'), 'positive delta shows gain');
 }
 
 // ═══════════════════════════════════════════════════════

@@ -73,7 +73,10 @@ test('Test A: tutorial level 2 kill — summaries, timeline, and log all show �
 
   // ── Assert canonical log rendered via ResolutionLogRenderer ──
   const canonicalLog = await page.evaluate(() => window.__resolutionTest?.getCanonicalLog?.() || []);
-  const killEntry = canonicalLog.find(e => e.actionId === slashAction.actionId);
+  // Look for the kill/death event entry (not the action_declared entry)
+  const killEntry = canonicalLog.find(e =>
+    e.actionId === slashAction.actionId && (e.type === 'kill' || /击杀/.test(e.text))
+  );
   if (canonicalLog.length > 0) {
     expect(killEntry).toBeTruthy();
     expect(killEntry.text).toMatch(/击杀/);

@@ -127,6 +127,10 @@ export class BattleSessionController {
     if (!this._callbacks.buildTurnResolution) return null;
     const preview = await this._callbacks.buildTurnResolution();
     this.lastTurnResolution = preview?.resolution ? structuredClone(preview.resolution) : null;
+    // Append to canonical log store so it accumulates across turns
+    if (this.lastTurnResolution) {
+      this.combatLogStore.appendResolution(this.lastTurnResolution);
+    }
     return preview;
   }
 
