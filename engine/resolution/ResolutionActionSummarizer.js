@@ -1,6 +1,6 @@
-// ResolutionActionSummarizer — canonical action summaries from TurnResolution events.
-// Both Timeline and Combat Log consume these summaries so hit/miss/kill semantics
-// come from a single source.
+// ResolutionActionSummarizer — canonical action-level summaries from TurnResolution events.
+// These summaries feed the Timeline (action cards). For combat log, see ResolutionLogRenderer
+// which renders event-level detail from phase.events.
 
 import { SKILLS } from '../SkillData.js';
 
@@ -18,13 +18,6 @@ function playerLabelForOwner(ownerId) {
   return ownerId || '—';
 }
 
-function attackIcon(skillId) {
-  if (!skillId) return '⚔';
-  const skill = SKILLS[skillId];
-  if (!skill) return '⚔';
-  return skill.type === '射击' ? '🔮' : '⚔';
-}
-
 // ─── Single action summarization ───
 
 /**
@@ -32,7 +25,7 @@ function attackIcon(skillId) {
  * @param {Array} events — all TurnResolution events for this actionId
  * @param {object|null} actor — character object from viewState
  * @param {object|null} skill — SKILLS entry
- * @returns {object} canonical ActionSummary
+ * @returns {object} canonical ActionSummary (for Timeline)
  */
 export function summarizeOne(actionId, events = [], actor = null, skill = null) {
   // Primary event types (last of each kind, matching current semantics)
@@ -51,14 +44,11 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null) 
   // Build summary components
   const summaryParts = [];
   let result = 'utility';
-  let logText = '';
 
   if (move) {
     result = 'move';
     const to = move.to || move.targetPos || null;
-    const destText = to ? `移动至 ${formatPoint(to)}` : '位移';
-    summaryParts.push(destText);
-    logText = `${actorName} → ${skillName} ${destText}`;
+    summaryParts.push(to ? `移动至 ${formatPoint(to)}` : '位移');
   } else if (attack) {
     // Determine sub-result
     if (attack.killed) {
@@ -88,27 +78,6 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null) 
     } else {
       summaryParts.push('结算中');
     }
-
-    // Log text
-    const icon = attackIcon(skillId);
-    const targetRef = attack.targetName || (attack.targetPos ? formatPoint(attack.targetPos) : '目标');
-    if (attack.killed) {
-      if (attack.damage) {
-        logText = `${actorName} ${icon} ${skillName} → ${targetRef} 击杀（伤害 ${attack.damage}）`;
-      } else {
-        logText = `${actorName} ${icon} ${skillName} → ${targetRef} 击杀`;
-      }
-    } else if (attack.result === 'hit') {
-      if (attack.damage) {
-        logText = `${actorName} ${icon} ${skillName} → ${targetRef} 命中（伤害 ${attack.damage}）`;
-      } else {
-        logText = `${actorName} ${icon} ${skillName} → ${targetRef} 命中`;
-      }
-    } else if (attack.result === 'miss') {
-      logText = `${actorName} ${icon} ${skillName} 挥空`;
-    } else {
-      logText = `${actorName} ${icon} ${skillName} → ${targetRef} 结算中`;
-    }
   } else if (resource) {
     result = 'resource';
     const amount = resource.amount ?? '';
@@ -116,31 +85,22 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null) 
     const op = amount !== null && amount !== undefined
       ? `${amount >= 0 ? '+' : ''}${amount}`
       : '';
-    const resText = `${res}${op}`;
-    summaryParts.push(resText);
-    logText = `${actorName} → ${skillName} ${resText}`;
+    summaryParts.push(`${res}${op}`);
   } else if (status) {
     result = 'status';
-    const statusText = status.targetPos
-      ? `状态 ${formatPoint(status.targetPos)}`
-      : '状态变化';
-    summaryParts.push(statusText);
-    logText = `${actorName} → ${skillName} ${statusText}`;
+    summaryParts.push(status.targetPos ? `状态 ${formatPoint(status.targetPos)}` : '状态变化');
   } else if (utility) {
     result = 'utility';
     summaryParts.push('辅助效果');
-    logText = `${actorName} → ${skillName}`;
   } else {
     // Fallback: check if last event has a result hint
     const last = [...events].reverse()[0];
     if (last?.result === 'miss') {
       result = 'miss';
       summaryParts.push('挥空');
-      logText = `${actorName} → ${skillName} 挥空`;
     } else {
       result = 'utility';
       summaryParts.push('无详细结果');
-      logText = `${actorName} → ${skillName}`;
     }
   }
 
@@ -160,7 +120,6 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null) 
     damage: attack?.damage || null,
     killed: attack?.killed || false,
     summaryText,
-    logText,
   };
 }
 
@@ -168,6 +127,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null) 
 
 /**
  * @param {object} phase — { speed, events[], viewState }
+ * @param {object} viewState — { characters[] }
  * @returns {Array} canonical ActionSummary[]
  */
 export function buildActionSummaries(phase, viewState) {

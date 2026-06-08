@@ -9,6 +9,7 @@ import { getPlannedOriginForSkill } from '../engine/PlannedPositionPreview.js';
 import { isOnBoard, hexDistance, getSectorHexes } from '../engine/HexMath.js';
 import { HateSystem } from '../engine/ai/HateSystem.js';
 import { submitAiTeamActions } from '../engine/ai/TeamAiController.js';
+import { CombatLogStore } from '../engine/CombatLogStore.js';
 
 export class BattleSessionController {
   constructor(callbacks) {
@@ -57,6 +58,7 @@ export class BattleSessionController {
     this.lastTurnResolution = null;
     this._resolutionPlaybackState = null;
     this._resolutionPlaybackLocked = false;
+    this.combatLogStore = new CombatLogStore();
 
     // ─── Galaxy sub-phase state ───
     this.galaxyActive = false;
@@ -251,6 +253,7 @@ export class BattleSessionController {
     this.pveAiRunning = false;
     this.engine.reset();
     this.hateSystem.clear();
+    this.combatLogStore.reset();
     const battleSeed = seed || Date.now();
     const result = this.engine.initBattle(players
       ? { players, seed: battleSeed }
@@ -289,6 +292,7 @@ export class BattleSessionController {
     this.pveAiRunning = false;
     this.engine.reset();
     this.hateSystem.clear();
+    this.combatLogStore.reset();
     const battleSeed = seed || scenario?.seed || Date.now();
     const result = this.engine.initBattle({ ...scenario, seed: battleSeed });
     this.characterIds = result.characterIds || [];
@@ -887,6 +891,11 @@ export class BattleSessionController {
       await options.animateTurn();
     }
 
+    // Append all this turn's events to the persistent combat log
+    if (this.lastTurnResolution) {
+      this.combatLogStore.appendResolution(this.lastTurnResolution);
+    }
+
     this.resetSubmissions();
     nm.clearTurn();
     this.tutorialManager?.onTurnExecuted?.(result, this.engine.getState(), this.lastTurnResolution);
@@ -940,6 +949,11 @@ export class BattleSessionController {
       }
     } else {
       await this._callbacks.animateTurn?.();
+    }
+
+    // Append all this turn's events to the persistent combat log
+    if (this.lastTurnResolution) {
+      this.combatLogStore.appendResolution(this.lastTurnResolution);
     }
 
     this.tutorialManager?.onTurnExecuted?.(result, this.engine.getState(), this.lastTurnResolution);

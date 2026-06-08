@@ -1,18 +1,96 @@
-// ResolutionLogRenderer — produces player-facing combat log entries from
-// canonical TurnResolution action summaries.
+// ResolutionLogRenderer — renders player-facing combat log entries from
+// TurnResolution phase.events (event-level detail, NOT action-level summaries).
 //
-// Consumed by the UI's renderLog() when a TurnResolution is available.
-// Legacy Logger entries (from TurnManager execution) are kept as raw/debug
-// trace but are NOT shown as the primary player-facing log when this is active.
+// Timeline uses phase.actions (action-level summaries).
+// Combat log uses this module's per-event output.
+// Both originate from the same TurnResolution.
+
+import { SKILLS } from '../SkillData.js';
+
+// ─── Single event → log entry ───
+
+function actorNameFor(event, charById) {
+  const actor = charById.get(event.actorId);
+  return actor?.name || event.actorId || '未知';
+}
+
+function attackIcon(skillId) {
+  if (!skillId) return '⚔';
+  const skill = SKILLS[skillId];
+  if (!skill) return '⚔';
+  return skill.type === '射击' ? '🔮' : '⚔';
+}
+
+function formatPoint(pos) {
+  if (!pos) return '';
+  return `(${pos.q},${pos.r})`;
+}
 
 /**
- * @param {object} resolution — TurnResolution with phase.actions (canonical summaries)
- * @returns {Array} log entries [{ actionId, text, type }]
+ * @param {object} event — single ResolutionEvent from phase.events
+ * @param {Map} charById — id → character lookup from viewState
+ * @returns {{ actionId: string, text: string, type: string } | null}
+ */
+export function renderEventLogEntry(event, charById = new Map()) {
+  const actorName = actorNameFor(event, charById);
+
+  switch (event.type) {
+    case 'move': {
+      const to = event.to || event.targetPos;
+      const dest = to ? formatPoint(to) : '未知';
+      return { actionId: event.actionId || null, text: `${actorName} → 移动至 ${dest}`, type: 'move' };
+    }
+
+    case 'attack': {
+      const icon = attackIcon(event.skillId);
+      const targetRef = event.targetName
+        || (event.targetPos ? formatPoint(event.targetPos) : '目标');
+
+      if (event.killed) {
+        const dmg = event.damage ? `（伤害 ${event.damage}）` : '';
+        return { actionId: event.actionId || null, text: `${actorName} ${icon} → ${targetRef} 击杀${dmg}`, type: 'kill' };
+      }
+      if (event.result === 'hit') {
+        const dmg = event.damage ? `（伤害 ${event.damage}）` : '';
+        return { actionId: event.actionId || null, text: `${actorName} ${icon} → ${targetRef} 命中${dmg}`, type: 'hit' };
+      }
+      if (event.result === 'miss') {
+        return { actionId: event.actionId || null, text: `${actorName} ${icon} 挥空`, type: 'miss' };
+      }
+      // pending
+      return { actionId: event.actionId || null, text: `${actorName} ${icon} → ${targetRef} 结算中`, type: 'attack' };
+    }
+
+    case 'resource': {
+      const res = event.resource || '资源';
+      const amount = event.amount;
+      const amtStr = amount != null ? `${amount >= 0 ? '+' : ''}${amount}` : '';
+      return { actionId: event.actionId || null, text: `${actorName} → ${res}${amtStr}`, type: 'resource' };
+    }
+
+    case 'status': {
+      const pos = event.targetPos ? formatPoint(event.targetPos) : '';
+      return { actionId: event.actionId || null, text: `${actorName} → 状态变化 ${pos}`, type: 'status' };
+    }
+
+    case 'utility': {
+      return { actionId: event.actionId || null, text: `${actorName} → 辅助效果`, type: 'utility' };
+    }
+
+    default:
+      return null;
+  }
+}
+
+// ─── Full resolution → log entries ───
+
+/**
+ * @param {object} resolution — TurnResolution with phase.events
+ * @returns {Array} [{ actionId, text, type }]
  */
 export function renderTurnLog(resolution) {
   const entries = [];
 
-  // Turn header
   if (resolution.turnNumber) {
     entries.push({
       actionId: null,
@@ -21,24 +99,24 @@ export function renderTurnLog(resolution) {
     });
   }
 
-  // Walk phases in speed order (descending: 3 → 2 → 1 → 0)
-  const phases = (resolution.phases || []).slice().sort((a, b) => (b.speed || 0) - (a.speed || 0));
+  // Build char lookup from all viewStates
+  const charById = new Map();
+  for (const phase of resolution.phases || []) {
+    for (const char of (phase.viewState?.characters || [])) {
+      if (!charById.has(char.id)) charById.set(char.id, char);
+    }
+  }
+  for (const char of (resolution.endState?.characters || [])) {
+    if (!charById.has(char.id)) charById.set(char.id, char);
+  }
 
-  for (const phase of phases) {
-    const actions = Array.isArray(phase.actions) ? phase.actions : [];
-    for (const action of actions) {
-      // Use canonical logText produced by ResolutionActionSummarizer
-      if (action.logText) {
-        entries.push({
-          actionId: action.actionId || null,
-          text: action.logText,
-          type: action.result || 'utility',
-        });
-      }
+  for (const phase of (resolution.phases || [])) {
+    for (const event of phase.events || []) {
+      const entry = renderEventLogEntry(event, charById);
+      if (entry) entries.push(entry);
     }
   }
 
-  // Battle-end notification (unless suppressed for tutorial)
   if (!resolution.suppressGameOver && resolution.winner) {
     entries.push({
       actionId: null,

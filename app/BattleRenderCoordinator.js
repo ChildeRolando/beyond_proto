@@ -2,7 +2,6 @@
 // Owns rendering coordination but NOT canvas drawing implementation.
 
 import { renderBattlePanelsView } from '../ui/battle/BattlePanelsView.js';
-import { renderTurnLog } from '../engine/resolution/ResolutionLogRenderer.js';
 
 export function createBattleRenderCoordinator({
   getEl,
@@ -71,16 +70,15 @@ export function createBattleRenderCoordinator({
     if (!logEl) return;
     const battleSession = getBattleSession();
 
-    // When a TurnResolution is available, use the canonical log renderer
-    // so combat log and timeline share the same action summaries.
-    const resolution = battleSession.getLastTurnResolution?.();
-    if (resolution && resolution.phases && resolution.phases.length > 0) {
-      const canonicalEntries = renderTurnLog(resolution);
-      logEl.innerHTML = canonicalEntries.map(e =>
+    // Primary: accumulated canonical log from CombatLogStore (event-level detail)
+    const store = battleSession?.combatLogStore;
+    const storeEntries = store?.getEntries?.() || [];
+    if (storeEntries.length > 0) {
+      logEl.innerHTML = storeEntries.map(e =>
         `<div class="log-entry log-${e.type || 's'}" data-action-id="${e.actionId || ''}">${e.text}</div>`
       ).join('');
     } else {
-      // Legacy fallback: raw Logger entries from engine execution
+      // Fallback: legacy Logger entries (raw/debug trace, before first turn completes)
       const state = battleSession.getRenderState?.() || battleSession.engine?.getState?.();
       const entries = state?.logs || battleSession.engine.logger.getEntries();
       logEl.innerHTML = entries.map(e =>

@@ -317,7 +317,13 @@ export function installRuntimeTestHooks({
       return (state?.logs || []).map(entry => entry.message).join('\n');
     },
     getCanonicalLog: () => {
-      const resolution = getBattleSession().getLastTurnResolution?.();
+      // Returns the accumulated canonical log from CombatLogStore (event-level).
+      const battleSession = getBattleSession();
+      const store = battleSession?.combatLogStore;
+      const storeEntries = store?.getEntries?.() || [];
+      if (storeEntries.length > 0) return storeEntries;
+      // Fallback: render directly from last resolution (for tests before store integration)
+      const resolution = battleSession?.getLastTurnResolution?.();
       if (!resolution) return [];
       return renderTurnLog(resolution);
     },

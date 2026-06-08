@@ -126,14 +126,12 @@ test('Test B: true miss — summaries, timeline, and log all show 挥空', async
   await expect(phase1).toBeVisible();
   await expect(phase1).toContainText(/挥空/);
 
-  // ── Canonical log ──
+  // ── Canonical log (event-level: may have multiple entries per actionId) ──
   const canonicalLog = await page.evaluate(() => window.__resolutionTest?.getCanonicalLog?.() || []);
-  if (canonicalLog.length > 0) {
-    const missEntry = canonicalLog.find(e => e.actionId === missAction.actionId);
-    expect(missEntry).toBeTruthy();
-    expect(missEntry.text).toMatch(/挥空/);
-    expect(missEntry.actionId).toBe(missAction.actionId);
-  }
+  // At least one log entry must show the miss for the miss action
+  const missEntries = canonicalLog.filter(e => e.actionId === missAction.actionId);
+  expect(missEntries.length).toBeGreaterThanOrEqual(1);
+  expect(missEntries.some(e => /挥空/.test(e.text))).toBe(true);
 });
 
 // ─── Test C: Same actor hit+miss — canonical summaries distinguish both ───
@@ -179,24 +177,23 @@ test('Test C: same actor hit+miss — summaries and log distinguish both actions
   expect(hitAction.summaryText).not.toMatch(/挥空/);
   expect(missAction.summaryText).toMatch(/挥空/);
 
-  // ── Canonical log distinguishes both ──
+  // ── Canonical log distinguishes both (event-level: look for attack-type entries) ──
   const canonicalLog = await page.evaluate(() => window.__resolutionTest?.getCanonicalLog?.() || []);
-  if (canonicalLog.length > 0) {
-    const logHit = canonicalLog.find(e => e.actionId === hitAction.actionId);
-    const logMiss = canonicalLog.find(e => e.actionId === missAction.actionId);
-    expect(logHit).toBeTruthy();
-    expect(logMiss).toBeTruthy();
-    expect(logHit.text).not.toBe(logMiss.text);
-    expect(logHit.text).not.toMatch(/挥空/);
-    expect(logMiss.text).toMatch(/挥空/);
-  }
+  // Find attack-type log entries for each action
+  const logHitEntries = canonicalLog.filter(e => e.actionId === hitAction.actionId && (e.type === 'hit' || e.type === 'kill'));
+  const logMissEntries = canonicalLog.filter(e => e.actionId === missAction.actionId && e.type === 'miss');
+  expect(logHitEntries.length).toBeGreaterThanOrEqual(1);
+  expect(logMissEntries.length).toBeGreaterThanOrEqual(1);
+  // Hit entries must NOT contain 挥空; miss entries must contain 挥空
+  expect(logHitEntries.every(e => !/挥空/.test(e.text))).toBe(true);
+  expect(logMissEntries.some(e => /挥空/.test(e.text))).toBe(true);
 
-  // ── No actor-level contamination: combat log must contain exactly one 挥空 for this actor ──
-  const logText = await page.evaluate(() => window.__resolutionTest.getCombatLogText());
-  // Count 挥空 occurrences — should be exactly 1 (from the miss attack)
-  const missCount = (logText.match(/挥空/g) || []).length;
-  expect(missCount).toBeGreaterThanOrEqual(1);
-  // Each 挥空 in log belongs to a miss action, not duplicated
+  // ── No actor-level contamination ──
+  const allMissTexts = canonicalLog.filter(e => /挥空/.test(e.text));
+  // Each 挥空 belongs to a miss actionId, not a hit
+  for (const entry of allMissTexts) {
+    expect(entry.actionId).not.toBe(hitAction.actionId);
+  }
 });
 
 // ─── Test D: No duplicate player-facing logs ───
@@ -221,21 +218,21 @@ test('Test D: no duplicate logs — canonical log produces exactly one line per 
   const attackAction = allActions.find(a => a.result === 'hit' || a.result === 'kill');
   expect(attackAction).toBeTruthy();
 
-  // ── Canonical log: each actionId must appear exactly once ──
+  // ── Canonical log: event-level may produce multiple entries per actionId ──
   const canonicalLog = await page.evaluate(() => window.__resolutionTest.getCanonicalLog());
-  expect(canonicalLog.length).toBeGreaterThanOrEqual(2); // header + actions
+  expect(canonicalLog.length).toBeGreaterThanOrEqual(2); // header + at least one event
 
-  // Count how many canonical entries reference the attack actionId
-  const actionEntryCount = canonicalLog.filter(e => e.actionId === attackAction.actionId).length;
-  expect(actionEntryCount).toBe(1); // exactly one log entry per action
+  // At least one log entry references the attack actionId
+  const actionEntries = canonicalLog.filter(e => e.actionId === attackAction.actionId);
+  expect(actionEntries.length).toBeGreaterThanOrEqual(1);
 
-  // ── No duplicate: canonical log must not contain the same text twice ──
-  const texts = canonicalLog.filter(e => e.actionId).map(e => e.text);
+  // ── No duplicate texts within the same action ──
+  const texts = actionEntries.map(e => e.text);
   const uniqueTexts = new Set(texts);
-  expect(uniqueTexts.size).toBe(texts.length); // all action texts are unique
+  expect(uniqueTexts.size).toBe(texts.length); // all entries for this action are unique
 
-  // ── The hit entry must include target information ──
-  const hitEntry = canonicalLog.find(e => e.actionId === attackAction.actionId);
-  expect(hitEntry).toBeTruthy();
-  expect(hitEntry.text).toMatch(/命中|击杀/);
+  // ── At least one attack-type entry must include hit/kill info ──
+  const attackEntries = actionEntries.filter(e => e.type === 'hit' || e.type === 'kill');
+  expect(attackEntries.length).toBeGreaterThanOrEqual(1);
+  expect(attackEntries[0].text).toMatch(/命中|击杀/);
 });
