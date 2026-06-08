@@ -21,17 +21,18 @@ export const TUTORIAL_LEVELS = {
     playerRoleLoadoutSkillIds: [],
     playerResources: { hp: 100 },
     enemy: {
-      id: 'tutorial_enemy',
+      id: 'tutorial_dummy',
       teamId: 'tutorial_enemies',
-      ownerId: 'tutorial_enemy',
+      ownerId: 'tutorial_dummy',
       control: 'ai',
       class: '战士',
       roleId: 'warrior_vanguard',
-      loadoutSkillIds: [],
-      roleLoadoutSkillIds: ['role_vanguard_breakline'],
+      loadoutSkillIds: ['tutorial_dummy_wait'],
+      roleLoadoutSkillIds: [],
       position: { q: 2, r: 0 },
       resources: { hp: 40 },
-      // Tutorial 2 should demonstrate a one-hit kill.
+      displayName: '训练稻草人',
+      tutorialUnit: true,
     },
     initialStepId: 'select_move',
     steps: {
@@ -52,7 +53,7 @@ export const TUTORIAL_LEVELS = {
       },
     },
     scriptedEnemyActions: [
-      { charId: 'tutorial_enemy', skillId: 'role_vanguard_breakline', targetPos: null },
+      { charId: 'tutorial_dummy', skillId: 'tutorial_dummy_wait', targetPos: null },
     ],
   },
 
@@ -72,16 +73,18 @@ export const TUTORIAL_LEVELS = {
     playerRoleLoadoutSkillIds: [],
     playerResources: { hp: 100 },
     enemy: {
-      id: 'tutorial_enemy',
+      id: 'tutorial_dummy',
       teamId: 'tutorial_enemies',
-      ownerId: 'tutorial_enemy',
+      ownerId: 'tutorial_dummy',
       control: 'ai',
       class: '战士',
       roleId: 'warrior_vanguard',
-      loadoutSkillIds: [],
-      roleLoadoutSkillIds: ['role_vanguard_breakline'],
+      loadoutSkillIds: ['tutorial_dummy_wait'],
+      roleLoadoutSkillIds: [],
       position: { q: 1, r: 0 },
       resources: { hp: 40 },
+      displayName: '训练稻草人',
+      tutorialUnit: true,
     },
     initialStepId: 'select_attack',
     steps: {
@@ -104,7 +107,7 @@ export const TUTORIAL_LEVELS = {
       },
     },
     scriptedEnemyActions: [
-      { charId: 'tutorial_enemy', skillId: 'role_vanguard_breakline', targetPos: null },
+      { charId: 'tutorial_dummy', skillId: 'tutorial_dummy_wait', targetPos: null },
     ],
   },
 

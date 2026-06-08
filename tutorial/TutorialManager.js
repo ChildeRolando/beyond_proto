@@ -20,6 +20,7 @@ export class TutorialManager {
     this.errorText = '';
     this.awaitingExecute = false;
     this.primeBattleDone = false;
+    this.lastPlayerAction = null;
   }
 
   start(levelId = 'tutorial_move_execute') {
@@ -179,12 +180,99 @@ export class TutorialManager {
     }
   }
 
-  onTurnExecuted() {
+  onTurnExecuted(result, engineState, turnResolution) {
     if (!this.level) return;
+    if (!this.submitted) return;
+
+    const passed = this._checkObjectives(result, engineState, turnResolution);
+    if (!passed) {
+      this.awaitingExecute = false;
+      this.errorText = this.level.failureText || '目标未达成，请重试。';
+      this.submitted = false;
+      return;
+    }
+
     this.levelComplete = true;
     this.awaitingExecute = false;
+    this.errorText = '';
     this.stepId = this.level.nextLevelId ? 'level_complete' : 'campaign_complete';
     this.campaignComplete = !this.level.nextLevelId;
+  }
+
+  _checkObjectives(result, engineState, turnResolution) {
+    const lid = this.levelId;
+    if (lid === 'tutorial_move_execute') {
+      return this._checkTutorial1(result, engineState);
+    }
+    if (lid === 'tutorial_attack_target') {
+      return this._checkTutorial2(result, engineState);
+    }
+    if (lid === 'tutorial_speed_priority') {
+      return this._checkTutorial3(result, engineState, turnResolution);
+    }
+    return true;
+  }
+
+  _checkTutorial1(result, engineState) {
+    // Tutorial 1: 移动与执行回合
+    // Hero must have moved from (0,0) to expected destination (e.g., {q:1,r:0})
+    const hero = engineState?.characters?.find(c => c.id === 'tutorial_hero');
+    if (!hero) return false;
+    const dest = this.level.expectedDestination || { q: 1, r: 0 };
+    return hero.position.q === dest.q && hero.position.r === dest.r;
+  }
+
+  _checkTutorial2(result, engineState) {
+    // Tutorial 2: 攻击与目标格
+    // Must have used warrior_slash, target was dummy hex, dummy HP decreased or dummy defeated
+    if (!this.lastPlayerAction) return false;
+    if (this.lastPlayerAction.skillId !== 'warrior_slash') return false;
+    const targetHex = this.level.steps?.choose_enemy_hex?.allowedTargets?.[0];
+    if (targetHex) {
+      if (this.lastPlayerAction.targetPos?.q !== targetHex.q || this.lastPlayerAction.targetPos?.r !== targetHex.r) return false;
+    }
+    const dummy = engineState?.characters?.find(c => c.id === 'tutorial_dummy');
+    if (!dummy) return true; // dummy not found, skip check
+    // Dummy HP must have decreased or dummy must be defeated
+    return dummy.resources.hp <= 0 || !dummy.alive !== false;
+  }
+
+  _checkTutorial3(result, engineState, turnResolution) {
+    // Tutorial 3: 速度优先级
+    // Player used speed 3 move, moved to safe hex, enemy attack resolved after move, hero HP unchanged
+    if (!this.lastPlayerAction) return false;
+    if (this.lastPlayerAction.skillId !== 'warrior_move') return false;
+
+    const hero = engineState?.characters?.find(c => c.id === 'tutorial_hero');
+    if (!hero) return false;
+
+    // Check hero moved to allowed safe hex
+    const safeHexes = this.level.steps?.choose_safe_hex?.allowedTargets || [];
+    const onSafeHex = safeHexes.some(h => hero.position.q === h.q && hero.position.r === h.r);
+    if (!onSafeHex) return false;
+
+    // Check hero HP is unchanged (enemy attack missed or did no damage)
+    if (hero.resources.hp < (this.level.playerResources?.hp || 100)) return false;
+
+    // Verify resolution phase order and enemy attack result when available
+    if (turnResolution?.phases) {
+      const speed3Phase = turnResolution.phases.find(p => p.speed === 3);
+      const speed1Phase = turnResolution.phases.find(p => p.speed === 1);
+      if (speed3Phase && speed1Phase) {
+        // Speed 3 should come before speed 1
+        const idx3 = turnResolution.phases.indexOf(speed3Phase);
+        const idx1 = turnResolution.phases.indexOf(speed1Phase);
+        if (idx1 < idx3) return false;
+      }
+      // Enemy attack should not hit the hero (miss, no_target, target_moved, etc.)
+      if (speed1Phase) {
+        const attackEvent = speed1Phase.events?.find(e =>
+          e.actorId === 'tutorial_enemy' && (e.type === 'attack' || e.skillId === 'shooter_attack'));
+        if (attackEvent && attackEvent.result === 'hit') return false;
+      }
+    }
+
+    return true;
   }
 
   getHudState() {

@@ -82,6 +82,8 @@ export class BattleSessionController {
     this.engine.eventBus.on('BATTLE_END', (data) => {
       this.battleEnded = true;
       this.battleActive = false;
+      if (this._isTutorialActive()) return;
+      if (this.engine._scenario?.rules?.suppressGameOverPanel) return;
       if (this._callbacks.showGameOverPanel) {
         this._callbacks.showGameOverPanel(data.winner);
       }
@@ -887,13 +889,16 @@ export class BattleSessionController {
 
     this.resetSubmissions();
     nm.clearTurn();
-    this.tutorialManager?.onTurnExecuted?.(result);
+    this.tutorialManager?.onTurnExecuted?.(result, this.engine.getState(), this.lastTurnResolution);
 
     if (result.battleEnded) {
       this.battleEnded = true;
       this.battleActive = false;
-      const winner = this.engine.getAliveTeams?.()?.[0] || 'draw';
-      this._callbacks.showGameOverPanel?.(winner);
+      const suppressGameOver = this._isTutorialActive() || this.engine._scenario?.rules?.suppressGameOverPanel;
+      if (!suppressGameOver) {
+        const winner = this.engine.getAliveTeams?.()?.[0] || 'draw';
+        this._callbacks.showGameOverPanel?.(winner);
+      }
       this._callbacks.renderAll();
       return result;
     }
@@ -937,13 +942,16 @@ export class BattleSessionController {
       await this._callbacks.animateTurn?.();
     }
 
-    this.tutorialManager?.onTurnExecuted?.(result);
+    this.tutorialManager?.onTurnExecuted?.(result, this.engine.getState(), this.lastTurnResolution);
 
     if (result.battleEnded) {
       this.battleEnded = true;
       this.battleActive = false;
-      const winner = this.engine.getAliveTeams?.()?.[0] || 'draw';
-      this._callbacks.showGameOverPanel?.(winner);
+      const suppressGameOver = this._isTutorialActive() || this.engine._scenario?.rules?.suppressGameOverPanel;
+      if (!suppressGameOver) {
+        const winner = this.engine.getAliveTeams?.()?.[0] || 'draw';
+        this._callbacks.showGameOverPanel?.(winner);
+      }
       this._callbacks.renderAll();
       return result;
     }

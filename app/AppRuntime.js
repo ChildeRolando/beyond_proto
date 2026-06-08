@@ -86,8 +86,11 @@ export function createAppRuntime() {
   const getNetworkManager = () => networkSession?.getNetworkManager() || null;
   const getCurrentGameMode = () => normalizeConfigMode(configSession?.getConfigMode());
   const getTutorialManager = () => tutorialManager;
-  const isPveMode = () => Boolean(configSession?.isLegacyPveMode?.()) ||
-    (isGameModePve(getCurrentGameMode()) && (!getNetworkManager() || getNetworkManager().mode === 'local'));
+  const isTutorialMode = () => Boolean(tutorialManager?.getCurrentLevel?.());
+  const isPveMode = () => !isTutorialMode() && (
+    Boolean(configSession?.isLegacyPveMode?.()) ||
+    (isGameModePve(getCurrentGameMode()) && (!getNetworkManager() || getNetworkManager().mode === 'local'))
+  );
   const getBattleCanvasRenderer = () => battleCanvasRenderer;
   const getGameOverController = () => gameOverController;
   const getStartLobbyUi = () => startLobbyUi;
@@ -105,6 +108,7 @@ export function createAppRuntime() {
     getConfigSession,
     getNetworkManager,
     isPveMode,
+    isTutorialMode,
     renderAll: (s, sub) => battleRender.renderAll(s, sub),
     clearLog: battleRender.clearLog,
     setSubmitStatus: battleRender.setSubmitStatus,
@@ -333,6 +337,7 @@ export function createAppRuntime() {
     getGameOverController,
     getStartLobbyUi,
     getTutorialManager,
+    getConfigSession,
     battleRender,
     routeController,
   });

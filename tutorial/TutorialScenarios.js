@@ -4,7 +4,7 @@ function clonePosition(pos) {
   return pos ? { q: pos.q, r: pos.r } : null;
 }
 
-function buildCombatant({ id, teamId, ownerId, control, className, roleId, loadoutSkillIds, roleLoadoutSkillIds, position, resources }) {
+function buildCombatant({ id, teamId, ownerId, control, className, roleId, loadoutSkillIds, roleLoadoutSkillIds, position, resources, displayName, tutorialUnit }) {
   return {
     id,
     teamId,
@@ -16,6 +16,8 @@ function buildCombatant({ id, teamId, ownerId, control, className, roleId, loado
     roleLoadoutSkillIds: Array.isArray(roleLoadoutSkillIds) ? [...roleLoadoutSkillIds] : [],
     position: clonePosition(position),
     resources: resources ? { ...resources } : undefined,
+    name: displayName || undefined,
+    tutorialUnit: tutorialUnit || false,
   };
 }
 
@@ -50,6 +52,8 @@ export function buildTutorialScenario(levelId) {
       roleLoadoutSkillIds: level.enemy.roleLoadoutSkillIds,
       position: level.enemy.position,
       resources: level.enemy.resources,
+      displayName: level.enemy.displayName,
+      tutorialUnit: level.enemy.tutorialUnit,
     }));
   }
 
@@ -73,12 +77,13 @@ export function buildTutorialScenario(levelId) {
     },
     teams: [
       { teamId: 'tutorial_heroes', ownerId: 'player1', control: 'human', name: '教程玩家' },
-      { teamId: 'tutorial_enemies', ownerId: 'tutorial_enemy', control: 'ai', name: '教程木桩' },
+      { teamId: 'tutorial_enemies', ownerId: 'tutorial_dummy', control: 'ai', name: '教程单位' },
     ],
     combatants,
     rules: {
-      victory: 'team_elimination',
+      victory: 'tutorial_objective',
       friendlyFire: false,
+      suppressGameOverPanel: true,
     },
   };
 }

@@ -1,389 +1,317 @@
-You are working on this repository:
-
+Repository:
 https://github.com/ChildeRolando/beyond_proto
 
+Branch:
+codex/tutorial-levels
+
 Task:
-Implement a Turn Resolution Timeline module using TDD.
+Fix the tutorial levels and resolution playback integration after review.
 
-This game is a browser-based hex-grid synchronous turn-based combat demo. The combat system already has submitted actions and speed-based resolution. We now need a visible resolution playback module that explains the turn resolution process to the player.
+Current status:
+The branch already implements playable tutorial levels 1–3 and a Turn Resolution Timeline. The direction is correct, but the current implementation is not ready to merge.
 
-Feature name:
-Turn Resolution Timeline / TurnResolutionTimeline
-
-Core design decisions are fixed:
-A. Speed axis goes from high speed to low speed.
-   Example:
-   Speed 3 → Speed 2 → Speed 1 → End
-
-B. Actions with the same speed are played simultaneously.
-   Same-speed events must be animated together, not one after another.
-
-C. Combat is calculated first, then replayed.
-   First generate structured resolution events.
-   Then the UI consumes those events and plays them back.
-   Animation must not drive combat logic.
-
-Very important:
-Do not implement a fake progress bar that merely animates after the whole board already changed.
-The tests must verify that:
-1. Turn resolution is grouped by speed phases.
-2. Phases are ordered from high speed to low speed.
-3. Same-speed events are played as one simultaneous phase.
-4. Input is locked during playback.
-5. Final game state is committed after playback completes or skip is pressed.
-
-Testing framework:
-Use the existing Playwright setup.
-Do not introduce Jest/Vitest unless absolutely necessary.
-Use:
+Use TDD.
+Add failing tests first, then implement the minimum changes to pass.
+Run:
 npm test
 
-Development method:
-Strict TDD:
-1. Add failing tests first.
-2. Run npm test and confirm failure.
-3. Implement minimum production code.
-4. Run npm test again.
-5. Refactor after passing.
-6. Do not rewrite the whole combat engine.
+Important:
+Do not rewrite the whole combat engine.
+Do not remove the playable tutorial mode.
+Do not remove the old rules/help modal.
+Do not remove the resolution timeline.
+Do not use brittle canvas pixel clicks in tests.
+Use stable data-testid hooks or existing test helpers, but at least one critical test must click the real Execute Turn button.
 
-Suggested test file:
-tests/resolution_timeline.spec.js
+Main issues to fix:
 
-Existing modes must not break:
-- PVE
-- local battle
-- P2P if present
-- existing tutorial/help modal behavior unless directly required
+1. Tutorial execution path is polluted by previous config mode
+Problem:
+If the player enters local single-player mode, returns to the lobby, then starts tutorial, the config mode can remain local_solo/PVE. Real #btn-execute may route through the PVE execution path instead of tutorial/local execution.
 
-Do not:
-- rewrite the whole TurnManager;
-- rewrite the whole GameEngine;
-- make timeline UI calculate combat results;
-- let animation change combat rules;
-- rely on random AI behavior in tests;
-- use brittle pixel-based canvas clicks;
-- make tests depend on exact animation timing longer than necessary;
-- require the normal config screen for test scenarios;
-- remove existing combat log unless replacing it safely.
+Required fix:
+Tutorial mode must have independent execution routing.
 
-Recommended architecture:
+Acceptable approaches:
+- Add GameMode.TUTORIAL = "tutorial" and set it when starting tutorial.
+- Or make BattleSessionController own current battle scenario mode and expose isTutorialMode().
+- executeCurrentTurn() must check tutorial mode before PVE mode.
 
-1. TurnResolution data model
+Required behavior:
+Tutorial execution must always use the tutorial/local turn execution path, not submitAiAndExecutePveTurn().
+Tutorial must not depend on stale configSession.getConfigMode().
+returnToStart() should clean tutorial state and not leave stale mode that affects the next tutorial session.
 
-Create a structured object like:
+Required test:
+Add Playwright test:
 
-{
-  turnNumber: 1,
-  phases: [
-    {
-      speed: 3,
-      events: [
-        {
-          type: "move",
-          actorId: "hero_1",
-          from: { q: 0, r: 0 },
-          to: { q: 1, r: 0 }
-        }
-      ],
-      summary: "Speed 3: 1 action"
-    },
-    {
-      speed: 1,
-      events: [
-        {
-          type: "attack",
-          actorId: "enemy_1",
-          targetId: "hero_1",
-          result: "miss",
-          reason: "target_moved"
-        }
-      ],
-      summary: "Speed 1: 1 action"
-    }
-  ],
-  endState: ...
+tests/tutorial_mode_isolation.spec.js
+
+Test flow:
+1. Go to start screen.
+2. Start local single-player mode.
+3. Complete the minimum valid config.
+4. Enter battle.
+5. Return to lobby via window.returnToStart() or real lobby button.
+6. Start 新手教学.
+7. Complete tutorial level 1 using the real UI flow as much as possible.
+8. Crucially, click the real #btn-execute button, not window.__tutorialTest.executeTurn().
+9. Assert level 1 completes.
+10. Assert submit-status does not show PVE: AI 思考中 during tutorial.
+11. Assert tutorial HUD is visible.
+12. Assert config screen is not visible.
+
+This test must fail before the fix and pass after the fix.
+
+2. Tutorial completion currently completes on any successful turn
+Problem:
+TutorialManager.onTurnExecuted() currently marks a level complete immediately after any turn execution. That is too loose.
+
+Required fix:
+Tutorial completion must be objective-based.
+
+TutorialManager.onTurnExecuted() should receive enough context to validate the actual result:
+- execute result;
+- final engine state;
+- last TurnResolution;
+- optionally level-specific expected data.
+
+Required objective checks:
+
+Tutorial 1: 移动与执行回合
+Complete only if:
+- tutorial_hero actually moved from { q: 0, r: 0 } to the expected destination, e.g. { q: 1, r: 0 };
+- the action was submitted before execution;
+- completion must not happen if the hero did not move.
+
+Tutorial 2: 攻击与目标格
+Complete only if:
+- tutorial_hero used the expected attack skill;
+- target was the training dummy’s hex;
+- training dummy HP decreased or the dummy was defeated;
+- completion must not happen if the wrong hex was selected or no damage/result happened.
+
+Tutorial 3: 速度优先级
+Complete only if:
+- player used the speed 3 movement skill;
+- player moved to one of the allowed safe side hexes;
+- resolution contains speed 3 phase before speed 1 phase;
+- enemy speed 1 attack resolves after player movement;
+- player HP is unchanged after the enemy attack;
+- the enemy attack result is miss/no damage/target moved.
+
+Required tests:
+Extend tests/tutorial.spec.js or add tests/tutorial_objectives.spec.js.
+
+Add negative tests:
+- Level 1: force a turn without the required move and assert levelComplete remains false.
+- Level 2: select attack but wrong target; execute should not complete the level.
+- Level 3: unsafe target or wrong skill should not complete the level.
+- Real successful paths still complete.
+
+Do not rely only on text. Assert engine state and tutorial state.
+
+3. Tutorial must not trigger normal gameover overlay
+Problem:
+Tutorial scenarios currently use normal team_elimination style victory. In tutorial 2, killing the dummy can trigger the normal gameover panel, which is wrong.
+
+Required fix:
+Tutorial battles should be controlled by tutorial objectives, not normal gameover.
+
+Acceptable approaches:
+- Add rules.victory = "tutorial_objective".
+- Add rules.suppressGameOverPanel = true.
+- Or in BattleSessionController, if tutorial is active, suppress normal showGameOverPanel and let TutorialManager decide progress.
+
+Required behavior:
+- Completing tutorial 2 by defeating the dummy must show “教程 2 完成”.
+- It must not show the normal gameover panel.
+- Tutorial can advance to tutorial 3 normally.
+
+Required test:
+Add assertion to tutorial level 2 test:
+- after dummy defeated, #gameover-panel is not visible / does not have show class.
+- tutorial-next is enabled.
+- clicking tutorial-next starts tutorial 3.
+
+4. Replace current fake dummy action with a dedicated training dummy unit
+User decision:
+Do not remove the dummy. Tutorial 1 and Tutorial 2 should use a dedicated tutorial unit: “训练稻草人”.
+The player should immediately understand this is a teaching unit, not a normal combat character.
+The dummy should have a dedicated no-op skill named “什么都不做”.
+
+Current problem:
+Tutorial 1 and 2 currently submit the normal warrior role placeholder skill role_vanguard_breakline as the enemy scripted action. That is wrong semantically.
+
+Required fix:
+Create a dedicated tutorial dummy identity and no-op skill.
+
+Implementation requirements:
+- Add a dedicated skill:
+  id: "tutorial_dummy_wait"
+  name: "什么都不做"
+  type: "教学"
+  speed: preferably 0 or another clearly non-interfering speed
+  targeting: SELF
+  effects: PASS/no-op
+  icon: may use a simple placeholder or existing neutral icon
+  desc: "训练稻草人保持不动，用于教学演示。"
+
+- Add a dedicated dummy combatant:
+  id: "tutorial_dummy" or "tutorial_enemy"
+  display name: "训练稻草人"
+  ownerId: "tutorial_dummy" or "ai"
+  teamId: "tutorial_enemies"
+  control: "tutorial_dummy" or "ai"
+  loadoutSkillIds: ["tutorial_dummy_wait"]
+  roleLoadoutSkillIds: []
+  position depends on level:
+    Level 1: can be visible but safely out of the way.
+    Level 2: adjacent target hex.
+    Level 3: do not use dummy; use actual scripted shooter enemy.
+
+- If the engine only supports the three normal classes, do not hack this by pretending the dummy is a normal warrior in the UI.
+  Acceptable choices:
+  A. Extend scenario normalization to support tutorial-only combatant metadata:
+     displayName/name: "训练稻草人"
+     tutorialUnit: true
+     portraitTheme/icon fallback
+  B. Keep class internally as a valid class for engine compatibility, but render name/portrait/style as “训练稻草人” and only expose tutorial_dummy_wait.
+  The player-facing UI must not show it as a normal 战士 / 破阵武者 unless that is only hidden internal data.
+
+- The dummy no-op skill may be auto-submitted by TutorialManager.primeBattle().
+- It must not deal damage, move, gain resources, affect the player, or trigger normal gameover.
+- It should be visible in the timeline/action cards as:
+  训练稻草人 / AI or 教学 / 什么都不做
+  but it must be visually clear as a teaching unit.
+- The tutorial objective checks should ignore dummy no-op except as a required engine filler.
+
+Required tests:
+Add to tutorial tests:
+- Level 1 or 2 state contains a unit whose name/displayName is “训练稻草人”.
+- The dummy has only tutorial_dummy_wait exposed as active skill, or at minimum the visible dummy skill list contains “什么都不做” and not normal combat skills.
+- After executing the dummy no-op, dummy position is unchanged.
+- Player HP is unchanged.
+- Timeline/action card, if visible, identifies the dummy action as “训练稻草人 / 什么都不做”.
+- No role_vanguard_breakline should be used in tutorial 1 or tutorial 2 scriptedEnemyActions.
+
+5. Resolution timeline placement should match the requested layout more closely
+Current status:
+The timeline is now vertical and no longer overlays the board, but it is placed inside the right sidebar above log/chat. The requested layout is a separate vertical dock in the empty space to the right of the board and to the left of the log/chat sidebar.
+
+Required fix:
+Refactor battle screen layout to three columns:
+
+board/action area | resolution playback dock | log/chat sidebar
+
+Suggested CSS:
+#app {
+  grid-template-columns: minmax(620px, 1fr) 300px 330px;
 }
 
-Exact schema can adapt to existing engine, but the following must exist:
-- phases array
-- phase.speed
-- phase.events
-- event.type
-- event.actorId when applicable
-
-2. ResolutionBuilder / TurnManager integration
-
-Add a layer that converts the already-calculated turn result into phases.
-
-Acceptable implementation styles:
-- Modify TurnManager.executeTurn() so it returns TurnResolution.
-- Or add TurnResolutionBuilder that wraps existing resolution output.
-- Or add event recording to existing resolution steps.
-
-But do not make the UI infer phases from DOM text or combat log.
-
-3. TurnPlaybackController
-
-Responsible for playback sequence:
-
-lock input
-show timeline
-for each phase from high speed to low speed:
-  set active speed
-  play all events in this phase simultaneously
-  wait until all events complete
-finish playback
-commit/sync final state
-unlock input
-
-Pseudo-code target:
-
-async function playResolution(resolution) {
-  inputLock.lock("resolution-playback");
-
-  timeline.render(resolution.phases);
-
-  for (const phase of resolution.phases) {
-    timeline.setActiveSpeed(phase.speed);
-
-    await Promise.all(
-      phase.events.map(event => animationPlayer.play(event))
-    );
-
-    timeline.markPhaseComplete(phase.speed);
-  }
-
-  timeline.markComplete();
-  inputLock.unlock("resolution-playback");
+#canvas-wrap {
+  grid-column: 1;
 }
 
-4. TurnResolutionTimeline UI
-
-Add stable DOM hooks:
-
-data-testid="resolution-timeline"
-data-testid="resolution-phase-speed-3"
-data-testid="resolution-phase-speed-2"
-data-testid="resolution-phase-speed-1"
-data-testid="resolution-phase-end"
-data-testid="resolution-active-speed"
-data-testid="resolution-phase-summary"
-data-testid="resolution-skip"
-data-testid="resolution-complete"
-
-CSS can be simple:
-- horizontal speed axis;
-- active phase highlighted;
-- completed phase marked;
-- current phase summary displayed;
-- skip button visible during playback.
-
-5. Animation event player
-
-First version can use minimal animation:
-- move event: visually indicate movement or apply board refresh after event delay;
-- damage event: show floating damage text or combat log entry;
-- miss event: show “Miss” text or summary;
-- attack event: simple highlight or projectile placeholder.
-
-The important part is the event sequencing and phase grouping.
-Do not spend too much time on polished animation.
-
-Testing strategy:
-
-Because the board is canvas-based, expose a small test helper on window.
-
-Add something like:
-
-window.__resolutionTest = {
-  startDeterministicSpeedScenario(),
-  submitAction(characterId, skillId, target),
-  executeTurnAndGetResolution(),
-  playCurrentResolution(),
-  skipPlayback(),
-  getResolution(),
-  getTimelineState(),
-  getUnit(id),
-  isInputLocked(),
-  getCombatLogText()
+#action-dock {
+  grid-column: 1;
 }
 
-This helper must call production logic.
-It must not fake resolution phases directly.
-It may set up deterministic test scenarios.
-
-Required deterministic test scenarios:
-
-Scenario 1: speed phase ordering
-
-Units:
-- hero_fast at q=0,r=0
-- enemy_slow at q=2,r=0
-
-Actions:
-- hero_fast uses speed 3 move from q=0,r=0 to q=1,r=0
-- enemy_slow uses speed 1 attack aimed at hero's original hex or target
-
-Expected resolution:
-- phases ordered [3, 1]
-- speed 3 phase contains hero move
-- speed 1 phase contains enemy attack
-- timeline displays Speed 3 before Speed 1
-
-Test:
-- generate resolution
-- expect resolution.phases.map(p => p.speed) to equal [3, 1]
-- expect DOM to show Speed 3 active first during playback
-- after speed 3 completes, Speed 1 becomes active
-- after playback completes, resolution-complete appears
-
-Scenario 2: same-speed simultaneous playback
-
-Units:
-- hero_a
-- hero_b
-- enemy_a
-- enemy_b
-
-Actions:
-- hero_a uses speed 2 action
-- hero_b uses speed 2 action
-- optionally enemy_a also uses speed 2 action
-
-Expected:
-- one phase with speed 2
-- that phase contains multiple events
-- animation player receives all same-speed events before the phase waits for completion
-- timeline shows one Speed 2 phase, not duplicated Speed 2 nodes
-
-Implementation test approach:
-Expose debug counters:
-
-window.__resolutionTest.getTimelineState() returns:
-{
-  activeSpeed,
-  startedEventIdsInCurrentPhase,
-  completedEventIdsInCurrentPhase,
-  phaseStartCountBySpeed
+#resolution-timeline {
+  grid-column: 2;
+  grid-row: 2 / 4;
+  align-self: stretch;
+  data-orientation="vertical";
 }
 
-Test:
-- start playback
-- while activeSpeed is 2, assert multiple same-speed events have started
-- assert only one speed 2 phase exists in the timeline
+#right-sidebar {
+  grid-column: 3;
+  grid-row: 2 / 4;
+}
 
-Do not require frame-perfect animation timing.
-Use deterministic small delays if necessary.
+Exact dimensions can be adjusted, but the timeline must be its own vertical dock, not inside the log/chat sidebar.
 
-Scenario 3: input locked during playback
+Required tests:
+Update tests/resolution_timeline_layout.spec.js:
+- timeline visible after turn execution;
+- timeline has data-orientation="vertical";
+- timeline bounding box does not overlap the board;
+- timeline bounding box is to the right of board;
+- right-sidebar bounding box is to the right of timeline;
+- timeline is not a child of #right-sidebar.
 
-Actions:
-- create any turn with at least two speed phases
-- start playback
-- attempt to select another unit or submit another action during playback
+6. Keep close/collapse semantics correct
+Required behavior:
+- Close/collapse hides the timeline body but does not skip playback.
+- Reopen restores the dock.
+- Skip immediately completes playback and applies final state.
+- Collapse and skip are separate behaviors.
 
-Expected:
-- input is locked
-- attempted action is rejected or ignored
-- no new action is submitted
-- visible UI remains in playback state
+Required tests:
+Ensure existing close/collapse test covers:
+- click close;
+- timeline collapsed;
+- playback still active if not completed;
+- input remains locked while playback active;
+- reopen button appears and restores body;
+- skip still works after reopen.
 
-Test:
-- expect window.__resolutionTest.isInputLocked() === true during playback
-- attempt submitAction while locked
-- expect action count unchanged
-- after playback complete, input lock is false
+7. Keep action count correct
+Required behavior:
+- action count = unique submitted action count, not generated event count.
+- Each resolution event should have actionId where possible.
+- Phase action cards should be built by grouping events by actionId.
+- Multi-event skills should still count as one action.
 
-Scenario 4: skip playback
+Required tests:
+Keep/extend tests/resolution_timeline_counts.spec.js:
+- A skill/action that generates multiple events displays 1 action.
+- phase.events.length can be > phase.actionCount.
+- UI phase count shows 1 action.
+- The number of action cards equals phase.actionCount.
 
-Actions:
-- create a resolution with multiple phases
-- start playback
-- click data-testid="resolution-skip"
+8. Fix active phase state if still necessary
+Required behavior:
+- activeSpeed is Speed 3 while Speed 3 is playing.
+- End is not active until all phases complete or skip completes playback.
+- selectedSpeed and activeSpeed should not be confused.
+- playbackStatus should be independent: idle / playing / skipped / complete.
 
-Expected:
-- timeline immediately marks complete
-- final state is applied/synced
-- input unlocks
-- no pending animation crashes
-- next turn can begin
+Required tests:
+Keep/extend tests/resolution_timeline_phase_state.spec.js:
+- During Speed 3, active speed is 3, not End.
+- During Speed 1, active speed is 1.
+- End becomes active only after playback completes.
 
-Test:
-- start playback
-- click skip
-- expect resolution-complete visible
-- expect input lock false
-- expect final unit positions / HP equal resolution.endState
+9. Test hygiene
+Current repo has some Node-style test files named *_test.js that may not be discovered by Playwright. Do not claim those are covered by npm test unless they are actually run.
 
-Scenario 5: speed priority visible with move before attack
+Required:
+- Any new acceptance test must be Playwright-discovered by npm test.
+- Prefer .spec.js under tests/.
+- If you add non-Playwright node tests, add a package script and document it, but do not rely on them for npm test acceptance unless npm test runs them.
 
-This scenario is important for tutorial level 3 later.
+Acceptance criteria:
+- npm test passes.
+- Tutorial button starts playable tutorial mode.
+- Help ? button still opens old rules modal.
+- Tutorial does not require config screen.
+- Tutorial execution uses the real #btn-execute path correctly.
+- Tutorial mode is isolated from previous local_solo/PVE state.
+- Tutorial level completion is objective-based.
+- Tutorial 2 defeating the dummy does not show normal gameover panel.
+- Tutorial 1 and 2 use a dedicated “训练稻草人” unit with “什么都不做” skill, not role_vanguard_breakline.
+- Resolution timeline remains functional.
+- Timeline is a separate right-side vertical dock between board and log/chat.
+- Collapse/reopen and skip both work with correct semantics.
+- Action count is based on unique submitted actions.
+- Existing PVE/local/P2P/start/config behavior is not broken.
+- No console errors in passing Playwright tests.
+- No brittle canvas pixel clicks in tests.
 
-Units:
-- player warrior at q=0,r=0, hp=100
-- enemy shooter at q=2,r=0
-
-Actions:
-- player uses speed 3 move to q=1,r=0 or another safe hex
-- enemy uses speed 1 attack targeting player's original q=0,r=0
-
-Expected:
-- speed 3 move phase happens first
-- speed 1 attack phase happens second
-- attack result is miss or no damage because target moved
-- timeline phase summary or combat log mentions miss / target moved / speed priority
-
-Test:
-- before playback, player visual position may still be original if using visual replay model
-- after speed 3 phase, visual position changed
-- after speed 1 phase, player HP unchanged
-- combat log or timeline summary contains "miss" or equivalent stable text
-
-Production acceptance criteria:
-
-1. Running npm test passes.
-2. New tests exist in tests/resolution_timeline.spec.js.
-3. Turn resolution produces structured phases grouped by speed.
-4. Phase order is high speed to low speed.
-5. Same-speed events play simultaneously using Promise.all or equivalent.
-6. Timeline UI appears during turn resolution.
-7. Current active speed is visible.
-8. Completed phases are visibly marked.
-9. Skip button works.
-10. Player input is locked during playback.
-11. Final state is correct after playback.
-12. Existing game modes still start.
-13. Existing tests still pass.
-14. No console errors during tests.
-15. No hardcoded pixel clicks in tests.
-
-Implementation notes:
-
-- Keep first version simple.
-- Timeline does not need pause, rewind, scrubber, or clickable phase replay.
-- Same-speed events can use simple placeholder animations.
-- Use short deterministic animation durations in test mode.
-- Prefer requestAnimationFrame / promises over arbitrary long setTimeout.
-- If using setTimeout, expose a test mode speed multiplier or zero-delay mode.
-- Do not make visual polish block the core event model.
-
-Suggested file layout:
-
-js/resolution/TurnResolutionBuilder.js
-js/resolution/TurnPlaybackController.js
-js/resolution/TurnResolutionTimeline.js
-js/resolution/ResolutionAnimationPlayer.js
-css/resolution-timeline.css
-tests/resolution_timeline.spec.js
-
-The exact paths may adapt to existing repo structure.
-
-Definition of done:
-The player clicks Execute Turn.
-Instead of instant full-state change, the game shows a speed timeline:
-Speed 3 → Speed 2 → Speed 1 → End.
-Each phase becomes active in order.
-Events belonging to the same speed play together.
-After playback completes, the game proceeds to the next turn.
-All this behavior is covered by Playwright tests.
+After implementation, print:
+1. tests added/updated;
+2. production files changed;
+3. exact command run;
+4. whether npm test passed;
+5. remaining limitations, if any.

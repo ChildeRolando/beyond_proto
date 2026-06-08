@@ -142,24 +142,24 @@
   <div id="selected-unit-drawer"></div>
   <div id="canvas-wrap"><canvas id="board"></canvas></div>
   <div id="action-dock"></div>
-  <div id="right-sidebar">
-    <div id="resolution-timeline" data-testid="resolution-timeline" data-orientation="vertical" aria-live="polite">
-      <div class="resolution-timeline-head">
-        <div class="resolution-timeline-title">
-          <div id="resolution-active-speed" class="resolution-active-speed" data-testid="resolution-active-speed">等待回放</div>
-          <div id="resolution-phase-summary" class="resolution-phase-summary" data-testid="resolution-phase-summary"></div>
-        </div>
-        <div class="resolution-timeline-actions">
-          <button id="resolution-timeline-close" class="resolution-timeline-toggle" data-testid="resolution-timeline-close" type="button">收起</button>
-          <button id="resolution-timeline-open" class="resolution-timeline-toggle" data-testid="resolution-timeline-open" type="button" hidden>展开</button>
-          <button id="resolution-skip" class="resolution-skip" data-testid="resolution-skip" type="button">跳过</button>
-        </div>
+  <div id="resolution-timeline" data-testid="resolution-timeline" data-orientation="vertical" aria-live="polite">
+    <div class="resolution-timeline-head">
+      <div class="resolution-timeline-title">
+        <div id="resolution-active-speed" class="resolution-active-speed" data-testid="resolution-active-speed">等待回放</div>
+        <div id="resolution-phase-summary" class="resolution-phase-summary" data-testid="resolution-phase-summary"></div>
       </div>
-      <div class="resolution-timeline-body">
-        <div class="resolution-axis" id="resolution-axis"></div>
-        <div id="resolution-complete" class="resolution-complete" data-testid="resolution-complete" hidden>回放完成</div>
+      <div class="resolution-timeline-actions">
+        <button id="resolution-timeline-close" class="resolution-timeline-toggle" data-testid="resolution-timeline-close" type="button">收起</button>
+        <button id="resolution-timeline-open" class="resolution-timeline-toggle" data-testid="resolution-timeline-open" type="button" hidden>展开</button>
+        <button id="resolution-skip" class="resolution-skip" data-testid="resolution-skip" type="button">跳过</button>
       </div>
     </div>
+    <div class="resolution-timeline-body">
+      <div class="resolution-axis" id="resolution-axis"></div>
+      <div id="resolution-complete" class="resolution-complete" data-testid="resolution-complete" hidden>回放完成</div>
+    </div>
+  </div>
+  <div id="right-sidebar">
     <div id="hover-inspector"></div>
     <div id="right-sidebar-tabs">
       <button id="tab-log" class="active" data-tab="log">日志</button>

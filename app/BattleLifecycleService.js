@@ -7,6 +7,7 @@ export function createBattleLifecycleService({
   getConfigSession,
   getNetworkManager,
   isPveMode,
+  isTutorialMode,
   renderAll,
   clearLog,
   setSubmitStatus,
@@ -85,6 +86,11 @@ export function createBattleLifecycleService({
     const nm = getNetworkManager();
     if (nm && nm.mode !== 'local') {
       battleSession.markP2PReady(nm);
+      return;
+    }
+    // Tutorial mode must be checked BEFORE PVE mode to avoid pollution
+    if (isTutorialMode?.()) {
+      await battleSession.executeLocalTurn();
       return;
     }
     if (isPveMode()) {

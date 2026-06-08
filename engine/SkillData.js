@@ -650,6 +650,15 @@ export const SKILLS = {
     desc: '技能概念：占位角色技能，暂未实装。\n游戏作用：机制占位，当前无实际效果（破阵线暂未实装）。\n范围：自身；威力：无；速度：3；费用：无',
   },
 
+  tutorial_dummy_wait: {
+    id: 'tutorial_dummy_wait', name: '什么都不做', class: '战士', type: '教学',
+    cost: {}, speed: 0, targeting: { shape: 'SELF' },
+    effects: [
+      { cmd: 'PASS', placeholderMessage: '训练稻草人保持不动' },
+    ],
+    desc: '训练稻草人保持不动，用于教学演示。',
+  },
+
   role_gunfighter_quick_action: {
     id: 'role_gunfighter_quick_action', name: '灵巧行动', icon: 'assets/skill-icons/role/role_gunfighter_quick_action.png', class: '射手', type: '角色',
     cost: {}, speed: 3, targeting: { shape: 'SELF' }, hidden: true,
@@ -928,6 +937,7 @@ export const SKILLS_BY_CLASS = {
     'warrior_meteor_resolve',
     'warrior_realm_sweep', 'warrior_dimension_slash',
     'trait_jimmy_breathing', 'trait_jimmy_marrow', 'trait_duelist_minds_eye',
+    'tutorial_dummy_wait',
   ],
   '射手': [
     'shooter_attack', 'shooter_reload', 'shooter_roll',

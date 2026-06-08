@@ -7,6 +7,7 @@ export function createReturnToStartAction({
   getGameOverController,
   getStartLobbyUi,
   getTutorialManager,
+  getConfigSession,
   battleRender,
   routeController,
 }) {
@@ -14,6 +15,8 @@ export function createReturnToStartAction({
     getBattleSession()?.resetForReturnToStart();
     getTutorialManager()?.reset();
     getBattleSession()?.setTutorialManager(null);
+    // Reset config mode to prevent stale mode pollution
+    getConfigSession()?.setConfigMode?.('local');
     // Clean all overlays
     getEl('disconnect-overlay')?.classList.remove('show');
     getEl('tutorial-overlay')?.classList.remove('show');
