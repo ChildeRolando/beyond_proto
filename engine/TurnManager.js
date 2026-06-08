@@ -215,50 +215,52 @@ export class TurnManager {
             }
           }
         }
-        // Build a lookup of hit results by actionId (primary) and ownerId (fallback)
-        const hitByAction = new Map();
+        // Build per-action result map: actionId → { hit, targetId, targetName, killed, damage }
+        // Records BOTH hits and misses so same-actor mixed hit/miss is correctly attributed.
+        const resultByAction = new Map();
         for (const r of results.hits) {
-          if (r.hit && r.ownerId) {
-            const key = r.actionId || r.ownerId;
-            const existing = hitByAction.get(key);
-            const entry = existing || { ownerId: r.ownerId, targetId: null, targetName: null, killed: false, damage: 0 };
-            if (r.targetId) { entry.targetId = r.targetId; entry.targetName = r.targetName; }
+          if (r.actionId) {
+            const entry = resultByAction.get(r.actionId) || {
+              hit: false, targetId: null, targetName: null, killed: false, damage: 0,
+            };
+            if (r.hit) entry.hit = true;
             if (r.killed) entry.killed = true;
-            if (r.damage) entry.damage = (entry.damage || 0) + r.damage;
-            hitByAction.set(key, entry);
+            if (r.damage) entry.damage = (entry.damage || 0) + (r.damage || 0);
+            if (r.targetId) { entry.targetId = r.targetId; entry.targetName = r.targetName; }
+            resultByAction.set(r.actionId, entry);
           }
+          // Note: actor-level lastHitByActor is updated above (line 185-186) for all hits
         }
 
-        // Finalize: match pending attack events to hit results by actionId first, then actorId
+        // Finalize pending attack events.
+        // Events with actionId → match by actionId (no actorId fallback).
+        // Events without actionId → legacy actorId fallback.
         if (phaseRecord) {
           for (const evt of phaseRecord.events) {
             if (evt.type !== 'attack' || evt.result !== 'pending') continue;
-            // Try actionId match first
-            const actionKey = evt.actionId;
-            if (actionKey && hitByAction.has(actionKey)) {
-              const hitInfo = hitByAction.get(actionKey);
-              evt.result = hitInfo.hit !== false ? 'hit' : 'miss';
-              if (hitInfo.targetId) { evt.targetId = hitInfo.targetId; evt.targetName = hitInfo.targetName; }
-              if (hitInfo.killed) evt.killed = true;
-              if (hitInfo.damage) evt.damage = hitInfo.damage;
-              this.#lastHitByActor.set(evt.actorId, hitInfo.hit !== false);
-              continue;
-            }
-            // Fallback to actorId
-            if (this.#lastHitByActor.has(evt.actorId)) {
-              const didHit = this.#lastHitByActor.get(evt.actorId);
-              evt.result = didHit ? 'hit' : 'miss';
-              if (didHit) {
-                const hitInfo = hitByAction.get(evt.actorId);
-                if (hitInfo) {
-                  if (hitInfo.targetId) { evt.targetId = hitInfo.targetId; evt.targetName = hitInfo.targetName; }
-                  if (hitInfo.killed) evt.killed = true;
-                  if (hitInfo.damage) evt.damage = hitInfo.damage;
-                }
+
+            if (evt.actionId) {
+              // Primary path: match by actionId
+              const result = resultByAction.get(evt.actionId);
+              if (result) {
+                evt.result = result.hit ? 'hit' : 'miss';
+                if (result.targetId) { evt.targetId = result.targetId; evt.targetName = result.targetName; }
+                if (result.killed) evt.killed = true;
+                if (result.damage) evt.damage = result.damage;
+                this.#lastHitByActor.set(evt.actorId, result.hit);
+              } else {
+                // actionId present but no matching projectile hit → miss
+                evt.result = 'miss';
+                this.#lastHitByActor.set(evt.actorId, false);
               }
             } else {
-              this.#lastHitByActor.set(evt.actorId, false);
-              evt.result = 'miss';
+              // Legacy path: events without actionId fall back to actor-level tracking
+              if (this.#lastHitByActor.has(evt.actorId)) {
+                evt.result = this.#lastHitByActor.get(evt.actorId) ? 'hit' : 'miss';
+              } else {
+                this.#lastHitByActor.set(evt.actorId, false);
+                evt.result = 'miss';
+              }
             }
           }
         }
@@ -1827,6 +1829,23 @@ export class TurnManager {
     this.#commandQueue.enqueueSequence(finalSequence);
     this.#submittedChars.add(characterId);
     return { success: true, sequence: finalSequence, actionPoint };
+  }
+
+  // Test-only: resolve + enqueue without action-point validation.
+  // Used by __resolutionTest.forceSubmitAction for same-actor multi-attack tests.
+  forceSubmitForTest(characterId, skillId, targetPos) {
+    if (!this.#skillResolver) return { success: false, error: 'no_skill_resolver' };
+    const result = this.#skillResolver.resolve(skillId, characterId, targetPos ?? null);
+    if (!result.success) return result;
+    // Use the same enqueue path as submitAction
+    this.#commandQueue.enqueueSequence(result.sequence);
+    this.#submittedChars.add(characterId);
+    // Apply cooldown if the skill has one
+    const skill = SKILLS[skillId];
+    if (skill?.cooldown && this.#skillCooldowns) {
+      this.#skillCooldowns.trigger(characterId, skillId, skill.cooldown);
+    }
+    return { success: true, sequence: result.sequence };
   }
 
   // Scan queued commands for pending GAIN_RESOURCE, for pre-spend preview

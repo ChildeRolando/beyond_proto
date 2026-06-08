@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-08 - R1 审查修复：resultByAction 全量记录、真实同角色多攻击测试
+
+- `resultByAction` 替代 `hitByAction`：记录 hit 和 miss 两种结果，同角色混合命中/挥空不再互相污染。
+- event 有 actionId 时只按 actionId 匹配，不再 fallback 到 actorId。
+- legacy 路径（event 无 actionId）保留 actorId fallback 用于兼容。
+- `evt.actorId` → `hitByAction` key 不匹配问题已消除（移除错误 fallback）。
+- 新增 `TurnManager.forceSubmitForTest`（绕过行动点验证）和 `__resolutionTest.executeRealTurnAndGetResolution`（在真实引擎上执行+录制）。
+- Test 3 改为真实同角色双攻击：同一 attacker 发出两发 mage_blast（一发命中 target_hit，一发打空），断言 actionId 不同、结果分别为 hit/miss。
+- `_checkWinCondition` 遵守 `rules.suppressGameOverPanel`，教程战斗日志不输出"战斗结束！胜者"。
+
 ## 2026-06-08 - 战斗日志与时间线一致性：共享TurnResolution事实
 
 - 弹体携带 `actionId` 贯穿 `createProjectile` → `resolveStep` → `#lastHits`，使命中结果可按 actionId 精确匹配。

@@ -187,7 +187,7 @@ export function installRuntimeTestHooks({
             control: 'human',
             class: '战士',
             roleLoadoutSkillIds: [],
-            loadoutSkillIds: [],
+            loadoutSkillIds: ['warrior_rage'],
             position: { q: 0, r: 2 },
             resources: { hp: 80 },
           },
@@ -243,19 +243,47 @@ export function installRuntimeTestHooks({
     submitAction: (characterId, skillId, targetPos) => getBattleSession().submitAction(characterId, skillId, targetPos ?? null),
     forceSubmitAction: (characterId, skillId, targetPos) => {
       const battleSession = getBattleSession();
-      // Bypass action-point validation — directly resolve and enqueue
-      const tm = battleSession.engine.turnManager;
-      const result = tm._skillResolver.resolve(skillId, characterId, targetPos ?? null);
-      if (!result.success) return result;
-      for (const cmd of result.sequence.commands) {
-        tm._enqueueCommand(cmd);
+      const engine = battleSession.engine;
+      const result = engine.turnManager.forceSubmitForTest(characterId, skillId, targetPos ?? null);
+      if (result.success) {
+        // Mark as submitted so engine.areAllAliveRequiredActorsSubmitted() passes
+        engine._submitted.add(characterId);
       }
-      return { success: true };
+      return result;
     },
     executeTurnAndGetResolution: async () => {
       const battleSession = getBattleSession();
       const preview = await battleSession.buildCurrentTurnResolution();
       return preview?.resolution || null;
+    },
+    executeRealTurnAndGetResolution: async () => {
+      const battleSession = getBattleSession();
+      const engine = battleSession.engine;
+      // Execute on the real engine (not a clone), capturing resolution via recorder.
+      // The TurnManager calls onPhaseStart and pushes events directly to the returned phaseRecord.events.
+      const phases = [];
+      const recorder = {
+        onPhaseStart(data) {
+          const phase = { speed: data.speed, commandCount: data.commandCount, events: [] };
+          phases.push(phase);
+          return phase;
+        },
+      };
+      engine.turnManager.setResolutionRecorder(recorder);
+      const result = await engine.executeTurn();
+      engine.turnManager.clearResolutionRecorder();
+
+      // Capture post-execution view states for each phase
+      const viewState = engine.getState();
+      for (const phase of phases) {
+        phase.viewState = { characters: viewState.characters.map(c => ({ ...c })) };
+      }
+
+      const resolution = {
+        phases: phases.filter(p => p.events.length > 0),
+        endState: viewState,
+      };
+      return { ...result, resolution };
     },
     playCurrentResolution: () => {
       const battleSession = getBattleSession();

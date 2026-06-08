@@ -130,55 +130,64 @@ test('Test 2: attack targeting empty hex — timeline correctly shows miss', asy
   expect(finalAttack.result).toBe('miss');
 });
 
-// ─── Test 3: multi-attack attribution — per-event results, never per-actor ───
+// ─── Test 3: same-actor multi-attack — one hit + one miss, per-event results ───
 
-test('Test 3: same-speed attacks from different actors — each event has own result', async ({ page }) => {
+test('Test 3: same actor two attacks — results are per-event not per-actor', async ({ page }) => {
   await page.goto('/');
   await page.waitForFunction(() => Boolean(window.__resolutionTest));
 
-  // same_speed: 4 actors all at speed 2 using mage_small_blast
-  // hero_a(0,0) → targets enemy_a(2,0), hero_b(0,-1) → targets enemy_b(2,-1)
-  // enemy_a(2,0) → targets hero_a(0,0), enemy_b(2,-1) → targets hero_b(0,-1)
-  await page.evaluate(() => window.__resolutionTest.startDeterministicSpeedScenario('same_speed'));
+  // multi_attack scenario: attacker (法师) at (0,0), target_hit (战士) at (0,2)
+  await page.evaluate(() => window.__resolutionTest.startDeterministicSpeedScenario('multi_attack'));
   await expect(page.locator('#app')).toBeVisible();
 
-  // Each actor targets the opposing character on the same row
-  // Straight-line shots should hit (both on same q-axis)
-  await page.evaluate(() => {
-    window.__resolutionTest.submitAction('hero_a', 'mage_small_blast', { q: 2, r: 0 });
-    window.__resolutionTest.submitAction('hero_b', 'mage_small_blast', { q: 2, r: -1 });
-    window.__resolutionTest.submitAction('enemy_a', 'mage_small_blast', { q: 0, r: 0 });
-    window.__resolutionTest.submitAction('enemy_b', 'mage_small_blast', { q: 0, r: -1 });
+  // Force-submit two mage_blast attacks from the SAME attacker at speed 1:
+  //   Attack A: target (0,2) → will hit target_hit on the direct path
+  //   Attack B: target (0,-2) → empty hex → projectile travels and misses
+  // Also submit target_hit (warrior_move to stay in place) so all alive actors have submitted
+  const submitResult = await page.evaluate(() => {
+    const r1 = window.__resolutionTest.forceSubmitAction('attacker', 'mage_blast', { q: 0, r: 2 });
+    const r2 = window.__resolutionTest.forceSubmitAction('attacker', 'mage_blast', { q: 0, r: -2 });
+    const r3 = window.__resolutionTest.forceSubmitAction('target_hit', 'warrior_rage', null);
+    return { r1: r1?.success, r2: r2?.success, r3: r3?.success };
   });
+  expect(submitResult.r1).toBe(true);
+  expect(submitResult.r2).toBe(true);
+  expect(submitResult.r3).toBe(true);
 
-  const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
+  // Use real-engine execution so forceSubmit commands are executed (not lost in clone)
+  const executed = await page.evaluate(() => window.__resolutionTest.executeRealTurnAndGetResolution());
+  const resolution = executed?.resolution || null;
 
-  // All at speed 2
-  const speed2Phase = (resolution.phases || []).find(p => p.speed === 2);
-  expect(speed2Phase).toBeTruthy();
+  // Both attacks are speed 1
+  const speed1Phase = (resolution.phases || []).find(p => p.speed === 1);
+  expect(speed1Phase).toBeTruthy();
 
-  const attackEvents = (speed2Phase.events || []).filter(e => e.type === 'attack');
-  expect(attackEvents.length).toBe(4);
+  const attackEvents = (speed1Phase.events || []).filter(e => e.type === 'attack');
+  expect(attackEvents.length).toBe(2);
 
-  // Each event must have a unique actionId
+  // Same actor, same skill — must have distinct actionIds
   const actionIds = attackEvents.map(e => e.actionId).filter(Boolean);
-  expect(new Set(actionIds).size).toBe(4);
+  expect(new Set(actionIds).size).toBe(2);
 
-  // Verify phase metadata: actionCount should be 4, events can be more (resource events)
-  expect(speed2Phase.actionCount).toBe(4);
-  expect(speed2Phase.events.length).toBeGreaterThanOrEqual(speed2Phase.actionCount);
+  // Critical: one hit, one miss — NOT both same
+  const results = attackEvents.map(e => e.result);
+  expect(results).toContain('hit');
+  expect(results).toContain('miss');
 
-  // Each event has its own result — all should be finalized (not pending)
-  for (const evt of attackEvents) {
-    expect(evt.result).not.toBe('pending');
-  }
+  // Verify the hit event has target enrichment
+  const hitEvent = attackEvents.find(e => e.result === 'hit');
+  expect(hitEvent).toBeTruthy();
+  expect(hitEvent.targetId).toBe('target_hit');
 
-  // Play resolution and verify 4 action cards
-  await page.evaluate(() => window.__resolutionTest.playCurrentResolution());
-  await page.waitForFunction(() => window.__resolutionTest.getTimelineState().activeSpeed === 2);
+  // Verify the miss event has no target
+  const missEvent = attackEvents.find(e => e.result === 'miss');
+  expect(missEvent).toBeTruthy();
+  expect(missEvent.killed).toBeFalsy();
 
-  const phase = page.locator('[data-testid="resolution-phase-speed-2"]');
-  await expect(phase.locator('[data-testid="resolution-action-card"]')).toHaveCount(4);
+  // Verify the two events have distinct actionIds from the same actor
+  expect(hitEvent.actorId).toBe('attacker');
+  expect(missEvent.actorId).toBe('attacker');
+  expect(hitEvent.actionId).not.toBe(missEvent.actionId);
 });
 
 // ─── Test 4: tutorial battle-end suppression ───
