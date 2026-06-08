@@ -1,6 +1,9 @@
 // RuntimeTestHooks — window.__testHooks and window.returnToStart installation.
 // Extracted from AppRuntime to keep the composition root small.
 
+import { renderTurnLog } from '../engine/resolution/ResolutionLogRenderer.js';
+import { buildActionSummaries } from '../engine/resolution/ResolutionActionSummarizer.js';
+
 export function installRuntimeTestHooks({
   getConfigSession,
   getBattleSession,
@@ -273,16 +276,21 @@ export function installRuntimeTestHooks({
       const result = await engine.executeTurn();
       engine.turnManager.clearResolutionRecorder();
 
-      // Capture post-execution view states for each phase
+      // Capture post-execution view states for each phase and build canonical action summaries
       const viewState = engine.getState();
       for (const phase of phases) {
         phase.viewState = { characters: viewState.characters.map(c => ({ ...c })) };
+        phase.actions = buildActionSummaries(phase, phase.viewState);
       }
 
       const resolution = {
         phases: phases.filter(p => p.events.length > 0),
         endState: viewState,
       };
+
+      // Store so getCanonicalLog / renderLog can access it
+      battleSession.lastTurnResolution = structuredClone(resolution);
+
       return { ...result, resolution };
     },
     playCurrentResolution: () => {
@@ -307,6 +315,16 @@ export function installRuntimeTestHooks({
     getCombatLogText: () => {
       const state = getBattleSession().getRenderState?.();
       return (state?.logs || []).map(entry => entry.message).join('\n');
+    },
+    getCanonicalLog: () => {
+      const resolution = getBattleSession().getLastTurnResolution?.();
+      if (!resolution) return [];
+      return renderTurnLog(resolution);
+    },
+    getPhaseActions: () => {
+      const resolution = getBattleSession().getLastTurnResolution?.();
+      if (!resolution) return [];
+      return (resolution.phases || []).flatMap(p => p.actions || []);
     },
   };
 
