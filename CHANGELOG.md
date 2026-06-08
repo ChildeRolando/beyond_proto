@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-06-08 - 教程模式隔离、客观化关卡、训练稻草人与攻击结算修复
+
+- 教程执行路径独立于PVE模式：`executeCurrentTurn` 优先检查 `isTutorialMode`，防止从 `local_solo` 残留的 config mode 污染教程路由。
+- 教程关卡完成改为客观化检查：Lv1 需移动至目标格、Lv2 需攻击稻草人并命中、Lv3 需速度3移动至安全格且HP无损。
+- 教程战斗不再弹出正常 gameover 面板：`rules.suppressGameOverPanel = true`，BATTLE_END 事件和 executeLocalTurn 均检查抑制。
+- 新增训练稻草人单位（`tutorial_dummy`）和 `tutorial_dummy_wait`（什么都不做）技能，替代 Lv1/Lv2 的 `role_vanguard_breakline`。
+- `normalizeCombatantConfig` 保留 `name`/`tutorialUnit` 字段使稻草人名称正确显示。
+- 三栏布局：解析时间线独立纵栏（grid-col 2），右侧栏移至 grid-col 3。
+- 修复攻击结算事件与时间线不一致的根本缺陷：近战/投射物/AOE攻击在弹体接触判定完成前不再预写入 `result="miss"`；改为先标记 `"pending"`，在弹体结算后根据 `lastHitByActor` 最终化。
+- 弹体命中结果丰富化：`#lastHits` 携带 `targetName`/`killed`/`damage`，TurnResolution 事件携带 `targetId`/`targetName`/`killed`/`damage`。
+- `summarizeActionEvents` 支持 `targetName` 和 `killed` 显示。
+- 新增测试：`tutorial_mode_isolation.spec.js`（2 tests）、`tutorial_objectives.spec.js`（6 tests）、`timeline_attack_result_truth.spec.js`（3 tests: 命中非挥空/真是Miss/教程gamover抑制）。
+- 更新 `resolution_timeline_layout.spec.js`（+2 tests: 非sidebar子元素/折叠语义）。
+
 ## 2026-06-08 - Turn Resolution Timeline 交互与模式分流修复
 
 - 修复本地单人/本地合作模式分流：`local_solo` 保持 PVE / AI 对手，`local_coop` 保持纯 P1 vs P2，本地单人不再误进本地合作式战斗页。

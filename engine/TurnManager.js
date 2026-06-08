@@ -191,7 +191,7 @@ export class TurnManager {
           }
         }
 
-        // Dispatch ON_ATTACK_MISSED for projectile attackers that didn't hit
+        // Dispatch ON_ATTACK_MISSED for projectile / AOE attackers that didn't hit
         for (const attackerId of this.#projectileAttackers) {
           if (!this.#lastHitByActor.get(attackerId)) {
             const attacker = this.#registry.get(attackerId);
@@ -200,13 +200,52 @@ export class TurnManager {
             this._processDeathWindReloads(missCtx);
           }
         }
-      }
 
-      if (phaseRecord) {
-        for (const evt of phaseRecord.events) {
-          if (evt.type !== 'attack' || evt.result !== 'pending') continue;
-          if (this.#lastHitByActor.has(evt.actorId)) {
-            evt.result = this.#lastHitByActor.get(evt.actorId) ? 'hit' : 'miss';
+        // Also dispatch for melee attackers in phaseRecord whose pending event resolved to miss
+        if (phaseRecord) {
+          for (const evt of phaseRecord.events) {
+            if (evt.type !== 'attack' || evt.result !== 'pending') continue;
+            if (!this.#lastHitByActor.get(evt.actorId)) {
+              const attacker = this.#registry.get(evt.actorId);
+              if (attacker) {
+                this.#logger?.log(`${attacker.name || evt.actorId} ⚔ 挥空`, 's');
+                const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, { attackerId: evt.actorId });
+                this._processDeathWindReloads(missCtx);
+              }
+            }
+          }
+        }
+        // Build a lookup of hit results by owner for enrichment
+        const hitByOwner = new Map();
+        for (const r of results.hits) {
+          if (r.hit && r.ownerId) {
+            const entry = hitByOwner.get(r.ownerId) || { targetId: null, targetName: null, killed: false, damage: 0 };
+            if (r.targetId) { entry.targetId = r.targetId; entry.targetName = r.targetName; }
+            if (r.killed) entry.killed = true;
+            if (r.damage) entry.damage = (entry.damage || 0) + r.damage;
+            hitByOwner.set(r.ownerId, entry);
+          }
+        }
+
+        // Finalize: any pending attack whose actor didn't register a hit → miss
+        if (phaseRecord) {
+          for (const evt of phaseRecord.events) {
+            if (evt.type !== 'attack' || evt.result !== 'pending') continue;
+            if (this.#lastHitByActor.has(evt.actorId)) {
+              const didHit = this.#lastHitByActor.get(evt.actorId);
+              evt.result = didHit ? 'hit' : 'miss';
+              if (didHit) {
+                const hitInfo = hitByOwner.get(evt.actorId);
+                if (hitInfo) {
+                  if (hitInfo.targetId) { evt.targetId = hitInfo.targetId; evt.targetName = hitInfo.targetName; }
+                  if (hitInfo.killed) evt.killed = true;
+                  if (hitInfo.damage) evt.damage = hitInfo.damage;
+                }
+              }
+            } else {
+              this.#lastHitByActor.set(evt.actorId, false);
+              evt.result = 'miss';
+            }
           }
         }
       }
@@ -492,9 +531,28 @@ export class TurnManager {
     }
 
     if (event.type === 'attack') {
-      event.result = this.#lastHitByActor.has(cmd.actorId)
-        ? (this.#lastHitByActor.get(cmd.actorId) ? 'hit' : 'miss')
-        : 'pending';
+      // Capture target info from the registry at event creation time
+      if (cmd.targetPos) {
+        const targetChar = this.#registry.characters().find(
+          c => c.position.q === cmd.targetPos.q && c.position.r === cmd.targetPos.r && c.alive !== false
+        );
+        if (targetChar) {
+          event.targetId = targetChar.id;
+          event.targetName = targetChar.name || targetChar.id;
+        }
+      }
+
+      // Deferred attacks — hit result depends on projectile/body-contact resolution
+      const isDeferred = cmd.type === CmdType.ATTACK_MELEE ||
+        cmd.type === CmdType.ATTACK_PROJECTILE ||
+        cmd.type === CmdType.ATTACK_AOE_TARGET;
+      if (isDeferred) {
+        event.result = 'pending';
+      } else {
+        event.result = this.#lastHitByActor.has(cmd.actorId)
+          ? (this.#lastHitByActor.get(cmd.actorId) ? 'hit' : 'miss')
+          : 'pending';
+      }
     }
 
     if (event.type === 'resource') {
@@ -719,7 +777,7 @@ export class TurnManager {
       );
     }
 
-    this.#lastHitByActor.set(cmd.actorId, false); // determined on body contact
+    // lastHitByActor will be set on body contact via projectile resolution
     this.#logger?.log(`${actor?.name || cmd.actorId} ⚔ 斩击！威${power}`, 'rg');
   }
 
@@ -760,7 +818,7 @@ export class TurnManager {
       this.#projectileCalculator.createProjectile(cmd.actorId, fromQ, fromR, toQ, toR, power, effectiveSpeed, cmd.payload.flags || []);
     }
 
-    this.#lastHitByActor.set(cmd.actorId, false); // determined later on body contact
+    // lastHitByActor will be set on body contact via projectile resolution
   }
 
   _execAttackAoeTarget(cmd) {
@@ -795,7 +853,7 @@ export class TurnManager {
       this.#projectileCalculator.createProjectile(cmd.actorId, fromQ, fromR, toQ, toR, power, effectiveSpeed, [aoeFlag]);
     }
 
-    this.#lastHitByActor.set(cmd.actorId, false); // determined later on body contact
+    // lastHitByActor will be set on body contact via projectile resolution
     this.#logger?.log(`${actor?.name || cmd.actorId} 💥 目标AOE！威${power} 半径${radius}`, 'rg');
   }
 

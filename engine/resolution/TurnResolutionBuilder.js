@@ -25,9 +25,22 @@ function summarizeActionEvents(events = []) {
     const to = move.to || move.targetPos || null;
     parts.push(to ? `移动至 ${formatPoint(to)}` : '位移');
   } else if (attack) {
-    const target = attack.targetPos ? `目标 ${formatPoint(attack.targetPos)}` : '目标已锁定';
-    parts.push(target);
-    parts.push(attack.result === 'hit' ? '命中' : attack.result === 'miss' ? '挥空' : '结算中');
+    if (attack.targetName) {
+      parts.push(`→${attack.targetName}`);
+    } else if (attack.targetPos) {
+      parts.push(`目标 ${formatPoint(attack.targetPos)}`);
+    } else {
+      parts.push('目标已锁定');
+    }
+    if (attack.killed) {
+      parts.push('击杀');
+    } else if (attack.result === 'hit') {
+      parts.push('命中');
+    } else if (attack.result === 'miss') {
+      parts.push('挥空');
+    } else {
+      parts.push('结算中');
+    }
   } else if (resource) {
     const amount = resource.amount ?? '';
     const res = resource.resource || '资源';

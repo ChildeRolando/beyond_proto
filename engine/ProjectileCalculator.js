@@ -322,6 +322,9 @@ export class ProjectileCalculator {
     const entities = registry.getAt(q, r);
     let hit = false;
     let targetId = null;
+    let resultKilled = false;
+    let resultDamage = 0;
+    let targetName = null;
     const isAoe = proj.flags.includes('AOE_RADIUS_1');
     const source = registry.get(proj.ownerId);
     const friendlyFire = Boolean(options.rules?.friendlyFire);
@@ -343,7 +346,11 @@ export class ProjectileCalculator {
               proj.ownerId, entity.id, proj.power, 'PHYSICAL',
               { projectile: true, flags: proj.flags }
             );
-            if (result.killed || result.finalDamage > 0) hit = true;
+            if (result.killed || result.finalDamage > 0) {
+              hit = true;
+              resultKilled = resultKilled || result.killed;
+              resultDamage += result.finalDamage || 0;
+            }
           }
         }
         proj.alive = false;
@@ -368,6 +375,9 @@ export class ProjectileCalculator {
 
         hit = true;
         targetId = e.id;
+        targetName = e.name || e.id;
+        resultKilled = result.killed || false;
+        resultDamage = result.finalDamage || 0;
         proj.alive = false;
         const atkName = registry.get(proj.ownerId)?.name || proj.ownerId;
         const tgtName = e.name || e.id;
@@ -387,7 +397,13 @@ export class ProjectileCalculator {
       }
     }
 
-    this.#lastHits.push({ ownerId: proj.ownerId, projectileId: proj.id, targetId, hit });
+    this.#lastHits.push({
+      ownerId: proj.ownerId, projectileId: proj.id, targetId: targetId || null,
+      targetName: targetName || null,
+      hit,
+      killed: resultKilled,
+      damage: resultDamage,
+    });
   }
 
   // Melee intercept: check if a projectile at (q,r) can be destroyed by melee
