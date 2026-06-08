@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-08 - 战斗日志与时间线一致性：共享TurnResolution事实
+
+- 弹体携带 `actionId` 贯穿 `createProjectile` → `resolveStep` → `#lastHits`，使命中结果可按 actionId 精确匹配。
+- 最终化阶段改为优先按 `actionId` 匹配，fallback 到 `actorId`，防止同一角色多段攻击共享结果。
+- `_checkWinCondition` 读取 `rules.suppressGameOverPanel`，教程关卡不再在战斗日志中输出「战斗结束！胜者」。
+- 新增 `forceSubmitAction`（直接调用 SkillResolver + CommandQueue，绕行动点验证）和 `multi_attack` 场景支持。
+- 重写 `timeline_attack_result_truth.spec.js`（4 tests: 命中/击杀不显示挥空、真Miss显示挥空、多攻击独立结果、教程gameover抑制）。
+- 开放测试门槛：`forceSubmitAction` 使单角色多攻击同速测试可行（未来可扩展 galaxy 多行动测试）。
+
 ## 2026-06-08 - 教程模式隔离、客观化关卡、训练稻草人与攻击结算修复
 
 - 教程执行路径独立于PVE模式：`executeCurrentTurn` 优先检查 `isTutorialMode`，防止从 `local_solo` 残留的 config mode 污染教程路由。

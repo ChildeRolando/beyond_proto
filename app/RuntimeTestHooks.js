@@ -164,6 +164,35 @@ export function installRuntimeTestHooks({
           },
         ],
       },
+      multi_attack: {
+        mode: 'duel',
+        teams: commonTeams,
+        rules: { friendlyFire: false },
+        combatants: [
+          {
+            id: 'attacker',
+            teamId: 'player1',
+            ownerId: 'player1',
+            control: 'human',
+            class: '法师',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['mage_blast'],
+            position: { q: 0, r: 0 },
+            resources: { qi: 3 },
+          },
+          {
+            id: 'target_hit',
+            teamId: 'player2',
+            ownerId: 'player2',
+            control: 'human',
+            class: '战士',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: [],
+            position: { q: 0, r: 2 },
+            resources: { hp: 80 },
+          },
+        ],
+      },
     };
 
     return structuredClone(scenarios[kind] || scenarios.phase_order);
@@ -212,6 +241,17 @@ export function installRuntimeTestHooks({
       return battleSession.getRenderState?.();
     },
     submitAction: (characterId, skillId, targetPos) => getBattleSession().submitAction(characterId, skillId, targetPos ?? null),
+    forceSubmitAction: (characterId, skillId, targetPos) => {
+      const battleSession = getBattleSession();
+      // Bypass action-point validation — directly resolve and enqueue
+      const tm = battleSession.engine.turnManager;
+      const result = tm._skillResolver.resolve(skillId, characterId, targetPos ?? null);
+      if (!result.success) return result;
+      for (const cmd of result.sequence.commands) {
+        tm._enqueueCommand(cmd);
+      }
+      return { success: true };
+    },
     executeTurnAndGetResolution: async () => {
       const battleSession = getBattleSession();
       const preview = await battleSession.buildCurrentTurnResolution();

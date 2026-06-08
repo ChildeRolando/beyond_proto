@@ -215,27 +215,41 @@ export class TurnManager {
             }
           }
         }
-        // Build a lookup of hit results by owner for enrichment
-        const hitByOwner = new Map();
+        // Build a lookup of hit results by actionId (primary) and ownerId (fallback)
+        const hitByAction = new Map();
         for (const r of results.hits) {
           if (r.hit && r.ownerId) {
-            const entry = hitByOwner.get(r.ownerId) || { targetId: null, targetName: null, killed: false, damage: 0 };
+            const key = r.actionId || r.ownerId;
+            const existing = hitByAction.get(key);
+            const entry = existing || { ownerId: r.ownerId, targetId: null, targetName: null, killed: false, damage: 0 };
             if (r.targetId) { entry.targetId = r.targetId; entry.targetName = r.targetName; }
             if (r.killed) entry.killed = true;
             if (r.damage) entry.damage = (entry.damage || 0) + r.damage;
-            hitByOwner.set(r.ownerId, entry);
+            hitByAction.set(key, entry);
           }
         }
 
-        // Finalize: any pending attack whose actor didn't register a hit → miss
+        // Finalize: match pending attack events to hit results by actionId first, then actorId
         if (phaseRecord) {
           for (const evt of phaseRecord.events) {
             if (evt.type !== 'attack' || evt.result !== 'pending') continue;
+            // Try actionId match first
+            const actionKey = evt.actionId;
+            if (actionKey && hitByAction.has(actionKey)) {
+              const hitInfo = hitByAction.get(actionKey);
+              evt.result = hitInfo.hit !== false ? 'hit' : 'miss';
+              if (hitInfo.targetId) { evt.targetId = hitInfo.targetId; evt.targetName = hitInfo.targetName; }
+              if (hitInfo.killed) evt.killed = true;
+              if (hitInfo.damage) evt.damage = hitInfo.damage;
+              this.#lastHitByActor.set(evt.actorId, hitInfo.hit !== false);
+              continue;
+            }
+            // Fallback to actorId
             if (this.#lastHitByActor.has(evt.actorId)) {
               const didHit = this.#lastHitByActor.get(evt.actorId);
               evt.result = didHit ? 'hit' : 'miss';
               if (didHit) {
-                const hitInfo = hitByOwner.get(evt.actorId);
+                const hitInfo = hitByAction.get(evt.actorId);
                 if (hitInfo) {
                   if (hitInfo.targetId) { evt.targetId = hitInfo.targetId; evt.targetName = hitInfo.targetName; }
                   if (hitInfo.killed) evt.killed = true;
@@ -772,8 +786,9 @@ export class TurnManager {
     if (this.#projectileCalculator) {
       const effectiveSpeed = cmd.subSpeed ?? 1;
       const flags = forceHit ? ['MELEE', 'SURE_HIT'] : ['MELEE'];
+      const actionId = cmd.actionId || cmd.sequenceId || null;
       this.#projectileCalculator.createProjectile(
-        cmd.actorId, originQ, originR, targetQ, targetR, power, effectiveSpeed, flags
+        cmd.actorId, originQ, originR, targetQ, targetR, power, effectiveSpeed, flags, actionId
       );
     }
 
@@ -815,7 +830,7 @@ export class TurnManager {
     const effectiveSpeed = cmd.subSpeed ?? cmd.payload.projectileSpeed ?? 1;
 
     if (this.#projectileCalculator) {
-      this.#projectileCalculator.createProjectile(cmd.actorId, fromQ, fromR, toQ, toR, power, effectiveSpeed, cmd.payload.flags || []);
+      this.#projectileCalculator.createProjectile(cmd.actorId, fromQ, fromR, toQ, toR, power, effectiveSpeed, cmd.payload.flags || [], cmd.actionId || cmd.sequenceId || null);
     }
 
     // lastHitByActor will be set on body contact via projectile resolution
@@ -850,7 +865,7 @@ export class TurnManager {
     const aoeFlag = radius === 1 ? 'AOE_RADIUS_1' : 'AOE_RADIUS_1';
 
     if (this.#projectileCalculator) {
-      this.#projectileCalculator.createProjectile(cmd.actorId, fromQ, fromR, toQ, toR, power, effectiveSpeed, [aoeFlag]);
+      this.#projectileCalculator.createProjectile(cmd.actorId, fromQ, fromR, toQ, toR, power, effectiveSpeed, [aoeFlag], cmd.actionId || cmd.sequenceId || null);
     }
 
     // lastHitByActor will be set on body contact via projectile resolution
@@ -934,8 +949,9 @@ export class TurnManager {
 
     for (const [hq, hr] of hexes) {
       if (this.#projectileCalculator) {
+        const actionId = cmd.actionId || cmd.sequenceId || null;
         this.#projectileCalculator.createProjectile(
-          cmd.actorId, hq, hr, hq, hr, power, speed, ['STATIONARY']
+          cmd.actorId, hq, hr, hq, hr, power, speed, ['STATIONARY'], actionId
         );
       }
     }
@@ -1625,9 +1641,10 @@ export class TurnManager {
       // Fire melee projectile from post-teleport position — goes through body-contact
       // system so 纳刀 interception and 心眼 direction check work correctly
       this.#lastHitByActor.set(cmd.actorId, false); // determined on body contact
+      const actionId = cmd.actionId || cmd.sequenceId || null;
       this.#projectileCalculator?.createProjectile(
         cmd.actorId, toQ, toR, bestTarget.position.q, bestTarget.position.r,
-        power, 1, ['MELEE']
+        power, 1, ['MELEE'], actionId
       );
       const skillName = SKILLS[cmd.skillId]?.name || '风步';
       this.#logger?.log(`${actor?.name || cmd.actorId} ${skillName}(${toQ},${toR})→${bestTarget.name || '?'} 威${power}`, 'rg');
@@ -1704,8 +1721,11 @@ export class TurnManager {
     if (aliveTeamIds.length <= 1) {
       this.#phase = TurnPhase.BATTLE_END;
       const winner = aliveTeamIds[0] || 'draw';
-      this.#eventBus.emit(EvtType.BATTLE_END, { winner, winnerTeamId: winner });
-      this.#logger?.log('\n⚡ 战斗结束！胜者: ' + winner, 'die');
+      const rules = this._getRules();
+      this.#eventBus.emit(EvtType.BATTLE_END, { winner, winnerTeamId: winner, suppressGameOver: Boolean(rules.suppressGameOverPanel) });
+      if (!rules.suppressGameOverPanel) {
+        this.#logger?.log('\n⚡ 战斗结束！胜者: ' + winner, 'die');
+      }
       return true;
     }
     return false;

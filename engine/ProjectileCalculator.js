@@ -40,7 +40,7 @@ export class ProjectileCalculator {
     if (p) p.alive = false;
   }
 
-  createProjectile(ownerId, fromQ, fromR, toQ, toR, power, speed, flags = []) {
+  createProjectile(ownerId, fromQ, fromR, toQ, toR, power, speed, flags = [], actionId = null) {
     let path = hexLine(fromQ, fromR, toQ, toR);
     const isStationary = flags.includes('STATIONARY');
     const isMelee = flags.includes('MELEE');
@@ -56,6 +56,7 @@ export class ProjectileCalculator {
     const proj = {
       id: 'proj_' + (++_projId),
       ownerId,
+      actionId,
       path,
       stepIndex: 0,
       power,
@@ -398,7 +399,8 @@ export class ProjectileCalculator {
     }
 
     this.#lastHits.push({
-      ownerId: proj.ownerId, projectileId: proj.id, targetId: targetId || null,
+      ownerId: proj.ownerId, projectileId: proj.id, actionId: proj.actionId || null,
+      targetId: targetId || null,
       targetName: targetName || null,
       hit,
       killed: resultKilled,

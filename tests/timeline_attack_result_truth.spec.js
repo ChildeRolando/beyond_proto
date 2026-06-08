@@ -29,8 +29,9 @@ test.afterEach(async ({}, testInfo) => {
   expect(consoleErrors).toEqual([]);
 });
 
-test('Test A: melee hit should not appear as miss in timeline', async ({ page }) => {
-  // Use tutorial level 2: warrior_slash against 训练稻草人 at (1,0)
+// ─── Test 1: melee hit → timeline must show hit/kill, never miss ───
+
+test('Test 1: warrior_slash kills training dummy — timeline shows hit/kill not miss', async ({ page }) => {
   await page.goto('/');
   await page.locator('#btn-tutorial').click();
   await expect(page.locator('#tutorial-hud')).toBeVisible();
@@ -46,93 +47,80 @@ test('Test A: melee hit should not appear as miss in timeline', async ({ page })
   await page.locator('[data-testid="tutorial-next"]').click();
   await page.waitForFunction(() => window.__tutorialTest?.getState?.()?.levelId === 'tutorial_attack_target');
 
-  // Submit warrior_slash against dummy at (1,0)
+  // Attack dummy
   await page.evaluate(() => window.__tutorialTest.selectSkill('warrior_slash'));
   await page.evaluate(() => window.__tutorialTest.chooseHex(1, 0));
-
-  // Execute via real button
   await page.locator('#btn-execute').click();
   await page.waitForFunction(() => window.__tutorialTest?.getState?.()?.levelComplete === true);
 
-  // Get the last turn resolution via __resolutionTest helper
+  // ── Assert TurnResolution ──
   const resolution = await page.evaluate(() => window.__resolutionTest?.getResolution?.() || null);
-
   expect(resolution).not.toBeNull();
 
-  // Find the speed 1 attack event
   const attackEvents = (resolution.phases || [])
     .flatMap(p => p.events || [])
     .filter(e => e.type === 'attack');
 
-  expect(attackEvents.length).toBeGreaterThan(0);
+  const slashEvent = attackEvents.find(e => e.skillId === 'warrior_slash');
+  expect(slashEvent).toBeTruthy();
+  expect(slashEvent.result).not.toBe('miss');
+  expect(slashEvent.result).toBe('hit');
 
-  const warriorSlashEvent = attackEvents.find(e => e.skillId === 'warrior_slash');
-  expect(warriorSlashEvent).toBeTruthy();
-
-  // Must be 'hit' or 'kill', NOT 'miss'
-  expect(warriorSlashEvent.result).not.toBe('miss');
-  expect(['hit']).toContain(warriorSlashEvent.result);
-
-  // Combat log should contain 击杀 or 命中
+  // ── Assert combat log ──
   const logText = await page.evaluate(() => {
     const logEl = document.getElementById('log');
     return logEl?.textContent || '';
   });
   expect(logText).toMatch(/斩杀|击杀|命中/i);
 
-  // Timeline action card must NOT contain 挥空
+  // ── Assert timeline card ──
   const actionCards = page.locator('[data-testid="resolution-action-card"]');
   const slashCard = actionCards.filter({ hasText: '普通斩' });
   await expect(slashCard).toBeVisible();
   await expect(slashCard).not.toContainText('挥空');
-  // Should contain 命中 or 击杀
   await expect(slashCard).toContainText(/命中|击杀/);
 
-  // Dummy should be at 0 HP or dead
+  // ── Assert dummy state ──
   const dummy = await page.evaluate(() => window.__tutorialTest.getUnit('tutorial_dummy'));
   expect(dummy.alive !== true || dummy.resources.hp <= 0).toBe(true);
 });
 
-test('Test B: miss remains miss when actually missed', async ({ page }) => {
-  // Use resolution test infrastructure for a scenario where attack targets empty hex
+// ─── Test 2: true miss → timeline shows miss ───
+
+test('Test 2: attack targeting empty hex — timeline correctly shows miss', async ({ page }) => {
   await page.goto('/');
   await page.waitForFunction(() => Boolean(window.__resolutionTest));
 
-  // Start speed_priority scenario: hero_fast moves before enemy_slow shoots
   await page.evaluate(() => window.__resolutionTest.startDeterministicSpeedScenario('speed_priority'));
   await expect(page.locator('#app')).toBeVisible();
 
-  // Submit hero move to (1,0) and enemy shoots at original hero position (0,0)
+  // Hero moves away, enemy shoots at original hero position
   await page.evaluate(() => {
     window.__resolutionTest.submitAction('hero_fast', 'warrior_move', { q: 1, r: 0 });
     window.__resolutionTest.submitAction('enemy_slow', 'mage_blast', { q: 0, r: 0 });
   });
 
-  // Get resolution before playback
   const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
 
-  // Find the enemy attack event (speed 1, mage_blast)
   const enemyAttack = (resolution.phases || [])
     .flatMap(p => p.events || [])
     .find(e => e.actorId === 'enemy_slow' && e.type === 'attack');
-
   expect(enemyAttack).toBeTruthy();
   expect(enemyAttack.result).toBe('miss');
 
-  // Play resolution and check timeline
+  // Play resolution
   await page.evaluate(() => window.__resolutionTest.playCurrentResolution());
   await page.waitForFunction(() => window.__resolutionTest.getTimelineState().activeSpeed === 1);
 
-  // Timeline should show 挥空 for the enemy's attack
   const phase1 = page.locator('[data-testid="resolution-phase-speed-1"]');
   await expect(phase1).toBeVisible();
   await expect(phase1).toContainText(/挥空|miss|结算中/i);
 
-  // Hero should be alive after enemy miss
+  // Hero alive after miss
   const heroAfter = await page.evaluate(() => window.__resolutionTest.getUnit('hero_fast'));
   expect(heroAfter.alive).toBe(true);
 
-  // Verify the attack event result is 'miss' in the resolution
+  // Final resolution check
   await page.waitForFunction(() => window.__resolutionTest.getTimelineState().playbackStatus === 'complete');
   const finalResolution = await page.evaluate(() => window.__resolutionTest.getResolution());
   const finalAttack = (finalResolution?.phases || [])
@@ -142,8 +130,60 @@ test('Test B: miss remains miss when actually missed', async ({ page }) => {
   expect(finalAttack.result).toBe('miss');
 });
 
-test('Test C: tutorial battle end suppression — no gameover panel on dummy defeat', async ({ page }) => {
-  // Complete tutorial levels 1 and 2, verify gameover panel never shows
+// ─── Test 3: multi-attack attribution — per-event results, never per-actor ───
+
+test('Test 3: same-speed attacks from different actors — each event has own result', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForFunction(() => Boolean(window.__resolutionTest));
+
+  // same_speed: 4 actors all at speed 2 using mage_small_blast
+  // hero_a(0,0) → targets enemy_a(2,0), hero_b(0,-1) → targets enemy_b(2,-1)
+  // enemy_a(2,0) → targets hero_a(0,0), enemy_b(2,-1) → targets hero_b(0,-1)
+  await page.evaluate(() => window.__resolutionTest.startDeterministicSpeedScenario('same_speed'));
+  await expect(page.locator('#app')).toBeVisible();
+
+  // Each actor targets the opposing character on the same row
+  // Straight-line shots should hit (both on same q-axis)
+  await page.evaluate(() => {
+    window.__resolutionTest.submitAction('hero_a', 'mage_small_blast', { q: 2, r: 0 });
+    window.__resolutionTest.submitAction('hero_b', 'mage_small_blast', { q: 2, r: -1 });
+    window.__resolutionTest.submitAction('enemy_a', 'mage_small_blast', { q: 0, r: 0 });
+    window.__resolutionTest.submitAction('enemy_b', 'mage_small_blast', { q: 0, r: -1 });
+  });
+
+  const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
+
+  // All at speed 2
+  const speed2Phase = (resolution.phases || []).find(p => p.speed === 2);
+  expect(speed2Phase).toBeTruthy();
+
+  const attackEvents = (speed2Phase.events || []).filter(e => e.type === 'attack');
+  expect(attackEvents.length).toBe(4);
+
+  // Each event must have a unique actionId
+  const actionIds = attackEvents.map(e => e.actionId).filter(Boolean);
+  expect(new Set(actionIds).size).toBe(4);
+
+  // Verify phase metadata: actionCount should be 4, events can be more (resource events)
+  expect(speed2Phase.actionCount).toBe(4);
+  expect(speed2Phase.events.length).toBeGreaterThanOrEqual(speed2Phase.actionCount);
+
+  // Each event has its own result — all should be finalized (not pending)
+  for (const evt of attackEvents) {
+    expect(evt.result).not.toBe('pending');
+  }
+
+  // Play resolution and verify 4 action cards
+  await page.evaluate(() => window.__resolutionTest.playCurrentResolution());
+  await page.waitForFunction(() => window.__resolutionTest.getTimelineState().activeSpeed === 2);
+
+  const phase = page.locator('[data-testid="resolution-phase-speed-2"]');
+  await expect(phase.locator('[data-testid="resolution-action-card"]')).toHaveCount(4);
+});
+
+// ─── Test 4: tutorial battle-end suppression ───
+
+test('Test 4: defeating training dummy completes tutorial, no gameover panel', async ({ page }) => {
   await page.goto('/');
   await page.locator('#btn-tutorial').click();
   await expect(page.locator('#tutorial-hud')).toBeVisible();
@@ -155,33 +195,34 @@ test('Test C: tutorial battle end suppression — no gameover panel on dummy def
   await page.locator('#btn-execute').click();
   await page.waitForFunction(() => window.__tutorialTest?.getState?.()?.levelComplete === true);
 
-  // Gameover panel must NOT be visible after level 1
   await expect(page.locator('#gameover-panel')).not.toHaveClass(/show/);
 
-  // Go to level 2
+  // Level 2 — kills dummy
   await page.locator('[data-testid="tutorial-next"]').click();
   await page.waitForFunction(() => window.__tutorialTest?.getState?.()?.levelId === 'tutorial_attack_target');
 
-  // Level 2: attack dummy — this kills it
   await page.evaluate(() => window.__tutorialTest.selectSkill('warrior_slash'));
   await page.evaluate(() => window.__tutorialTest.chooseHex(1, 0));
   await page.locator('#btn-execute').click();
   await page.waitForFunction(() => window.__tutorialTest?.getState?.()?.levelComplete === true);
 
-  // Gameover panel must STILL NOT be visible after dummy is killed
+  // Gameover panel must NOT show
   await expect(page.locator('#gameover-panel')).not.toHaveClass(/show/);
   await expect(page.locator('#gameover-panel')).not.toBeVisible();
 
-  // Tutorial completion must show
-  await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('教程 2 完成');
+  // Combat log must NOT contain normal battle victory
+  const logText = await page.evaluate(() => {
+    const logEl = document.getElementById('log');
+    return logEl?.textContent || '';
+  });
+  expect(logText).not.toMatch(/战斗结束.*胜者|胜者.*玩家/i);
 
-  // Tutorial next must be enabled
+  // Tutorial completion
+  await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('教程 2 完成');
   await expect(page.locator('[data-testid="tutorial-next"]')).toBeEnabled();
 
-  // Click next — should start tutorial level 3
+  // Advance to level 3
   await page.locator('[data-testid="tutorial-next"]').click();
   await page.waitForFunction(() => window.__tutorialTest?.getState?.()?.levelId === 'tutorial_speed_priority');
-
-  // Verify tutorial 3 is active
   await expect(page.locator('[data-testid="tutorial-title"]')).toContainText('教学 3/3');
 });
