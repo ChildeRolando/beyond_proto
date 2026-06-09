@@ -227,6 +227,7 @@ export class GameEngine {
       teams: structuredClone(this._teams),
       rules: structuredClone(this._rules),
       galaxyQueue: structuredClone(this._galaxyQueue),
+      skillCooldowns: this.skillCooldowns.serialize(),
     });
   }
 
@@ -248,6 +249,7 @@ export class GameEngine {
     this._rules = structuredClone(data.rules || null);
     this._galaxyQueue = structuredClone(data.galaxyQueue || []);
     this._galaxyResolver = null;
+    this.skillCooldowns.deserialize(data.skillCooldowns || {});
   }
 
   async simulateTurnFromSnapshot(snapshot, actions = [], options = {}) {

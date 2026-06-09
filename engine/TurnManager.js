@@ -48,6 +48,8 @@ export class TurnManager {
   #projectileAttackers = new Set(); // actorIds that fired projectiles this speed tier
   #legacyPhaseEvents = [];           // legacy events for attack finalization (not player-facing)
   #lastActionContext = null;          // saved action context for projectile damage attribution
+  #usedActionIds = new Set();         // actionIds that have started cooldown/used this turn
+  #cooldownSnapshot = null;           // pre-turn cooldown state for tick exclusion
   #currentAnimStep = 0;
   #speedGroups = null;
 
@@ -112,6 +114,9 @@ export class TurnManager {
     this.#resourceFailed.clear();
     this.#canceledSequences.clear();
     this.#projectileAttackers.clear();
+    this.#usedActionIds.clear();
+    // Snapshot pre-turn cooldown state so new cooldowns don't tick this turn
+    this.#cooldownSnapshot = this.#skillCooldowns ? this.#skillCooldowns.serialize() : null;
     this.#logger?.setTurn(this.#turnNumber);
     this.#logger?.log(`=== 第 ${this.#turnNumber} 回合 ===`, 'turn');
     this.#phase = TurnPhase.RESOLVE;
@@ -480,12 +485,27 @@ export class TurnManager {
     this.#turnNumber++;
     this.#phase = TurnPhase.PLAN;
     this.#actionPointSystem?.resetTurn();
-    // Tick skill cooldowns for all characters
-    if (this.#skillCooldowns) {
+    // Tick skill cooldowns — only pre-existing ones (not cooldowns started this turn)
+    if (this.#skillCooldowns && this.#cooldownSnapshot) {
+      // Reconstruct the pre-turn cooldown state and tick only those entries
       for (const e of this.#registry.characters()) {
-        if (e.alive !== false) this.#skillCooldowns.tick(e.id);
+        if (e.alive === false) continue;
+        const charId = e.id;
+        const preEntries = (this.#cooldownSnapshot.cooldowns || []).find(([cid]) => cid === charId);
+        if (!preEntries) continue;
+        const preMap = new Map(preEntries[1]);
+        for (const [skillId, remaining] of preMap) {
+          if (remaining > 0) {
+            // Only reduce if the cooldown existed before this turn (not a new one)
+            const currentRemaining = this.#skillCooldowns.getRemaining(charId, skillId);
+            if (currentRemaining > 0) {
+              this.#skillCooldowns.reduceCooldown(charId, skillId, 1);
+            }
+          }
+        }
       }
     }
+    this.#cooldownSnapshot = null;
 
     // Apply per-role passives for the new turn (before players plan actions)
     this._applyTurnStartRolePassives();
@@ -606,17 +626,21 @@ export class TurnManager {
           break;
       }
 
-    // Start cooldown + consume limited use after execution
+    // Start cooldown + consume limited use — once per actionId, not per command.
     if (this.#skillCooldowns) {
-      const execSkill = SKILLS[cmd.skillId];
-      if (execSkill?.cooldown) {
-        const actor = this.#registry.get(cmd.actorId);
-        if (actor) {
-          const haste = this._getSkillHaste(actor, cmd.skillId);
-          this.#skillCooldowns.startCooldown(cmd.actorId, cmd.skillId, execSkill.cooldown, haste);
+      const actionKey = cmd.actionId || cmd.sequenceId;
+      if (actionKey && !this.#usedActionIds.has(actionKey)) {
+        this.#usedActionIds.add(actionKey);
+        const execSkill = SKILLS[cmd.skillId];
+        if (execSkill?.cooldown) {
+          const actor = this.#registry.get(cmd.actorId);
+          if (actor) {
+            const haste = this._getSkillHaste(actor, cmd.skillId);
+            this.#skillCooldowns.startCooldown(cmd.actorId, cmd.skillId, execSkill.cooldown, haste);
+          }
         }
+        this.#skillCooldowns.consumeUse(cmd.actorId, cmd.skillId);
       }
-      this.#skillCooldowns.consumeUse(cmd.actorId, cmd.skillId);
     }
 
     // After-action hook
@@ -2071,10 +2095,15 @@ export class TurnManager {
     // Use the same enqueue path as submitAction
     this.#commandQueue.enqueueSequence(result.sequence);
     this.#submittedChars.add(characterId);
-    // Apply cooldown if the skill has one
+    // Apply cooldown if the skill has one (action-level, once per submit)
     const skill = SKILLS[skillId];
     if (skill?.cooldown && this.#skillCooldowns) {
-      this.#skillCooldowns.trigger(characterId, skillId, skill.cooldown);
+      const actor = this.#registry.get(characterId);
+      const haste = actor ? this._getSkillHaste(actor, skillId) : 0;
+      this.#skillCooldowns.startCooldown(characterId, skillId, skill.cooldown, haste);
+    }
+    if (skill?.maxUses && this.#skillCooldowns) {
+      this.#skillCooldowns.consumeUse(characterId, skillId);
     }
     return { success: true, sequence: result.sequence };
   }

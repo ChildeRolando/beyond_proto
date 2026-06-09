@@ -283,6 +283,35 @@ export function installRuntimeTestHooks({
           },
         ],
       },
+      cooldown_test: {
+        mode: 'duel',
+        teams: commonTeams,
+        rules: { friendlyFire: false },
+        combatants: [
+          {
+            id: 'cd_warrior',
+            teamId: 'player1',
+            ownerId: 'player1',
+            control: 'human',
+            class: '战士',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['warrior_sheathe', 'warrior_move'],
+            position: { q: 0, r: 0 },
+            resources: {},
+          },
+          {
+            id: 'cd_target',
+            teamId: 'player2',
+            ownerId: 'player2',
+            control: 'human',
+            class: '战士',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['warrior_rage'],
+            position: { q: 2, r: 0 },
+            resources: {},
+          },
+        ],
+      },
     };
 
     return structuredClone(scenarios[kind] || scenarios.phase_order);
@@ -324,6 +353,7 @@ export function installRuntimeTestHooks({
   };
 
   window.__resolutionTest = {
+    _getEngine: () => getBattleSession().engine,
     startDeterministicSpeedScenario: (kind = 'phase_order') => {
       const battleSession = getBattleSession();
       battleSession.setTutorialManager?.(null);
