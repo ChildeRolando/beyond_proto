@@ -5,20 +5,11 @@
 // Combat log uses this module's per-event output.
 // Both originate from the same TurnResolution.
 
-import { SKILLS } from '../SkillData.js';
-
 // ─── Single event → log entry ───
 
 function actorNameFor(event, charById) {
   const actor = charById.get(event.actorId);
   return actor?.name || event.actorId || '未知';
-}
-
-function attackIcon(skillId) {
-  if (!skillId) return '⚔';
-  const skill = SKILLS[skillId];
-  if (!skill) return '⚔';
-  return skill.type === '射击' ? '🔮' : '⚔';
 }
 
 function formatPoint(pos) {
@@ -143,59 +134,8 @@ export function renderEventLogEntry(event, charById = new Map()) {
     return null;
   }
 
-  // ── Legacy type fallback (events without canonical eventType) ──
-
-  switch (event.type) {
-    case 'move': {
-      const to = event.to || event.targetPos;
-      const dest = to ? formatPoint(to) : '未知';
-      return { actionId: event.actionId || null, text: `${actorName} → 移动至 ${dest}`, type: 'move' };
-    }
-
-    case 'attack': {
-      const icon = attackIcon(event.skillId);
-      const targetRef = event.targetName
-        || (event.targetPos ? formatPoint(event.targetPos) : '目标');
-
-      if (event.killed) {
-        const dmg = event.damage ? `（伤害 ${event.damage}）` : '';
-        return { actionId: event.actionId || null, text: `${actorName} ${icon} → ${targetRef} 击杀${dmg}`, type: 'kill' };
-      }
-      if (event.result === 'hit') {
-        const dmg = event.damage ? `（伤害 ${event.damage}）` : '';
-        return { actionId: event.actionId || null, text: `${actorName} ${icon} → ${targetRef} 命中${dmg}`, type: 'hit' };
-      }
-      if (event.result === 'miss') {
-        return { actionId: event.actionId || null, text: `${actorName} ${icon} 挥空`, type: 'miss' };
-      }
-      return { actionId: event.actionId || null, text: `${actorName} ${icon} → ${targetRef} 结算中`, type: 'attack' };
-    }
-
-    case 'resource': {
-      // Legacy resource events — only render if no canonical resource_changed exists
-      // for the same resource change. These have unsigned amount without delta.
-      // The canonical resource_changed (from EventBus) takes precedence.
-      const res = event.resource || '资源';
-      const amount = event.amount;
-      // Skip legacy resource events that lack a delta (they have wrong signs)
-      // The EventBus-recorded resource_changed events have correct delta.
-      if (event.delta == null) return null;
-      const amtStr = amount != null ? `${amount >= 0 ? '+' : ''}${amount}` : '';
-      return { actionId: event.actionId || null, text: `${actorName} → ${res}${amtStr}`, type: 'resource' };
-    }
-
-    case 'status': {
-      const pos = event.targetPos ? formatPoint(event.targetPos) : '';
-      return { actionId: event.actionId || null, text: `${actorName} → 状态变化 ${pos}`, type: 'status' };
-    }
-
-    case 'utility': {
-      return { actionId: event.actionId || null, text: `${actorName} → 辅助效果`, type: 'utility' };
-    }
-
-    default:
-      return null;
-  }
+  // ── Unrecognized eventType → skip (no legacy fallback) ──
+  return null;
 }
 
 // ─── Full resolution → log entries ───

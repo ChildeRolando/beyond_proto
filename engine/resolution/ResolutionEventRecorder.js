@@ -6,7 +6,7 @@
 // used by TurnResolutionBuilder.
 
 import { EvtType } from '../CommandTypes.js';
-import { ResolutionEventType, normalizeResolutionEvent } from './ResolutionEventTypes.js';
+import { ResolutionEventType, normalizeResolutionEvent, assertResolutionEvent } from './ResolutionEventTypes.js';
 
 let _eventIdCounter = 0;
 function nextEventId() { return `rev-${++_eventIdCounter}`; }
@@ -187,7 +187,7 @@ export class ResolutionEventRecorder {
     return event;
   }
 
-  /** Manually record a pre-built event. */
+  /** Manually record a pre-built event. Must have a legal eventType. */
   record(event) {
     if (!this.#currentPhase) return null;
     const normalized = normalizeResolutionEvent({
@@ -196,6 +196,8 @@ export class ResolutionEventRecorder {
       phaseSpeed: event.phaseSpeed ?? this.#currentPhase?.speed ?? null,
       phaseKind: event.phaseKind ?? this.#currentPhase?.phaseKind ?? 'speed',
     });
+    // Enforce canonical eventType — illegal events must not enter phase.events
+    assertResolutionEvent(normalized);
     this.#currentPhase.events.push(normalized);
     return normalized;
   }

@@ -299,19 +299,16 @@ test('Test 6: qi cost shows as negative delta, not gain in Timeline', async ({ p
   const resolution = executed?.resolution;
   expect(resolution).not.toBeNull();
 
-  // ── Assert: resource_changed event for qi has delta < 0 (cost) ──
+  // ── Assert: resource_changed qi events exist and cost has delta < 0 ──
   const allEvents = (resolution.phases || []).flatMap(p => p.events || []);
   const qiEvents = allEvents.filter(e =>
     e.eventType === 'resource_changed' && e.resource === 'qi'
   );
-
-  if (qiEvents.length > 0) {
-    for (const evt of qiEvents) {
-      if (evt.reason === 'skill_cost' || evt.delta < 0) {
-        expect(evt.delta).toBeLessThan(0);
-      }
-    }
-  }
+  // Must have at least one resource_changed qi event
+  expect(qiEvents.length).toBeGreaterThanOrEqual(1);
+  // Qi cost events must have negative delta
+  const qiCostEvents = qiEvents.filter(e => e.delta < 0);
+  expect(qiCostEvents.length).toBeGreaterThanOrEqual(1);
 
   // ── Assert: Timeline action summary does NOT show qi gain for cost actions ──
   const phaseActions = (resolution.phases || []).flatMap(p => p.actions || []);

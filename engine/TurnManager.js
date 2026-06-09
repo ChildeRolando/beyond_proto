@@ -210,6 +210,10 @@ export class TurnManager {
       if (this.#eventRecorder && this.#lastActionContext) {
         this.#eventRecorder.setActionContext(null, null, null, null);
       }
+      // Snapshot alive projectile IDs before resolution so we can detect expired ones.
+      const preProjIds = this.#projectileCalculator
+        ? new Set((this.#projectileCalculator.getProjectiles?.() || []).map(p => p.id))
+        : new Set();
       if (this.#projectileCalculator) {
         const results = this.#projectileCalculator.resolveStep(
           spd, this.#registry, this.#damageCalculator, this.#buffManager, { rules: this._getRules() }
@@ -277,9 +281,18 @@ export class TurnManager {
               }
             }
           }
-          // Record projectile_expired for projectiles that are no longer alive
-          const allProjs = this.#projectileCalculator.getProjectiles?.() || [];
-          for (const p of allProjs) {
+          // Record projectile_expired for projectiles that existed before resolution
+          // but are no longer alive after (resolveStep filters dead projectiles out).
+          // Also include projectiles marked !alive that are still in the list.
+          const postProjs = this.#projectileCalculator.getProjectiles?.() || [];
+          const postProjIds = new Set(postProjs.map(p => p.id));
+          for (const pid of preProjIds) {
+            if (!hitProjIds.has(pid) && !postProjIds.has(pid)) {
+              this.#eventRecorder.recordProjectileExpired(pid, null);
+            }
+          }
+          // Also check projectiles in the post list that are dead but not in hitProjIds
+          for (const p of postProjs) {
             if (!p.alive && !hitProjIds.has(p.id)) {
               this.#eventRecorder.recordProjectileExpired(p.id, null);
             }
@@ -410,6 +423,8 @@ export class TurnManager {
     let eotPhaseRecord = null;
     if (this.#resolutionRecorder) {
       eotPhaseRecord = this.#resolutionRecorder.onPhaseStart?.({ speed: null }) || null;
+      // Tag the phase as end_of_turn so canonical events record the correct phaseKind
+      if (eotPhaseRecord) eotPhaseRecord.phaseKind = 'end_of_turn';
     }
     if (!eotPhaseRecord && this.#eventRecorder) {
       eotPhaseRecord = this.#eventRecorder.startPhase(null, 'end_of_turn', 0);

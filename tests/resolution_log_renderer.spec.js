@@ -51,13 +51,13 @@ function makeChar(overrides = {}) {
 
 console.log('\n=== Part 1: ResolutionActionSummarizer (action-level) ===');
 
-// Test 1a: move action → result: 'move'
+// Test 1a: move action → result: 'move' (canonical character_moved)
 console.log('\n[1a] move action');
 {
   const phase = {
     speed: 3,
     events: [
-      { id: 'ev1', actionId: 'act-move', actorId: 'hero', type: 'move', skillId: 'warrior_move', result: 'success', to: { q: 1, r: 0 } },
+      { id: 'ev1', actionId: 'act-move', actorId: 'hero', eventType: 'character_moved', skillId: 'warrior_move', to: { q: 1, r: 0 } },
     ],
   };
   const viewState = makeViewState([makeChar()]);
@@ -70,17 +70,16 @@ console.log('\n[1a] move action');
   assertEquals(s.actorName, '测试英雄', 'actorName');
   assertEquals(s.result, 'move', 'result is move');
   assert(s.summaryText.includes('移动'), 'summaryText mentions move');
-  // No logText on action summaries — that belongs to event-level log renderer
   assertEquals(s.logText, undefined, 'action summaries do NOT have logText');
 }
 
-// Test 1b: attack hit
+// Test 1b: attack hit (canonical damage_applied)
 console.log('\n[1b] attack hit');
 {
   const phase = {
     speed: 1,
     events: [
-      { id: 'ev2', actionId: 'act-hit', actorId: 'hero', type: 'attack', skillId: 'warrior_slash', result: 'hit', targetId: 'tgt', targetName: '敌人B', damage: 35, killed: false },
+      { id: 'ev2', actionId: 'act-hit', actorId: 'hero', eventType: 'damage_applied', skillId: 'warrior_slash', targetId: 'tgt', targetName: '敌人B', finalDamage: 35, result: 'hit' },
     ],
   };
   const summaries = buildActionSummaries(phase, makeViewState([makeChar()]));
@@ -91,13 +90,14 @@ console.log('\n[1b] attack hit');
   assert(s.summaryText.includes('命中'), 'summaryText includes 命中');
 }
 
-// Test 1c: attack kill
+// Test 1c: attack kill (canonical damage_applied + character_died)
 console.log('\n[1c] attack kill');
 {
   const phase = {
     speed: 1,
     events: [
-      { id: 'ev3', actionId: 'act-kill', actorId: 'hero', type: 'attack', skillId: 'warrior_slash', result: 'hit', targetName: '训练稻草人', damage: 120, killed: true },
+      { id: 'ev3', actionId: 'act-kill', actorId: 'hero', eventType: 'damage_applied', skillId: 'warrior_slash', targetName: '训练稻草人', finalDamage: 120, result: 'killed' },
+      { id: 'ev3b', actionId: 'act-kill', actorId: 'hero', eventType: 'character_died', targetId: 'dummy', targetName: '训练稻草人', finalDamage: 120 },
     ],
   };
   const summaries = buildActionSummaries(phase, makeViewState([makeChar()]));
@@ -107,13 +107,13 @@ console.log('\n[1c] attack kill');
   assert(s.summaryText.includes('击杀'), 'summaryText includes 击杀');
 }
 
-// Test 1d: attack miss
+// Test 1d: attack miss (canonical action_failed)
 console.log('\n[1d] attack miss');
 {
   const phase = {
     speed: 1,
     events: [
-      { id: 'ev4', actionId: 'act-miss', actorId: 'enemy', type: 'attack', skillId: 'mage_blast', result: 'miss' },
+      { id: 'ev4', actionId: 'act-miss', actorId: 'enemy', eventType: 'action_failed', skillId: 'mage_blast', result: 'miss' },
     ],
   };
   const summaries = buildActionSummaries(phase, makeViewState([makeChar({ id: 'enemy', name: '敌方法师', class: '法师' })]));
@@ -122,27 +122,42 @@ console.log('\n[1d] attack miss');
   assert(s.summaryText.includes('挥空'), 'summaryText includes 挥空');
 }
 
-// Test 1e: resource
-console.log('\n[1e] resource');
+// Test 1e: resource gain (canonical resource_changed with delta)
+console.log('\n[1e] resource gain');
 {
   const phase = {
     speed: 2,
     events: [
-      { id: 'ev5', actionId: 'act-res', actorId: 'hero', type: 'resource', skillId: 'warrior_rage', result: 'success', resource: 'rage', amount: 3 },
+      { id: 'ev5', actionId: 'act-res', actorId: 'hero', eventType: 'resource_changed', skillId: 'warrior_rage', resource: 'rage', delta: 3 },
     ],
   };
   const summaries = buildActionSummaries(phase, makeViewState([makeChar()]));
   assertEquals(summaries[0].result, 'resource', 'result is resource');
 }
 
-// Test 1f: same actor hit+miss — summaries distinguish
-console.log('\n[1f] same actor hit+miss');
+// Test 1f: resource cost (canonical resource_changed with negative delta)
+console.log('\n[1f] resource cost');
+{
+  const phase = {
+    speed: 2,
+    events: [
+      { id: 'ev5b', actionId: 'act-cost', actorId: 'hero', eventType: 'resource_changed', skillId: 'mage_blast', resource: 'qi', delta: -1 },
+    ],
+  };
+  const summaries = buildActionSummaries(phase, makeViewState([makeChar()]));
+  assertEquals(summaries[0].result, 'resource', 'result is resource');
+  // Cost should show negative delta, not gain
+  assert(summaries[0].summaryText.includes('-1'), 'summaryText shows cost');
+}
+
+// Test 1g: same actor hit+miss — summaries distinguish
+console.log('\n[1g] same actor hit+miss');
 {
   const phase = {
     speed: 1,
     events: [
-      { id: 'ev6a', actionId: 'act-a', actorId: 'attacker', type: 'attack', skillId: 'mage_blast', result: 'hit', targetName: '目标H', damage: 45 },
-      { id: 'ev6b', actionId: 'act-b', actorId: 'attacker', type: 'attack', skillId: 'mage_blast', result: 'miss' },
+      { id: 'ev6a', actionId: 'act-a', actorId: 'attacker', eventType: 'damage_applied', skillId: 'mage_blast', targetName: '目标H', finalDamage: 45, result: 'hit' },
+      { id: 'ev6b', actionId: 'act-b', actorId: 'attacker', eventType: 'action_failed', skillId: 'mage_blast', result: 'miss' },
     ],
   };
   const summaries = buildActionSummaries(phase, makeViewState([makeChar({ id: 'attacker', name: '攻击者', class: '法师' })]));
@@ -161,7 +176,7 @@ console.log('\n[1f] same actor hit+miss');
 
 console.log('\n=== Part 2: ResolutionLogRenderer (event-level) ===');
 
-// Test 2a: renderTurnLog from resolution with events
+// Test 2a: renderTurnLog from resolution with canonical events
 console.log('\n[2a] renderTurnLog — mixed events');
 {
   const resolution = {
@@ -171,15 +186,15 @@ console.log('\n[2a] renderTurnLog — mixed events');
         speed: 3,
         viewState: makeViewState([makeChar()]),
         events: [
-          { id: 'ev-move', actionId: 'act-move', actorId: 'hero', type: 'move', to: { q: 1, r: 0 } },
+          { id: 'ev-move', actionId: 'act-move', actorId: 'hero', eventType: 'character_moved', to: { q: 1, r: 0 } },
         ],
       },
       {
         speed: 1,
         viewState: makeViewState([makeChar(), makeChar({ id: 'enemy', name: '敌方法师', class: '法师', ownerId: 'player2' })]),
         events: [
-          { id: 'ev-hit', actionId: 'act-hit', actorId: 'hero', type: 'attack', skillId: 'warrior_slash', result: 'hit', targetName: '训练稻草人', damage: 35 },
-          { id: 'ev-miss', actionId: 'act-miss', actorId: 'enemy', type: 'attack', skillId: 'mage_blast', result: 'miss' },
+          { id: 'ev-hit', actionId: 'act-hit', actorId: 'hero', eventType: 'damage_applied', skillId: 'warrior_slash', targetName: '训练稻草人', finalDamage: 35, result: 'hit' },
+          { id: 'ev-miss', actionId: 'act-miss', actorId: 'enemy', eventType: 'action_failed', skillId: 'mage_blast', result: 'miss' },
         ],
       },
     ],
@@ -187,20 +202,20 @@ console.log('\n[2a] renderTurnLog — mixed events');
 
   const entries = renderTurnLog(resolution);
 
-  // Should have: turn header + move + hit + miss = 4 entries
+  // Should have: turn header + move + hit + fail = 4 entries
   assert(entries.length >= 4, `at least 4 entries, got ${entries.length}`);
   assertEquals(entries[0].type, 'turn', 'first is turn header');
   assertEquals(entries[1].type, 'move', 'second is move');
   assert(entries.some(e => e.type === 'hit'), 'has hit entry');
-  assert(entries.some(e => e.type === 'miss'), 'has miss entry');
+  assert(entries.some(e => e.type === 'fail'), 'has fail miss entry');
 
   const hitEntry = entries.find(e => e.type === 'hit');
   assert(hitEntry.text.includes('训练稻草人'), 'hit mentions target');
-  assert(hitEntry.text.includes('命中'), 'hit says 命中');
-  assert(hitEntry.text.includes('35'), 'hit shows damage');
+  assert(hitEntry.text.includes('伤害'), 'hit shows damage');
+  assert(hitEntry.text.includes('35'), 'hit shows damage number');
 
-  const missEntry = entries.find(e => e.type === 'miss');
-  assert(missEntry.text.includes('挥空'), 'miss says 挥空');
+  const failEntry = entries.find(e => e.type === 'fail');
+  assert(failEntry.text.includes('技能发动失败'), 'fail says 技能发动失败');
 }
 
 // Test 2b: renderTurnLog — suppressGameOver
@@ -212,7 +227,7 @@ console.log('\n[2b] renderTurnLog — suppress game over');
     winner: 'player1',
     phases: [
       { speed: 1, viewState: makeViewState([makeChar()]), events: [
-        { id: 'ev-kill', actionId: 'act-kill', actorId: 'hero', type: 'attack', result: 'hit', targetName: 'dummy', killed: true },
+        { id: 'ev-kill', actionId: 'act-kill', actorId: 'hero', eventType: 'character_died', targetName: 'dummy', finalDamage: 100 },
       ]},
     ],
   };
@@ -221,7 +236,7 @@ console.log('\n[2b] renderTurnLog — suppress game over');
   assert(!hasVictory, 'suppressGameOver hides victory message');
 }
 
-// Test 2c: renderEventLogEntry — individual event rendering
+// Test 2c: renderEventLogEntry — individual event rendering (canonical)
 console.log('\n[2c] renderEventLogEntry — individual events');
 {
   const charById = new Map([
@@ -229,32 +244,31 @@ console.log('\n[2c] renderEventLogEntry — individual events');
     ['enemy', makeChar({ id: 'enemy', name: '敌人', class: '法师' })],
   ]);
 
-  // move
+  // move (canonical character_moved)
   const moveEntry = renderEventLogEntry(
-    { id: 'e1', actionId: 'a1', actorId: 'hero', type: 'move', to: { q: 1, r: 0 } },
+    { id: 'e1', actionId: 'a1', actorId: 'hero', eventType: 'character_moved', to: { q: 1, r: 0 } },
     charById
   );
   assertEquals(moveEntry.type, 'move', 'move type');
-  assert(moveEntry.text.includes('移动至'), 'move says 移动至');
+  assert(moveEntry.text.includes('移动'), 'move says 移动');
 
-  // kill
+  // kill (canonical character_died)
   const killEntry = renderEventLogEntry(
-    { id: 'e2', actionId: 'a2', actorId: 'hero', type: 'attack', result: 'hit', targetName: '稻草人', damage: 50, killed: true },
+    { id: 'e2', actionId: 'a2', actorId: 'hero', eventType: 'character_died', targetName: '稻草人', finalDamage: 50 },
     charById
   );
   assertEquals(killEntry.type, 'kill', 'kill type');
-  assert(killEntry.text.includes('击杀'), 'kill says 击杀');
-  assert(killEntry.text.includes('50'), 'kill shows damage');
+  assert(killEntry.text.includes('被击杀'), 'kill says 被击杀');
 
-  // miss
+  // miss (canonical action_failed)
   const missEntry = renderEventLogEntry(
-    { id: 'e3', actionId: 'a3', actorId: 'enemy', type: 'attack', skillId: 'mage_blast', result: 'miss' },
+    { id: 'e3', actionId: 'a3', actorId: 'enemy', eventType: 'action_failed', skillId: 'mage_blast', result: 'miss' },
     charById
   );
-  assertEquals(missEntry.type, 'miss', 'miss type');
-  assert(missEntry.text.includes('挥空'), 'miss says 挥空');
+  assertEquals(missEntry.type, 'fail', 'miss type');
+  assert(missEntry.text.includes('技能发动失败'), 'miss says 技能发动失败');
 
-  // resource (with delta — canonical event type)
+  // resource (canonical resource_changed with negative delta — cost)
   const resEntry = renderEventLogEntry(
     { id: 'e4', actionId: 'a4', actorId: 'hero', eventType: 'resource_changed', resource: 'rage', delta: -1 },
     charById
@@ -262,7 +276,7 @@ console.log('\n[2c] renderEventLogEntry — individual events');
   assertEquals(resEntry.type, 'resource', 'resource type');
   assert(resEntry.text.includes('消耗'), 'negative delta shows 消耗');
 
-  // resource (with positive delta — gain)
+  // resource (canonical resource_changed with positive delta — gain)
   const gainEntry = renderEventLogEntry(
     { id: 'e4b', actionId: 'a4b', actorId: 'hero', eventType: 'resource_changed', resource: 'qi', delta: 1 },
     charById
@@ -286,7 +300,7 @@ console.log('\n[3a] append accumulates entries across turns');
     turnNumber: 1,
     phases: [
       { speed: 3, viewState: makeViewState([makeChar()]), events: [
-        { id: 'ev1', actionId: 'act1', actorId: 'hero', type: 'move', to: { q: 1, r: 0 } },
+        { id: 'ev1', actionId: 'act1', actorId: 'hero', eventType: 'character_moved', to: { q: 1, r: 0 } },
       ]},
     ],
   };
@@ -299,7 +313,7 @@ console.log('\n[3a] append accumulates entries across turns');
     turnNumber: 2,
     phases: [
       { speed: 1, viewState: makeViewState([makeChar()]), events: [
-        { id: 'ev2', actionId: 'act2', actorId: 'hero', type: 'attack', result: 'hit', targetName: '目标', damage: 30 },
+        { id: 'ev2', actionId: 'act2', actorId: 'hero', eventType: 'damage_applied', result: 'hit', targetName: '目标', finalDamage: 30 },
       ]},
     ],
   };
@@ -314,7 +328,7 @@ console.log('\n[3b] reset clears all entries');
   const store = new CombatLogStore();
   store.appendResolution({
     turnNumber: 1,
-    phases: [{ speed: 3, viewState: makeViewState([makeChar()]), events: [{ id: 'e', actionId: 'a', actorId: 'hero', type: 'move' }] }],
+    phases: [{ speed: 3, viewState: makeViewState([makeChar()]), events: [{ id: 'e', actionId: 'a', actorId: 'hero', eventType: 'character_moved' }] }],
   });
   assert(store.getEntries().length > 0, 'has entries before reset');
   store.reset();
@@ -326,7 +340,7 @@ console.log('\n[3c] serialize / deserialize roundtrip');
   const store = new CombatLogStore();
   store.appendResolution({
     turnNumber: 1,
-    phases: [{ speed: 3, viewState: makeViewState([makeChar()]), events: [{ id: 'e', actionId: 'a', actorId: 'hero', type: 'move' }] }],
+    phases: [{ speed: 3, viewState: makeViewState([makeChar()]), events: [{ id: 'e', actionId: 'a', actorId: 'hero', eventType: 'character_moved' }] }],
   });
   const data = store.serialize();
   const store2 = new CombatLogStore();
