@@ -1279,9 +1279,12 @@ export class TurnManager {
         // Store the anim step so the gather effect plays at the correct time
         // (only if qi is actually gained at end-of-turn, after shield-hit check)
         this.#pendingFlags.get(cmd.actorId)._gatherAnimStep = this.#currentAnimStep;
-        // Save source actionId so EOT qi gain is attributed to the correct action
+        // Save source actionId + skillId so EOT qi gain is attributed to the correct action
         if (this.#lastActionContext?.actionId) {
           this.#pendingFlags.get(cmd.actorId)._pendingQiSourceActionId = this.#lastActionContext.actionId;
+          if (this.#lastActionContext.skillId) {
+            this.#pendingFlags.get(cmd.actorId)._pendingQiSourceSkillId = this.#lastActionContext.skillId;
+          }
         }
       }
     }
@@ -1604,8 +1607,9 @@ export class TurnManager {
         if (!mageShieldHit) {
           // Restore source action context so qi gain is attributed to the right action
           const srcActionId = flags._pendingQiSourceActionId || null;
+          const srcSkillId = flags._pendingQiSourceSkillId || null;
           if (this.#eventRecorder && srcActionId) {
-            this.#eventRecorder.setActionContext(srcActionId, entityId, null, null);
+            this.#eventRecorder.setActionContext(srcActionId, entityId, srcSkillId, null);
           }
           const ctx = this.#buffManager.dispatch(HookName.ON_RESOURCE_GAIN, {
             entityId, resource: 'qi', amount: 1,

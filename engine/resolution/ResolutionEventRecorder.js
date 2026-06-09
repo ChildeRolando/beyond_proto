@@ -230,6 +230,7 @@ export class ResolutionEventRecorder {
         eventType: ResolutionEventType.RESOURCE_CHANGED,
         actionId: this.#actionContext?.actionId || null,
         actorId: data.entityId,
+        skillId: this.#actionContext?.skillId || null,
         subjectId: data.entityId,
         resource: data.resource,
         delta: data.delta ?? null,

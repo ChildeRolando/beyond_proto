@@ -361,6 +361,13 @@ test('Test 7: mage gather produces qi gain in log and resolution', async ({ page
     e.type === 'resource' && (/获得.*qi|qi.*\+/.test(e.text))
   );
   expect(gainLines.length).toBeGreaterThanOrEqual(1);
+
+  // ── Assert: Timeline has an action card showing qi gain (EOT phase) ──
+  const allActions = (resolution.phases || []).flatMap(p => p.actions || []);
+  const gatherGainAction = allActions.find(a =>
+    a.skillId === 'mage_gather' && /获得.*qi/.test(a.summaryText)
+  );
+  expect(gatherGainAction).toBeTruthy();
 });
 
 // ═══════════════════════════════════════════════════════
@@ -455,4 +462,45 @@ test('Test 9: CombatLogStore accumulates entries across turns', async ({ page })
   // Turn 1 entries still visible
   const hasTurn1After = logAfter2.some(e => /第 1 回合/.test(e.text));
   expect(hasTurn1After).toBe(true);
+});
+
+// ═══════════════════════════════════════════════════════
+// Test 10: Projectile-vs-projectile collision canonical
+// ═══════════════════════════════════════════════════════
+
+test('Test 10: projectile-vs-projectile collision records canonical collided/intercepted', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForFunction(() => Boolean(window.__resolutionTest));
+
+  // Two mages fire at each other — projectiles share hex (1,0) and collide
+  await page.evaluate(() => window.__resolutionTest.startDeterministicSpeedScenario('projectile_clash'));
+  await expect(page.locator('#app')).toBeVisible();
+
+  await page.evaluate(() => {
+    window.__resolutionTest.forceSubmitAction('clasher_a', 'mage_blast', { q: 2, r: 0 });
+    window.__resolutionTest.forceSubmitAction('clasher_b', 'mage_blast', { q: 0, r: 0 });
+  });
+
+  const executed = await page.evaluate(() => window.__resolutionTest.executeRealTurnAndGetResolution());
+  const resolution = executed?.resolution;
+  expect(resolution).not.toBeNull();
+
+  const allEvents = (resolution.phases || []).flatMap(p => p.events || []);
+
+  // ── Assert: projectile_created for both sides ──
+  const createdEvents = allEvents.filter(e => e.eventType === 'projectile_created');
+  expect(createdEvents.length).toBeGreaterThanOrEqual(2);
+
+  // ── Assert: projectile_collided or projectile_intercepted from clash exists ──
+  const clashEvents = allEvents.filter(e =>
+    e.eventType === 'projectile_collided' || e.eventType === 'projectile_intercepted'
+  );
+  expect(clashEvents.length).toBeGreaterThanOrEqual(1);
+
+  // ── Assert: log mentions projectile collision text ──
+  const canonicalLog = await page.evaluate(() => window.__resolutionTest.getCanonicalLog());
+  const clashLogs = canonicalLog.filter(e =>
+    e.type === 'projectile' && /弹体碰撞|弹体被拦截/.test(e.text)
+  );
+  expect(clashLogs.length).toBeGreaterThanOrEqual(1);
 });

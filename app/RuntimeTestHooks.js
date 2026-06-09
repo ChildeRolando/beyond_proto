@@ -254,6 +254,35 @@ export function installRuntimeTestHooks({
           },
         ],
       },
+      projectile_clash: {
+        mode: 'duel',
+        teams: commonTeams,
+        rules: { friendlyFire: false },
+        combatants: [
+          {
+            id: 'clasher_a',
+            teamId: 'player1',
+            ownerId: 'player1',
+            control: 'human',
+            class: '法师',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['mage_blast'],
+            position: { q: 0, r: 0 },
+            resources: { qi: 2 },
+          },
+          {
+            id: 'clasher_b',
+            teamId: 'player2',
+            ownerId: 'player2',
+            control: 'human',
+            class: '法师',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['mage_blast'],
+            position: { q: 2, r: 0 },
+            resources: { qi: 2 },
+          },
+        ],
+      },
     };
 
     return structuredClone(scenarios[kind] || scenarios.phase_order);
