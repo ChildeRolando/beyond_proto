@@ -148,16 +148,24 @@ export class DamageCalculator {
   _applyDamage(target, targetId, damage, sourceId, flags) {
     if (damage <= 0) return false;
 
+    // Default model: one-hit-kill.
+    // If a character has no hp resource, any damage > 0 kills them.
+    // Characters with hp resource use traditional HP subtraction
+    // (legacy support only — the canonical game has no HP).
     const pool = this.resourceSystem.getAll(targetId);
-    if (pool && Object.prototype.hasOwnProperty.call(pool, 'hp')) {
+    const hasHp = pool && Object.prototype.hasOwnProperty.call(pool, 'hp');
+
+    if (hasHp) {
       const currentHp = pool.hp ?? 0;
       const nextHp = Math.max(0, currentHp - damage);
       this.resourceSystem.set(targetId, 'hp', nextHp);
       if (nextHp > 0) {
-        return false;
+        return false; // survived with HP remaining
       }
+      // HP reached 0 — fall through to kill
     }
 
+    // No HP, or HP exhausted: one-hit-kill
     if (damage > 0) {
       target.alive = false;
       this.eventBus.emit(EvtType.CHARACTER_DIED, { targetId, sourceId, finalDamage: damage });

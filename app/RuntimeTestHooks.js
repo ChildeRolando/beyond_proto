@@ -192,7 +192,65 @@ export function installRuntimeTestHooks({
             roleLoadoutSkillIds: [],
             loadoutSkillIds: ['warrior_rage'],
             position: { q: 0, r: 2 },
-            resources: { hp: 80 },
+            resources: { rage: 1 },
+          },
+        ],
+      },
+      mage_gather_test: {
+        mode: 'duel',
+        teams: commonTeams,
+        rules: { friendlyFire: false },
+        combatants: [
+          {
+            id: 'test_mage',
+            teamId: 'player1',
+            ownerId: 'player1',
+            control: 'human',
+            class: '法师',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['mage_gather'],
+            position: { q: 0, r: 0 },
+            resources: { qi: 0 },
+          },
+          {
+            id: 'test_target',
+            teamId: 'player2',
+            ownerId: 'player2',
+            control: 'human',
+            class: '战士',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['warrior_rage'],
+            position: { q: 2, r: 0 },
+            resources: {},
+          },
+        ],
+      },
+      append_test: {
+        mode: 'duel',
+        teams: commonTeams,
+        rules: { friendlyFire: false },
+        combatants: [
+          {
+            id: 'p1_char',
+            teamId: 'player1',
+            ownerId: 'player1',
+            control: 'human',
+            class: '战士',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['warrior_move'],
+            position: { q: 0, r: 0 },
+            resources: {},
+          },
+          {
+            id: 'p2_char',
+            teamId: 'player2',
+            ownerId: 'player2',
+            control: 'human',
+            class: '战士',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['warrior_rage'],
+            position: { q: 2, r: 0 },
+            resources: {},
           },
         ],
       },
@@ -263,7 +321,6 @@ export function installRuntimeTestHooks({
       const battleSession = getBattleSession();
       const engine = battleSession.engine;
       // Execute on the real engine (not a clone), capturing resolution via recorder.
-      // The TurnManager calls onPhaseStart and pushes events directly to the returned phaseRecord.events.
       const phases = [];
       const recorder = {
         onPhaseStart(data) {
@@ -284,12 +341,16 @@ export function installRuntimeTestHooks({
       }
 
       const resolution = {
+        turnNumber: engine.turnManager.turnNumber - 1, // turn was already incremented
         phases: phases.filter(p => p.events.length > 0),
         endState: viewState,
       };
 
-      // Store so getCanonicalLog / renderLog can access it
+      // Store and append to CombatLogStore so append-only tests work
       battleSession.lastTurnResolution = structuredClone(resolution);
+      if (battleSession.combatLogStore) {
+        battleSession.combatLogStore.appendResolution(resolution);
+      }
 
       return { ...result, resolution };
     },

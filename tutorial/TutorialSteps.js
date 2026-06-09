@@ -19,7 +19,7 @@ export const TUTORIAL_LEVELS = {
     playerRoleId: 'warrior_vanguard',
     playerLoadoutSkillIds: ['warrior_move'],
     playerRoleLoadoutSkillIds: [],
-    playerResources: { hp: 100 },
+    playerResources: {},
     enemy: {
       id: 'tutorial_dummy',
       teamId: 'tutorial_enemies',
@@ -30,7 +30,7 @@ export const TUTORIAL_LEVELS = {
       loadoutSkillIds: ['tutorial_dummy_wait'],
       roleLoadoutSkillIds: [],
       position: { q: 2, r: 0 },
-      resources: { hp: 40 },
+      resources: {},
       displayName: '训练稻草人',
       tutorialUnit: true,
     },
@@ -71,7 +71,7 @@ export const TUTORIAL_LEVELS = {
     playerRoleId: 'warrior_vanguard',
     playerLoadoutSkillIds: ['warrior_slash'],
     playerRoleLoadoutSkillIds: [],
-    playerResources: { hp: 100 },
+    playerResources: {},
     enemy: {
       id: 'tutorial_dummy',
       teamId: 'tutorial_enemies',
@@ -82,7 +82,7 @@ export const TUTORIAL_LEVELS = {
       loadoutSkillIds: ['tutorial_dummy_wait'],
       roleLoadoutSkillIds: [],
       position: { q: 1, r: 0 },
-      resources: { hp: 40 },
+      resources: {},
       displayName: '训练稻草人',
       tutorialUnit: true,
     },
@@ -125,7 +125,7 @@ export const TUTORIAL_LEVELS = {
     playerRoleId: 'warrior_vanguard',
     playerLoadoutSkillIds: ['warrior_move'],
     playerRoleLoadoutSkillIds: [],
-    playerResources: { hp: 100 },
+    playerResources: {},
     enemy: {
       id: 'tutorial_enemy',
       teamId: 'tutorial_enemies',
@@ -136,7 +136,7 @@ export const TUTORIAL_LEVELS = {
       loadoutSkillIds: ['shooter_attack'],
       roleLoadoutSkillIds: [],
       position: { q: 0, r: -2 },
-      resources: { hp: 150, ammo: 1 },
+      resources: { ammo: 1 },
     },
     initialStepId: 'select_move',
     steps: {

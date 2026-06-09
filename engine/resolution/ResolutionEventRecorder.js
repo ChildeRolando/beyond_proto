@@ -20,6 +20,7 @@ export class ResolutionEventRecorder {
   #phases = [];
   #enabled = false;
   #registry = null;            // optional: for actor name lookups
+  #declaredActionIds = new Set(); // dedup: one action_declared per actionId per turn
 
   constructor(eventBus, registry = null) {
     this.#eventBus = eventBus;
@@ -34,6 +35,7 @@ export class ResolutionEventRecorder {
     this.#phases = [];
     this.#actionContext = null;
     this.#currentPhase = null;
+    this.#declaredActionIds = new Set();
     this._attachListeners();
     this.#enabled = true;
   }
@@ -66,9 +68,13 @@ export class ResolutionEventRecorder {
     this.#actionContext = { actionId, actorId, skillId, commandId };
   }
 
-  /** Record an action_declared event for a submitted command. */
+  /** Record an action_declared event for a submitted action. Deduped by actionId. */
   recordActionDeclared(actorId, skillId, actionId, targetPos, skillName) {
     if (!this.#currentPhase) return null;
+    // Dedup: one action_declared per actionId per turn
+    if (actionId && this.#declaredActionIds.has(actionId)) return null;
+    if (actionId) this.#declaredActionIds.add(actionId);
+
     const actor = this.#registry?.get?.(actorId);
     const event = normalizeResolutionEvent({
       id: nextEventId(),
@@ -82,6 +88,100 @@ export class ResolutionEventRecorder {
       targetPos: targetPos || null,
       actorName: actor?.name || null,
       skillName: skillName || null,
+    });
+    this.#currentPhase.events.push(event);
+    return event;
+  }
+
+  /** Record an action_failed event (e.g., miss). */
+  recordActionFailed(actionId, actorId, skillId, reason) {
+    if (!this.#currentPhase) return null;
+    const event = normalizeResolutionEvent({
+      id: nextEventId(),
+      eventType: ResolutionEventType.ACTION_FAILED,
+      turnNumber: this.#currentTurn,
+      phaseSpeed: this.#currentPhase.speed,
+      phaseKind: this.#currentPhase.phaseKind || 'speed',
+      actionId,
+      actorId,
+      skillId,
+      result: 'miss',
+      reason: reason || 'miss',
+    });
+    this.#currentPhase.events.push(event);
+    return event;
+  }
+
+  /** Record a projectile_created event. */
+  recordProjectileCreated(projectileId, actorId, skillId, actionId, fromPos, toPos, power, speed) {
+    if (!this.#currentPhase) return null;
+    const event = normalizeResolutionEvent({
+      id: nextEventId(),
+      eventType: ResolutionEventType.PROJECTILE_CREATED,
+      turnNumber: this.#currentTurn,
+      phaseSpeed: this.#currentPhase.speed,
+      phaseKind: this.#currentPhase.phaseKind || 'speed',
+      actionId,
+      actorId,
+      skillId,
+      projectileId,
+      from: fromPos || null,
+      to: toPos || null,
+      basePower: power ?? null,
+      projectileType: 'projectile',
+    });
+    this.#currentPhase.events.push(event);
+    return event;
+  }
+
+  /** Record a projectile_collided event. */
+  recordProjectileCollided(projectileId, targetId, targetPos, damage) {
+    if (!this.#currentPhase) return null;
+    const targetChar = targetId ? this.#registry?.get?.(targetId) : null;
+    const event = normalizeResolutionEvent({
+      id: nextEventId(),
+      eventType: ResolutionEventType.PROJECTILE_COLLIDED,
+      turnNumber: this.#currentTurn,
+      phaseSpeed: this.#currentPhase.speed,
+      phaseKind: this.#currentPhase.phaseKind || 'speed',
+      projectileId,
+      targetId,
+      targetPos: targetPos || null,
+      targetName: targetChar?.name || null,
+      finalDamage: damage ?? null,
+    });
+    this.#currentPhase.events.push(event);
+    return event;
+  }
+
+  /** Record a projectile_expired event (disappeared without hitting). */
+  recordProjectileExpired(projectileId, reason) {
+    if (!this.#currentPhase) return null;
+    const event = normalizeResolutionEvent({
+      id: nextEventId(),
+      eventType: ResolutionEventType.PROJECTILE_EXPIRED,
+      turnNumber: this.#currentTurn,
+      phaseSpeed: this.#currentPhase.speed,
+      phaseKind: this.#currentPhase.phaseKind || 'speed',
+      projectileId,
+      reason: reason || null,
+    });
+    this.#currentPhase.events.push(event);
+    return event;
+  }
+
+  /** Record a projectile_intercepted event. */
+  recordProjectileIntercepted(projectileId, interceptorId, interceptPower) {
+    if (!this.#currentPhase) return null;
+    const event = normalizeResolutionEvent({
+      id: nextEventId(),
+      eventType: ResolutionEventType.PROJECTILE_INTERCEPTED,
+      turnNumber: this.#currentTurn,
+      phaseSpeed: this.#currentPhase.speed,
+      phaseKind: this.#currentPhase.phaseKind || 'speed',
+      projectileId,
+      targetId: interceptorId,
+      basePower: interceptPower ?? null,
     });
     this.#currentPhase.events.push(event);
     return event;
@@ -134,6 +234,7 @@ export class ResolutionEventRecorder {
     this.#actionContext = null;
     this.#currentTurn = 1;
     this.#enabled = false;
+    this.#declaredActionIds = new Set();
     _eventIdCounter = 0;
   }
 
@@ -165,12 +266,15 @@ export class ResolutionEventRecorder {
     });
 
     // DAMAGE_DEALT → damage_applied
+    // Skip when actionId is null — damage is already recorded from projectile hit results
+    // with the correct actionId (EventBus lacks action context during projectile resolution).
     on(EvtType.DAMAGE_DEALT, (data) => {
       if (!this.#enabled || !this.#currentPhase) return;
+      if (!this.#actionContext?.actionId) return; // skip duplicate (recorded from projectile results)
       this.record({
         id: nextEventId(),
         eventType: ResolutionEventType.DAMAGE_APPLIED,
-        actionId: this.#actionContext?.actionId || null,
+        actionId: this.#actionContext.actionId,
         actorId: data.sourceId,
         targetId: data.targetId,
         basePower: data.basePower ?? null,
@@ -243,13 +347,16 @@ export class ResolutionEventRecorder {
     });
 
     // CHARACTER_DIED → character_died
+    // Skip when actionId is null — death is already recorded from projectile hit results
+    // with the correct actionId (EventBus lacks action context during projectile resolution).
     on(EvtType.CHARACTER_DIED, (data) => {
       if (!this.#enabled || !this.#currentPhase) return;
+      if (!this.#actionContext?.actionId) return; // skip duplicate (recorded from projectile results)
       const targetChar = this.#registry?.get?.(data.targetId);
       this.record({
         id: nextEventId(),
         eventType: ResolutionEventType.CHARACTER_DIED,
-        actionId: this.#actionContext?.actionId || null,
+        actionId: this.#actionContext.actionId,
         actorId: data.sourceId,
         targetId: data.targetId,
         targetName: targetChar?.name || null,
@@ -257,9 +364,14 @@ export class ResolutionEventRecorder {
       });
     });
 
-    // MOVEMENT_COMPLETE → character_moved
+    // MOVEMENT_COMPLETE → character_moved (skip no-op moves)
     on(EvtType.MOVEMENT_COMPLETE, (data) => {
       if (!this.#enabled || !this.#currentPhase) return;
+      // Skip no-op movements where from == to
+      if (data.from && data.to &&
+          data.from.q === data.to.q && data.from.r === data.to.r) {
+        return;
+      }
       this.record({
         id: nextEventId(),
         eventType: ResolutionEventType.CHARACTER_MOVED,

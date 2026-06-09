@@ -201,7 +201,7 @@ test('tutorial uses training dummy with 什么都不做 skill, not role_vanguard
   expect(dummyAfter.position.q).toBe(2);
   expect(dummyAfter.position.r).toBe(0);
 
-  // Hero HP should be unchanged (dummy no-op deals no damage)
+  // Hero should be alive and uninjured (dummy no-op deals no damage, one-hit-kill model)
   const heroAfter = await page.evaluate(() => window.__tutorialTest.getUnit('tutorial_hero'));
-  expect(heroAfter.resources.hp).toBe(100);
+  expect(heroAfter.alive).toBe(true);
 });

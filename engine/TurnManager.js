@@ -46,6 +46,8 @@ export class TurnManager {
   #resourceFailed = new Set();  // sequenceIds whose resource cost check failed at exec time
   #canceledSequences = new Set(); // sequenceIds canceled by interruption/reaction effects
   #projectileAttackers = new Set(); // actorIds that fired projectiles this speed tier
+  #legacyPhaseEvents = [];           // legacy events for attack finalization (not player-facing)
+  #lastActionContext = null;          // saved action context for projectile damage attribution
   #currentAnimStep = 0;
   #speedGroups = null;
 
@@ -179,22 +181,35 @@ export class TurnManager {
           continue;
         }
         const beforeActor = this.#registry.get(cmd.actorId);
-        // Record action_declared before execution (canonical event stream)
+        // Record action_declared before execution (dedup handled by EventRecorder)
         if (phaseRecord && this.#eventRecorder) {
           const actionId = cmd.actionId || cmd.sequenceId || cmd.id || null;
           const skill = cmd.skillId ? SKILLS[cmd.skillId] : null;
           this.#eventRecorder.setActionContext(actionId, cmd.actorId, cmd.skillId, cmd.sequenceId);
+          this.#lastActionContext = { actionId, actorId: cmd.actorId, skillId: cmd.skillId, commandId: cmd.sequenceId };
           this.#eventRecorder.recordActionDeclared(
             cmd.actorId, cmd.skillId, actionId, cmd.targetPos || null, skill?.name || null
           );
         }
         this._executeCommand(cmd);
         if (phaseRecord) {
-          phaseRecord.events.push(this._createResolutionEvent(cmd, spd, phaseRecord.events.length, beforeActor));
+          const legacyEvent = this._createResolutionEvent(cmd, spd, this.#legacyPhaseEvents.length, beforeActor);
+          if (this.#eventRecorder) {
+            // EventRecorder captures canonical events from EventBus.
+            // Legacy events go to a debug array for attack finalization, NOT player-facing phase.events.
+            this.#legacyPhaseEvents.push(legacyEvent);
+          } else {
+            phaseRecord.events.push(legacyEvent);
+          }
         }
       }
 
-      // Resolve projectiles at this speed tier (advance full path, check body contact)
+      // Resolve projectiles at this speed tier (advance full path, check body contact).
+      // Clear action context during resolution so EventBus DAMAGE_DEALT events
+      // don't get the stale actionId; we record damage from results.hits instead.
+      if (this.#eventRecorder && this.#lastActionContext) {
+        this.#eventRecorder.setActionContext(null, null, null, null);
+      }
       if (this.#projectileCalculator) {
         const results = this.#projectileCalculator.resolveStep(
           spd, this.#registry, this.#damageCalculator, this.#buffManager, { rules: this._getRules() }
@@ -209,10 +224,76 @@ export class TurnManager {
           }
         }
 
-        // ON_ATTACK_MISSED is now dispatched per-action after finalization below,
-        // not per-actor here. This ensures same-actor mixed hit/miss is correct.
-        // Build per-action result map: actionId → { hit, targetId, targetName, killed, damage }
-        // Records BOTH hits and misses so same-actor mixed hit/miss is correctly attributed.
+        // Record projectile and damage events with correct actionId from hit results.
+        // (EventBus DAMAGE_DEALT uses stale actionContext; we override with accurate actionId.)
+        if (this.#eventRecorder && phaseRecord) {
+          const hitProjIds = new Set();
+          // Track which actionIds have damage recorded so we skip stale EventBus duplicates
+          const damagedActionIds = new Set();
+          for (const r of results.hits) {
+            if (r.projectileId) {
+              hitProjIds.add(r.projectileId);
+              if (r.hit) {
+                this.#eventRecorder.recordProjectileCollided(
+                  r.projectileId, r.targetId, null, r.damage
+                );
+                // Set action context to the projectile's actionId, then record damage and death
+                if (r.actionId) {
+                  const actor = this.#registry.get(r.ownerId);
+                  const target = this.#registry.get(r.targetId);
+                  this.#eventRecorder.record({
+                    id: `rev-dmg-${r.projectileId}`,
+                    eventType: 'damage_applied',
+                    actionId: r.actionId,
+                    actorId: r.ownerId,
+                    targetId: r.targetId,
+                    targetName: target?.name || null,
+                    finalDamage: r.damage ?? null,
+                    result: r.killed ? 'killed' : 'hit',
+                  });
+                  if (r.killed) {
+                    this.#eventRecorder.record({
+                      id: `rev-death-${r.projectileId}`,
+                      eventType: 'character_died',
+                      actionId: r.actionId,
+                      actorId: r.ownerId,
+                      targetId: r.targetId,
+                      targetName: target?.name || null,
+                      finalDamage: r.damage ?? null,
+                    });
+                  }
+                  damagedActionIds.add(r.actionId);
+                }
+              }
+            }
+          }
+          for (const r of results.interceptions) {
+            if (r.projectileId) {
+              hitProjIds.add(r.projectileId);
+              if (r.intercepted) {
+                this.#eventRecorder.recordProjectileIntercepted(
+                  r.projectileId, r.interceptorId, r.interceptPower
+                );
+              }
+            }
+          }
+          // Record projectile_expired for projectiles that are no longer alive
+          const allProjs = this.#projectileCalculator.getProjectiles?.() || [];
+          for (const p of allProjs) {
+            if (!p.alive && !hitProjIds.has(p.id)) {
+              this.#eventRecorder.recordProjectileExpired(p.id, null);
+            }
+          }
+          // Restore action context to last command (for subsequent EventBus events)
+          if (this.#lastActionContext) {
+            this.#eventRecorder.setActionContext(
+              this.#lastActionContext.actionId, this.#lastActionContext.actorId,
+              this.#lastActionContext.skillId, this.#lastActionContext.commandId
+            );
+          }
+        }
+
+        // Build per-action result map from projectile hits
         const resultByAction = new Map();
         for (const r of results.hits) {
           if (r.actionId) {
@@ -225,61 +306,62 @@ export class TurnManager {
             if (r.targetId) { entry.targetId = r.targetId; entry.targetName = r.targetName; }
             resultByAction.set(r.actionId, entry);
           }
-          // Note: actor-level lastHitByActor is updated above (line 185-186) for all hits
         }
 
         // Finalize pending attack events.
-        // Events with actionId → match by actionId (no actorId fallback).
-        // Events without actionId → legacy actorId fallback.
-        if (phaseRecord) {
-          for (const evt of phaseRecord.events) {
-            if (evt.type !== 'attack' || evt.result !== 'pending') continue;
+        // When EventRecorder is active, work on #legacyPhaseEvents (not player-facing).
+        const attackEvents = this.#eventRecorder ? this.#legacyPhaseEvents : (phaseRecord?.events || []);
+        for (const evt of attackEvents) {
+          if (evt.type !== 'attack' || evt.result !== 'pending') continue;
 
-            if (evt.actionId) {
-              // Primary path: match by actionId
-              const result = resultByAction.get(evt.actionId);
-              if (result) {
-                evt.result = result.hit ? 'hit' : 'miss';
-                if (result.targetId) { evt.targetId = result.targetId; evt.targetName = result.targetName; }
-                if (result.killed) evt.killed = true;
-                if (result.damage) evt.damage = result.damage;
-                this.#lastHitByActor.set(evt.actorId, result.hit);
-              } else {
-                // actionId present but no matching projectile hit → miss
-                evt.result = 'miss';
-                this.#lastHitByActor.set(evt.actorId, false);
-              }
+          if (evt.actionId) {
+            const result = resultByAction.get(evt.actionId);
+            if (result) {
+              evt.result = result.hit ? 'hit' : 'miss';
+              if (result.targetId) { evt.targetId = result.targetId; evt.targetName = result.targetName; }
+              if (result.killed) evt.killed = true;
+              if (result.damage) evt.damage = result.damage;
+              this.#lastHitByActor.set(evt.actorId, result.hit);
             } else {
-              // Legacy path: events without actionId fall back to actor-level tracking
-              if (this.#lastHitByActor.has(evt.actorId)) {
-                evt.result = this.#lastHitByActor.get(evt.actorId) ? 'hit' : 'miss';
-              } else {
-                this.#lastHitByActor.set(evt.actorId, false);
-                evt.result = 'miss';
-              }
+              evt.result = 'miss';
+              this.#lastHitByActor.set(evt.actorId, false);
+            }
+          } else {
+            if (this.#lastHitByActor.has(evt.actorId)) {
+              evt.result = this.#lastHitByActor.get(evt.actorId) ? 'hit' : 'miss';
+            } else {
+              this.#lastHitByActor.set(evt.actorId, false);
+              evt.result = 'miss';
             }
           }
         }
       }
 
-      // Dispatch ON_ATTACK_MISSED per-action (not per-actor) so same-actor
-      // mixed hit/miss is correctly attributed to each action.
-      if (phaseRecord) {
-        for (const evt of phaseRecord.events) {
-          if (evt.type !== 'attack') continue;
-          if (evt.result !== 'miss') continue;
-          const attacker = this.#registry.get(evt.actorId);
-          if (attacker) {
-            const icon = evt.skillId && SKILLS[evt.skillId]?.type === '射击' ? '🔮' : '⚔';
-            this.#logger?.log(`${attacker.name || evt.actorId} ${icon} 挥空`, 's');
-          }
-          const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, {
-            attackerId: evt.actorId,
-            actionId: evt.actionId,
-          });
-          this._processDeathWindReloads(missCtx);
+      // Dispatch ON_ATTACK_MISSED per-action, and record action_failed for misses.
+      const missSourceEvents = this.#eventRecorder ? this.#legacyPhaseEvents : (phaseRecord?.events || []);
+      for (const evt of missSourceEvents) {
+        if (evt.type !== 'attack') continue;
+        if (evt.result !== 'miss') continue;
+        const attacker = this.#registry.get(evt.actorId);
+        if (attacker) {
+          const icon = evt.skillId && SKILLS[evt.skillId]?.type === '射击' ? '🔮' : '⚔';
+          this.#logger?.log(`${attacker.name || evt.actorId} ${icon} 挥空`, 's');
+        }
+        const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, {
+          attackerId: evt.actorId,
+          actionId: evt.actionId,
+        });
+        this._processDeathWindReloads(missCtx);
+
+        // Record action_failed for canonical event stream
+        if (this.#eventRecorder && phaseRecord) {
+          this.#eventRecorder.recordActionFailed(
+            evt.actionId, evt.actorId, evt.skillId, 'miss'
+          );
         }
       }
+      // Clear legacy events after processing
+      this.#legacyPhaseEvents = [];
       this.#projectileAttackers.clear();
 
       // Now execute deferred ON_HIT GAIN_RESOURCE commands
@@ -288,7 +370,12 @@ export class TurnManager {
         const beforeActor = this.#registry.get(cmd.actorId);
         this._executeCommand(cmd);
         if (phaseRecord) {
-          phaseRecord.events.push(this._createResolutionEvent(cmd, spd, phaseRecord.events.length, beforeActor));
+          const legacyEvent = this._createResolutionEvent(cmd, spd, this.#legacyPhaseEvents.length, beforeActor);
+          if (this.#eventRecorder) {
+            this.#legacyPhaseEvents.push(legacyEvent);
+          } else {
+            phaseRecord.events.push(legacyEvent);
+          }
         }
       }
 
@@ -319,12 +406,16 @@ export class TurnManager {
     // --- END OF TURN phase (recorded as structured events) ---
     // Open an end_of_turn phase so delayed gains, buff ticks, etc.
     // are captured as ResolutionEvents.
+    // Use the legacy recorder's onPhaseStart so the phase is added to resolution.phases.
     let eotPhaseRecord = null;
-    if (this.#eventRecorder) {
+    if (this.#resolutionRecorder) {
+      eotPhaseRecord = this.#resolutionRecorder.onPhaseStart?.({ speed: null }) || null;
+    }
+    if (!eotPhaseRecord && this.#eventRecorder) {
       eotPhaseRecord = this.#eventRecorder.startPhase(null, 'end_of_turn', 0);
-      if (this.#resolutionRecorder) {
-        this.#eventRecorder.setCurrentPhaseRecord(eotPhaseRecord);
-      }
+    }
+    if (eotPhaseRecord && this.#eventRecorder) {
+      this.#eventRecorder.setCurrentPhaseRecord(eotPhaseRecord);
     }
 
     // --- EFFECTS ---
@@ -839,9 +930,15 @@ export class TurnManager {
       const effectiveSpeed = cmd.subSpeed ?? 1;
       const flags = forceHit ? ['MELEE', 'SURE_HIT'] : ['MELEE'];
       const actionId = cmd.actionId || cmd.sequenceId || null;
-      this.#projectileCalculator.createProjectile(
+      const proj = this.#projectileCalculator.createProjectile(
         cmd.actorId, originQ, originR, targetQ, targetR, power, effectiveSpeed, flags, actionId
       );
+      if (proj && this.#eventRecorder) {
+        this.#eventRecorder.recordProjectileCreated(
+          proj.id, cmd.actorId, cmd.skillId, actionId,
+          { q: originQ, r: originR }, { q: targetQ, r: targetR }, power, effectiveSpeed
+        );
+      }
     }
 
     // lastHitByActor will be set on body contact via projectile resolution
@@ -882,7 +979,14 @@ export class TurnManager {
     const effectiveSpeed = cmd.subSpeed ?? cmd.payload.projectileSpeed ?? 1;
 
     if (this.#projectileCalculator) {
-      this.#projectileCalculator.createProjectile(cmd.actorId, fromQ, fromR, toQ, toR, power, effectiveSpeed, cmd.payload.flags || [], cmd.actionId || cmd.sequenceId || null);
+      const actionId = cmd.actionId || cmd.sequenceId || null;
+      const proj = this.#projectileCalculator.createProjectile(cmd.actorId, fromQ, fromR, toQ, toR, power, effectiveSpeed, cmd.payload.flags || [], actionId);
+      if (proj && this.#eventRecorder) {
+        this.#eventRecorder.recordProjectileCreated(
+          proj.id, cmd.actorId, cmd.skillId, actionId,
+          { q: fromQ, r: fromR }, { q: toQ, r: toR }, power, effectiveSpeed
+        );
+      }
     }
 
     // lastHitByActor will be set on body contact via projectile resolution
@@ -917,7 +1021,14 @@ export class TurnManager {
     const aoeFlag = radius === 1 ? 'AOE_RADIUS_1' : 'AOE_RADIUS_1';
 
     if (this.#projectileCalculator) {
-      this.#projectileCalculator.createProjectile(cmd.actorId, fromQ, fromR, toQ, toR, power, effectiveSpeed, [aoeFlag], cmd.actionId || cmd.sequenceId || null);
+      const actionId = cmd.actionId || cmd.sequenceId || null;
+      const proj = this.#projectileCalculator.createProjectile(cmd.actorId, fromQ, fromR, toQ, toR, power, effectiveSpeed, [aoeFlag], actionId);
+      if (proj && this.#eventRecorder) {
+        this.#eventRecorder.recordProjectileCreated(
+          proj.id, cmd.actorId, cmd.skillId, actionId,
+          { q: fromQ, r: fromR }, { q: toQ, r: toR }, power, effectiveSpeed
+        );
+      }
     }
 
     // lastHitByActor will be set on body contact via projectile resolution
@@ -1002,9 +1113,15 @@ export class TurnManager {
     for (const [hq, hr] of hexes) {
       if (this.#projectileCalculator) {
         const actionId = cmd.actionId || cmd.sequenceId || null;
-        this.#projectileCalculator.createProjectile(
+        const proj = this.#projectileCalculator.createProjectile(
           cmd.actorId, hq, hr, hq, hr, power, speed, ['STATIONARY'], actionId
         );
+        if (proj && this.#eventRecorder) {
+          this.#eventRecorder.recordProjectileCreated(
+            proj.id, cmd.actorId, cmd.skillId, actionId,
+            { q: hq, r: hr }, { q: hq, r: hr }, power, speed
+          );
+        }
       }
     }
 

@@ -1,317 +1,516 @@
 Repository:
 https://github.com/ChildeRolando/beyond_proto
 
-Branch:
-codex/tutorial-levels
+Current task:
+Refactor TurnResolution from a command-derived pseudo-event list into a structured battle fact event stream.
 
-Task:
-Fix the tutorial levels and resolution playback integration after review.
-
-Current status:
-The branch already implements playable tutorial levels 1–3 and a Turn Resolution Timeline. The direction is correct, but the current implementation is not ready to merge.
-
-Use TDD.
-Add failing tests first, then implement the minimum changes to pass.
-Run:
-npm test
-
-Important:
-Do not rewrite the whole combat engine.
-Do not remove the playable tutorial mode.
-Do not remove the old rules/help modal.
-Do not remove the resolution timeline.
-Do not use brittle canvas pixel clicks in tests.
-Use stable data-testid hooks or existing test helpers, but at least one critical test must click the real Execute Turn button.
-
-Main issues to fix:
-
-1. Tutorial execution path is polluted by previous config mode
-Problem:
-If the player enters local single-player mode, returns to the lobby, then starts tutorial, the config mode can remain local_solo/PVE. Real #btn-execute may route through the PVE execution path instead of tutorial/local execution.
-
-Required fix:
-Tutorial mode must have independent execution routing.
-
-Acceptable approaches:
-- Add GameMode.TUTORIAL = "tutorial" and set it when starting tutorial.
-- Or make BattleSessionController own current battle scenario mode and expose isTutorialMode().
-- executeCurrentTurn() must check tutorial mode before PVE mode.
-
-Required behavior:
-Tutorial execution must always use the tutorial/local turn execution path, not submitAiAndExecutePveTurn().
-Tutorial must not depend on stale configSession.getConfigMode().
-returnToStart() should clean tutorial state and not leave stale mode that affects the next tutorial session.
-
-Required test:
-Add Playwright test:
-
-tests/tutorial_mode_isolation.spec.js
-
-Test flow:
-1. Go to start screen.
-2. Start local single-player mode.
-3. Complete the minimum valid config.
-4. Enter battle.
-5. Return to lobby via window.returnToStart() or real lobby button.
-6. Start 新手教学.
-7. Complete tutorial level 1 using the real UI flow as much as possible.
-8. Crucially, click the real #btn-execute button, not window.__tutorialTest.executeTurn().
-9. Assert level 1 completes.
-10. Assert submit-status does not show PVE: AI 思考中 during tutorial.
-11. Assert tutorial HUD is visible.
-12. Assert config screen is not visible.
-
-This test must fail before the fix and pass after the fix.
-
-2. Tutorial completion currently completes on any successful turn
-Problem:
-TutorialManager.onTurnExecuted() currently marks a level complete immediately after any turn execution. That is too loose.
-
-Required fix:
-Tutorial completion must be objective-based.
-
-TutorialManager.onTurnExecuted() should receive enough context to validate the actual result:
-- execute result;
-- final engine state;
-- last TurnResolution;
-- optionally level-specific expected data.
-
-Required objective checks:
-
-Tutorial 1: 移动与执行回合
-Complete only if:
-- tutorial_hero actually moved from { q: 0, r: 0 } to the expected destination, e.g. { q: 1, r: 0 };
-- the action was submitted before execution;
-- completion must not happen if the hero did not move.
-
-Tutorial 2: 攻击与目标格
-Complete only if:
-- tutorial_hero used the expected attack skill;
-- target was the training dummy’s hex;
-- training dummy HP decreased or the dummy was defeated;
-- completion must not happen if the wrong hex was selected or no damage/result happened.
-
-Tutorial 3: 速度优先级
-Complete only if:
-- player used the speed 3 movement skill;
-- player moved to one of the allowed safe side hexes;
-- resolution contains speed 3 phase before speed 1 phase;
-- enemy speed 1 attack resolves after player movement;
-- player HP is unchanged after the enemy attack;
-- the enemy attack result is miss/no damage/target moved.
-
-Required tests:
-Extend tests/tutorial.spec.js or add tests/tutorial_objectives.spec.js.
-
-Add negative tests:
-- Level 1: force a turn without the required move and assert levelComplete remains false.
-- Level 2: select attack but wrong target; execute should not complete the level.
-- Level 3: unsafe target or wrong skill should not complete the level.
-- Real successful paths still complete.
-
-Do not rely only on text. Assert engine state and tutorial state.
-
-3. Tutorial must not trigger normal gameover overlay
-Problem:
-Tutorial scenarios currently use normal team_elimination style victory. In tutorial 2, killing the dummy can trigger the normal gameover panel, which is wrong.
-
-Required fix:
-Tutorial battles should be controlled by tutorial objectives, not normal gameover.
-
-Acceptable approaches:
-- Add rules.victory = "tutorial_objective".
-- Add rules.suppressGameOverPanel = true.
-- Or in BattleSessionController, if tutorial is active, suppress normal showGameOverPanel and let TutorialManager decide progress.
-
-Required behavior:
-- Completing tutorial 2 by defeating the dummy must show “教程 2 完成”.
-- It must not show the normal gameover panel.
-- Tutorial can advance to tutorial 3 normally.
-
-Required test:
-Add assertion to tutorial level 2 test:
-- after dummy defeated, #gameover-panel is not visible / does not have show class.
-- tutorial-next is enabled.
-- clicking tutorial-next starts tutorial 3.
-
-4. Replace current fake dummy action with a dedicated training dummy unit
-User decision:
-Do not remove the dummy. Tutorial 1 and Tutorial 2 should use a dedicated tutorial unit: “训练稻草人”.
-The player should immediately understand this is a teaching unit, not a normal combat character.
-The dummy should have a dedicated no-op skill named “什么都不做”.
+This is an architecture correction. Do not treat it as a renderer wording fix.
 
 Current problem:
-Tutorial 1 and 2 currently submit the normal warrior role placeholder skill role_vanguard_breakline as the enemy scripted action. That is wrong semantically.
+The current TurnResolution.phase.events are still derived mainly from CmdType via coarse labels such as:
 
-Required fix:
-Create a dedicated tutorial dummy identity and no-op skill.
+* move
+* attack
+* resource
+* status
+* utility
 
-Implementation requirements:
-- Add a dedicated skill:
-  id: "tutorial_dummy_wait"
-  name: "什么都不做"
-  type: "教学"
-  speed: preferably 0 or another clearly non-interfering speed
-  targeting: SELF
-  effects: PASS/no-op
-  icon: may use a simple placeholder or existing neutral icon
-  desc: "训练稻草人保持不动，用于教学演示。"
+This is not a valid battle fact model.
 
-- Add a dedicated dummy combatant:
-  id: "tutorial_dummy" or "tutorial_enemy"
-  display name: "训练稻草人"
-  ownerId: "tutorial_dummy" or "ai"
-  teamId: "tutorial_enemies"
-  control: "tutorial_dummy" or "ai"
-  loadoutSkillIds: ["tutorial_dummy_wait"]
-  roleLoadoutSkillIds: []
-  position depends on level:
-    Level 1: can be visible but safely out of the way.
-    Level 2: adjacent target hex.
-    Level 3: do not use dummy; use actual scripted shooter enemy.
+Because of that:
 
-- If the engine only supports the three normal classes, do not hack this by pretending the dummy is a normal warrior in the UI.
-  Acceptable choices:
-  A. Extend scenario normalization to support tutorial-only combatant metadata:
-     displayName/name: "训练稻草人"
-     tutorialUnit: true
-     portraitTheme/icon fallback
-  B. Keep class internally as a valid class for engine compatibility, but render name/portrait/style as “训练稻草人” and only expose tutorial_dummy_wait.
-  The player-facing UI must not show it as a normal 战士 / 破阵武者 unless that is only hidden internal data.
+1. Combat Log does not reliably show what every character chose to do each turn.
+2. Resource consumption is displayed incorrectly, for example qi cost appears as qi+1.
+3. Delayed/end-of-turn resource gains, such as mage gather qi+1, are missing.
+4. Combat Log and Timeline are no longer duplicate text, but the underlying event model is still too weak.
+5. The old Logger still exists without a clean role boundary.
+6. There is no explicit legal state/event space for TurnResolution.
 
-- The dummy no-op skill may be auto-submitted by TutorialManager.primeBattle().
-- It must not deal damage, move, gain resources, affect the player, or trigger normal gameover.
-- It should be visible in the timeline/action cards as:
-  训练稻草人 / AI or 教学 / 什么都不做
-  but it must be visually clear as a teaching unit.
-- The tutorial objective checks should ignore dummy no-op except as a required engine filler.
+Architectural decision:
+TurnResolution must become the canonical structured battle fact stream.
 
-Required tests:
-Add to tutorial tests:
-- Level 1 or 2 state contains a unit whose name/displayName is “训练稻草人”.
-- The dummy has only tutorial_dummy_wait exposed as active skill, or at minimum the visible dummy skill list contains “什么都不做” and not normal combat skills.
-- After executing the dummy no-op, dummy position is unchanged.
-- Player HP is unchanged.
-- Timeline/action card, if visible, identifies the dummy action as “训练稻草人 / 什么都不做”.
-- No role_vanguard_breakline should be used in tutorial 1 or tutorial 2 scriptedEnemyActions.
+Do not make renderer logic smarter to compensate for bad events.
+Fix the event model first.
 
-5. Resolution timeline placement should match the requested layout more closely
-Current status:
-The timeline is now vertical and no longer overlays the board, but it is placed inside the right sidebar above log/chat. The requested layout is a separate vertical dock in the empty space to the right of the board and to the left of the log/chat sidebar.
+Required architecture:
 
-Required fix:
-Refactor battle screen layout to three columns:
+1. Command
+   A command is an instruction produced by a skill.
 
-board/action area | resolution playback dock | log/chat sidebar
+Example:
 
-Suggested CSS:
-#app {
-  grid-template-columns: minmax(620px, 1fr) 300px 330px;
+* CONSUME_RESOURCE
+* ATTACK_PROJECTILE
+* GAIN_RESOURCE
+* APPLY_STATUS
+
+Command means: “the engine should try to do this.”
+
+2. ResolutionEvent
+   A ResolutionEvent is a fact that actually happened during battle resolution.
+
+Example:
+
+* action_declared
+* resource_changed
+* character_moved
+* damage_applied
+* damage_absorbed
+* projectile_created
+* projectile_collided
+* status_applied
+* character_died
+
+ResolutionEvent means: “this actually happened.”
+
+3. Projection
+   Timeline and Combat Log are projections from the same TurnResolution.
+
+Timeline:
+
+* uses action-level summaries
+* short
+* speed-oriented
+* shows who acted and the final result
+
+Combat Log:
+
+* uses event-level details
+* detailed
+* append-only across turns
+* shows action declarations, resource changes, projectile details, damage, absorption, deaths, etc.
+
+The two views share the same TurnResolution source, but they must not display the same text.
+
+Core data model:
+
+Add:
+
+engine/resolution/ResolutionEventTypes.js
+
+Define the legal event type registry:
+
+ResolutionEventType = {
+ACTION_DECLARED: 'action_declared',
+
+RESOURCE_CHANGED: 'resource_changed',
+
+STATUS_APPLIED: 'status_applied',
+STATUS_REMOVED: 'status_removed',
+STATUS_EXPIRED: 'status_expired',
+
+PROJECTILE_CREATED: 'projectile_created',
+PROJECTILE_MOVED: 'projectile_moved',
+PROJECTILE_COLLIDED: 'projectile_collided',
+PROJECTILE_INTERCEPTED: 'projectile_intercepted',
+PROJECTILE_EXPIRED: 'projectile_expired',
+
+CHARACTER_MOVED: 'character_moved',
+
+DAMAGE_APPLIED: 'damage_applied',
+DAMAGE_ABSORBED: 'damage_absorbed',
+
+CHARACTER_DIED: 'character_died',
+
+ACTION_FAILED: 'action_failed',
+BATTLE_ENDED: 'battle_ended',
 }
 
-#canvas-wrap {
-  grid-column: 1;
+Add helper functions:
+
+* isResolutionEventType(type)
+* normalizeResolutionEvent(raw)
+* assertResolutionEvent(event) or equivalent lightweight validation
+
+Do not introduce heavy schema libraries.
+
+Canonical ResolutionEvent shape:
+
+{
+id,
+eventType,
+
+turnNumber,
+phaseSpeed,
+phaseKind,          // 'speed' | 'end_of_turn' | 'battle_end'
+
+actionId,
+commandId,
+actorId,
+skillId,
+
+subjectId,
+targetId,
+
+targetPos,
+from,
+to,
+
+resource,
+delta,
+oldValue,
+newValue,
+
+statusId,
+statusName,
+duration,
+
+projectileId,
+projectileType,
+
+damageType,
+basePower,
+finalDamage,
+absorbed,
+layer,
+
+result,
+reason,
+
+metadata
 }
 
-#action-dock {
-  grid-column: 1;
+Only fields relevant to the specific event need to be present.
+
+Important:
+Use delta for resource changes.
+Do not use unsigned amount as the primary resource change value.
+
+Correct examples:
+
+* skill cost qi 1:
+  eventType: resource_changed
+  resource: 'qi'
+  delta: -1
+  reason: 'skill_cost'
+
+* mage gather:
+  eventType: resource_changed
+  resource: 'qi'
+  delta: +1
+  reason: 'gather_success'
+
+* rage mitigation:
+  eventType: damage_absorbed
+  layer: 'rage'
+  absorbed: 100
+
+* movement:
+  eventType: character_moved
+  from: { q, r }
+  to: { q, r }
+
+* action start:
+  eventType: action_declared
+  actorId
+  skillId
+  actionId
+  targetPos
+  phaseSpeed
+
+New module:
+
+engine/resolution/ResolutionEventRecorder.js
+
+Responsibilities:
+
+* maintain the current turn / phase / action / command context;
+* record ACTION_DECLARED at the start of each submitted action in a speed phase;
+* listen to EventBus domain events and convert them into ResolutionEvents;
+* append ResolutionEvents to the current phase;
+* support end_of_turn phase recording;
+* expose startTurn, startPhase, setActionContext, record, endPhase, finalize.
+
+It must not render text.
+It must not mutate combat state.
+It is a recorder only.
+
+EventBus integration:
+The engine already has EventBus and EvtType. Use it.
+
+Map existing EventBus events into ResolutionEventType, at minimum:
+
+EvtType.RESOURCE_CHANGED
+→ resource_changed
+
+EvtType.MOVEMENT_COMPLETE
+→ character_moved
+
+EvtType.DAMAGE_DEALT
+→ damage_applied
+
+EvtType.SHIELD_ABSORBED
+EvtType.RAGE_MITIGATED
+EvtType.BLOCK_TRIGGERED
+EvtType.FORMATION_ABSORBED
+→ damage_absorbed
+
+EvtType.STATUS_APPLIED
+→ status_applied
+
+EvtType.STATUS_EXPIRED
+→ status_expired
+
+EvtType.PROJECTILE_FIRED
+→ projectile_created
+
+EvtType.PROJECTILE_STEP
+→ projectile_moved
+
+EvtType.PROJECTILE_COLLISION
+→ projectile_collided
+
+EvtType.PROJECTILE_INTERCEPTED
+→ projectile_intercepted
+
+EvtType.PROJECTILE_EXPIRED
+→ projectile_expired
+
+EvtType.CHARACTER_DIED
+→ character_died
+
+EvtType.BATTLE_END
+→ battle_ended
+
+If some EvtType payloads currently lack needed fields, add the missing fields at the emission site. Do not infer from DOM or text logs.
+
+TurnManager integration:
+
+Replace the current command-to-event pseudo model as the primary source.
+
+The current methods:
+
+* _getResolutionEventType(cmd)
+* _createResolutionEvent(cmd, ...)
+
+may remain temporarily as compatibility fallback, but they must not be the primary source for player-facing log or Timeline.
+
+The official path should be:
+
+TurnManager executes phase
+→ ResolutionEventRecorder starts phase
+→ for each submitted action:
+record action_declared once
+set current action context
+execute commands
+EventBus emissions become structured ResolutionEvents
+→ projectile/body-contact resolution emits projectile/damage/death/resource events
+→ end-of-turn effects emit end_of_turn ResolutionEvents
+→ ResolutionBuilder builds action summaries from these structured events
+
+Action declaration:
+Every action submitted by an alive actor must produce one action_declared event, even if:
+
+* it later misses;
+* it fails from insufficient resource;
+* it is blocked;
+* it produces no visible effect.
+
+This ensures Combat Log can answer:
+“Every turn, what did each character choose to do?”
+
+Resource handling:
+Do not generate resource log entries from CmdType payloads.
+Use ResourceSystem’s RESOURCE_CHANGED events.
+
+Fix required cases:
+
+* qi cost must be delta -1;
+* qi gain must be delta +1;
+* mage gather must show qi+1 if the resource actually changes;
+* reload/backpack/ammo changes should also become resource_changed events.
+
+End-of-turn phase:
+TurnResolution must support an explicit end-of-turn phase:
+
+{
+phaseKind: 'end_of_turn',
+speed: null,
+events: [...]
 }
 
-#resolution-timeline {
-  grid-column: 2;
-  grid-row: 2 / 4;
-  align-self: stretch;
-  data-orientation="vertical";
-}
+Use this for:
 
-#right-sidebar {
-  grid-column: 3;
-  grid-row: 2 / 4;
-}
+* delayed resource gains;
+* buff ticks/expiration;
+* end-of-turn status effects;
+* other non-speed-tier events.
 
-Exact dimensions can be adjusted, but the timeline must be its own vertical dock, not inside the log/chat sidebar.
+Combat Log behavior:
 
-Required tests:
-Update tests/resolution_timeline_layout.spec.js:
-- timeline visible after turn execution;
-- timeline has data-orientation="vertical";
-- timeline bounding box does not overlap the board;
-- timeline bounding box is to the right of board;
-- right-sidebar bounding box is to the right of timeline;
-- timeline is not a child of #right-sidebar.
+Combat Log is not merely state changes.
+It must include:
 
-6. Keep close/collapse semantics correct
-Required behavior:
-- Close/collapse hides the timeline body but does not skip playback.
-- Reopen restores the dock.
-- Skip immediately completes playback and applies final state.
-- Collapse and skip are separate behaviors.
+1. turn header;
+2. action_declared entries for all characters who acted;
+3. detailed event entries caused by those actions;
+4. end-of-turn events;
+5. battle-end events when not suppressed.
 
-Required tests:
-Ensure existing close/collapse test covers:
-- click close;
-- timeline collapsed;
-- playback still active if not completed;
-- input remains locked while playback active;
-- reopen button appears and restores body;
-- skip still works after reopen.
+Combat Log must be append-only across turns via CombatLogStore.
 
-7. Keep action count correct
-Required behavior:
-- action count = unique submitted action count, not generated event count.
-- Each resolution event should have actionId where possible.
-- Phase action cards should be built by grouping events by actionId.
-- Multi-event skills should still count as one action.
+Do not replace the log with only the latest turn.
+New battle resets the store.
+Return to start or new scenario resets the store.
 
-Required tests:
-Keep/extend tests/resolution_timeline_counts.spec.js:
-- A skill/action that generates multiple events displays 1 action.
-- phase.events.length can be > phase.actionCount.
-- UI phase count shows 1 action.
-- The number of action cards equals phase.actionCount.
+ResolutionLogRenderer:
 
-8. Fix active phase state if still necessary
-Required behavior:
-- activeSpeed is Speed 3 while Speed 3 is playing.
-- End is not active until all phases complete or skip completes playback.
-- selectedSpeed and activeSpeed should not be confused.
-- playbackStatus should be independent: idle / playing / skipped / complete.
+Refactor it to switch on event.eventType, not event.type.
 
-Required tests:
-Keep/extend tests/resolution_timeline_phase_state.spec.js:
-- During Speed 3, active speed is 3, not End.
-- During Speed 1, active speed is 1.
-- End becomes active only after playback completes.
+It should render:
 
-9. Test hygiene
-Current repo has some Node-style test files named *_test.js that may not be discovered by Playwright. Do not claim those are covered by npm test unless they are actually run.
+* action_declared:
+  “镜 → 气功波”
+* resource_changed:
+  delta < 0: “镜 消耗 qi 1”
+  delta > 0: “镜 获得 qi 1”
+* character_moved:
+  “破阵武者 移动 (0,0)→(1,0)”
+* projectile_created:
+  “镜 🔮 发射弹体”
+* projectile_collided:
+  “弹体碰撞：...”
+* damage_absorbed:
+  “破阵武者 怒气抵消 100 伤害”
+* damage_applied:
+  “训练稻草人 受到 100 伤害”
+* character_died:
+  “训练稻草人 被击杀”
+* status_applied:
+  “镜 获得状态 X”
+* status_removed/status_expired:
+  “镜 失去状态 X”
+* action_failed:
+  “镜 技能发动失败：资源不足”
+* battle_ended:
+  non-tutorial only
 
-Required:
-- Any new acceptance test must be Playwright-discovered by npm test.
-- Prefer .spec.js under tests/.
-- If you add non-Playwright node tests, add a package script and document it, but do not rely on them for npm test acceptance unless npm test runs them.
+The exact Chinese phrasing can be simple, but semantics must be correct.
+
+Timeline behavior:
+
+ResolutionActionSummarizer remains action-level only.
+
+It consumes structured events grouped by actionId.
+
+Timeline should show:
+
+* actor
+* player label
+* skill
+* final result summary
+
+It does not show every resource tick, projectile step, damage absorption line, or buff expiration.
+
+This distinction is required:
+
+* Timeline = action-level summary
+* Log = event-level detail with action declarations
+
+Legacy Logger:
+
+Define its role explicitly.
+
+Required decision:
+Legacy Logger is debug/fallback only, not player-facing canonical log.
+
+Do not mix legacy logger entries into CombatLogStore.
+
+If UI still falls back to legacy logs before the first TurnResolution exists, that is acceptable only before any battle turn resolves. After canonical log exists, player-facing log must come from CombatLogStore.
+
+Do not duplicate legacy and canonical log entries.
+
+Tests to add/update:
+
+1. Log contains action declarations
+   Scenario:
+
+* A turn with multiple actors.
+  Expected:
+* Combat Log contains one action declaration per submitted action.
+* Player can read the log and know who used which skill.
+
+2. Timeline and Log have different granularity
+   Scenario:
+
+* tutorial level 2 or deterministic warrior slash hit.
+  Expected:
+* Timeline card says concise result, e.g. “普通斩 →训练稻草人 · 击杀”.
+* Log contains action declaration plus detailed result lines.
+* Log must not be merely identical to timeline text.
+
+3. Resource consumption sign
+   Scenario:
+
+* mage uses 气功波 or any skill with qi cost.
+  Expected:
+* TurnResolution has resource_changed event with delta < 0.
+* Combat Log says qi consumed / qi -1.
+* It must not say qi+1.
+
+4. Mage gather gain
+   Scenario:
+
+* mage uses 集气 / gather skill.
+  Expected:
+* TurnResolution includes end_of_turn or relevant phase resource_changed event with qi delta +1.
+* Combat Log contains qi+1 / 获得 qi 1.
+* Existing status/utility lines may remain only if they correspond to actual status events, not vague fake events.
+
+5. Append-only log history
+   Scenario:
+
+* execute two turns.
+  Expected:
+* CombatLogStore contains entries for both turns.
+* UI log contains “第 1 回合” and “第 2 回合”.
+* It must not show only the latest turn.
+
+6. Legal event type validation
+   Scenario:
+
+* build a TurnResolution from any deterministic battle.
+  Expected:
+* every phase.events item has eventType;
+* every eventType is in ResolutionEventType;
+* no event uses only coarse type values such as resource/status/utility as the canonical event type.
+
+7. Damage absorption details
+   Scenario:
+
+* deterministic target has rage/shield/block/formation absorption.
+  Expected:
+* TurnResolution includes damage_absorbed event with layer and absorbed amount.
+* Combat Log displays the absorption detail.
+* Timeline may still show only the action result.
+
+8. Old logger not mixed with canonical log
+   Scenario:
+
+* execute a turn with canonical TurnResolution.
+  Expected:
+* UI player-facing log does not duplicate the same hit/miss/resource lines from legacy logger.
+* CombatLogStore is the canonical source.
+
+Non-goals for this iteration:
+
+* Do not redesign skill balance.
+* Do not rewrite the entire engine.
+* Do not polish UI visuals.
+* Do not add new tutorial levels.
+* Do not remove old Logger yet unless it is trivially unused.
+* Do not implement every rare event type perfectly. But the registry and recorder architecture must support them.
 
 Acceptance criteria:
-- npm test passes.
-- Tutorial button starts playable tutorial mode.
-- Help ? button still opens old rules modal.
-- Tutorial does not require config screen.
-- Tutorial execution uses the real #btn-execute path correctly.
-- Tutorial mode is isolated from previous local_solo/PVE state.
-- Tutorial level completion is objective-based.
-- Tutorial 2 defeating the dummy does not show normal gameover panel.
-- Tutorial 1 and 2 use a dedicated “训练稻草人” unit with “什么都不做” skill, not role_vanguard_breakline.
-- Resolution timeline remains functional.
-- Timeline is a separate right-side vertical dock between board and log/chat.
-- Collapse/reopen and skip both work with correct semantics.
-- Action count is based on unique submitted actions.
-- Existing PVE/local/P2P/start/config behavior is not broken.
-- No console errors in passing Playwright tests.
-- No brittle canvas pixel clicks in tests.
 
-After implementation, print:
-1. tests added/updated;
-2. production files changed;
-3. exact command run;
-4. whether npm test passed;
-5. remaining limitations, if any.
+* npm test passes.
+* TurnResolution.phase.events are structured ResolutionEvents with legal eventType values.
+* Combat Log includes action declarations and detailed event-level consequences.
+* Timeline remains action-level and concise.
+* qi cost is rendered as consumption, not gain.
+* mage gather produces a visible qi gain log when qi actually changes.
+* Combat Log is append-only across turns.
+* Legacy logger is not used as the primary player-facing log after canonical logs exist.
+* No duplicate player-facing logs.
+* No brittle canvas pixel-click tests.
+* No renderer-only hacks that infer facts from text.

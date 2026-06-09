@@ -119,12 +119,28 @@ export function renderEventLogEntry(event, charById = new Map()) {
   }
 
   if (et === 'projectile_created') {
-    return { actionId: event.actionId || null, text: `${actorName} 🔮 发射弹体`, type: 'attack' };
+    const from = event.from ? formatPoint(event.from) : '';
+    return { actionId: event.actionId || null, text: `${actorName} 🔮 发射弹体${from ? ' ' + from : ''}`, type: 'projectile' };
   }
 
   if (et === 'projectile_collided') {
     const tgt = targetName || '目标';
-    return { actionId: event.actionId || null, text: `弹体碰撞：${tgt}`, type: 'attack' };
+    const dmg = event.finalDamage != null ? ` (${event.finalDamage})` : '';
+    return { actionId: event.actionId || null, text: `弹体碰撞：${tgt}${dmg}`, type: 'projectile' };
+  }
+
+  if (et === 'projectile_expired') {
+    return { actionId: event.actionId || null, text: '弹体消散', type: 'projectile' };
+  }
+
+  if (et === 'projectile_intercepted') {
+    const interceptorName = targetName || event.targetId || '未知';
+    return { actionId: event.actionId || null, text: `弹体被拦截：${interceptorName}`, type: 'projectile' };
+  }
+
+  if (et === 'projectile_moved') {
+    // Omitted from player-facing log by default (too noisy)
+    return null;
   }
 
   // ── Legacy type fallback (events without canonical eventType) ──

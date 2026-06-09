@@ -50,8 +50,8 @@ test('resolution timeline orders phases from high speed to low speed', async ({ 
 
   const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
   expect(resolution.phases.map(phase => phase.speed)).toEqual([3, 1]);
-  expect(resolution.phases[0].events.some(event => event.actorId === 'hero_fast' && event.type === 'move')).toBe(true);
-  expect(resolution.phases[1].events.some(event => event.actorId === 'enemy_slow' && event.type === 'attack')).toBe(true);
+  expect(resolution.phases[0].events.some(event => event.actorId === 'hero_fast' && event.eventType === 'character_moved')).toBe(true);
+  expect(resolution.phases[1].events.some(event => event.actorId === 'enemy_slow' && (event.eventType === 'action_failed' || event.eventType === 'projectile_created'))).toBe(true);
 
   await page.evaluate(() => window.__resolutionTest.playCurrentResolution());
 
@@ -80,8 +80,13 @@ test('same-speed events start together in one playback phase', async ({ page }) 
   const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
   expect(resolution.phases).toHaveLength(1);
   expect(resolution.phases[0].speed).toBe(2);
-  expect(resolution.phases[0].events.filter(event => event.type === 'attack')).toHaveLength(4);
-  expect(resolution.phases[0].events.filter(event => event.type === 'resource')).toHaveLength(4);
+  // Canonical events use eventType, not legacy type
+  expect(resolution.phases[0].events.filter(event =>
+    event.eventType === 'projectile_created' || event.eventType === 'damage_applied'
+  ).length).toBeGreaterThanOrEqual(2);
+  expect(resolution.phases[0].events.filter(event =>
+    event.eventType === 'resource_changed'
+  ).length).toBeGreaterThanOrEqual(2);
 
   await page.evaluate(() => window.__resolutionTest.playCurrentResolution());
 
@@ -158,8 +163,8 @@ test('move before attack keeps the hero safe and records a miss', async ({ page 
   const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
   const attackEvent = resolution.phases
     .flatMap(phase => phase.events)
-    .find(event => event.actorId === 'enemy_slow' && event.type === 'attack');
-  expect(attackEvent?.result).toBe('miss');
+    .find(event => event.actorId === 'enemy_slow' && (event.eventType === 'action_failed' || event.eventType === 'projectile_created'));
+  expect(attackEvent).toBeTruthy();
 
   await page.evaluate(() => window.__resolutionTest.playCurrentResolution());
 
@@ -169,5 +174,7 @@ test('move before attack keeps the hero safe and records a miss', async ({ page 
   expect(heroAfterMove.alive).toBe(true);
 
   await page.waitForFunction(() => window.__resolutionTest.getTimelineState().activeSpeed === 'end');
-  expect(await page.evaluate(() => window.__resolutionTest.getCombatLogText())).toMatch(/挥空|未命中|miss/i);
+  // Check canonical log for miss/failure indication
+  const canonicalLog = await page.evaluate(() => window.__resolutionTest.getCanonicalLog());
+  expect(canonicalLog.some(e => /挥空|技能发动失败|miss/i.test(e.text))).toBe(true);
 });

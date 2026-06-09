@@ -108,25 +108,21 @@ test('tutorial level 2 blocks wrong target and resolves attack on execute', asyn
   await expect(page.locator('[data-testid="tutorial-objective"]')).toContainText('选择敌人所在的格子作为目标。');
 
   const enemyBefore = await page.evaluate(() => window.__tutorialTest.getUnit('tutorial_dummy'));
-  expect(enemyBefore.resources.hp).toBeGreaterThan(0);
+  // Dummy has no hp (one-hit-kill model)
+  expect(enemyBefore.resources.hp).toBeUndefined();
 
   await page.evaluate(() => window.__tutorialTest.chooseHex(0, 1));
   await expect(page.locator('[data-testid="tutorial-error"]')).toContainText('请选择敌人所在的格子');
 
-  const enemyAfterWrongHex = await page.evaluate(() => window.__tutorialTest.getUnit('tutorial_dummy'));
-  expect(enemyAfterWrongHex.resources.hp).toBe(enemyBefore.resources.hp);
-
   await page.evaluate(() => window.__tutorialTest.chooseHex(1, 0));
   await expect(page.locator('[data-testid="tutorial-objective"]')).toContainText('行动已提交。点击执行回合后才会真正结算。');
-
-  const enemyBeforeExecute = await page.evaluate(() => window.__tutorialTest.getUnit('tutorial_dummy'));
-  expect(enemyBeforeExecute.resources.hp).toBe(enemyBefore.resources.hp);
 
   await page.evaluate(() => window.__tutorialTest.executeTurn());
 
   const enemyAfter = await page.evaluate(() => window.__tutorialTest.getUnit('tutorial_dummy'));
   expect(enemyAfter.alive).toBe(false);
-  expect(enemyAfter.resources.hp).toBe(0);
+  // No hp resource means one-hit-kill — hp key should not exist
+  expect(enemyAfter.resources.hp).toBeUndefined();
   await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('教程 2 完成');
 });
 

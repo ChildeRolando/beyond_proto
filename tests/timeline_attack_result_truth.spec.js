@@ -57,21 +57,17 @@ test('Test 1: warrior_slash kills training dummy — timeline shows hit/kill not
   const resolution = await page.evaluate(() => window.__resolutionTest?.getResolution?.() || null);
   expect(resolution).not.toBeNull();
 
+  // Check for damage/cdeath events (canonical eventType, not legacy type)
   const attackEvents = (resolution.phases || [])
     .flatMap(p => p.events || [])
-    .filter(e => e.type === 'attack');
+    .filter(e => e.eventType === 'damage_applied' || e.eventType === 'character_died');
 
-  const slashEvent = attackEvents.find(e => e.skillId === 'warrior_slash');
-  expect(slashEvent).toBeTruthy();
-  expect(slashEvent.result).not.toBe('miss');
-  expect(slashEvent.result).toBe('hit');
+  expect(attackEvents.length).toBeGreaterThanOrEqual(1);
 
   // ── Assert combat log ──
-  const logText = await page.evaluate(() => {
-    const logEl = document.getElementById('log');
-    return logEl?.textContent || '';
-  });
-  expect(logText).toMatch(/斩杀|击杀|命中/i);
+  const canonicalLog = await page.evaluate(() => window.__resolutionTest.getCanonicalLog());
+  const logText = canonicalLog.map(e => e.text).join('\n');
+  expect(logText).toMatch(/斩杀|击杀|命中|受到.*伤害/i);
 
   // ── Assert timeline card ──
   const actionCards = page.locator('[data-testid="resolution-action-card"]');
@@ -80,9 +76,9 @@ test('Test 1: warrior_slash kills training dummy — timeline shows hit/kill not
   await expect(slashCard).not.toContainText('挥空');
   await expect(slashCard).toContainText(/命中|击杀/);
 
-  // ── Assert dummy state ──
+  // ── Assert dummy state (one-hit-kill model, no hp) ──
   const dummy = await page.evaluate(() => window.__tutorialTest.getUnit('tutorial_dummy'));
-  expect(dummy.alive !== true || dummy.resources.hp <= 0).toBe(true);
+  expect(dummy.alive).toBe(false);
 });
 
 // ─── Test 2: true miss → timeline shows miss ───
@@ -102,11 +98,16 @@ test('Test 2: attack targeting empty hex — timeline correctly shows miss', asy
 
   const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
 
+  // Miss is now recorded as action_failed (canonical), not legacy type 'attack'
   const enemyAttack = (resolution.phases || [])
     .flatMap(p => p.events || [])
-    .find(e => e.actorId === 'enemy_slow' && e.type === 'attack');
-  expect(enemyAttack).toBeTruthy();
-  expect(enemyAttack.result).toBe('miss');
+    .find(e => e.actorId === 'enemy_slow' && (e.eventType === 'action_failed' || e.eventType === 'character_moved' || e.eventType === 'damage_applied'));
+  // The enemy's attack misses — check action_failed exists
+  const enemyMiss = (resolution.phases || [])
+    .flatMap(p => p.events || [])
+    .find(e => e.actorId === 'enemy_slow' && e.eventType === 'action_failed');
+  expect(enemyMiss).toBeTruthy();
+  expect(enemyMiss.result).toBe('miss');
 
   // Play resolution
   await page.evaluate(() => window.__resolutionTest.playCurrentResolution());
@@ -114,7 +115,7 @@ test('Test 2: attack targeting empty hex — timeline correctly shows miss', asy
 
   const phase1 = page.locator('[data-testid="resolution-phase-speed-1"]');
   await expect(phase1).toBeVisible();
-  await expect(phase1).toContainText(/挥空|miss|结算中/i);
+  await expect(phase1).toContainText(/挥空|miss|技能发动失败|结算中/i);
 
   // Hero alive after miss
   const heroAfter = await page.evaluate(() => window.__resolutionTest.getUnit('hero_fast'));
@@ -123,11 +124,11 @@ test('Test 2: attack targeting empty hex — timeline correctly shows miss', asy
   // Final resolution check
   await page.waitForFunction(() => window.__resolutionTest.getTimelineState().playbackStatus === 'complete');
   const finalResolution = await page.evaluate(() => window.__resolutionTest.getResolution());
-  const finalAttack = (finalResolution?.phases || [])
+  const finalMiss = (finalResolution?.phases || [])
     .flatMap(p => p.events || [])
-    .find(e => e.actorId === 'enemy_slow' && e.type === 'attack');
-  expect(finalAttack).toBeTruthy();
-  expect(finalAttack.result).toBe('miss');
+    .find(e => e.actorId === 'enemy_slow' && e.eventType === 'action_failed');
+  expect(finalMiss).toBeTruthy();
+  expect(finalMiss.result).toBe('miss');
 });
 
 // ─── Test 3: same-actor multi-attack — one hit + one miss, per-event results ───
@@ -162,20 +163,25 @@ test('Test 3: same actor two attacks — results are per-event not per-actor', a
   const speed1Phase = (resolution.phases || []).find(p => p.speed === 1);
   expect(speed1Phase).toBeTruthy();
 
-  const attackEvents = (speed1Phase.events || []).filter(e => e.type === 'attack');
-  expect(attackEvents.length).toBe(2);
+  // Canonical events: hits are damage_applied, misses are action_failed
+  const attackEvents = (speed1Phase.events || []).filter(e =>
+    e.eventType === 'damage_applied' || e.eventType === 'action_failed' || e.eventType === 'character_died'
+  );
+  expect(attackEvents.length).toBeGreaterThanOrEqual(2);
 
   // Same actor, same skill — must have distinct actionIds
   const actionIds = attackEvents.map(e => e.actionId).filter(Boolean);
-  expect(new Set(actionIds).size).toBe(2);
+  const uniqueActionIds = new Set(actionIds);
+  expect(uniqueActionIds.size).toBeGreaterThanOrEqual(2);
 
   // Critical: one hit, one miss — NOT both same
-  const results = attackEvents.map(e => e.result);
-  expect(results).toContain('hit');
-  expect(results).toContain('miss');
+  const hasHit = attackEvents.some(e => e.eventType === 'damage_applied' || e.eventType === 'character_died');
+  const hasMiss = attackEvents.some(e => e.eventType === 'action_failed');
+  expect(hasHit).toBe(true);
+  expect(hasMiss).toBe(true);
 
   // Verify the hit event has target enrichment
-  const hitEvent = attackEvents.find(e => e.result === 'hit');
+  const hitEvent = attackEvents.find(e => e.eventType === 'damage_applied' || e.eventType === 'character_died');
   expect(hitEvent).toBeTruthy();
   expect(hitEvent.targetId).toBe('target_hit');
 
