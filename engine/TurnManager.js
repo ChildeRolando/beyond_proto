@@ -627,7 +627,8 @@ export class TurnManager {
       }
 
     // Start cooldown + consume limited use — once per actionId, not per command.
-    if (this.#skillCooldowns) {
+    // Skip if this action's resource cost check failed at execution time.
+    if (this.#skillCooldowns && !this.#resourceFailed.has(cmd.sequenceId)) {
       const actionKey = cmd.actionId || cmd.sequenceId;
       if (actionKey && !this.#usedActionIds.has(actionKey)) {
         this.#usedActionIds.add(actionKey);
@@ -2017,6 +2018,17 @@ export class TurnManager {
       if (skillId !== forcedSkillId) return { success: false, error: 'forced_action', forcedSkillId };
     }
 
+    // ── Check cooldown / limited uses BEFORE consuming action points ──
+    const skill = SKILLS[skillId];
+    if (this.#skillCooldowns) {
+      if (skill?.cooldown && !this.#skillCooldowns.isReady(characterId, skillId)) {
+        return { success: false, error: 'skill_on_cooldown' };
+      }
+      if (this.#skillCooldowns.isExhausted(characterId, skillId)) {
+        return { success: false, error: 'skill_exhausted' };
+      }
+    }
+
     // Compute pending resource gains from already-submitted commands
     const pendingGains = this._getPendingResourceGains(characterId);
 
@@ -2028,17 +2040,6 @@ export class TurnManager {
     const actionPoint = this.#actionPointSystem?.consume(actor, skillId);
     if (actionPoint && !actionPoint.ok) {
       return { success: false, error: actionPoint.reason };
-    }
-
-    // Check skill cooldown
-    const skill = SKILLS[skillId];
-    if (this.#skillCooldowns) {
-      if (skill?.cooldown && !this.#skillCooldowns.isReady(characterId, skillId)) {
-        return { success: false, error: 'skill_on_cooldown' };
-      }
-      if (this.#skillCooldowns.isExhausted(characterId, skillId)) {
-        return { success: false, error: 'skill_exhausted' };
-      }
     }
 
     // Remove finesse indicator when the finesse slot is consumed

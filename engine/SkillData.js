@@ -659,6 +659,25 @@ export const SKILLS = {
     desc: '训练稻草人保持不动，用于教学演示。',
   },
 
+  // Test-only skills for cooldown verification
+  test_cd1_blink: {
+    id: 'test_cd1_blink', name: '测试闪步', class: '战士', type: '测试',
+    cost: {}, speed: 3, targeting: { shape: 'SELF' }, cooldown: 1,
+    effects: [
+      { cmd: 'PASS' },
+    ],
+    desc: '测试用CD=1技能。',
+  },
+  test_cd3_double: {
+    id: 'test_cd3_double', name: '测试二连', class: '战士', type: '测试',
+    cost: {}, speed: 2, targeting: { shape: 'HEX', range: 1 }, cooldown: 3, maxUses: 2,
+    effects: [
+      { cmd: 'MOVE_DASH', direction: 'TOWARD_TARGET', distance: 1, subSpeed: 2 },
+      { cmd: 'ATTACK_MELEE', power: 50, range: 1, subSpeed: 0 },
+    ],
+    desc: '测试用多命令CD=3技能(maxUses=2)。',
+  },
+
   role_gunfighter_quick_action: {
     id: 'role_gunfighter_quick_action', name: '灵巧行动', icon: 'assets/skill-icons/role/role_gunfighter_quick_action.png', class: '射手', type: '角色',
     cost: {}, speed: 3, targeting: { shape: 'SELF' }, hidden: true,
@@ -938,6 +957,7 @@ export const SKILLS_BY_CLASS = {
     'warrior_realm_sweep', 'warrior_dimension_slash',
     'trait_jimmy_breathing', 'trait_jimmy_marrow', 'trait_duelist_minds_eye',
     'tutorial_dummy_wait',
+    'test_cd1_blink', 'test_cd3_double',
   ],
   '射手': [
     'shooter_attack', 'shooter_reload', 'shooter_roll',
