@@ -50,13 +50,8 @@ export function renderEventLogEntry(event, charById = new Map()) {
     if (d != null && d > 0) {
       return { actionId: event.actionId || null, text: `${actorName} 获得 ${res} +${d}`, type: 'resource' };
     }
-    // fallback for legacy amount field
-    const amt = event.amount;
-    if (amt != null) {
-      const sign = amt >= 0 ? '+' : '';
-      return { actionId: event.actionId || null, text: `${actorName} → ${res}${sign}${amt}`, type: 'resource' };
-    }
-    return { actionId: event.actionId || null, text: `${actorName} → ${res} 变化`, type: 'resource' };
+    // No delta → skip (unsigned amount is not a valid canonical resource event)
+    return null;
   }
 
   if (et === 'character_moved') {

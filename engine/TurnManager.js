@@ -281,6 +281,28 @@ export class TurnManager {
               }
             }
           }
+          // Record projectile-vs-projectile collisions (相杀, 贯穿) as canonical events
+          for (const c of results.collisions || []) {
+            if (c.projectileId) {
+              hitProjIds.add(c.projectileId);
+              if (c.type === 'mutual_destroy') {
+                this.#eventRecorder.record({
+                  id: `rev-collide-${c.projectileId}`,
+                  eventType: 'projectile_collided',
+                  projectileId: c.projectileId,
+                  targetId: c.otherProjectileId,
+                });
+              } else if (c.type === 'overpowered') {
+                this.#eventRecorder.record({
+                  id: `rev-collide-${c.projectileId}`,
+                  eventType: 'projectile_intercepted',
+                  projectileId: c.projectileId,
+                  targetId: c.otherProjectileId,
+                  basePower: c.otherPower,
+                });
+              }
+            }
+          }
           // Record projectile_expired for projectiles that existed before resolution
           // but are no longer alive after (resolveStep filters dead projectiles out).
           // Also include projectiles marked !alive that are still in the list.
@@ -435,6 +457,14 @@ export class TurnManager {
 
     // --- EFFECTS ---
     this.#phase = TurnPhase.EFFECTS;
+    // Clear action context — EOT events (buff ticks, delayed gains) are not
+    // attributed to the last command. Events that SHOULD be attributed to a
+    // specific action (e.g. pendingQi from mage_gather) carry sourceActionId
+    // in their pendingFlags and restore it temporarily.
+    if (this.#eventRecorder) {
+      this.#eventRecorder.setActionContext(null, null, null, null);
+      this.#lastActionContext = null;
+    }
     this._processDelayedCommands();
     this._resolveEndOfTurnEffects();
 
@@ -1249,6 +1279,10 @@ export class TurnManager {
         // Store the anim step so the gather effect plays at the correct time
         // (only if qi is actually gained at end-of-turn, after shield-hit check)
         this.#pendingFlags.get(cmd.actorId)._gatherAnimStep = this.#currentAnimStep;
+        // Save source actionId so EOT qi gain is attributed to the correct action
+        if (this.#lastActionContext?.actionId) {
+          this.#pendingFlags.get(cmd.actorId)._pendingQiSourceActionId = this.#lastActionContext.actionId;
+        }
       }
     }
     if (cmd.payload?.collectCasings && this.#projectileCalculator) {
@@ -1568,11 +1602,20 @@ export class TurnManager {
       if (flags.pendingQi) {
         const mageShieldHit = this.#shieldHitEntities.has(entityId);
         if (!mageShieldHit) {
+          // Restore source action context so qi gain is attributed to the right action
+          const srcActionId = flags._pendingQiSourceActionId || null;
+          if (this.#eventRecorder && srcActionId) {
+            this.#eventRecorder.setActionContext(srcActionId, entityId, null, null);
+          }
           const ctx = this.#buffManager.dispatch(HookName.ON_RESOURCE_GAIN, {
             entityId, resource: 'qi', amount: 1,
           });
           const finalAmount = ctx?.amount ?? 1;
           this.#resourceSystem.add(entityId, 'qi', finalAmount);
+          // Clear context again after recording
+          if (this.#eventRecorder && srcActionId) {
+            this.#eventRecorder.setActionContext(null, null, null, null);
+          }
           const animStep = flags._gatherAnimStep ?? this.#currentAnimStep;
           const gatherActor = this.#registry.get(entityId);
           if (gatherActor && finalAmount > 0) {

@@ -25,6 +25,7 @@ export class ProjectileCalculator {
   #animEvents = [];              // non-projectile visual events (gather, dash, teleport, etc.)
   #lastInterceptions = [];
   #lastHits = [];
+  #lastCollisions = [];     // projectile-vs-projectile collisions (相杀, 贯穿)
   #logger;
 
   constructor(logger) {
@@ -81,6 +82,7 @@ export class ProjectileCalculator {
   resolveStep(speedTier, registry, damageCalculator, buffManager, options = {}) {
     this.#lastInterceptions = [];
     this.#lastHits = [];
+    this.#lastCollisions = [];
     const active = this.#projectiles.filter(p => p.alive && p.speed === speedTier);
     if (active.length === 0) return { interceptions: [], hits: [] };
 
@@ -190,7 +192,7 @@ export class ProjectileCalculator {
     }
 
     this.#projectiles = this.#projectiles.filter(p => p.alive);
-    return { interceptions: this.#lastInterceptions, hits: this.#lastHits };
+    return { interceptions: this.#lastInterceptions, hits: this.#lastHits, collisions: this.#lastCollisions };
   }
 
   // Internal: check projectiles sharing same hex → power annihilation
@@ -209,6 +211,7 @@ export class ProjectileCalculator {
     for (const [key, projs] of byHex) {
       if (projs.length < 2) continue;
       projs.sort((a, b) => b.power - a.power);
+      const [cq, cr] = key.split(',').map(Number);
 
       for (let i = 0; i < projs.length; i++) {
         if (!projs[i].alive || destroyed.has(projs[i].id)) continue;
@@ -226,11 +229,31 @@ export class ProjectileCalculator {
             destroyed.add(weak.id);
             const tag = (strongMelee || weakMelee) ? '⚔💥 斩击相杀！' : '💥 弹体相杀！';
             this.#logger?.log(`${tag}威${strong.power} vs 威${weak.power}`, 'die');
+            // Record canonical collision events
+            this.#lastCollisions.push({
+              type: 'mutual_destroy',
+              projectileId: strong.id, otherProjectileId: weak.id,
+              power: strong.power, otherPower: weak.power,
+              q: cq, r: cr,
+            });
+            this.#lastCollisions.push({
+              type: 'mutual_destroy',
+              projectileId: weak.id, otherProjectileId: strong.id,
+              power: weak.power, otherPower: strong.power,
+              q: cq, r: cr,
+            });
           } else {
             weak.alive = false;
             destroyed.add(weak.id);
             const tag = (strongMelee || weakMelee) ? '⚔💥 斩击贯穿！' : '💥 弹体贯穿！';
             this.#logger?.log(`${tag}余威${strong.power}(不降威)`, 'sh');
+            // Record canonical collision event for the destroyed projectile
+            this.#lastCollisions.push({
+              type: 'overpowered',
+              projectileId: weak.id, otherProjectileId: strong.id,
+              power: weak.power, otherPower: strong.power,
+              q: cq, r: cr,
+            });
           }
         }
       }
@@ -257,6 +280,14 @@ export class ProjectileCalculator {
             destroyed.add(a.id); destroyed.add(b.id);
             const tag = (a.flags.includes('MELEE') || b.flags.includes('MELEE')) ? '⚔💥 斩击相杀！' : '💥 弹体交错！';
             this.#logger?.log(`${tag}威${a.power} vs 威${b.power}`, 'die');
+            this.#lastCollisions.push({
+              type: 'mutual_destroy', projectileId: a.id, otherProjectileId: b.id,
+              power: a.power, otherPower: b.power, q: (aCurQ + bCurQ) / 2, r: (aCurR + bCurR) / 2,
+            });
+            this.#lastCollisions.push({
+              type: 'mutual_destroy', projectileId: b.id, otherProjectileId: a.id,
+              power: b.power, otherPower: a.power, q: (aCurQ + bCurQ) / 2, r: (aCurR + bCurR) / 2,
+            });
           } else {
             const strong = a.power > b.power ? a : b;
             const weak = a.power > b.power ? b : a;
@@ -265,6 +296,10 @@ export class ProjectileCalculator {
             const strongMelee = strong.flags.includes('MELEE') || weak.flags.includes('MELEE');
             const tag = strongMelee ? '⚔💥 斩击贯穿！' : '💥 弹体贯穿！';
             this.#logger?.log(`${tag}余威${strong.power}(不降威)`, 'sh');
+            this.#lastCollisions.push({
+              type: 'overpowered', projectileId: weak.id, otherProjectileId: strong.id,
+              power: weak.power, otherPower: strong.power, q: weak.path[weak.stepIndex][0], r: weak.path[weak.stepIndex][1],
+            });
           }
         }
       }

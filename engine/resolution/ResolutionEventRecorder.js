@@ -76,12 +76,9 @@ export class ResolutionEventRecorder {
     if (actionId) this.#declaredActionIds.add(actionId);
 
     const actor = this.#registry?.get?.(actorId);
-    const event = normalizeResolutionEvent({
+    return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.ACTION_DECLARED,
-      turnNumber: this.#currentTurn,
-      phaseSpeed: this.#currentPhase.speed,
-      phaseKind: this.#currentPhase.phaseKind || 'speed',
       actionId,
       actorId,
       skillId,
@@ -89,38 +86,28 @@ export class ResolutionEventRecorder {
       actorName: actor?.name || null,
       skillName: skillName || null,
     });
-    this.#currentPhase.events.push(event);
-    return event;
   }
 
   /** Record an action_failed event (e.g., miss). */
   recordActionFailed(actionId, actorId, skillId, reason) {
     if (!this.#currentPhase) return null;
-    const event = normalizeResolutionEvent({
+    return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.ACTION_FAILED,
-      turnNumber: this.#currentTurn,
-      phaseSpeed: this.#currentPhase.speed,
-      phaseKind: this.#currentPhase.phaseKind || 'speed',
       actionId,
       actorId,
       skillId,
       result: 'miss',
       reason: reason || 'miss',
     });
-    this.#currentPhase.events.push(event);
-    return event;
   }
 
   /** Record a projectile_created event. */
   recordProjectileCreated(projectileId, actorId, skillId, actionId, fromPos, toPos, power, speed) {
     if (!this.#currentPhase) return null;
-    const event = normalizeResolutionEvent({
+    return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.PROJECTILE_CREATED,
-      turnNumber: this.#currentTurn,
-      phaseSpeed: this.#currentPhase.speed,
-      phaseKind: this.#currentPhase.phaseKind || 'speed',
       actionId,
       actorId,
       skillId,
@@ -130,61 +117,44 @@ export class ResolutionEventRecorder {
       basePower: power ?? null,
       projectileType: 'projectile',
     });
-    this.#currentPhase.events.push(event);
-    return event;
   }
 
   /** Record a projectile_collided event. */
   recordProjectileCollided(projectileId, targetId, targetPos, damage) {
     if (!this.#currentPhase) return null;
     const targetChar = targetId ? this.#registry?.get?.(targetId) : null;
-    const event = normalizeResolutionEvent({
+    return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.PROJECTILE_COLLIDED,
-      turnNumber: this.#currentTurn,
-      phaseSpeed: this.#currentPhase.speed,
-      phaseKind: this.#currentPhase.phaseKind || 'speed',
       projectileId,
       targetId,
       targetPos: targetPos || null,
       targetName: targetChar?.name || null,
       finalDamage: damage ?? null,
     });
-    this.#currentPhase.events.push(event);
-    return event;
   }
 
   /** Record a projectile_expired event (disappeared without hitting). */
   recordProjectileExpired(projectileId, reason) {
     if (!this.#currentPhase) return null;
-    const event = normalizeResolutionEvent({
+    return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.PROJECTILE_EXPIRED,
-      turnNumber: this.#currentTurn,
-      phaseSpeed: this.#currentPhase.speed,
-      phaseKind: this.#currentPhase.phaseKind || 'speed',
       projectileId,
       reason: reason || null,
     });
-    this.#currentPhase.events.push(event);
-    return event;
   }
 
   /** Record a projectile_intercepted event. */
   recordProjectileIntercepted(projectileId, interceptorId, interceptPower) {
     if (!this.#currentPhase) return null;
-    const event = normalizeResolutionEvent({
+    return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.PROJECTILE_INTERCEPTED,
-      turnNumber: this.#currentTurn,
-      phaseSpeed: this.#currentPhase.speed,
-      phaseKind: this.#currentPhase.phaseKind || 'speed',
       projectileId,
       targetId: interceptorId,
       basePower: interceptPower ?? null,
     });
-    this.#currentPhase.events.push(event);
-    return event;
   }
 
   /** Manually record a pre-built event. Must have a legal eventType. */
@@ -253,6 +223,8 @@ export class ResolutionEventRecorder {
     // RESOURCE_CHANGED → resource_changed
     on(EvtType.RESOURCE_CHANGED, (data) => {
       if (!this.#enabled || !this.#currentPhase) return;
+      // hp is not a legal resource in this game — reject
+      if (data.resource === 'hp') return;
       this.record({
         id: nextEventId(),
         eventType: ResolutionEventType.RESOURCE_CHANGED,

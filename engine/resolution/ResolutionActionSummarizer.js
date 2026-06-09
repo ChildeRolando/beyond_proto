@@ -141,9 +141,11 @@ export function buildActionSummaries(phase, viewState) {
   const charById = new Map((viewState?.characters || []).map(char => [char.id, char]));
   const actionMap = new Map();
 
-  // Group canonical events by actionId
+  // Group canonical events by actionId. Events without actionId (e.g. projectile
+  // collisions, battle_ended) are not player-facing actions — skip them.
   for (const event of phase.events || []) {
-    const actionId = event.actionId || event.id;
+    if (!event.actionId) continue;
+    const actionId = event.actionId;
     if (!actionMap.has(actionId)) {
       actionMap.set(actionId, {
         actionId,
