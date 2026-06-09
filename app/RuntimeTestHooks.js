@@ -401,6 +401,35 @@ export function installRuntimeTestHooks({
           },
         ],
       },
+      unaffordable_test: {
+        mode: 'duel',
+        teams: commonTeams,
+        rules: { friendlyFire: false },
+        combatants: [
+          {
+            id: 'poor_mage',
+            teamId: 'player1',
+            ownerId: 'player1',
+            control: 'human',
+            class: '法师',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['mage_blast'],
+            position: { q: 0, r: 0 },
+            resources: { qi: 0 },  // insufficient qi for mage_blast (costs qi:1)
+          },
+          {
+            id: 'rich_target',
+            teamId: 'player2',
+            ownerId: 'player2',
+            control: 'human',
+            class: '战士',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['warrior_rage'],
+            position: { q: 2, r: 0 },
+            resources: {},
+          },
+        ],
+      },
     };
 
     return structuredClone(scenarios[kind] || scenarios.phase_order);
@@ -443,6 +472,7 @@ export function installRuntimeTestHooks({
 
   window.__resolutionTest = {
     _getEngine: () => getBattleSession().engine,
+    _getBattleSession: () => getBattleSession(),
     startDeterministicSpeedScenario: (kind = 'phase_order') => {
       const battleSession = getBattleSession();
       battleSession.setTutorialManager?.(null);

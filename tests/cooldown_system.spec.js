@@ -319,3 +319,128 @@ test('J: UI skill button shows cooldown mask and data attrs', async ({ page }) =
   // --cd-ratio should be 1.0 (2/2)
   expect(parseFloat(btnInfo.cdRatioStyle)).toBeCloseTo(1.0, 1);
 });
+
+// ═══════════════════════════════════════════════════════
+// Test K: CD skill is previewable (selectable, shows range)
+// ═══════════════════════════════════════════════════════
+
+test('K: CD skill is previewable — can select and see range', async ({ page }) => {
+  // Use mage_qi_siphon scenario with a HEX-targeting CD=3 skill
+  await startScenario(page, 'cooldown_qi_siphon_test');
+
+  // Turn 1: use mage_qi_siphon
+  await page.evaluate(() => {
+    window.__resolutionTest.submitAction('siphon_mage', 'mage_qi_siphon', { q: 2, r: 0 });
+    window.__resolutionTest.submitAction('siphon_target', 'warrior_rage', null);
+  });
+  await page.evaluate(() => window.__resolutionTest.executeRealTurnAndGetResolution());
+  await page.evaluate(() => { if (window.__testHooks?.renderAll) window.__testHooks.renderAll(); });
+
+  // Turn 2 planning: skill should be on CD=3, but clickable for preview
+  // Click the mage_qi_siphon button
+  const result = await page.evaluate(() => {
+    const btn = document.querySelector('#action-dock .skill-btn[data-skill="mage_qi_siphon"]');
+    if (!btn) return { found: false };
+
+    // Verify button is in cooldown state
+    const cdRemaining = Number(btn.getAttribute('data-cd-remaining'));
+    const hasCooldown = btn.classList.contains('cooldown');
+    if (cdRemaining <= 0 || !hasCooldown) return { notOnCD: true, cdRemaining, hasCooldown };
+
+    // Click the button
+    btn.click();
+    return { clicked: true };
+  });
+
+  expect(result.found).not.toBe(false);
+  expect(result.clicked).toBe(true);
+
+  // After clicking, selectedSkill should be set
+  const selected = await page.evaluate(() => {
+    const bs = window.__resolutionTest._getBattleSession?.() || null;
+    if (!bs) return null;
+    return { charId: bs.selectedSkill?.charId, skillId: bs.selectedSkill?.skillId };
+  });
+  expect(selected).not.toBeNull();
+  expect(selected.skillId).toBe('mage_qi_siphon');
+
+  // Character should NOT be submitted (preview only, not release)
+  const submitted = await page.evaluate(() => {
+    const bs = window.__resolutionTest._getBattleSession?.() || null;
+    if (!bs) return false;
+    return bs.localSubmittedSet.has('siphon_mage');
+  });
+  expect(submitted).toBe(false);
+});
+
+// ═══════════════════════════════════════════════════════
+// Test L: CD skill release is rejected at submitAction
+// ═══════════════════════════════════════════════════════
+
+test('L: CD skill cannot be released — submit fails, AP unchanged', async ({ page }) => {
+  await startScenario(page, 'cooldown_qi_siphon_test');
+
+  // Turn 1: use mage_qi_siphon to start CD
+  await page.evaluate(() => {
+    window.__resolutionTest.submitAction('siphon_mage', 'mage_qi_siphon', { q: 2, r: 0 });
+    window.__resolutionTest.submitAction('siphon_target', 'warrior_rage', null);
+  });
+  await page.evaluate(() => window.__resolutionTest.executeRealTurnAndGetResolution());
+  await page.evaluate(() => { if (window.__testHooks?.renderAll) window.__testHooks.renderAll(); });
+
+  // Turn 2: select the CD skill for preview
+  await page.evaluate(() => {
+    const btn = document.querySelector('#action-dock .skill-btn[data-skill="mage_qi_siphon"]');
+    if (btn) btn.click();
+  });
+
+  // Try to submit (release)
+  const submit = await page.evaluate(() =>
+    window.__resolutionTest.submitAction('siphon_mage', 'mage_qi_siphon', { q: 2, r: 0 })
+  );
+  expect(submit.success).toBe(false);
+  expect(submit.error).toBe('skill_on_cooldown');
+
+  // localSubmittedSet must NOT contain siphon_mage
+  const submitted = await page.evaluate(() => {
+    const bs = window.__resolutionTest._getBattleSession?.() || null;
+    return bs ? bs.localSubmittedSet.has('siphon_mage') : null;
+  });
+  expect(submitted).toBe(false);
+});
+
+// ═══════════════════════════════════════════════════════
+// Test M: Unaffordable skill is previewable but not releasable
+// ═══════════════════════════════════════════════════════
+
+test('M: unaffordable skill is previewable, release fails', async ({ page }) => {
+  // Use a scenario where mage has qi=0, so mage_blast (cost qi=1) is unaffordable
+  await page.goto('/');
+  await page.waitForFunction(() => Boolean(window.__resolutionTest));
+  await page.evaluate(() => window.__resolutionTest.startDeterministicSpeedScenario('unaffordable_test'));
+  await expect(page.locator('#app')).toBeVisible();
+
+  // Click the mage_blast button (unaffordable but previewable)
+  const clicked = await page.evaluate(() => {
+    const btn = document.querySelector('#action-dock .skill-btn[data-skill="mage_blast"]');
+    if (!btn) return { found: false };
+    btn.click();
+    return { found: true, hasUnaffordable: btn.classList.contains('unaffordable') };
+  });
+  expect(clicked.found).toBe(true);
+  expect(clicked.hasUnaffordable).toBe(true);
+
+  // selectedSkill should be set
+  const selected = await page.evaluate(() => {
+    const bs = window.__resolutionTest._getBattleSession?.() || null;
+    return bs ? bs.selectedSkill : null;
+  });
+  expect(selected).not.toBeNull();
+  expect(selected.skillId).toBe('mage_blast');
+
+  // Try to submit — should fail with resource error
+  const submit = await page.evaluate(() =>
+    window.__resolutionTest.submitAction('poor_mage', 'mage_blast', { q: 2, r: 0 })
+  );
+  expect(submit.success).toBe(false);
+});

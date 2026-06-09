@@ -502,7 +502,9 @@ export class BattleSessionController {
       return;
     }
 
-    if (!this.canSubmitForChar(charId, skillId)) return;
+    // Preview gate: allow cooldown/unaffordable skills to be selected for preview.
+    // Release gate is submitAction(), which enforces CD/resources/target.
+    if (!this.canPreviewSkill(charId, skillId)) return;
 
     const skill = SKILLS[skillId];
     if (!skill) return;
