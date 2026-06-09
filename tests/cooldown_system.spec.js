@@ -280,7 +280,7 @@ test('I: mage_qi_siphon (real multi-command) starts CD once', async ({ page }) =
 // Test J: UI cooldown display shows nonzero after skill use
 // ═══════════════════════════════════════════════════════
 
-test('J: UI skill button shows cooldown after use', async ({ page }) => {
+test('J: UI skill button shows cooldown mask and data attrs', async ({ page }) => {
   await startScenario(page, 'cooldown_test');
 
   await page.evaluate(() => {
@@ -289,34 +289,33 @@ test('J: UI skill button shows cooldown after use', async ({ page }) => {
   });
   await page.evaluate(() => window.__resolutionTest.executeRealTurnAndGetResolution());
 
-  // After execution, UI should render. Look for the cooldown indicator.
-  // The skill button should have a data-cd-remaining attribute or show CD text.
-  const cdText = await page.evaluate(() => {
-    // Check if there's any element showing cooldown info for warrior_sheathe
-    const buttons = document.querySelectorAll('[data-skill-id="warrior_sheathe"]');
-    if (buttons.length > 0) {
-      const btn = buttons[0];
-      return {
-        remaining: btn.getAttribute('data-cd-remaining'),
-        text: btn.textContent || '',
-      };
-    }
-    // Fallback: check any cooldown-related element
-    const cdEls = document.querySelectorAll('[data-cd-remaining]');
-    const results = [];
-    cdEls.forEach(el => {
-      results.push({
-        id: el.getAttribute('data-skill-id') || el.getAttribute('data-cd-skill'),
-        remaining: el.getAttribute('data-cd-remaining'),
-      });
-    });
-    return { foundViaFallback: true, results };
+  // Force UI re-render so skill buttons reflect updated cooldown state
+  await page.evaluate(() => {
+    if (window.__testHooks?.renderAll) window.__testHooks.renderAll();
   });
 
-  // If UI elements exist, they should show nonzero CD
-  if (cdText.remaining !== undefined) {
-    expect(Number(cdText.remaining)).toBeGreaterThan(0);
-  }
-  // If no UI element, CD is at least enforced at engine level (tests A-I verify)
-  // This test is a best-effort UI smoke check
+  // After execution + render, find the warrior_sheathe skill button
+  const btnInfo = await page.evaluate(() => {
+    const btn = document.querySelector('#action-dock .skill-btn[data-skill="warrior_sheathe"]');
+    if (!btn) return { found: false };
+    return {
+      found: true,
+      cdRemaining: Number(btn.getAttribute('data-cd-remaining')),
+      cdTotal: Number(btn.getAttribute('data-cd-total')),
+      hasCooldownClass: btn.classList.contains('cooldown'),
+      hasSubmittedClass: btn.classList.contains('submitted'),
+      hasMask: !!btn.querySelector('.skill-cd-mask'),
+      cdRatioStyle: btn.style.getPropertyValue('--cd-ratio'),
+    };
+  });
+
+  // warrior_sheathe CD=2, so after use we expect CD=2
+  expect(btnInfo.found).toBe(true);
+  expect(btnInfo.cdRemaining).toBe(2);
+  expect(btnInfo.cdTotal).toBe(2);
+  expect(btnInfo.hasCooldownClass).toBe(true);
+  expect(btnInfo.hasSubmittedClass).toBe(false);
+  expect(btnInfo.hasMask).toBe(true);
+  // --cd-ratio should be 1.0 (2/2)
+  expect(parseFloat(btnInfo.cdRatioStyle)).toBeCloseTo(1.0, 1);
 });

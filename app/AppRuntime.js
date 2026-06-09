@@ -371,6 +371,7 @@ export function createAppRuntime() {
     routeController,
     routeNetworkMessage: (payload) => handleNetworkMessage(payload),
     returnToStart,
+    renderAll: () => battleRender.renderAll(),
   });
 
   // ── Initialize ──

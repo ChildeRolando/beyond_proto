@@ -201,6 +201,7 @@ export class BattleSessionController {
       helpers: {
         isMyCharacter: (charId) => this.isMyCharacter(charId),
         canSubmitForChar: (charId, skillId) => this.canSubmitForChar(charId, skillId),
+        canPreviewSkill: (charId, skillId) => this.canPreviewSkill(charId, skillId),
         hasOptionalActionAvailable: (charId) => this.hasOptionalActionAvailable(charId),
         visibleSkillsForChar: (char) => this.visibleSkillsForChar(char),
         getForcedSkillId: (charId) => this.engine.getForcedSkillId(charId),
@@ -418,6 +419,23 @@ export class BattleSessionController {
     if (nm && nm.mode !== 'local' && nm.iSubmitted) return false;
     const result = this.engine.canSubmitAction?.(charId, skillId);
     return Boolean(result?.canSubmit ?? result?.ok);
+  }
+
+  /** Can the player click this skill to preview range/info? Does NOT check cooldown or resources. */
+  canPreviewSkill(charId, skillId) {
+    if (this._resolutionPlaybackLocked) return false;
+    const char = this.getCharacterState(charId);
+    if (!char || char.alive === false) return false;
+    if (!this.isMyCharacter(charId)) return false;
+    if (!skillId) return true;
+    // Check that character has this skill in their visible pool
+    const visible = this.visibleSkillsForChar(char);
+    if (!visible.some(s => s.id === skillId)) return false;
+    // Only block if the character has already submitted this turn
+    if (this.localSubmittedSet.has(charId)) return false;
+    const nm = this._callbacks.getNetworkManager();
+    if (nm && nm.mode !== 'local' && nm.iSubmitted) return false;
+    return true;
   }
 
   isRequiredActionReady(charId) {

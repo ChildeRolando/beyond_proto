@@ -12,8 +12,10 @@ export function installRuntimeTestHooks({
   routeController,
   routeNetworkMessage,
   returnToStart,
+  renderAll,
 }) {
   window.__testHooks = window.__testHooks || {};
+  window.__testHooks.renderAll = renderAll || null;
   window.__testHooks.routeNetworkMessage = (payload) => routeNetworkMessage(payload);
   window.__testHooks.getConfigSnapshot = () => {
     const configSession = getConfigSession();
@@ -478,6 +480,8 @@ export function installRuntimeTestHooks({
       engine.turnManager.setResolutionRecorder(recorder);
       const result = await engine.executeTurn();
       engine.turnManager.clearResolutionRecorder();
+      // Clear submitted state so UI renders correctly for next turn
+      battleSession.localSubmittedSet.clear();
 
       // Capture post-execution view states for each phase and build canonical action summaries
       const viewState = engine.getState();

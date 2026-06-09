@@ -169,13 +169,29 @@ function renderActionDock(ctx) {
   const skillsHTML = pageSkills.map(s => {
     const skill = SKILLS[s.id];
     const sel = ctx.selectedSkill?.charId === actor.id && ctx.selectedSkill?.skillId === s.id ? ' selected' : '';
-    const used = !h.canSubmitForChar(actor.id, s.id) ? ' used' : '';
-    const noAfford = !canAfford(skill) ? ' unaffordable' : '';
-    const label = `${skill.name}：${skill.desc || ''}`;
     const cdRemaining = h.getSkillCooldownRemaining?.(actor.id, s.id) ?? 0;
+    const cdTotal = skill.cooldown || 0;
     const usesRemaining = h.getSkillRemainingUses?.(actor.id, s.id) ?? Infinity;
-    return `<button class="skill-btn skill-icon-btn${sel}${used}${noAfford}" data-skill="${s.id}" data-char="${actor.id}" data-cd-remaining="${escapeHTML(cdRemaining)}" data-uses-remaining="${escapeHTML(finiteOrInfinityText(usesRemaining))}" aria-label="${escapeHTML(label)}" data-tooltip="${escapeHTML(skill.desc || '')}">
+    const exhausted = skill.maxUses && usesRemaining <= 0;
+    const canPreview = h.canPreviewSkill?.(actor.id, s.id) ?? false;
+    const canSubmit = h.canSubmitForChar?.(actor.id, s.id) ?? false;
+
+    // Class breakdown: submitted (already acted), cooldown, unaffordable, no-uses, locked
+    const submitted = !canPreview ? ' submitted' : '';  // already submitted or playback locked
+    const cooldownCls = !submitted && cdRemaining > 0 ? ' cooldown' : '';
+    const noAfford = !submitted && !cdRemaining && !exhausted && !canAfford(skill) ? ' unaffordable' : '';
+    const noUses = !submitted && exhausted ? ' no-uses' : '';
+    const locked = !canPreview && !canSubmit ? '' : '';  // submitted already handles this
+
+    const cdRatio = cdTotal > 0 ? cdRemaining / cdTotal : 0;
+    const cdMaskHTML = cdRemaining > 0
+      ? `<div class="skill-cd-mask" style="--cd-ratio:${cdRatio.toFixed(4)}"></div>`
+      : '';
+
+    const label = `${skill.name}：${skill.desc || ''}`;
+    return `<button class="skill-btn skill-icon-btn${sel}${submitted}${cooldownCls}${noAfford}${noUses}" data-skill="${s.id}" data-char="${actor.id}" data-cd-remaining="${escapeHTML(cdRemaining)}" data-cd-total="${escapeHTML(cdTotal)}" data-uses-remaining="${escapeHTML(finiteOrInfinityText(usesRemaining))}" style="${cdRemaining > 0 ? `--cd-ratio:${cdRatio.toFixed(4)}` : ''}" aria-label="${escapeHTML(label)}" data-tooltip="${escapeHTML(skill.desc || '')}">
       <div class="skill-glyph">${skillGlyph(skill)}</div>
+      ${cdMaskHTML}
       <div class="skill-meta"><span>${skillCostLabel(skill, actor)}</span><span>S${skill.speed ?? '-'}</span></div>
     </button>`;
   }).join('');
@@ -186,9 +202,15 @@ function renderActionDock(ctx) {
       <span class="skill-page-indicator">${page + 1}/${totalPages}</span>
       <button class="skill-page-btn" data-char="${actor.id}" data-page-dir="next"${page >= totalPages - 1 ? ' disabled' : ''}>▶</button>
     </div>`;
+  const selectedSkill = ctx.selectedSkill?.charId === actor.id ? SKILLS[ctx.selectedSkill.skillId] : null;
+  const selectedCD = selectedSkill ? (h.getSkillCooldownRemaining?.(actor.id, selectedSkill.id) ?? 0) : 0;
   const hint = ctx.selectedSkill?.charId === actor.id
-    ? `选择 <span class="target-skill-name">${SKILLS[ctx.selectedSkill.skillId]?.name || '技能'}</span> 的目标格`
-    : (h.hasOptionalActionAvailable(actor.id) ? '可追加灵巧行动，或执行回合' : (h.canSubmitForChar(actor.id) ? '选择技能后在棋盘指定目标' : '该角色已提交行动'));
+    ? (selectedCD > 0
+        ? `<span class="target-skill-name">${selectedSkill?.name || '技能'}</span> 冷却中：剩余 ${selectedCD} 回合`
+        : `选择 <span class="target-skill-name">${selectedSkill?.name || '技能'}</span> 的目标格`)
+    : (h.hasOptionalActionAvailable(actor.id)
+        ? '可追加灵巧行动，或执行回合'
+        : (h.canSubmitForChar(actor.id) ? '选择技能后在棋盘指定目标' : '该角色已提交行动'));
   const executeBtn = document.getElementById('btn-execute');
 
   dock.innerHTML = `
@@ -246,7 +268,8 @@ function wireActionDock(ctx) {
     btn.addEventListener('click', () => {
       const charId = btn.dataset.char;
       const skillId = btn.dataset.skill;
-      if (btn.classList.contains('used')) return;
+      // Only block submitted/locked — cooldown/unaffordable are previewable
+      if (btn.classList.contains('submitted')) return;
       cb.onSelectSkill(charId, skillId);
     });
   });
