@@ -134,8 +134,8 @@ test('Test B: true miss — summaries, timeline, and log all show 挥空', async
   // At least one log entry must show the miss/failure for the miss action
   const missEntries = canonicalLog.filter(e => e.actionId === missAction.actionId);
   expect(missEntries.length).toBeGreaterThanOrEqual(1);
-  // action_failed renders as "技能发动失败：miss" (type: 'fail')
-  expect(missEntries.some(e => /技能发动失败/.test(e.text))).toBe(true);
+  // action_failed now renders as "actorName 挥空" (type: 'fail')
+  expect(missEntries.some(e => /挥空/.test(e.text))).toBe(true);
 });
 
 // ─── Test C: Same actor hit+miss — canonical summaries distinguish both ───

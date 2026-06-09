@@ -4,6 +4,10 @@
 // Timeline uses phase.actions (action-level summaries).
 // Combat log uses this module's per-event output.
 // Both originate from the same TurnResolution.
+//
+// All machine IDs are translated to display names via DisplayNames.
+
+import { getSkillName, getResourceName, getDamageLayerName, getStatusName, getReasonText, formatActionFailedText } from '../presentation/DisplayNames.js';
 
 // ─── Single event → log entry ───
 
@@ -18,13 +22,8 @@ function formatPoint(pos) {
 }
 
 /**
- * @param {object} event — single ResolutionEvent from phase.events
- * @param {Map} charById — id → character lookup from viewState
- * @returns {{ actionId: string, text: string, type: string } | null}
- */
-/**
  * Render a single ResolutionEvent into a player-facing log entry.
- * Prefers event.eventType (canonical) over event.type (legacy).
+ * All machine IDs are translated through DisplayNames helpers.
  */
 export function renderEventLogEntry(event, charById = new Map()) {
   const actorName = actorNameFor(event, charById);
@@ -33,16 +32,14 @@ export function renderEventLogEntry(event, charById = new Map()) {
     || (event.targetPos ? `(${event.targetPos.q},${event.targetPos.r})` : null);
   const et = event.eventType || null;
 
-  // ── Canonical eventType path ──
-
   if (et === 'action_declared') {
-    const skillName = event.skillName || event.skillId || '技能';
+    const skillName = event.skillName || getSkillName(event.skillId);
     const tgt = event.targetPos ? formatPoint(event.targetPos) : '';
     return { actionId: event.actionId || null, text: `${actorName} → ${skillName}${tgt ? ' ' + tgt : ''}`, type: 'declare' };
   }
 
   if (et === 'resource_changed') {
-    const res = event.resource || '资源';
+    const res = getResourceName(event.resource);
     const d = event.delta;
     if (d != null && d < 0) {
       return { actionId: event.actionId || null, text: `${actorName} 消耗 ${res} ${Math.abs(d)}`, type: 'resource' };
@@ -50,7 +47,6 @@ export function renderEventLogEntry(event, charById = new Map()) {
     if (d != null && d > 0) {
       return { actionId: event.actionId || null, text: `${actorName} 获得 ${res} +${d}`, type: 'resource' };
     }
-    // No delta → skip (unsigned amount is not a valid canonical resource event)
     return null;
   }
 
@@ -71,7 +67,7 @@ export function renderEventLogEntry(event, charById = new Map()) {
   }
 
   if (et === 'damage_absorbed') {
-    const layer = event.layer || '防御';
+    const layer = getDamageLayerName(event.layer);
     const absorbed = event.absorbed ?? 0;
     const tgt = targetName || event.actorId || '目标';
     return { actionId: event.actionId || null, text: `${tgt} ${layer}抵消 ${absorbed} 伤害`, type: 'absorb' };
@@ -83,24 +79,22 @@ export function renderEventLogEntry(event, charById = new Map()) {
   }
 
   if (et === 'status_applied') {
-    const sName = event.statusName || event.statusId || '状态';
+    const sName = getStatusName(event.statusId);
     const tgt = targetName || actorName;
     return { actionId: event.actionId || null, text: `${tgt} 获得状态 ${sName}`, type: 'status' };
   }
 
   if (et === 'status_expired' || et === 'status_removed') {
-    const sName = event.statusName || event.statusId || '状态';
+    const sName = getStatusName(event.statusId);
     const tgt = targetName || actorName;
     return { actionId: event.actionId || null, text: `${tgt} 失去状态 ${sName}`, type: 'status' };
   }
 
   if (et === 'action_failed') {
-    const reason = event.reason || '未知原因';
-    return { actionId: event.actionId || null, text: `${actorName} 技能发动失败：${reason}`, type: 'fail' };
+    return { actionId: event.actionId || null, text: formatActionFailedText(actorName, event.reason), type: 'fail' };
   }
 
   if (et === 'battle_ended') {
-    // battle_ended handled in renderTurnLog, not per-event
     return null;
   }
 
@@ -125,11 +119,9 @@ export function renderEventLogEntry(event, charById = new Map()) {
   }
 
   if (et === 'projectile_moved') {
-    // Omitted from player-facing log by default (too noisy)
     return null;
   }
 
-  // ── Unrecognized eventType → skip (no legacy fallback) ──
   return null;
 }
 

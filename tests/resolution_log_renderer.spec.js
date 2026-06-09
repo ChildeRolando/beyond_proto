@@ -194,7 +194,7 @@ console.log('\n[2a] renderTurnLog — mixed events');
         viewState: makeViewState([makeChar(), makeChar({ id: 'enemy', name: '敌方法师', class: '法师', ownerId: 'player2' })]),
         events: [
           { id: 'ev-hit', actionId: 'act-hit', actorId: 'hero', eventType: 'damage_applied', skillId: 'warrior_slash', targetName: '训练稻草人', finalDamage: 35, result: 'hit' },
-          { id: 'ev-miss', actionId: 'act-miss', actorId: 'enemy', eventType: 'action_failed', skillId: 'mage_blast', result: 'miss' },
+          { id: 'ev-miss', actionId: 'act-miss', actorId: 'enemy', eventType: 'action_failed', skillId: 'mage_blast', result: 'miss', reason: 'miss' },
         ],
       },
     ],
@@ -215,7 +215,7 @@ console.log('\n[2a] renderTurnLog — mixed events');
   assert(hitEntry.text.includes('35'), 'hit shows damage number');
 
   const failEntry = entries.find(e => e.type === 'fail');
-  assert(failEntry.text.includes('技能发动失败'), 'fail says 技能发动失败');
+  assert(failEntry.text.includes('挥空'), 'fail says 挥空');
 }
 
 // Test 2b: renderTurnLog — suppressGameOver
@@ -260,13 +260,14 @@ console.log('\n[2c] renderEventLogEntry — individual events');
   assertEquals(killEntry.type, 'kill', 'kill type');
   assert(killEntry.text.includes('被击杀'), 'kill says 被击杀');
 
-  // miss (canonical action_failed)
+  // miss (canonical action_failed with reason)
   const missEntry = renderEventLogEntry(
-    { id: 'e3', actionId: 'a3', actorId: 'enemy', eventType: 'action_failed', skillId: 'mage_blast', result: 'miss' },
+    { id: 'e3', actionId: 'a3', actorId: 'enemy', eventType: 'action_failed', skillId: 'mage_blast', result: 'miss', reason: 'miss' },
     charById
   );
   assertEquals(missEntry.type, 'fail', 'miss type');
-  assert(missEntry.text.includes('技能发动失败'), 'miss says 技能发动失败');
+  assert(missEntry.text.includes('挥空'), 'miss says 挥空');
+  assert(!missEntry.text.includes('miss'), 'miss does not contain raw "miss"');
 
   // resource (canonical resource_changed with negative delta — cost)
   const resEntry = renderEventLogEntry(

@@ -355,17 +355,17 @@ test('Test 7: mage gather produces qi gain in log and resolution', async ({ page
   );
   expect(shieldEvents.length).toBeGreaterThanOrEqual(1);
 
-  // ── Assert: canonical log shows qi gain ──
+  // ── Assert: canonical log shows qi gain (now uses display name 气) ──
   const canonicalLog = await page.evaluate(() => window.__resolutionTest.getCanonicalLog());
   const gainLines = canonicalLog.filter(e =>
-    e.type === 'resource' && (/获得.*qi|qi.*\+/.test(e.text))
+    e.type === 'resource' && (/获得.*气/.test(e.text))
   );
   expect(gainLines.length).toBeGreaterThanOrEqual(1);
 
   // ── Assert: Timeline has an action card showing qi gain (EOT phase) ──
   const allActions = (resolution.phases || []).flatMap(p => p.actions || []);
   const gatherGainAction = allActions.find(a =>
-    a.skillId === 'mage_gather' && /获得.*qi/.test(a.summaryText)
+    a.skillId === 'mage_gather' && /获得.*气/.test(a.summaryText)
   );
   expect(gatherGainAction).toBeTruthy();
 });

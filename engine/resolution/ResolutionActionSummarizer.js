@@ -3,8 +3,10 @@
 // which renders event-level detail from phase.events.
 //
 // Reads ONLY canonical eventType/delta fields. Does NOT read legacy type/amount.
+// All machine IDs are translated to display names via DisplayNames.
 
 import { SKILLS } from '../SkillData.js';
+import { getSkillName, getResourceName, getStatusName } from '../presentation/DisplayNames.js';
 
 // ─── Helpers ───
 
@@ -34,7 +36,8 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null) 
   const actorName = actor?.name || actorId || '未知角色';
   const ownerId = actor?.ownerId || null;
   const skillId = events[0]?.skillId || null;
-  const skillName = skill?.name || skillId || '未知技能';
+  // Use DisplayNames for skill name — never leak raw skillId
+  const skillDisplayName = skill?.name || getSkillName(skillId);
 
   // Key canonical event types
   const actionDeclared = events.find(e => e.eventType === 'action_declared');
@@ -54,7 +57,6 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null) 
   let killed = false;
 
   if (characterMoved) {
-    // Movement action
     result = 'move';
     const to = characterMoved.to || null;
     summaryParts.push(to ? `移动至 ${formatPoint(to)}` : '位移');
@@ -89,7 +91,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null) 
       summaryParts.push('挥空');
     }
   } else if (resourceChanged && resourceChanged.delta != null) {
-    const res = resourceChanged.resource || '资源';
+    const res = getResourceName(resourceChanged.resource);
     const delta = resourceChanged.delta;
 
     if (delta > 0) {
@@ -101,7 +103,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null) 
     }
   } else if (statusApplied) {
     result = 'status';
-    const sName = statusApplied.statusName || statusApplied.statusId || '状态';
+    const sName = getStatusName(statusApplied.statusId);
     summaryParts.push(`获得 ${sName}`);
   } else if (actionDeclared && projectileCreated) {
     result = 'pending';
@@ -120,7 +122,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null) 
     ownerId,
     playerLabel: playerLabelForOwner(ownerId),
     skillId,
-    skillName,
+    skillName: skillDisplayName,
     result,
     targetId: targetId || damageApplied?.targetId || null,
     targetName: targetName || null,
