@@ -109,12 +109,20 @@ export function createTurnPlaybackController({
     const avatarSrc = getAvatarSrc(phase, action);
     const skillSrc = getSkillSrc(action);
     const actor = getActorForAction(phase, action);
-    const actorInitial = (actor?.name || action.actorName || action.actorId || '?').slice(0, 1);
-    const avatarHtml = avatarSrc
-      ? `<img class="resolution-action-avatar" src="${avatarSrc}" alt="${action.actorName || action.actorId || '角色'}">`
+    // Stable fallback: use action.actorClass for avatar when viewState actor is missing (battle-end)
+    const actorForAvatar = actor || (action.actorClass ? { class: action.actorClass, name: action.actorName } : null);
+    const effectiveAvatarSrc = avatarSrc || (actorForAvatar ? getCharacterPortraitSrc?.(actorForAvatar) || '' : '');
+    const actorInitial = (action.actorName || action.actorId || '?').slice(0, 1);
+    const avatarHtml = effectiveAvatarSrc
+      ? `<img class="resolution-action-avatar" src="${effectiveAvatarSrc}" alt="${action.actorName || action.actorId || '角色'}">`
       : `<div class="resolution-action-avatar-fallback">${actorInitial}</div>`;
     const skillIconHtml = skillSrc
       ? `<img class="resolution-action-skill-icon" src="${skillSrc}" alt="${action.skillName || '技能'}">`
+      : '';
+
+    // Render effectLines as separate rows; fall back to summaryText
+    const effectRows = (Array.isArray(action.effectLines) && action.effectLines.length > 0)
+      ? action.effectLines.map(line => `<div class="resolution-action-effect">${line}</div>`).join('')
       : '';
 
     return `
@@ -129,7 +137,9 @@ export function createTurnPlaybackController({
             ${skillIconHtml}
             <span class="resolution-action-skill-name">${action.skillName || '未知技能'}</span>
           </div>
-          <div class="resolution-action-summary">${action.summaryText || action.targetSummary || '无详细结果'}</div>
+          ${effectRows
+            ? `<div class="resolution-action-effects">${effectRows}</div>`
+            : `<div class="resolution-action-summary">${action.summaryText || action.targetSummary || '无详细结果'}</div>`}
         </div>
       </article>
     `;

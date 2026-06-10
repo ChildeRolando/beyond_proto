@@ -36,7 +36,8 @@ function testA_multiEffectSameAction() {
     `effectLines: ${JSON.stringify(s.effectLines)}`);
   check('A.5 summaryText includes both', s.summaryText.includes('怒气') && s.summaryText.includes('获得'),
     `summaryText: "${s.summaryText}"`);
-  check('A.6 summaryText uses separator', s.summaryText.includes(' · '),
+  check('A.6 summaryText uses separator (not · which clashes with buff names)',
+    s.summaryText.includes('; ') && !s.summaryText.includes(' · '),
     `summaryText: "${s.summaryText}"`);
 }
 
@@ -191,13 +192,95 @@ function testG_newFields() {
   check('G.2 effectLines has 2 entries (damage + status)',
     s.effectLines.length === 2,
     `effectLines: ${JSON.stringify(s.effectLines)}`);
-  check('G.3 summaryText uses dot separator',
-    s.summaryText.includes(' · '),
+  check('G.3 summaryText uses safe separator (not · which clashes with buff names)',
+    s.summaryText.includes('; ') && !s.summaryText.includes(' · '),
     `summaryText: "${s.summaryText}"`);
   check('G.4 playerLabel present', s.playerLabel === 'P1',
     `playerLabel=${s.playerLabel}`);
   check('G.5 damage field', s.damage === 42);
   check('G.6 killed field', s.killed === false);
+}
+
+// ─── Test H: Stable actor metadata from action_declared (survives missing viewState) ───
+function testH_stableActorMetadata() {
+  // Simulate battle-ending turn where actor is absent from viewState
+  const events = [
+    { eventType: 'action_declared', actionId: 'act-kill', actorId: 'warrior_p1',
+      skillId: 'warrior_meteor_resolve', actorName: '吉米', actorOwnerId: 'player1', actorClass: '战士' },
+    { eventType: 'character_moved', actionId: 'act-kill', actorId: 'warrior_p1',
+      from: { q: 0, r: -2 }, to: { q: 0, r: 2 } },
+    { eventType: 'character_died', actionId: 'act-kill', actorId: 'warrior_p1',
+      targetId: 'enemy_ai', targetName: '吉米' },
+  ];
+  // No actor in charById → must fall back to action_declared metadata
+  const s = summarizeOne('act-kill', events, null, null, new Map());
+
+  check('H.1 actorName from action_declared when actor is null',
+    s.actorName === '吉米',
+    `actorName="${s.actorName}"`);
+  check('H.2 ownerId from action_declared',
+    s.ownerId === 'player1',
+    `ownerId="${s.ownerId}"`);
+  check('H.3 playerLabel derived from ownerId',
+    s.playerLabel === 'P1',
+    `playerLabel="${s.playerLabel}"`);
+  check('H.4 actorClass from action_declared',
+    s.actorClass === '战士',
+    `actorClass="${s.actorClass}"`);
+  check('H.5 actorId still present', s.actorId === 'warrior_p1');
+  // Should NOT degrade to raw id
+  check('H.6 actorName is not the raw actorId',
+    s.actorName !== 'warrior_p1' && s.actorName !== '未知角色');
+}
+
+// ─── Test I: effectLines rendered as separate rows (no · in summaryText) ───
+function testI_effectLinesSeparateRows() {
+  // Simulate a buff with "·" in name
+  const events = [
+    { eventType: 'action_declared', actionId: 'act', actorId: 'hero', skillId: 'role_jimmy_marrow_wine' },
+    { eventType: 'resource_changed', actionId: 'act', actorId: 'hero', resource: 'rage', delta: -4 },
+    { eventType: 'status_applied', actionId: 'act', actorId: 'hero', statusId: 'JIMMY_MARROW_RANGE', targetId: 'hero' },
+  ];
+  const charById = new Map([
+    ['hero', { id: 'hero', name: '吉米', class: '战士', ownerId: 'player1' }],
+  ]);
+  const s = summarizeOne('act', events, charById.get('hero'), null, charById);
+
+  check('I.1 effectLines has separate entries', Array.isArray(s.effectLines) && s.effectLines.length === 2);
+  check('I.2 effectLines[0] is resource cost',
+    s.effectLines[0]?.includes('怒气') && s.effectLines[0]?.includes('-4'),
+    `effectLines[0]="${s.effectLines[0]}"`);
+  check('I.3 effectLines[1] is status gain with buff name',
+    s.effectLines[1]?.includes('获得') && s.effectLines[1]?.includes('洗髓·距'),
+    `effectLines[1]="${s.effectLines[1]}"`);
+  // The buff name "洗髓·距" contains "·" — must not be confused with separator
+  check('I.4 buff name "洗髓·距" intact as single effect line',
+    s.effectLines[1] === '获得 洗髓·距',
+    `effectLines[1]="${s.effectLines[1]}"`);
+  // summaryText uses "; " not " · "
+  check('I.5 summaryText does NOT use " · " separator',
+    !s.summaryText.includes(' · '),
+    `summaryText="${s.summaryText}"`);
+  // Each effect line should NOT contain the separator used in summaryText
+  check('I.6 effect line readable (no embedded "; ")',
+    s.effectLines.every(l => !l.includes('; ')));
+}
+
+// ─── Test J: viewState actor takes priority over action_declared metadata ───
+function testJ_viewStatePriority() {
+  const events = [
+    { eventType: 'action_declared', actionId: 'act', actorId: 'hero',
+      skillId: 'warrior_slash', actorName: 'stale_name', actorOwnerId: 'player2', actorClass: '法师' },
+    { eventType: 'damage_applied', actionId: 'act', targetId: 'tgt', finalDamage: 50, result: 'hit' },
+  ];
+  // viewState has the correct actor info (should take priority)
+  const actor = { id: 'hero', name: '实时名称', class: '战士', ownerId: 'player1' };
+  const s = summarizeOne('act', events, actor, null, new Map());
+
+  check('J.1 viewState actor name takes priority', s.actorName === '实时名称');
+  check('J.2 viewState ownerId takes priority', s.ownerId === 'player1');
+  check('J.3 viewState class takes priority', s.actorClass === '战士');
+  check('J.4 playerLabel from viewState', s.playerLabel === 'P1');
 }
 
 // ─── Run ───
@@ -224,6 +307,15 @@ async function main() {
 
   console.log('\n--- Test G: New fields ---');
   testG_newFields();
+
+  console.log('\n--- Test H: Stable actor metadata ---');
+  testH_stableActorMetadata();
+
+  console.log('\n--- Test I: effectLines separate rows ---');
+  testI_effectLinesSeparateRows();
+
+  console.log('\n--- Test J: viewState priority ---');
+  testJ_viewStatePriority();
 
   console.log(`\n=== ${passed} passed, ${failed} failed ===`);
   if (failed > 0) process.exit(1);

@@ -45,13 +45,24 @@ function targetDisplayName(event, charById) {
  * @returns {object} canonical ActionSummary (for Timeline)
  */
 export function summarizeOne(actionId, events = [], actor = null, skill = null, charById = new Map()) {
-  const actorId = events[0]?.actorId || null;
-  const actorName = actor?.name || actorId || '未知角色';
-  const ownerId = actor?.ownerId || null;
-  const skillId = events[0]?.skillId || null;
-  const skillDisplayName = skill?.name || getSkillName(skillId);
-
   const actionDeclared = events.find(e => e.eventType === 'action_declared');
+
+  // Stable actor metadata: prefer viewState actor, fall back to action_declared fields,
+  // then event actorId. This survives battle-end / death / snapshot restore.
+  const actorId = actionDeclared?.actorId || events[0]?.actorId || null;
+  const actorName = actor?.name
+    || actionDeclared?.actorName
+    || actorId
+    || '未知角色';
+  const ownerId = actor?.ownerId
+    || actionDeclared?.actorOwnerId
+    || null;
+  const actorClass = actor?.class
+    || actionDeclared?.actorClass
+    || null;
+
+  const skillId = actionDeclared?.skillId || events[0]?.skillId || null;
+  const skillDisplayName = skill?.name || getSkillName(skillId);
   const effectLines = [];
 
   // Primary result tracking
@@ -159,7 +170,8 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
     result = 'utility';
   }
 
-  const summaryText = effectLines.join(' · ') || '无详细结果';
+  // Use a separator that doesn't clash with buff names containing "·" (e.g. 洗髓·距)
+  const summaryText = effectLines.join('; ') || '无详细结果';
 
   return {
     actionId,
@@ -167,6 +179,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
     actorName,
     ownerId,
     playerLabel: playerLabelForOwner(ownerId),
+    actorClass: actorClass || null,
     skillId,
     skillName: skillDisplayName,
     result,
