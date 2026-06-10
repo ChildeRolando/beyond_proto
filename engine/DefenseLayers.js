@@ -8,7 +8,7 @@ export function applyShield(targetPool, incomingDamage, eventBus, targetId) {
   if (!targetPool.shieldActive || targetPool.shield <= 0) return { absorbed: 0, remaining: incomingDamage };
   const absorbed = Math.min(targetPool.shield, incomingDamage);
   targetPool.shield -= absorbed;
-  eventBus.emit(EvtType.SHIELD_ABSORBED, { targetId, absorbed, remaining: targetPool.shield });
+  eventBus.emit(EvtType.SHIELD_ABSORBED, { entityId: targetId, absorbed, remaining: targetPool.shield });
   return { absorbed, remaining: incomingDamage - absorbed };
 }
 

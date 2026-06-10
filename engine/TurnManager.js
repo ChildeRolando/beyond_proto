@@ -72,7 +72,8 @@ export class TurnManager {
 
     // Track shield hits for pendingQi resolution
     this.#eventBus.on(EvtType.SHIELD_ABSORBED, (data) => {
-      if (data.targetId) this.#shieldHitEntities.add(data.targetId);
+      const targetId = data.entityId || data.targetId;
+      if (targetId) this.#shieldHitEntities.add(targetId);
     });
     // 心眼 weak point: check on every damage event
     this.#eventBus.on(EvtType.DAMAGE_DEALT, (data) => {

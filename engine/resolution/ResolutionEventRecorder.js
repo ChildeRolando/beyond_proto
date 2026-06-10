@@ -264,12 +264,13 @@ export class ResolutionEventRecorder {
     // absorption because it only fires with active actionContext (missing projectile damage).
     const absorbHandler = (data) => {
       if (!this.#enabled || !this.#currentPhase) return;
-      const targetChar = this.#registry?.get?.(data.entityId);
+      const targetId = data.entityId || data.targetId;
+      const targetChar = this.#registry?.get?.(targetId);
       this.record({
         id: nextEventId(),
         eventType: ResolutionEventType.DAMAGE_ABSORBED,
         actionId: this.#actionContext?.actionId || null,
-        targetId: data.entityId,
+        targetId,
         targetName: targetChar?.name || null,
         layer: data._layer || null,
         absorbed: data.absorbed ?? null,

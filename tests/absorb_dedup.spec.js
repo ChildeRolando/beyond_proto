@@ -172,6 +172,11 @@ async function test2_shieldAbsorptionNotDuplicated() {
   const shieldLines = logText.split('\n').filter(l => l.includes('护盾抵消'));
   check('2.2 exactly one "护盾抵消" line in log', shieldLines.length === 1,
     `count=${shieldLines.length}`);
+
+  // Shield absorb must use character name, not "目标"
+  check('2.3 shield absorb line uses character name (not "目标")',
+    shieldLines.length === 0 || !shieldLines[0].includes('目标'),
+    `shield line: "${shieldLines[0] || ''}"`);
 }
 
 // ─── Test 3: Multiple layers each appear once ───
