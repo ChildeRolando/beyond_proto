@@ -103,6 +103,14 @@ export function normalizeResolutionEvent(raw = {}) {
     // Legacy compat: keep old coarse type for code that hasn't migrated yet
     _legacyType:   raw.type          || null,
 
+    // ── Stable actor metadata (from recordActionDeclared) ──
+    actorName:     raw.actorName     || null,
+    actorOwnerId:  raw.actorOwnerId  || null,
+    actorClass:    raw.actorClass    || null,
+    actorRoleId:   raw.actorRoleId   || null,
+    actorIcon:     raw.actorIcon     || null,
+    skillName:     raw.skillName     || null,
+
     metadata:      raw.metadata      || null,
   };
 }

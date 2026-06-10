@@ -199,6 +199,13 @@ function testG_newFields() {
     `playerLabel=${s.playerLabel}`);
   check('G.5 damage field', s.damage === 42);
   check('G.6 killed field', s.killed === false);
+  check('G.7 actorRoleId present', 'actorRoleId' in s,
+    `keys: ${Object.keys(s).join(',')}`);
+  check('G.8 effectLineKinds present when effectLines exist',
+    Array.isArray(s.effectLineKinds) && s.effectLineKinds.length === 2,
+    `effectLineKinds: ${JSON.stringify(s.effectLineKinds)}`);
+  check('G.9 effectLineKinds[0] is damage', s.effectLineKinds?.[0] === 'damage');
+  check('G.10 effectLineKinds[1] is status', s.effectLineKinds?.[1] === 'status');
 }
 
 // ─── Test H: Stable actor metadata from action_declared (survives missing viewState) ───
@@ -283,6 +290,93 @@ function testJ_viewStatePriority() {
   check('J.4 playerLabel from viewState', s.playerLabel === 'P1');
 }
 
+// ─── Test K: Battle-ending actor portrait fallback via actorRoleId ───
+function testK_battleEndingPortraitFallback() {
+  // Simulate action that kills last enemy. viewState actor is absent.
+  // action_declared carries stable metadata including actorRoleId.
+  const events = [
+    { eventType: 'action_declared', actionId: 'act-finish', actorId: 'warrior_p1',
+      skillId: 'warrior_meteor_resolve', actorName: '吉米', actorOwnerId: 'player1',
+      actorClass: '战士', actorRoleId: 'warrior' },
+    { eventType: 'character_moved', actionId: 'act-finish', actorId: 'warrior_p1',
+      from: { q: 0, r: -2 }, to: { q: 0, r: 2 } },
+    { eventType: 'damage_applied', actionId: 'act-finish', actorId: 'warrior_p1',
+      targetId: 'enemy', finalDamage: 500, result: 'killed', targetName: '敌人' },
+    { eventType: 'character_died', actionId: 'act-finish', actorId: 'warrior_p1',
+      targetId: 'enemy', targetName: '敌人' },
+  ];
+  // viewState has no actor for warrior_p1 — simulate battle-end
+  const s = summarizeOne('act-finish', events, null, null, new Map());
+
+  check('K.1 actorName survives from action_declared', s.actorName === '吉米',
+    `actorName="${s.actorName}"`);
+  check('K.2 ownerId survives from action_declared', s.ownerId === 'player1');
+  check('K.3 playerLabel derived from ownerId', s.playerLabel === 'P1');
+  check('K.4 actorClass survives from action_declared', s.actorClass === '战士');
+  check('K.5 actorRoleId survives from action_declared', s.actorRoleId === 'warrior',
+    `actorRoleId="${s.actorRoleId}"`);
+  // No degradation to raw id or fallback letter
+  check('K.6 actorName is not raw actorId', s.actorName !== 'warrior_p1');
+  check('K.7 actorName is not 未知角色', s.actorName !== '未知角色');
+  // actorRoleId is sufficient for getCharacterPortraitSrc callback
+  check('K.8 actorRoleId is a non-empty string', typeof s.actorRoleId === 'string' && s.actorRoleId.length > 0);
+}
+
+// ─── Test L: Normal action card unchanged (viewState actor has priority) ───
+function testL_normalActionCardUnchanged() {
+  // When actor exists in viewState, it takes priority over action_declared metadata
+  const events = [
+    { eventType: 'action_declared', actionId: 'act-norm', actorId: 'mage_p1',
+      skillId: 'mage_blast', actorName: 'stale', actorOwnerId: 'player2',
+      actorClass: '法师', actorRoleId: 'mage_stale' },
+    { eventType: 'damage_applied', actionId: 'act-norm', targetId: 'tgt',
+      finalDamage: 42, result: 'hit', targetName: '目标' },
+  ];
+  const actor = { id: 'mage_p1', name: '镜', class: '法师', ownerId: 'player1', roleId: 'mage' };
+  const s = summarizeOne('act-norm', events, actor, null, new Map());
+
+  check('L.1 viewState actor name takes priority', s.actorName === '镜');
+  check('L.2 viewState ownerId takes priority', s.ownerId === 'player1');
+  check('L.3 viewState class takes priority', s.actorClass === '法师');
+  check('L.4 viewState roleId takes priority', s.actorRoleId === 'mage',
+    `actorRoleId="${s.actorRoleId}"`);
+  check('L.5 playerLabel from viewState', s.playerLabel === 'P1');
+}
+
+// ─── Test M: EffectLines regression + kind classification ───
+function testM_effectLinesRegressionWithKinds() {
+  // 易经洗髓酒: resource cost (rage -4) + status applied (获得 洗髓·距)
+  const events = [
+    { eventType: 'action_declared', actionId: 'act-marrow', actorId: 'jimmy',
+      skillId: 'role_jimmy_marrow_wine' },
+    { eventType: 'resource_changed', actionId: 'act-marrow', actorId: 'jimmy',
+      resource: 'rage', delta: -4 },
+    { eventType: 'status_applied', actionId: 'act-marrow', actorId: 'jimmy',
+      statusId: 'JIMMY_MARROW_RANGE', targetId: 'jimmy' },
+  ];
+  const charById = new Map([
+    ['jimmy', { id: 'jimmy', name: '吉米', class: '战士', ownerId: 'player1', roleId: 'warrior' }],
+  ]);
+  const s = summarizeOne('act-marrow', events, charById.get('jimmy'), null, charById);
+
+  check('M.1 effectLines has 2 entries', s.effectLines.length === 2,
+    `effectLines: ${JSON.stringify(s.effectLines)}`);
+  check('M.2 effectLineKinds has 2 entries',
+    Array.isArray(s.effectLineKinds) && s.effectLineKinds.length === 2,
+    `effectLineKinds: ${JSON.stringify(s.effectLineKinds)}`);
+  check('M.3 effectLines[0] is resource cost', s.effectLines[0].includes('怒气') && s.effectLines[0].includes('-4'));
+  check('M.4 effectLineKinds[0] is resource', s.effectLineKinds?.[0] === 'resource');
+  check('M.5 effectLines[1] is status applied', s.effectLines[1].includes('获得') && s.effectLines[1].includes('洗髓·距'));
+  check('M.6 effectLineKinds[1] is status', s.effectLineKinds?.[1] === 'status');
+  // Status lines should NOT use "·" separator — buff name "洗髓·距" intact
+  check('M.7 buff name intact as single line', s.effectLines[1] === '获得 洗髓·距');
+  // Each line should not contain the summary separator
+  check('M.8 no "; " in any effect line', s.effectLines.every(l => !l.includes('; ')));
+  // Summary still uses "; " separator
+  check('M.9 summaryText uses "; " separator',
+    s.summaryText.includes('; ') && !s.summaryText.includes(' · '));
+}
+
 // ─── Run ───
 async function main() {
   console.log('=== Action Card Effects Tests ===\n');
@@ -316,6 +410,15 @@ async function main() {
 
   console.log('\n--- Test J: viewState priority ---');
   testJ_viewStatePriority();
+
+  console.log('\n--- Test K: Battle-ending portrait fallback ---');
+  testK_battleEndingPortraitFallback();
+
+  console.log('\n--- Test L: Normal action card unchanged ---');
+  testL_normalActionCardUnchanged();
+
+  console.log('\n--- Test M: EffectLines regression with kinds ---');
+  testM_effectLinesRegressionWithKinds();
 
   console.log(`\n=== ${passed} passed, ${failed} failed ===`);
   if (failed > 0) process.exit(1);

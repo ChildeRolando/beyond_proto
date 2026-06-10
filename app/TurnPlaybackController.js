@@ -109,8 +109,13 @@ export function createTurnPlaybackController({
     const avatarSrc = getAvatarSrc(phase, action);
     const skillSrc = getSkillSrc(action);
     const actor = getActorForAction(phase, action);
-    // Stable fallback: use action.actorClass for avatar when viewState actor is missing (battle-end)
-    const actorForAvatar = actor || (action.actorClass ? { class: action.actorClass, name: action.actorName } : null);
+    // Stable fallback: use action.actorRoleId for avatar when viewState actor is missing (battle-end).
+    // actorRoleId is required by getCharacterPortraitSrc — class/name alone are insufficient.
+    const actorForAvatar = actor || (
+      action.actorRoleId
+        ? { roleId: action.actorRoleId, class: action.actorClass, name: action.actorName }
+        : null
+    );
     const effectiveAvatarSrc = avatarSrc || (actorForAvatar ? getCharacterPortraitSrc?.(actorForAvatar) || '' : '');
     const actorInitial = (action.actorName || action.actorId || '?').slice(0, 1);
     const avatarHtml = effectiveAvatarSrc
@@ -120,9 +125,13 @@ export function createTurnPlaybackController({
       ? `<img class="resolution-action-skill-icon" src="${skillSrc}" alt="${action.skillName || '技能'}">`
       : '';
 
-    // Render effectLines as separate rows; fall back to summaryText
+    // Render effectLines as separate rows with kind-based CSS classes; fall back to summaryText
     const effectRows = (Array.isArray(action.effectLines) && action.effectLines.length > 0)
-      ? action.effectLines.map(line => `<div class="resolution-action-effect">${line}</div>`).join('')
+      ? action.effectLines.map((line, i) => {
+          const kind = action.effectLineKinds?.[i] || '';
+          const kindClass = kind ? ` resolution-action-effect--${kind}` : '';
+          return `<div class="resolution-action-effect${kindClass}">${line}</div>`;
+        }).join('')
       : '';
 
     return `

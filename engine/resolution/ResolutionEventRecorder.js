@@ -86,6 +86,8 @@ export class ResolutionEventRecorder {
       actorName: actor?.name || null,
       actorOwnerId: actor?.ownerId || null,
       actorClass: actor?.class || null,
+      actorRoleId: actor?.roleId || null,
+      actorIcon: actor?.icon || actor?.avatar || actor?.portrait || null,
       skillName: skillName || null,
     });
   }

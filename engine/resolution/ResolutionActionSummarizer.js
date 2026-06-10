@@ -60,10 +60,14 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
   const actorClass = actor?.class
     || actionDeclared?.actorClass
     || null;
+  const actorRoleId = actor?.roleId
+    || actionDeclared?.actorRoleId
+    || null;
 
   const skillId = actionDeclared?.skillId || events[0]?.skillId || null;
   const skillDisplayName = skill?.name || getSkillName(skillId);
   const effectLines = [];
+  const effectLineKinds = [];
 
   // Primary result tracking
   let result = 'utility';
@@ -89,6 +93,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
       } else {
         effectLines.push(`${resName} +${e.delta}`);
       }
+      effectLineKinds.push('resource');
       if (result === 'utility') result = 'resource';
     }
 
@@ -96,6 +101,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
     if (et === 'status_applied') {
       const sName = getStatusName(e.statusId);
       effectLines.push(`获得 ${sName}`);
+      effectLineKinds.push('status');
       if (result === 'utility') result = 'status';
     }
 
@@ -103,6 +109,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
     if (et === 'status_removed' || et === 'status_expired') {
       const sName = getStatusName(e.statusId);
       effectLines.push(`失去 ${sName}`);
+      effectLineKinds.push('status');
       if (result === 'utility') result = 'status';
     }
 
@@ -117,12 +124,14 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
       } else {
         effectLines.push('位移');
       }
+      effectLineKinds.push('move');
       if (result !== 'kill' && result !== 'hit') result = 'move';
     }
 
     // ── projectile_created ──
     if (et === 'projectile_created') {
       effectLines.push('发射弹体');
+      effectLineKinds.push('projectile');
       if (result === 'utility') result = 'pending';
     }
 
@@ -131,6 +140,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
       const layerName = getDamageLayerName(e.layer);
       const absorbed = e.absorbed ?? 0;
       effectLines.push(`${layerName}抵消 ${absorbed}`);
+      effectLineKinds.push('absorb');
     }
 
     // ── damage_applied ──
@@ -140,6 +150,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
       targetName = e.targetName || targetDisplayName(e, charById) || targetName;
       damage = dmg;
       effectLines.push(`造成 ${dmg} 伤害`);
+      effectLineKinds.push('damage');
       if (e.result === 'killed') killed = true;
       if (result !== 'kill') result = killed ? 'kill' : 'hit';
     }
@@ -151,6 +162,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
       killed = true;
       const tgtName = targetName || '目标';
       effectLines.push(`击杀 ${tgtName}`);
+      effectLineKinds.push('kill');
       result = 'kill';
     }
 
@@ -158,6 +170,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
     if (et === 'action_failed') {
       const reasonText = getReasonText(e.reason) || getReasonText(e.result) || e.reason || e.result || '挥空';
       effectLines.push(reasonText);
+      effectLineKinds.push('miss');
       result = 'miss';
     }
   }
@@ -166,6 +179,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
   if (effectLines.length === 0) {
     if (actionDeclared) {
       effectLines.push('辅助效果');
+      effectLineKinds.push('utility');
     }
     result = 'utility';
   }
@@ -180,6 +194,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
     ownerId,
     playerLabel: playerLabelForOwner(ownerId),
     actorClass: actorClass || null,
+    actorRoleId,
     skillId,
     skillName: skillDisplayName,
     result,
@@ -189,6 +204,7 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
     killed,
     summaryText,
     effectLines,
+    effectLineKinds: effectLineKinds.length > 0 ? effectLineKinds : null,
   };
 }
 

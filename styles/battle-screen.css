@@ -289,6 +289,20 @@
   font-size: 12px;
   line-height: 1.45;
 }
+.resolution-action-effects {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.resolution-action-effect {
+  color: rgba(238,243,242,0.88);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.resolution-action-effect--status {
+  font-size: 11px;
+  color: rgba(200,210,215,0.78);
+}
 .resolution-complete {
   color: var(--accent-2);
   font-size: 12px;
