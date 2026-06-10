@@ -1295,32 +1295,40 @@ export class TurnManager {
     // Read target position from METEOR_ASCENDING buff data
     const buffs = this.#buffManager.getActiveBuffs(cmd.actorId);
     const meteor = buffs.find(b => b.statusType === 'METEOR_ASCENDING');
-    if (!meteor || meteor.data.targetQ == null) return;
+    if (!meteor || meteor.data.targetQ == null || meteor.data.targetR == null) return;
 
     const targetQ = meteor.data.targetQ;
     const targetR = meteor.data.targetR;
+    const fromQ = actor.position.q;
+    const fromR = actor.position.r;
 
-    // Move actor to target hex
-    const fromQ = actor.position.q, fromR = actor.position.r;
+    const from = { q: fromQ, r: fromR };
+    const to = { q: targetQ, r: targetR };
+
     this.#registry.updatePosition(cmd.actorId, fromQ, fromR, targetQ, targetR);
+
     this.#eventBus.emit(EvtType.MOVEMENT_COMPLETE, {
-      entityId: cmd.actorId, fromQ, fromR, toQ: targetQ, toR: targetR,
+      entityId: cmd.actorId,
+      from,
+      to,
     });
 
     this.#logger?.log('☄ 大荒星陨！降临', 'die');
 
-    // 1-radius AOE damage matching original implementation
+    // 1-radius AOE damage
+    let hit = false;
     for (const other of this.#registry.characters()) {
       if (other.id === cmd.actorId || other.alive === false) continue;
       if (!this._canAttackAffect(actor, other)) continue;
       if (hexDistance(targetQ, targetR, other.position.q, other.position.r) <= 1) {
-        this.#damageCalculator.resolve(cmd.actorId, other.id, 700, 'PHYSICAL');
+        const result = this.#damageCalculator.resolve(cmd.actorId, other.id, 700, 'PHYSICAL');
+        if (result.killed || result.finalDamage > 0) hit = true;
       }
     }
 
     // Remove the buff and mark for hit tracking
     this.#buffManager.removeByType(cmd.actorId, 'METEOR_ASCENDING');
-    this.#lastHitByActor.set(cmd.actorId, true);
+    this.#lastHitByActor.set(cmd.actorId, hit);
   }
 
   _execPass(cmd) {
