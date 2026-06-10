@@ -622,6 +622,33 @@ canvas {
     rgba(18, 22, 26, 0.4) calc(var(--cd-elapsed-ratio, 0) * 1turn) 1turn
   );
 }
+
+/* Cooldown progress edge — thin radial line marking the boundary between elapsed and remaining */
+@keyframes cooldown-edge-pulse {
+  0%, 100% { opacity: 0.82; }
+  50% { opacity: 1; }
+}
+.skill-cd-edge {
+  position: absolute;
+  inset: 3px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 2;
+}
+.skill-cd-edge::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 45%;
+  transform-origin: center top;
+  transform: rotate(var(--cd-edge-angle, 0deg)) translateY(-100%);
+  background: rgba(240, 179, 90, 0.95);
+  box-shadow: 0 0 6px rgba(240, 179, 90, 0.65);
+  border-radius: 999px;
+  animation: cooldown-edge-pulse 1.6s ease-in-out infinite;
+}
 .skill-glyph {
   position: absolute;
   inset: 3px;
