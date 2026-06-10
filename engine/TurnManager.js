@@ -622,6 +622,9 @@ export class TurnManager {
           this._execSpawnStationaryAoe(cmd);
           this.#projectileAttackers.add(cmd.actorId);
           break;
+        case CmdType.METEOR_DROP:
+          this._execMeteorDrop(cmd);
+          break;
         default:
           break;
       }
@@ -1285,6 +1288,41 @@ export class TurnManager {
     if (pending.consumedAmmo) delete pending.consumedAmmo;
   }
 
+  _execMeteorDrop(cmd) {
+    const actor = this.#registry.get(cmd.actorId);
+    if (!actor || actor.alive === false) return;
+
+    // Read target position from METEOR_ASCENDING buff data
+    const buffs = this.#buffManager.getActiveBuffs(cmd.actorId);
+    const meteor = buffs.find(b => b.statusType === 'METEOR_ASCENDING');
+    if (!meteor || meteor.data.targetQ == null) return;
+
+    const targetQ = meteor.data.targetQ;
+    const targetR = meteor.data.targetR;
+
+    // Move actor to target hex
+    const fromQ = actor.position.q, fromR = actor.position.r;
+    this.#registry.updatePosition(cmd.actorId, fromQ, fromR, targetQ, targetR);
+    this.#eventBus.emit(EvtType.MOVEMENT_COMPLETE, {
+      entityId: cmd.actorId, fromQ, fromR, toQ: targetQ, toR: targetR,
+    });
+
+    this.#logger?.log('☄ 大荒星陨！降临', 'die');
+
+    // 1-radius AOE damage matching original implementation
+    for (const other of this.#registry.characters()) {
+      if (other.id === cmd.actorId || other.alive === false) continue;
+      if (!this._canAttackAffect(actor, other)) continue;
+      if (hexDistance(targetQ, targetR, other.position.q, other.position.r) <= 1) {
+        this.#damageCalculator.resolve(cmd.actorId, other.id, 700, 'PHYSICAL');
+      }
+    }
+
+    // Remove the buff and mark for hit tracking
+    this.#buffManager.removeByType(cmd.actorId, 'METEOR_ASCENDING');
+    this.#lastHitByActor.set(cmd.actorId, true);
+  }
+
   _execPass(cmd) {
     if (cmd.payload?.placeholderMessage) {
       this.#logger?.log(cmd.payload.placeholderMessage, 'warn');
@@ -1422,32 +1460,8 @@ export class TurnManager {
 
   // --- Turn-start hook resolution ---
   _resolveTurnStartEffects(turnStartCtx) {
-    for (const e of this.#registry.characters()) {
-      if (e.alive === false) continue;
-
-      // 大荒星陨: airborne → charge at target, 3-radius AOE 500
-      if (this.#buffManager.hasStatus(e.id, 'METEOR_ASCENDING')) {
-        const buffs = this.#buffManager.getActiveBuffs(e.id);
-        const meteor = buffs.find(b => b.statusType === 'METEOR_ASCENDING');
-        if (meteor && meteor.data.targetQ != null) {
-          // Teleport to target, then AOE
-          const fromQ = e.position.q, fromR = e.position.r;
-          this.#registry.updatePosition(e.id, fromQ, fromR, meteor.data.targetQ, meteor.data.targetR);
-          this.#logger?.log('☄ 大荒星陨！降临', 'die');
-
-          // 1-radius AOE 700
-          for (const other of this.#registry.characters()) {
-            if (other.id === e.id || other.alive === false) continue;
-            if (!this._canAttackAffect(e, other)) continue;
-            if (hexDistance(meteor.data.targetQ, meteor.data.targetR, other.position.q, other.position.r) <= 1) {
-              this.#damageCalculator.resolve(e.id, other.id, 700, 'PHYSICAL');
-            }
-          }
-          this.#buffManager.removeByType(e.id, 'METEOR_ASCENDING');
-          this.#lastHitByActor.set(e.id, true);
-        }
-      }
-    }
+    // 大荒星陨 is now resolved at speed 2 via _execMeteorDrop (METEOR_DROP command).
+    // Other turn-start effects remain here.
   }
 
   // 悬剑落剑: instant kill at speed-2 phase

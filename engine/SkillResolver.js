@@ -329,6 +329,10 @@ export class SkillResolver {
           targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null,
           payload: { power: eff.power || 100, radius: eff.radius || 1 } };
 
+      case 'METEOR_DROP':
+        return { ...base, type: CmdType.METEOR_DROP,
+          payload: {} };
+
       case 'PASS':
         return { ...base, type: CmdType.PASS,
           payload: { placeholderMessage: eff.placeholderMessage || null } };

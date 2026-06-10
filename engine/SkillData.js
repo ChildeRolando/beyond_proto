@@ -408,7 +408,7 @@ export const SKILLS = {
     id: 'warrior_meteor_resolve', name: '大荒星陨·坠', icon: 'assets/skill-icons/warrior/warrior_meteor_resolve.png', class: '战士', type: '攻击',
     cost: {}, speed: 2, targeting: { shape: 'SELF' }, hidden: true,
     effects: [
-      { cmd: 'PASS' },
+      { cmd: 'METEOR_DROP' },
     ],
     desc: '技能概念：陨星坠落自动结算，对落点周围造成AOE伤害。\n游戏作用：在陨星标记位置坠落，对半径1范围内敌人造成500伤害。此技能由系统自动执行，不可主动选择。\n范围：自身；威力：500（AOE半径1）；速度：2；费用：无',
   },
