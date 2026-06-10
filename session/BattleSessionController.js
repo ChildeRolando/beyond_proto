@@ -819,6 +819,11 @@ export class BattleSessionController {
   updateSubmitStatus(nm) {
     // If no nm passed, get from callback
     if (nm === undefined) nm = this._callbacks.getNetworkManager();
+    if (this.battleEnded) {
+      this._callbacks.setExecuteDisabled(true);
+      this._callbacks.setSubmitStatus('战斗结束');
+      return;
+    }
     if (this._resolutionPlaybackLocked) {
       this._callbacks.setExecuteDisabled(true);
       this._callbacks.setSubmitStatus('回放中...');
@@ -1043,17 +1048,33 @@ export class BattleSessionController {
       for (const entry of aiResult.submitted || []) {
         if (entry.success) this.localSubmittedSet.add(entry.enemyId);
       }
+
+      // End AI-running state BEFORE turn execution — pveAiRunning must only
+      // cover AI decision/submission, not resolution playback.
+      this.pveAiRunning = false;
+
       if (this.engine.areAllAliveRequiredActorsSubmitted()) {
         await this.executeLocalTurn();
       } else {
         this._callbacks.setSubmitStatus(`PVE: AI 提交失败 ${aiResult.errors?.[0]?.error || ''}`);
         this._callbacks.setExecuteDisabled(false);
+        this._callbacks.renderAll();
       }
     } catch (err) {
+      this.pveAiRunning = false;
       this._callbacks.setSubmitStatus(`PVE: AI 提交异常 ${err?.message || err}`);
       this._callbacks.setExecuteDisabled(false);
+      this._callbacks.renderAll();
     } finally {
+      // Always ensure pveAiRunning is cleared.
       this.pveAiRunning = false;
+      // When battle ended, refresh status so "PVE: AI 思考中..." is not stuck.
+      // (executeLocalTurn skips updateSubmitStatus on the battle-ended path.)
+      // Non-battle-ended paths are already handled by executeLocalTurn / error handlers.
+      if (this.battleEnded) {
+        this.updateSubmitStatus();
+      }
+      this._callbacks.renderAll();
     }
   }
 
