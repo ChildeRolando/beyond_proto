@@ -20,7 +20,7 @@
 ### mage_blast — 气功波
 
 ✅ 消耗1气 — qi=0
-✅ 弹体飞行命中(怒气吸收,战士存活) — rage剩余=2
+✅ 弹体飞行命中(怒气吸收,战士存活) — rage剩余=0
 ✅ 无防御弹体直接击杀 — warrior dead=true
 ✅ 气不足无法释放(cost1) — insufficient_resources
 

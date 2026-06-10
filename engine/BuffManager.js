@@ -93,6 +93,58 @@ export class BuffManager {
     }
   }
 
+  // ── Stack API ──
+
+  addStack(entityId, statusType, amount = 1, maxStacks = Infinity, duration = -1, sourceId = null) {
+    const buffs = this.#buffsByEntity.get(entityId);
+    if (buffs) {
+      for (const id of buffs) {
+        const inst = this.#buffs.get(id);
+        if (inst?.statusType === statusType) {
+          const current = inst.data.stacks || 0;
+          inst.data.stacks = Math.min(maxStacks, current + amount);
+          return inst;
+        }
+      }
+    }
+    const buffId = this.apply(entityId, statusType, duration, sourceId, {
+      stacks: Math.min(maxStacks, amount),
+    });
+    return this.#buffs.get(buffId) || null;
+  }
+
+  consumeStack(entityId, statusType, amount = 1) {
+    const buffs = this.#buffsByEntity.get(entityId);
+    if (!buffs) return 0;
+    for (const id of buffs) {
+      const inst = this.#buffs.get(id);
+      if (inst?.statusType === statusType) {
+        const current = inst.data.stacks || 0;
+        const consumed = Math.min(current, amount);
+        const next = current - consumed;
+        if (next > 0) {
+          inst.data.stacks = next;
+        } else {
+          this.remove(id);
+        }
+        return consumed;
+      }
+    }
+    return 0;
+  }
+
+  getStacks(entityId, statusType) {
+    const buffs = this.#buffsByEntity.get(entityId);
+    if (!buffs) return 0;
+    for (const id of buffs) {
+      const inst = this.#buffs.get(id);
+      if (inst?.statusType === statusType) {
+        return inst.data.stacks || 0;
+      }
+    }
+    return 0;
+  }
+
   removeByStatus(entityId, statusType) {
     const buffIds = this.#buffsByEntity.get(entityId);
     if (!buffIds) return;

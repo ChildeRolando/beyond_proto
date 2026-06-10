@@ -35,6 +35,7 @@ export const STATUS_DEFS = {
     desc: '下次小气功波cost=0，发动时消耗一层',
     duration: -1,       // permanent until stacks consumed
     blocking: false,
+    data: { stacks: 0 },
   },
   BLOCKING: {
     id: 'BLOCKING',

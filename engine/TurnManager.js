@@ -42,6 +42,7 @@ export class TurnManager {
   #jumpReturns = new Map();  // entityId → { q, r } for end-of-turn jump return
   #lastHitByActor = new Map(); // actorId → boolean (did their last attack hit?)
   #shieldHitEntities = new Set(); // entityIds whose shield was hit this turn
+  #hitEntities = new Set();       // entityIds hit by any damage contact this turn (for 盛怒 cancel)
   #submittedChars = new Set();   // charIds that submitted this turn
   #resourceFailed = new Set();  // sequenceIds whose resource cost check failed at exec time
   #canceledSequences = new Set(); // sequenceIds canceled by interruption/reaction effects
@@ -75,11 +76,20 @@ export class TurnManager {
       const targetId = data.entityId || data.targetId;
       if (targetId) this.#shieldHitEntities.add(targetId);
     });
-    // 心眼 weak point: check on every damage event
+    // Track damage contact for 盛怒 cancel: any DAMAGE_DEALT means target was contacted
+    // (even basePower=0 armor-pierce hits). Also track ARMOR_PIERCED.
+    // Also means 心眼 weak point: check on every damage event
     this.#eventBus.on(EvtType.DAMAGE_DEALT, (data) => {
+      if (data.targetId) {
+        this.#hitEntities.add(data.targetId);
+      }
       if (data.sourceId && data.targetId) {
         this._checkMindsEyeOnDamage(data.sourceId, data.targetId);
       }
+    });
+    // ARMOR_PIERCED also counts as a hit (破气针 with power=0 still contacts target)
+    this.#eventBus.on(EvtType.ARMOR_PIERCED, (data) => {
+      if (data.targetId) this.#hitEntities.add(data.targetId);
     });
     // 引刀: refresh 居合斩 CD when INDRA_BLADE is applied
     this.#eventBus.on(EvtType.STATUS_APPLIED, (data) => {
@@ -119,6 +129,7 @@ export class TurnManager {
   // Called by UI when both players have submitted
   async executeTurn() {
     this.#shieldHitEntities.clear();
+    this.#hitEntities.clear();
     this.#submittedChars.clear();
     this.#resourceFailed.clear();
     this.#canceledSequences.clear();
@@ -551,17 +562,14 @@ export class TurnManager {
 
     // 余波消费: 小气功波发动时消耗1层（CONSUME_RESOURCE已被SkillResolver跳过）
     if (cmd.skillId === 'mage_small_qi_blast' && cmd.type !== CmdType.CONSUME_RESOURCE) {
-      const existing = this.#buffManager.getActiveBuffs(cmd.actorId)
-        .find(b => b.statusType === 'AFTERSHOCK');
-      if (existing) {
-        const stacks = existing.data.stacks || 0;
-        if (stacks > 1) {
-          existing.data.stacks = stacks - 1;
-          const actor = this.#registry.get(cmd.actorId);
-          this.#logger?.log(`${actor?.name || cmd.actorId} 余波消耗1层（剩${stacks - 1}层）`, 's');
+      const before = this.#buffManager.getStacks(cmd.actorId, 'AFTERSHOCK');
+      if (before > 0) {
+        this.#buffManager.consumeStack(cmd.actorId, 'AFTERSHOCK', 1);
+        const after = this.#buffManager.getStacks(cmd.actorId, 'AFTERSHOCK');
+        const actor = this.#registry.get(cmd.actorId);
+        if (after > 0) {
+          this.#logger?.log(`${actor?.name || cmd.actorId} 余波消耗1层（剩${after}层）`, 's');
         } else {
-          this.#buffManager.removeByType(cmd.actorId, 'AFTERSHOCK');
-          const actor = this.#registry.get(cmd.actorId);
           this.#logger?.log(`${actor?.name || cmd.actorId} 余波耗尽`, 's');
         }
       }
@@ -900,20 +908,12 @@ export class TurnManager {
     }
     this.#resourceSystem.subtract(cmd.actorId, cmd.payload.resource, amount);
 
-    // 小气功波: paying cost grants 2 余波 stacks
+    // 小气功波: paying cost grants 2 余波 stacks (上限2)
     if (cmd.skillId === 'mage_small_qi_blast' && cmd.payload.resource === 'qi') {
-      const existing = this.#buffManager.getActiveBuffs(cmd.actorId)
-        .find(b => b.statusType === 'AFTERSHOCK');
-      const newStacks = (existing?.data?.stacks || 0) + 2;
-      if (existing) {
-        existing.data.stacks = newStacks;
-        const actor = this.#registry.get(cmd.actorId);
-        this.#logger?.log(`${actor?.name || cmd.actorId} 余波 +2（共${newStacks}层）`, 's');
-      } else {
-        this.#buffManager.apply(cmd.actorId, 'AFTERSHOCK', -1, cmd.actorId, { stacks: 2 });
-        const actor = this.#registry.get(cmd.actorId);
-        this.#logger?.log(`${actor?.name || cmd.actorId} 余波 +2`, 's');
-      }
+      const inst = this.#buffManager.addStack(cmd.actorId, 'AFTERSHOCK', 2, 2, -1, cmd.actorId);
+      const total = inst?.data?.stacks || 0;
+      const actor = this.#registry.get(cmd.actorId);
+      this.#logger?.log(`${actor?.name || cmd.actorId} 余波 +2（共${total}层）`, 's');
     }
   }
 
@@ -1397,6 +1397,15 @@ export class TurnManager {
           }
         }
       }
+      // Save action context for pendingRage so EOT rage gain is attributed to the correct action
+      if (cmd.payload.flag === 'pendingRage') {
+        if (this.#lastActionContext?.actionId) {
+          this.#pendingFlags.get(cmd.actorId)._pendingRageSourceActionId = this.#lastActionContext.actionId;
+          if (this.#lastActionContext.skillId) {
+            this.#pendingFlags.get(cmd.actorId)._pendingRageSourceSkillId = this.#lastActionContext.skillId;
+          }
+        }
+      }
     }
     if (cmd.payload?.collectCasings && this.#projectileCalculator) {
       const actor = this.#registry.get(cmd.actorId);
@@ -1717,6 +1726,30 @@ export class TurnManager {
           this.#logger?.log(`🔮 集气成功 +${finalAmount}气`, 'qi');
         } else {
           this.#logger?.log('🔮 护盾受击，未获气', 'sh');
+        }
+      }
+
+      // 盛怒 resolution: pendingRage → if not hit this turn, gain 2 rage; if hit, cancel
+      if (flags.pendingRage) {
+        const wasHit = this.#hitEntities.has(entityId);
+        if (!wasHit) {
+          const srcActionId = flags._pendingRageSourceActionId || null;
+          const srcSkillId = flags._pendingRageSourceSkillId || null;
+          if (this.#eventRecorder && srcActionId) {
+            this.#eventRecorder.setActionContext(srcActionId, entityId, srcSkillId, null);
+          }
+          const ctx = this.#buffManager.dispatch(HookName.ON_RESOURCE_GAIN, {
+            entityId, resource: 'rage', amount: 2,
+          });
+          const finalAmount = ctx?.amount ?? 2;
+          this.#resourceSystem.add(entityId, 'rage', finalAmount);
+          this.#resourceSystem.recordCostGain(entityId, 'rage', finalAmount);
+          if (this.#eventRecorder && srcActionId) {
+            this.#eventRecorder.setActionContext(null, null, null, null);
+          }
+          this.#logger?.log(`🔥 盛怒成功 +${finalAmount}怒`, 'rage');
+        } else {
+          this.#logger?.log('🔥 盛怒被打断，未获怒气', 'sh');
         }
       }
     }

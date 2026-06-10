@@ -280,10 +280,9 @@ export const SKILLS = {
     id: 'warrior_rage', name: '盛怒', icon: 'assets/skill-icons/warrior/warrior_rage.png', class: '战士', type: '蓄气',
     cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
-      { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 2 },
-      { cmd: 'SET_FLAG', flag: 'usedRage', value: true, target: 'SELF' },
+      { cmd: 'SET_FLAG', flag: 'pendingRage', value: true, target: 'SELF' },
     ],
-    desc: '技能概念：凝聚怒气。\n游戏作用：获得2点怒气。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：凝聚怒气。若本回合未受击，回合结束时获得怒气；受击则取消。\n范围：自身；速度：3；费用：无',
   },
 
   warrior_move: {

@@ -50,9 +50,7 @@ export class SkillResolver {
     // 余波: 小气功波 cost = 0 (consumes 1 stack)
     let hasAftershock = false;
     if (skillId === 'mage_small_qi_blast') {
-      const buffs = this.buffManager?.getActiveBuffs(actorId) || [];
-      const aftershock = buffs.find(b => b.statusType === 'AFTERSHOCK');
-      const stacks = aftershock?.data?.stacks || 0;
+      const stacks = this.buffManager?.getStacks?.(actorId, 'AFTERSHOCK') || 0;
       if (stacks > 0) {
         hasAftershock = true;
         effectiveCost = {};
