@@ -87,7 +87,7 @@ console.log('\n[1b] attack hit');
   assertEquals(s.result, 'hit', 'result is hit');
   assertEquals(s.targetName, '敌人B', 'targetName');
   assertEquals(s.damage, 35, 'damage');
-  assert(s.summaryText.includes('命中'), 'summaryText includes 命中');
+  assert(s.summaryText.includes('造成 35') || s.summaryText.includes('命中'), 'summaryText includes damage or 命中');
 }
 
 // Test 1c: attack kill (canonical damage_applied + character_died)
@@ -166,7 +166,7 @@ console.log('\n[1g] same actor hit+miss');
   const missS = summaries.find(s => s.result === 'miss');
   assert(hitS, 'has hit summary');
   assert(missS, 'has miss summary');
-  assert(hitS.summaryText.includes('命中'), 'hit summaryText includes 命中');
+  assert(hitS.summaryText.includes('造成 45') || hitS.summaryText.includes('命中'), 'hit summaryText includes damage or 命中');
   assert(missS.summaryText.includes('挥空'), 'miss summaryText includes 挥空');
 }
 

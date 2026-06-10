@@ -6,7 +6,10 @@
 // All machine IDs are translated to display names via DisplayNames.
 
 import { SKILLS } from '../SkillData.js';
-import { getSkillName, getResourceName, getStatusName } from '../presentation/DisplayNames.js';
+import {
+  getSkillName, getResourceName, getDamageLayerName, getStatusName,
+  getReasonText,
+} from '../presentation/DisplayNames.js';
 
 // ─── Helpers ───
 
@@ -22,6 +25,15 @@ function playerLabelForOwner(ownerId) {
   return ownerId || '—';
 }
 
+function targetDisplayName(event, charById) {
+  if (event.targetName) return event.targetName;
+  if (event.targetId) {
+    const char = charById.get(event.targetId);
+    if (char) return char.name;
+  }
+  return event.targetId || '目标';
+}
+
 // ─── Single action summarization ───
 
 /**
@@ -29,91 +41,125 @@ function playerLabelForOwner(ownerId) {
  * @param {Array} events — canonical ResolutionEvents (all must have valid eventType)
  * @param {object|null} actor — character object from viewState
  * @param {object|null} skill — SKILLS entry
+ * @param {Map} charById — Map of character id → character for target name resolution
  * @returns {object} canonical ActionSummary (for Timeline)
  */
-export function summarizeOne(actionId, events = [], actor = null, skill = null) {
+export function summarizeOne(actionId, events = [], actor = null, skill = null, charById = new Map()) {
   const actorId = events[0]?.actorId || null;
   const actorName = actor?.name || actorId || '未知角色';
   const ownerId = actor?.ownerId || null;
   const skillId = events[0]?.skillId || null;
-  // Use DisplayNames for skill name — never leak raw skillId
   const skillDisplayName = skill?.name || getSkillName(skillId);
 
-  // Key canonical event types
   const actionDeclared = events.find(e => e.eventType === 'action_declared');
-  const characterMoved = events.find(e => e.eventType === 'character_moved');
-  const damageApplied = events.find(e => e.eventType === 'damage_applied');
-  const characterDied = events.find(e => e.eventType === 'character_died');
-  const resourceChanged = events.find(e => e.eventType === 'resource_changed');
-  const statusApplied = events.find(e => e.eventType === 'status_applied');
-  const actionFailed = events.find(e => e.eventType === 'action_failed');
-  const projectileCreated = events.find(e => e.eventType === 'projectile_created');
+  const effectLines = [];
 
-  const summaryParts = [];
+  // Primary result tracking
   let result = 'utility';
   let targetId = null;
   let targetName = null;
   let damage = null;
   let killed = false;
 
-  if (characterMoved) {
-    result = 'move';
-    const to = characterMoved.to || null;
-    summaryParts.push(to ? `移动至 ${formatPoint(to)}` : '位移');
-  } else if (damageApplied || characterDied || actionFailed) {
-    // Attack action
-    if (characterDied) {
-      result = 'kill';
+  // Iterate all events to build effect lines.
+  // Order: events appear in canonical order (as recorded by EventRecorder).
+  for (const e of events) {
+    const et = e.eventType;
+    if (!et) continue;
+
+    // Skip action_declared — it's the header, not an effect
+    if (et === 'action_declared') continue;
+
+    // ── resource_changed ──
+    if (et === 'resource_changed' && e.delta != null) {
+      const resName = getResourceName(e.resource);
+      if (e.delta < 0) {
+        effectLines.push(`${resName} ${e.delta}`);
+      } else {
+        effectLines.push(`${resName} +${e.delta}`);
+      }
+      if (result === 'utility') result = 'resource';
+    }
+
+    // ── status_applied ──
+    if (et === 'status_applied') {
+      const sName = getStatusName(e.statusId);
+      effectLines.push(`获得 ${sName}`);
+      if (result === 'utility') result = 'status';
+    }
+
+    // ── status_removed / status_expired ──
+    if (et === 'status_removed' || et === 'status_expired') {
+      const sName = getStatusName(e.statusId);
+      effectLines.push(`失去 ${sName}`);
+      if (result === 'utility') result = 'status';
+    }
+
+    // ── character_moved ──
+    if (et === 'character_moved') {
+      const from = e.from ? formatPoint(e.from) : '';
+      const to = e.to ? formatPoint(e.to) : '';
+      if (from && to) {
+        effectLines.push(`移动 ${from}→${to}`);
+      } else if (to) {
+        effectLines.push(`移动至 ${to}`);
+      } else {
+        effectLines.push('位移');
+      }
+      if (result !== 'kill' && result !== 'hit') result = 'move';
+    }
+
+    // ── projectile_created ──
+    if (et === 'projectile_created') {
+      effectLines.push('发射弹体');
+      if (result === 'utility') result = 'pending';
+    }
+
+    // ── damage_absorbed ──
+    if (et === 'damage_absorbed') {
+      const layerName = getDamageLayerName(e.layer);
+      const absorbed = e.absorbed ?? 0;
+      effectLines.push(`${layerName}抵消 ${absorbed}`);
+    }
+
+    // ── damage_applied ──
+    if (et === 'damage_applied') {
+      const dmg = e.finalDamage ?? e.damage ?? 0;
+      targetId = e.targetId || targetId;
+      targetName = e.targetName || targetDisplayName(e, charById) || targetName;
+      damage = dmg;
+      effectLines.push(`造成 ${dmg} 伤害`);
+      if (e.result === 'killed') killed = true;
+      if (result !== 'kill') result = killed ? 'kill' : 'hit';
+    }
+
+    // ── character_died ──
+    if (et === 'character_died') {
+      targetId = e.targetId || targetId;
+      targetName = e.targetName || targetDisplayName(e, charById) || targetName;
       killed = true;
-      targetId = characterDied.targetId;
-      targetName = characterDied.targetName;
-    } else if (damageApplied) {
-      result = damageApplied.result === 'killed' ? 'kill' : 'hit';
-      killed = damageApplied.result === 'killed';
-      targetId = damageApplied.targetId;
-      targetName = damageApplied.targetName || targetName;
-      damage = damageApplied.finalDamage;
-    } else if (actionFailed) {
+      const tgtName = targetName || '目标';
+      effectLines.push(`击杀 ${tgtName}`);
+      result = 'kill';
+    }
+
+    // ── action_failed ──
+    if (et === 'action_failed') {
+      const reasonText = getReasonText(e.reason) || getReasonText(e.result) || e.reason || e.result || '挥空';
+      effectLines.push(reasonText);
       result = 'miss';
     }
-
-    if (targetName) {
-      summaryParts.push(`→${targetName}`);
-    } else if (damageApplied?.targetId) {
-      summaryParts.push(`→${damageApplied.targetId}`);
-    }
-
-    if (killed || result === 'kill') {
-      summaryParts.push('击杀');
-    } else if (result === 'hit') {
-      summaryParts.push('命中');
-    } else if (result === 'miss') {
-      summaryParts.push('挥空');
-    }
-  } else if (resourceChanged && resourceChanged.delta != null) {
-    const res = getResourceName(resourceChanged.resource);
-    const delta = resourceChanged.delta;
-
-    if (delta > 0) {
-      result = 'resource';
-      summaryParts.push(`获得 ${res} +${delta}`);
-    } else {
-      result = 'resource';
-      summaryParts.push(`${res} ${delta}`);
-    }
-  } else if (statusApplied) {
-    result = 'status';
-    const sName = getStatusName(statusApplied.statusId);
-    summaryParts.push(`获得 ${sName}`);
-  } else if (actionDeclared && projectileCreated) {
-    result = 'pending';
-    summaryParts.push('发射弹体');
-  } else {
-    result = 'utility';
-    summaryParts.push('辅助效果');
   }
 
-  const summaryText = summaryParts.join(' · ') || '无详细结果';
+  // Fallback result: pending or utility
+  if (effectLines.length === 0) {
+    if (actionDeclared) {
+      effectLines.push('辅助效果');
+    }
+    result = 'utility';
+  }
+
+  const summaryText = effectLines.join(' · ') || '无详细结果';
 
   return {
     actionId,
@@ -124,11 +170,12 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null) 
     skillId,
     skillName: skillDisplayName,
     result,
-    targetId: targetId || damageApplied?.targetId || null,
+    targetId: targetId || null,
     targetName: targetName || null,
     damage,
     killed,
     summaryText,
+    effectLines,
   };
 }
 
@@ -163,6 +210,6 @@ export function buildActionSummaries(phase, viewState) {
   return [...actionMap.values()].map(action => {
     const actor = action.actorId ? charById.get(action.actorId) || null : null;
     const skill = action.skillId ? SKILLS[action.skillId] || null : null;
-    return summarizeOne(action.actionId, action.events, actor, skill);
+    return summarizeOne(action.actionId, action.events, actor, skill, charById);
   });
 }
