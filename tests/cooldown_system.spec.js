@@ -299,7 +299,8 @@ test('J: UI skill button shows cooldown mask and data attrs', async ({ page }) =
     const btn = document.querySelector('#action-dock .skill-btn[data-skill="warrior_sheathe"]');
     if (!btn) return { found: false };
     const mask = btn.querySelector('.skill-cd-mask');
-    const edge = btn.querySelector('.skill-cd-edge');
+    const startEdge = btn.querySelector('.skill-cd-start-edge');
+    const progressEdge = btn.querySelector('.skill-cd-progress-edge');
     return {
       found: true,
       cdRemaining: Number(btn.getAttribute('data-cd-remaining')),
@@ -307,12 +308,12 @@ test('J: UI skill button shows cooldown mask and data attrs', async ({ page }) =
       hasCooldownClass: btn.classList.contains('cooldown'),
       hasSubmittedClass: btn.classList.contains('submitted'),
       hasMask: !!mask,
-      hasEdge: !!edge,
+      hasStartEdge: !!startEdge,
+      hasProgressEdge: !!progressEdge,
       cdRatioStyle: btn.style.getPropertyValue('--cd-ratio'),
       cdElapsedRatioStyle: btn.style.getPropertyValue('--cd-elapsed-ratio'),
       cdEdgeAngle: btn.style.getPropertyValue('--cd-edge-angle'),
-      maskElapsedRatio: mask ? mask.style.getPropertyValue('--cd-elapsed-ratio') : null,
-      edgeAngle: edge ? edge.style.getPropertyValue('--cd-edge-angle') : null,
+      progressAngle: progressEdge ? progressEdge.style.getPropertyValue('--cd-edge-angle') : null,
     };
   });
 
@@ -323,14 +324,15 @@ test('J: UI skill button shows cooldown mask and data attrs', async ({ page }) =
   expect(btnInfo.hasCooldownClass).toBe(true);
   expect(btnInfo.hasSubmittedClass).toBe(false);
   expect(btnInfo.hasMask).toBe(true);
-  expect(btnInfo.hasEdge).toBe(true);
+  expect(btnInfo.hasStartEdge).toBe(true);
+  expect(btnInfo.hasProgressEdge).toBe(true);
   // --cd-ratio = 1.0 (2/2 remaining)
   expect(parseFloat(btnInfo.cdRatioStyle)).toBeCloseTo(1.0, 1);
   // --cd-elapsed-ratio = 0.0 (nothing elapsed when CD just started)
   expect(parseFloat(btnInfo.cdElapsedRatioStyle)).toBeCloseTo(0.0, 1);
-  // --cd-edge-angle = 0deg (edge at 12 o'clock)
+  // --cd-edge-angle = 0deg on button, progress edge at 0deg
   expect(btnInfo.cdEdgeAngle).toBe('0.0deg');
-  expect(btnInfo.edgeAngle).toBe('0.0deg');
+  expect(btnInfo.progressAngle).toBe('0.0deg');
 });
 
 // ═══════════════════════════════════════════════════════
@@ -479,12 +481,14 @@ test('N: cooldown edge appears during CD, gone when ready', async ({ page }) => 
     if (!btn) return { found: false };
     return {
       hasMask: !!btn.querySelector('.skill-cd-mask'),
-      hasEdge: !!btn.querySelector('.skill-cd-edge'),
+      hasStartEdge: !!btn.querySelector('.skill-cd-start-edge'),
+      hasProgressEdge: !!btn.querySelector('.skill-cd-progress-edge'),
       cdRemaining: Number(btn.getAttribute('data-cd-remaining')),
     };
   });
   expect(afterUse.hasMask).toBe(true);
-  expect(afterUse.hasEdge).toBe(true);
+  expect(afterUse.hasStartEdge).toBe(true);
+  expect(afterUse.hasProgressEdge).toBe(true);
   expect(afterUse.cdRemaining).toBe(2);
 
   // Advance 2 turns to clear cooldown
@@ -503,13 +507,15 @@ test('N: cooldown edge appears during CD, gone when ready', async ({ page }) => 
     if (!btn) return { found: false };
     return {
       hasMask: !!btn.querySelector('.skill-cd-mask'),
-      hasEdge: !!btn.querySelector('.skill-cd-edge'),
+      hasStartEdge: !!btn.querySelector('.skill-cd-start-edge'),
+      hasProgressEdge: !!btn.querySelector('.skill-cd-progress-edge'),
       hasCooldown: btn.classList.contains('cooldown'),
       cdRemaining: Number(btn.getAttribute('data-cd-remaining')),
     };
   });
   expect(whenReady.hasMask).toBe(false);
-  expect(whenReady.hasEdge).toBe(false);
+  expect(whenReady.hasStartEdge).toBe(false);
+  expect(whenReady.hasProgressEdge).toBe(false);
   expect(whenReady.hasCooldown).toBe(false);
   expect(whenReady.cdRemaining).toBe(0);
 });
@@ -541,20 +547,22 @@ test('O: edge angle progresses to ~180deg after one tick (CD 2→1)', async ({ p
   const afterTick = await page.evaluate(() => {
     const btn = document.querySelector('#action-dock .skill-btn[data-skill="warrior_sheathe"]');
     if (!btn) return { found: false };
-    const edge = btn.querySelector('.skill-cd-edge');
+    const progressEdge = btn.querySelector('.skill-cd-progress-edge');
     return {
       cdRemaining: Number(btn.getAttribute('data-cd-remaining')),
       hasMask: !!btn.querySelector('.skill-cd-mask'),
-      hasEdge: !!edge,
-      edgeAngle: edge ? edge.style.getPropertyValue('--cd-edge-angle') : null,
+      hasStartEdge: !!btn.querySelector('.skill-cd-start-edge'),
+      hasProgressEdge: !!progressEdge,
+      progressAngle: progressEdge ? progressEdge.style.getPropertyValue('--cd-edge-angle') : null,
       cdElapsedRatio: btn.style.getPropertyValue('--cd-elapsed-ratio'),
     };
   });
   expect(afterTick.cdRemaining).toBe(1);
   expect(afterTick.hasMask).toBe(true);
-  expect(afterTick.hasEdge).toBe(true);
+  expect(afterTick.hasStartEdge).toBe(true);
+  expect(afterTick.hasProgressEdge).toBe(true);
   expect(parseFloat(afterTick.cdElapsedRatio)).toBeCloseTo(0.5, 1);
-  expect(afterTick.edgeAngle).toBe('180.0deg');
+  expect(afterTick.progressAngle).toBe('180.0deg');
 });
 
 // ═══════════════════════════════════════════════════════
@@ -574,13 +582,15 @@ test('P: no mask or edge when skill has no cooldown', async ({ page }) => {
       found: true,
       hasCooldownClass: btn.classList.contains('cooldown'),
       hasMask: !!btn.querySelector('.skill-cd-mask'),
-      hasEdge: !!btn.querySelector('.skill-cd-edge'),
+      hasStartEdge: !!btn.querySelector('.skill-cd-start-edge'),
+      hasProgressEdge: !!btn.querySelector('.skill-cd-progress-edge'),
       cdRemaining: Number(btn.getAttribute('data-cd-remaining')),
     };
   });
   expect(info.found).toBe(true);
   expect(info.hasCooldownClass).toBe(false);
   expect(info.hasMask).toBe(false);
-  expect(info.hasEdge).toBe(false);
+  expect(info.hasStartEdge).toBe(false);
+  expect(info.hasProgressEdge).toBe(false);
   expect(info.cdRemaining).toBe(0);
 });

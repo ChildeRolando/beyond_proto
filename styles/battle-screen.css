@@ -623,19 +623,22 @@ canvas {
   );
 }
 
-/* Cooldown progress edge — thin radial line marking the boundary between elapsed and remaining */
+/* Cooldown radial edges — shared base */
 @keyframes cooldown-edge-pulse {
   0%, 100% { opacity: 0.82; }
   50% { opacity: 1; }
 }
-.skill-cd-edge {
+.skill-cd-start-edge,
+.skill-cd-progress-edge {
   position: absolute;
   inset: 3px;
   border-radius: 6px;
   pointer-events: none;
   z-index: 2;
 }
-.skill-cd-edge::before {
+/* Shared radial line from center to edge */
+.skill-cd-start-edge::before,
+.skill-cd-progress-edge::before {
   content: "";
   position: absolute;
   left: 50%;
@@ -643,10 +646,19 @@ canvas {
   width: 2px;
   height: 45%;
   transform-origin: center top;
-  transform: rotate(var(--cd-edge-angle, 0deg)) translateY(-100%);
+  border-radius: 999px;
+}
+/* Fixed start edge — 12 o'clock, subtle */
+.skill-cd-start-edge::before {
+  background: rgba(240, 179, 90, 0.35);
+  box-shadow: 0 0 4px rgba(240, 179, 90, 0.25);
+  transform: rotate(0deg) translateY(-100%);
+}
+/* Dynamic progress edge — rotates clockwise with elapsed cooldown */
+.skill-cd-progress-edge::before {
   background: rgba(240, 179, 90, 0.95);
   box-shadow: 0 0 6px rgba(240, 179, 90, 0.65);
-  border-radius: 999px;
+  transform: rotate(var(--cd-edge-angle, 0deg)) translateY(-100%);
   animation: cooldown-edge-pulse 1.6s ease-in-out infinite;
 }
 .skill-glyph {

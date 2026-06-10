@@ -188,7 +188,8 @@ function renderActionDock(ctx) {
     const cdEdgeAngle = cdTotal > 0 ? cdElapsedRatio * 360 : 0;
     const cdMaskHTML = cdRemaining > 0
       ? `<div class="skill-cd-mask" style="--cd-elapsed-ratio:${cdElapsedRatio.toFixed(4)}"></div>
-         <div class="skill-cd-edge" style="--cd-edge-angle:${cdEdgeAngle.toFixed(1)}deg"></div>`
+         <div class="skill-cd-start-edge"></div>
+         <div class="skill-cd-progress-edge" style="--cd-edge-angle:${cdEdgeAngle.toFixed(1)}deg"></div>`
       : '';
 
     const label = `${skill.name}：${skill.desc || ''}`;
