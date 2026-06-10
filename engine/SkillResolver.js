@@ -83,6 +83,7 @@ export class SkillResolver {
         payload: { resource: 'rage', amount: effectiveCost.rage },
       });
     }
+    let consumeAftershockMarked = false;
     for (const eff of skill.effects) {
       // Skip CONSUME_RESOURCE when 引刀 makes 居合斩 cost 0
       if (eff.cmd === 'CONSUME_RESOURCE' && hasIndraBlade) continue;
@@ -90,8 +91,25 @@ export class SkillResolver {
       if (eff.cmd === 'CONSUME_RESOURCE' && hasAftershock) continue;
       const result = this._translateEffect(eff, actor, targetPos, skill, sid);
       if (!result) continue;
-      if (Array.isArray(result)) commands.push(...result);
-      else commands.push(result);
+
+      const markAftershock = (cmd) => {
+        if (
+          skillId === 'mage_small_qi_blast' &&
+          hasAftershock &&
+          !consumeAftershockMarked &&
+          cmd.type !== CmdType.CONSUME_RESOURCE
+        ) {
+          cmd.payload = { ...(cmd.payload || {}), consumeAftershock: true };
+          consumeAftershockMarked = true;
+        }
+        return cmd;
+      };
+
+      if (Array.isArray(result)) {
+        commands.push(...result.map(markAftershock));
+      } else {
+        commands.push(markAftershock(result));
+      }
     }
 
     return {

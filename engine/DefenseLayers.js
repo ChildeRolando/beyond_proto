@@ -13,16 +13,28 @@ export function applyShield(targetPool, incomingDamage, eventBus, targetId) {
 }
 
 export function applyRage(targetPool, incomingDamage, eventBus, targetId) {
-  if (!targetPool.rage || targetPool.rage <= 0) return { absorbed: 0, remaining: incomingDamage };
-  // 2 rage = 100 damage mitigated
-  const maxMitigate = Math.floor(targetPool.rage / 2) * 100;
-  const toAbsorb = Math.min(maxMitigate, incomingDamage);
-  const rageUsed = Math.ceil(toAbsorb / 50); // 1 rage = 50 power
-  const actualRage = Math.min(targetPool.rage, rageUsed);
-  targetPool.rage -= actualRage;
-  const actualAbsorb = actualRage * 50;
-  eventBus.emit(EvtType.RAGE_MITIGATED, { entityId: targetId, absorbed: actualAbsorb, rageUsed: actualRage, remaining: targetPool.rage });
-  return { absorbed: actualAbsorb, remaining: incomingDamage - actualAbsorb };
+  if (!targetPool.rage || targetPool.rage <= 0 || incomingDamage <= 0) {
+    return { absorbed: 0, remaining: incomingDamage };
+  }
+
+  // 1 rage = up to 50 damage mitigation
+  const maxAbsorb = targetPool.rage * 50;
+  const absorbed = Math.min(maxAbsorb, incomingDamage);
+  const rageUsed = Math.ceil(absorbed / 50);
+
+  targetPool.rage -= rageUsed;
+
+  eventBus.emit(EvtType.RAGE_MITIGATED, {
+    entityId: targetId,
+    absorbed,
+    rageUsed,
+    remaining: targetPool.rage,
+  });
+
+  return {
+    absorbed,
+    remaining: incomingDamage - absorbed,
+  };
 }
 
 export function applyBlock(targetPool, incomingDamage, eventBus, targetId) {

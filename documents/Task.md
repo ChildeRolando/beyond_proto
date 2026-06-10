@@ -1,442 +1,366 @@
-验收结论：**不通过。两个都是实装 bug，不是平衡问题。**
+验收结论：**仍然不通过。**
 
-而且日志已经足够证明：
+这次有两个核心问题：
 
 ```text
-第 3 回合：
-吉米 → 盛怒
-吉米 获得 怒气 +3
-镜 → 小气功波
-吉米 怒气抵消 50 伤害
+1. 吉米死亡：怒气抵消公式错了。
+2. 余波只有一层：小气功波在“付费释放的同一次行动里”立刻消耗了自己刚获得的一层余波。
 ```
-
-这说明**盛怒资源在受击前已经立即结算了**，所以它根本不可能被后续受击取消。
 
 ---
 
-# 1. Bug A：余波不是两层，而是伪层数
+# 1. 吉米为什么会死：怒气抵消公式写错了
 
-你现在的 `AFTERSHOCK` 定义只有状态本身，没有默认层数数据。`StatusEffectDefs.js` 里 `AFTERSHOCK` 只是写了 duration 和描述，没有 `data: { stacks: ... }`。
-
-`BuffManager.apply()` 本身也只是创建一个 buff instance，然后把 `data` 合并进去；它没有通用的 stack 合并逻辑。
-
-所以你现在其实不是“buff 系统支持两层余波”，而是：
+对局统计：
 
 ```text
-如果某次 apply 时手动传了 { stacks: 2 }，它才像两层。
-如果没传，或者重复 apply 没合并，就会退化成一层/一个状态。
+吉米一共获得怒气：第1回合 +3，第4回合 +1，总计 4
+吉米被小气功波命中：第2、3、5、6回合，共4次
+每次小气功波威力50
 ```
 
-`SkillResolver` 判断小气功波是否免费时，确实在读 `aftershock.data.stacks`。
-`TurnManager` 里也确实有消费 stacks 的逻辑。
-但这套实现的问题是：**层数不是 buff 系统的一等机制，而是硬塞在特殊技能里的 data 字段。**
+如果规则是：
 
-所以你观察到“余波只有一层”很合理。
+```text
+1 怒气 = 抵消 50 伤害
+```
 
----
+那吉米应该刚好抵消 4 次小气功波，然后进入 0 怒状态，不应该死。
 
-## 正确修法
-
-我建议不要临时到处 patch，而是给 `BuffManager` 加最小 stack API。
-
-### 在 `BuffManager.js` 加：
+但当前 `applyRage()` 不是这么实现的。代码现在是：
 
 ```js
-addStack(entityId, statusType, amount = 1, maxStacks = Infinity, duration = -1, sourceId = null) {
-  const existing = this.getActiveBuffs(entityId).find(b => b.statusType === statusType);
+const maxMitigate = Math.floor(targetPool.rage / 2) * 100;
+```
 
-  if (existing) {
-    const current = existing.data.stacks || 0;
-    existing.data.stacks = Math.min(maxStacks, current + amount);
-    return existing;
+也就是说，**只有怒气至少为 2 时，才会产生抵消额度**。当吉米只剩 1 怒时：
+
+```text
+Math.floor(1 / 2) * 100 = 0
+```
+
+所以第 6 回合日志才会出现：
+
+```text
+吉米[P2] 怒气抵消 0 伤害
+弹体碰撞：吉米[P2] (50)
+吉米[P2] 受到 50 伤害
+吉米[P2] 被击杀
+```
+
+这不是平衡问题，是公式 bug。当前代码注释自己也矛盾：前面写“2 rage = 100 damage mitigated”，后面又写“1 rage = 50 power”。
+
+---
+
+## 应该改成这样
+
+把 `DefenseLayers.js` 里的 `applyRage()` 改成：
+
+```js
+export function applyRage(targetPool, incomingDamage, eventBus, targetId) {
+  if (!targetPool.rage || targetPool.rage <= 0 || incomingDamage <= 0) {
+    return { absorbed: 0, remaining: incomingDamage };
   }
 
-  const buffId = this.apply(entityId, statusType, duration, sourceId, {
-    stacks: Math.min(maxStacks, amount),
+  // 1 rage = up to 50 damage mitigation
+  const maxAbsorb = targetPool.rage * 50;
+  const absorbed = Math.min(maxAbsorb, incomingDamage);
+  const rageUsed = Math.ceil(absorbed / 50);
+
+  targetPool.rage -= rageUsed;
+
+  eventBus.emit(EvtType.RAGE_MITIGATED, {
+    entityId: targetId,
+    absorbed,
+    rageUsed,
+    remaining: targetPool.rage,
   });
 
-  return this.#buffs.get(buffId);
-}
-
-consumeStack(entityId, statusType, amount = 1) {
-  const existing = this.getActiveBuffs(entityId).find(b => b.statusType === statusType);
-  if (!existing) return 0;
-
-  const current = existing.data.stacks || 0;
-  const consumed = Math.min(current, amount);
-  const next = current - consumed;
-
-  if (next > 0) {
-    existing.data.stacks = next;
-  } else {
-    this.remove(existing.id);
-  }
-
-  return consumed;
-}
-
-getStacks(entityId, statusType) {
-  const existing = this.getActiveBuffs(entityId).find(b => b.statusType === statusType);
-  return existing?.data?.stacks || 0;
+  return {
+    absorbed,
+    remaining: incomingDamage - absorbed,
+  };
 }
 ```
 
-然后小气功波支付 cost 时不要自己找 buff 改 data，直接：
+这样第 6 回合如果吉米还有 1 怒，就会正常抵消 50，不会死。
+
+---
+
+# 2. 盛怒受击取消这部分现在基本是对的
+
+从你这份日志看，盛怒已经不是每次都给资源了。
+
+吉米只在：
+
+```text
+第1回合：未受击，获得 +3 怒
+第4回合：未受击，获得 +1 怒
+```
+
+第 2、3、5、6 回合虽然都用了盛怒，但都被小气功波打中，所以没有获得怒气。
+
+这说明 `pendingRage` 的方向已经生效。当前代码也确实有 `#hitEntities`，并且 `DAMAGE_DEALT` 会把 target 记录为受击对象。
+回合结束时，`pendingRage` 会检查 `#hitEntities`，没受击才加怒，受击则记录“盛怒被打断”。
+
+所以这一项我会判：
+
+```text
+盛怒受击取消：基本通过
+怒气抵消：不通过
+```
+
+你现在看到的死亡不是“盛怒还在受击后加怒”，而是**最后 1 怒没有发挥 50 抵消效果**。
+
+---
+
+# 3. 余波为什么仍然只有一层
+
+这个 bug 更隐蔽。
+
+你现在已经加了 stack API。`BuffManager.addStack()`、`consumeStack()`、`getStacks()` 都存在。
+`_execConsumeResource()` 里也确实写了：
 
 ```js
 this.#buffManager.addStack(cmd.actorId, 'AFTERSHOCK', 2, 2, -1, cmd.actorId);
 ```
 
-如果你希望余波最多 2 层，用 `maxStacks = 2`。
-如果你希望可以累积更多，用 `Infinity`。
-按你现在描述“下两次 cost 归零”，我建议**上限 2**，否则玩家可以提前攒一堆免费小波，后面节奏会很怪。
+也就是支付小气功波费用时，理论上加 2 层余波。
 
-然后发动小气功波时：
+但问题在这里：
 
 ```js
 if (cmd.skillId === 'mage_small_qi_blast' && cmd.type !== CmdType.CONSUME_RESOURCE) {
-  this.#buffManager.consumeStack(cmd.actorId, 'AFTERSHOCK', 1);
+  const before = this.#buffManager.getStacks(cmd.actorId, 'AFTERSHOCK');
+  if (before > 0) {
+    this.#buffManager.consumeStack(cmd.actorId, 'AFTERSHOCK', 1);
+    ...
+  }
 }
 ```
 
-`SkillResolver` 判断免费时也改成：
+当前逻辑是：**任何小气功波的非 CONSUME_RESOURCE 命令都会消耗 1 层余波。**
+
+小气功波一次释放包含两个命令：
+
+```text
+CONSUME_RESOURCE
+ATTACK_PROJECTILE
+```
+
+所以付费释放时发生了这个流程：
+
+```text
+1. CONSUME_RESOURCE：消耗 1 气，获得 2 层余波
+2. ATTACK_PROJECTILE：因为也是 mage_small_qi_blast，立刻消耗 1 层余波
+3. 回合结束后实际只剩 1 层
+```
+
+这就是为什么你看到：
+
+```text
+第2回合：付费小气功波，获得余波
+第3回合：免费小气功波，失去余波
+```
+
+理论上第 3 回合后应该还剩 1 层，但现在被第 2 回合自己的攻击命令提前吃掉了一层。
+
+这就是根因。
+
+---
+
+# 4. 余波正确修法：只在“免费释放”时消耗余波
+
+不能用：
 
 ```js
-const stacks = this.buffManager?.getStacks(actorId, 'AFTERSHOCK') || 0;
+cmd.skillId === 'mage_small_qi_blast' && cmd.type !== CmdType.CONSUME_RESOURCE
+```
+
+这个判断太宽了。
+
+应该在 `SkillResolver` 判断出“小气功波因余波免费”时，给后续攻击命令打一个明确标记：
+
+```js
+payload: {
+  ...payload,
+  consumeAftershock: true
+}
+```
+
+然后 `TurnManager` 只在这个标记存在时消耗余波。
+
+---
+
+## 修改 `SkillResolver.js`
+
+你现在已经在 `SkillResolver` 里判断了：
+
+```js
+const stacks = this.buffManager?.getStacks?.(actorId, 'AFTERSHOCK') || 0;
 if (stacks > 0) {
   hasAftershock = true;
   effectiveCost = {};
 }
 ```
 
-这样才是真正的两层余波。
+这部分是对的。
 
----
+但你还需要把“这次是余波免费”写进 command。
 
-# 2. Bug B：盛怒受击不取消资源获取
-
-这个 bug 更明确。
-
-现在 `warrior_rage` 的效果是：
+伪代码：
 
 ```js
-{ cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 2 },
-{ cmd: 'SET_FLAG', flag: 'usedRage', value: true, target: 'SELF' },
-```
+let consumeAftershockMarked = false;
 
-也就是说它在速度 3 阶段直接执行 `GAIN_RESOURCE`。
+for (const eff of skill.effects) {
+  if (eff.cmd === 'CONSUME_RESOURCE' && hasIndraBlade) continue;
+  if (eff.cmd === 'CONSUME_RESOURCE' && hasAftershock) continue;
 
-而 TurnManager 的速度结算是先处理高速度，再处理低速度。速度顺序是 4 → 3 → 2 → 1 → 0。
+  const result = this._translateEffect(eff, actor, targetPos, skill, sid);
+  if (!result) continue;
 
-所以盛怒在速度 3 立刻给怒气，小气功波速度 1 后命中，时间上已经来不及取消。
+  const markAftershock = (cmd) => {
+    if (
+      skillId === 'mage_small_qi_blast' &&
+      hasAftershock &&
+      !consumeAftershockMarked &&
+      cmd.type !== CmdType.CONSUME_RESOURCE
+    ) {
+      cmd.payload = {
+        ...(cmd.payload || {}),
+        consumeAftershock: true,
+      };
+      consumeAftershockMarked = true;
+    }
+    return cmd;
+  };
 
-这就是日志里的情况：
-
-```text
-吉米 → 盛怒
-吉米 获得 怒气 +3
-镜 → 小气功波
-吉米 怒气抵消 50 伤害
-```
-
-这不是显示问题，是结算时序错了。
-
----
-
-## 正确设计应该和集气护盾一致
-
-法师集气不是立刻 `GAIN_RESOURCE`，而是：
-
-```js
-APPLY_STATUS SHIELD_ACTIVE
-SET_FLAG pendingQi
-```
-
-然后回合结束时 `_resolveEndOfTurnEffects()` 检查护盾是否受击；没受击才加气。 
-
-盛怒也应该这样做：
-
-```text
-速度 3：声明盛怒，挂 pendingRage
-回合结束：如果本回合没受击，获得怒气
-如果受击，取消
-```
-
----
-
-## 修改 `SkillData.js`
-
-把 `warrior_rage` 从即时 gain 改成 pending flag：
-
-```js
-warrior_rage: {
-  id: 'warrior_rage',
-  name: '盛怒',
-  icon: 'assets/skill-icons/warrior/warrior_rage.png',
-  class: '战士',
-  type: '蓄气',
-  cost: {},
-  speed: 3,
-  targeting: { shape: 'SELF' },
-  effects: [
-    { cmd: 'SET_FLAG', flag: 'pendingRage', value: true, target: 'SELF' },
-  ],
-  desc: '技能概念：凝聚怒气。若本回合未受击，回合结束时获得怒气；受击则取消。',
-}
-```
-
-不要保留即时 `GAIN_RESOURCE`。否则一定会继续出这个 bug。
-
----
-
-# 3. 还要新增“战士受击记录”
-
-法师集气现在靠的是 `#shieldHitEntities`。TurnManager 在收到 `SHIELD_ABSORBED` 时把实体加入 `#shieldHitEntities`。
-
-但盛怒不能只看护盾。战士没有护盾，受击可能表现为：
-
-```text
-怒气抵消
-格挡抵消
-finalDamage = 0
-弹体接触但被资源层吸收
-```
-
-要的是“像集气护盾那样受击取消”，应该记录**攻击接触/伤害结算触发**，不应该只看 finalDamage 是否大于 0。
-
-新建：
-
-```js
-#hitEntities = new Set();
-```
-
-然后监听 `DAMAGE_DEALT`：
-
-```js
-this.#eventBus.on(EvtType.DAMAGE_DEALT, (data) => {
-  if (data.targetId && data.basePower > 0) {
-    this.#hitEntities.add(data.targetId);
-  }
-
-  if (data.sourceId && data.targetId) {
-    this._checkMindsEyeOnDamage(data.sourceId, data.targetId);
-  }
-});
-```
-
-注意：现在已经在 constructor 里监听 `DAMAGE_DEALT` 做心眼检查。
-不要新增第二个重复逻辑，直接扩展这一段。
-
-回合开始时清掉：
-
-```js
-this.#hitEntities.clear();
-```
-
-放在 `executeTurn()` 开头，和 `#shieldHitEntities.clear()` 一起。现在代码已经清 `#shieldHitEntities`。
-
----
-
-# 4. 回合结束处理 pendingRage
-
-在 `_resolveEndOfTurnEffects()` 里现在只处理 `pendingQi`。
-
-你要加：
-
-```js
-if (flags.pendingRage) {
-  const wasHit = this.#hitEntities.has(entityId);
-
-  if (!wasHit) {
-    const ctx = this.#buffManager.dispatch(HookName.ON_RESOURCE_GAIN, {
-      entityId,
-      resource: 'rage',
-      amount: 2,
-    });
-
-    const finalAmount = ctx?.amount ?? 2;
-
-    this.#resourceSystem.add(entityId, 'rage', finalAmount);
-    this.#resourceSystem.recordCostGain(entityId, 'rage', finalAmount);
-
-    this.#logger?.log(`🔥 盛怒成功 +${finalAmount}怒`, 'rage');
+  if (Array.isArray(result)) {
+    commands.push(...result.map(markAftershock));
   } else {
-    this.#logger?.log('🔥 盛怒被打断，未获怒气', 'sh');
+    commands.push(markAftershock(result));
   }
 }
 ```
 
-注意这里基础 amount 应该是 2，然后由吉米呼吸法 buff 改成 +3 或 +1。你现在日志里盛怒 +3，是因为 `JIMMY_BREATH_IN` 对 rage gain 额外 +1。BuffManager 里 `JIMMY_BREATH_IN` 会让 rage gain `amount + 1`。
-所以不要在 `warrior_rage` 本身写 +3。应该写 +2，让 hook 修正。
+重点是：
+
+```text
+只有 hasAftershock === true 的那次释放，才标记 consumeAftershock。
+付费释放时 hasAftershock === false，所以不会消耗刚获得的余波。
+```
 
 ---
 
-# 5. 这两个 bug 的验收标准
+## 修改 `TurnManager.js`
 
-你下一次验收应该跑这两个最小场景。
+把现在这段：
+
+```js
+if (cmd.skillId === 'mage_small_qi_blast' && cmd.type !== CmdType.CONSUME_RESOURCE) {
+```
+
+改成：
+
+```js
+if (cmd.skillId === 'mage_small_qi_blast' && cmd.payload?.consumeAftershock) {
+```
+
+完整写法：
+
+```js
+if (cmd.skillId === 'mage_small_qi_blast' && cmd.payload?.consumeAftershock) {
+  const before = this.#buffManager.getStacks(cmd.actorId, 'AFTERSHOCK');
+
+  if (before > 0) {
+    this.#buffManager.consumeStack(cmd.actorId, 'AFTERSHOCK', 1);
+
+    const after = this.#buffManager.getStacks(cmd.actorId, 'AFTERSHOCK');
+    const actor = this.#registry.get(cmd.actorId);
+
+    if (after > 0) {
+      this.#logger?.log(`${actor?.name || cmd.actorId} 余波消耗1层（剩${after}层）`, 's');
+    } else {
+      this.#logger?.log(`${actor?.name || cmd.actorId} 余波耗尽`, 's');
+    }
+  }
+}
+```
+
+这样付费小气功波不会吃掉自己的余波。
 
 ---
 
-## 场景 1：余波两层
+# 5. 修完后，这局应该怎么走
 
-前置：
-
-```text
-镜有 1 气
-无余波
-```
-
-第 1 回合：
+按你的日志这局，如果只修这两个 bug，正确结果应该是：
 
 ```text
-镜：小气功波
+第1回合：
+镜集气 +1
+吉米盛怒成功 +3
+
+第2回合：
+镜付费小气功波，气 -1，余波 +2
+小气功命中，吉米怒气 3 → 2
+盛怒被打断，不加怒
+
+第3回合：
+镜免费小气功波，余波 2 → 1
+小气功命中，吉米怒气 2 → 1
+盛怒被打断，不加怒
+
+第4回合：
+镜集气 +1
+吉米未受击，盛怒成功 +1
+吉米怒气 1 → 2
+
+第5回合：
+镜免费小气功波，余波 1 → 0
+小气功命中，吉米怒气 2 → 1
+盛怒被打断，不加怒
+
+第6回合：
+如果镜没有气，不能付费小气功波
+如果镜有气并付费小气功波，吉米怒气 1 → 0，吸收50，不死亡
 ```
 
-期望日志：
-
-```text
-镜 消耗 气 1
-镜 获得 余波 2层
-镜 发射小气功波
-```
-
-第 2 回合：
-
-```text
-镜：小气功波
-```
-
-期望：
-
-```text
-不消耗气
-余波消耗1层，剩1层
-```
-
-第 3 回合：
-
-```text
-镜：小气功波
-```
-
-期望：
-
-```text
-不消耗气
-余波耗尽
-```
-
-第 4 回合：
-
-```text
-镜：小气功波
-```
-
-期望：
-
-```text
-如果没有气，则技能不可提交 / 发动失败
-```
-
-这才算余波两层正确。
+所以修完后，吉米不应该死。
 
 ---
 
-## 场景 2：盛怒受击取消
+# 6. 本轮验收表
 
-前置：
-
-```text
-吉米 0 怒
-镜 1 气
-双方距离可命中
-```
-
-同回合：
-
-```text
-吉米：盛怒
-镜：小气功波
-```
-
-期望顺序可以是：
-
-```text
-吉米 → 盛怒
-镜 → 小气功波
-镜 消耗 气 1
-镜 发射弹体
-吉米 被小气功波命中/怒气抵消/受击
-回合结束：盛怒被打断，未获怒气
-```
-
-最终资源：
-
-```text
-吉米怒气 = 0
-```
-
-如果吉米最后还是获得怒气，验收失败。
+| 项目           |   结果 | 说明                                |
+| ------------ | ---: | --------------------------------- |
+| 盛怒改为受击取消     | 基本通过 | 吉米只在未受击回合获得怒气                     |
+| 受击统计         | 基本通过 | `DAMAGE_DEALT` 已记录 `#hitEntities` |
+| 怒气抵消         |  不通过 | 1 怒不能抵消 50，导致第 6 回合死亡             |
+| 余波 stack API | 部分通过 | API 已存在                           |
+| 小气功波 +2 余波   |  不通过 | 付费释放时同一行动立刻消耗 1 层，只剩 1 层          |
+| 小气功波免费释放     | 部分通过 | 能免费一次，但不能免费两次                     |
 
 ---
 
-# 6. 你这段日志里还有一个值得注意的问题
+# 7. 最小修复顺序
 
-第 2 回合：
-
-```text
-镜 小气功波 威50
-吉米 怒气抵消 50 伤害
-弹体碰撞：吉米[P2] (0)
-吉米 受到 0 伤害
-```
-
-这里显示“受到 0 伤害”没问题，但设计语义上应该仍然算“受击”。
-
-否则会出现荒谬情况：
+先修这两个地方：
 
 ```text
-小气功波打到吉米
-怒气挡掉了
-但盛怒仍然算没被打断
+1. DefenseLayers.applyRage()
+   把 Math.floor(rage / 2) * 100 改成 rage * 50。
+
+2. TurnManager 余波消费条件
+   不能在所有非 CONSUME_RESOURCE 小气功命令上消费余波。
+   只在 SkillResolver 标记 consumeAftershock 的免费释放上消费。
 ```
 
-这会违背你现在的设计目标。
-
-所以我建议对“受击”的定义是：
+这两个修完后，再跑你这份完全一样的脚本。验收标准非常明确：
 
 ```text
-只要发生敌方攻击接触并进入 DamageCalculator.resolve，basePower > 0，就算受击。
-不要求 finalDamage > 0。
+第2回合付费小气功波后：余波应剩 2 层，不能立刻自耗。
+第3回合免费小气功波后：余波应剩 1 层。
+第5回合免费小气功波后：余波应耗尽。
+第6回合如果再次付费小气功波：吉米最后 1 怒应抵消 50，不能死亡。
 ```
-
-也就是：
-
-```text
-被护盾吸收算受击。
-被怒气抵消算受击。
-被格挡抵消也算受击。
-```
-
-但有一个例外：
-
-```text
-弹体相杀、纳刀斩破弹体，如果没有接触角色本体，不算目标受击。
-```
-
-这个语义最干净。
-
----
-
-# 7. 当前验收结论
-
-| 项目        |   结果 | 原因                                                                    |
-| --------- | ---: | --------------------------------------------------------------------- |
-| 小气功波实装    | 部分通过 | 技能存在，cost/威力/速度基本对，但余波层数不可靠                                           |
-| 余波两层      |  不通过 | buff 系统没有通用 stack 管理，当前表现只有一层                                         |
-| 盛怒受击取消    |  不通过 | 盛怒仍然是速度 3 即时 GAIN_RESOURCE，后续受击无法取消                                   |
-| 纳刀 → 引刀   | 初步通过 | ProjectileCalculator 已在纳刀斩破弹体时 apply `INDRA_BLADE`，并记录日志“→ 引刀”        |
-| 引刀刷新居合 CD | 初步通过 | TurnManager 监听 `INDRA_BLADE` applied 后 reset `warrior_iaido` cooldown |
-| 居合斩参数     |   通过 | 范围 4、cd4、cost3、威力100、速度1、命中 +1 怒已写入                                   |
-
-

@@ -560,8 +560,8 @@ export class TurnManager {
     });
     if (beforeCtx === false) return;
 
-    // 余波消费: 小气功波发动时消耗1层（CONSUME_RESOURCE已被SkillResolver跳过）
-    if (cmd.skillId === 'mage_small_qi_blast' && cmd.type !== CmdType.CONSUME_RESOURCE) {
+    // 余波消费: 仅免费释放时消耗1层 (consumeAftershock flag 由SkillResolver标记)
+    if (cmd.skillId === 'mage_small_qi_blast' && cmd.payload?.consumeAftershock) {
       const before = this.#buffManager.getStacks(cmd.actorId, 'AFTERSHOCK');
       if (before > 0) {
         this.#buffManager.consumeStack(cmd.actorId, 'AFTERSHOCK', 1);
