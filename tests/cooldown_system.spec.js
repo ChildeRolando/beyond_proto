@@ -298,14 +298,17 @@ test('J: UI skill button shows cooldown mask and data attrs', async ({ page }) =
   const btnInfo = await page.evaluate(() => {
     const btn = document.querySelector('#action-dock .skill-btn[data-skill="warrior_sheathe"]');
     if (!btn) return { found: false };
+    const mask = btn.querySelector('.skill-cd-mask');
     return {
       found: true,
       cdRemaining: Number(btn.getAttribute('data-cd-remaining')),
       cdTotal: Number(btn.getAttribute('data-cd-total')),
       hasCooldownClass: btn.classList.contains('cooldown'),
       hasSubmittedClass: btn.classList.contains('submitted'),
-      hasMask: !!btn.querySelector('.skill-cd-mask'),
+      hasMask: !!mask,
       cdRatioStyle: btn.style.getPropertyValue('--cd-ratio'),
+      cdElapsedRatioStyle: btn.style.getPropertyValue('--cd-elapsed-ratio'),
+      maskElapsedRatio: mask ? mask.style.getPropertyValue('--cd-elapsed-ratio') : null,
     };
   });
 
@@ -316,8 +319,13 @@ test('J: UI skill button shows cooldown mask and data attrs', async ({ page }) =
   expect(btnInfo.hasCooldownClass).toBe(true);
   expect(btnInfo.hasSubmittedClass).toBe(false);
   expect(btnInfo.hasMask).toBe(true);
-  // --cd-ratio should be 1.0 (2/2)
+  // --cd-ratio = 1.0 (2/2 remaining)
   expect(parseFloat(btnInfo.cdRatioStyle)).toBeCloseTo(1.0, 1);
+  // --cd-elapsed-ratio = 0.0 (nothing elapsed when CD just started)
+  expect(parseFloat(btnInfo.cdElapsedRatioStyle)).toBeCloseTo(0.0, 1);
+  // mask also has --cd-elapsed-ratio set
+  expect(btnInfo.maskElapsedRatio).not.toBeNull();
+  expect(parseFloat(btnInfo.maskElapsedRatio)).toBeCloseTo(0.0, 1);
 });
 
 // ═══════════════════════════════════════════════════════

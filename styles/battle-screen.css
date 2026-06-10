@@ -602,7 +602,7 @@ canvas {
 #action-dock .skill-icon-btn.unaffordable {
   opacity: 0.52;
 }
-/* Cooldown radial mask — clockwise grey overlay from 12 o'clock */
+/* Cooldown radial mask — grey area = remaining CD, starts at 12 o'clock, shrinks clockwise */
 .skill-cd-mask {
   position: absolute;
   inset: 3px;
@@ -610,16 +610,16 @@ canvas {
   pointer-events: none;
   z-index: 1;
   background: conic-gradient(
-    from -90deg,
-    rgba(18, 22, 26, 0.68) 0turn calc(var(--cd-ratio, 0) * 1turn),
-    transparent calc(var(--cd-ratio, 0) * 1turn) 1turn
+    from 0deg,
+    transparent 0turn calc(var(--cd-elapsed-ratio, 0) * 1turn),
+    rgba(18, 22, 26, 0.68) calc(var(--cd-elapsed-ratio, 0) * 1turn) 1turn
   );
 }
 #action-dock .skill-icon-btn:hover:not(.submitted):not(.used) .skill-cd-mask {
   background: conic-gradient(
-    from -90deg,
-    rgba(18, 22, 26, 0.4) 0turn calc(var(--cd-ratio, 0) * 1turn),
-    transparent calc(var(--cd-ratio, 0) * 1turn) 1turn
+    from 0deg,
+    transparent 0turn calc(var(--cd-elapsed-ratio, 0) * 1turn),
+    rgba(18, 22, 26, 0.4) calc(var(--cd-elapsed-ratio, 0) * 1turn) 1turn
   );
 }
 .skill-glyph {

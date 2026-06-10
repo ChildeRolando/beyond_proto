@@ -184,12 +184,13 @@ function renderActionDock(ctx) {
     const locked = !canPreview && !canSubmit ? '' : '';  // submitted already handles this
 
     const cdRatio = cdTotal > 0 ? cdRemaining / cdTotal : 0;
+    const cdElapsedRatio = cdTotal > 0 ? 1 - cdRemaining / cdTotal : 0;
     const cdMaskHTML = cdRemaining > 0
-      ? `<div class="skill-cd-mask" style="--cd-ratio:${cdRatio.toFixed(4)}"></div>`
+      ? `<div class="skill-cd-mask" style="--cd-elapsed-ratio:${cdElapsedRatio.toFixed(4)}"></div>`
       : '';
 
     const label = `${skill.name}：${skill.desc || ''}`;
-    return `<button class="skill-btn skill-icon-btn${sel}${submitted}${cooldownCls}${noAfford}${noUses}" data-skill="${s.id}" data-char="${actor.id}" data-cd-remaining="${escapeHTML(cdRemaining)}" data-cd-total="${escapeHTML(cdTotal)}" data-uses-remaining="${escapeHTML(finiteOrInfinityText(usesRemaining))}" style="${cdRemaining > 0 ? `--cd-ratio:${cdRatio.toFixed(4)}` : ''}" aria-label="${escapeHTML(label)}" data-tooltip="${escapeHTML(skill.desc || '')}">
+    return `<button class="skill-btn skill-icon-btn${sel}${submitted}${cooldownCls}${noAfford}${noUses}" data-skill="${s.id}" data-char="${actor.id}" data-cd-remaining="${escapeHTML(cdRemaining)}" data-cd-total="${escapeHTML(cdTotal)}" data-uses-remaining="${escapeHTML(finiteOrInfinityText(usesRemaining))}" style="${cdRemaining > 0 ? `--cd-ratio:${cdRatio.toFixed(4)};--cd-elapsed-ratio:${cdElapsedRatio.toFixed(4)}` : ''}" aria-label="${escapeHTML(label)}" data-tooltip="${escapeHTML(skill.desc || '')}">
       <div class="skill-glyph">${skillGlyph(skill)}</div>
       ${cdMaskHTML}
       <div class="skill-meta"><span>${skillCostLabel(skill, actor)}</span><span>S${skill.speed ?? '-'}</span></div>
