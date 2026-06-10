@@ -9,11 +9,28 @@
 
 import { getSkillName, getResourceName, getDamageLayerName, getStatusName, getReasonText, formatActionFailedText } from '../presentation/DisplayNames.js';
 
+// ─── Owner label ───
+
+function ownerLabel(ownerId) {
+  if (ownerId === 'player1') return 'P1';
+  if (ownerId === 'player2') return 'P2';
+  if (ownerId === 'ai') return 'AI';
+  return ownerId || '—';
+}
+
+/** Resolve a character's display name with owner label: "吉米[P1]" */
+function charNameWithOwner(char) {
+  if (!char) return null;
+  const label = ownerLabel(char.ownerId);
+  return `${char.name}[${label}]`;
+}
+
 // ─── Single event → log entry ───
 
 function actorNameFor(event, charById) {
-  const actor = charById.get(event.actorId);
-  return actor?.name || event.actorId || '未知';
+  const char = charById.get(event.actorId);
+  if (char) return charNameWithOwner(char);
+  return event.actorId || '未知';
 }
 
 function formatPoint(pos) {
@@ -27,8 +44,10 @@ function formatPoint(pos) {
  */
 export function renderEventLogEntry(event, charById = new Map()) {
   const actorName = actorNameFor(event, charById);
-  const targetName = event.targetName
-    || (charById.get(event.targetId)?.name)
+  // Prefer charById lookup (has ownerId for label) over event.targetName
+  const targetChar = event.targetId ? charById.get(event.targetId) : null;
+  const targetName = (targetChar ? charNameWithOwner(targetChar) : null)
+    || event.targetName
     || (event.targetPos ? `(${event.targetPos.q},${event.targetPos.r})` : null);
   const et = event.eventType || null;
 

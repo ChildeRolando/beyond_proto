@@ -153,7 +153,6 @@ export class DamageCalculator {
     // Survival is only possible via defense layers (shield/rage/block/formation/status).
     // hp is not a legal resource — resource_changed hp is an invalid canonical event.
     target.alive = false;
-    this.eventBus.emit(EvtType.CHARACTER_DIED, { targetId, sourceId, finalDamage: damage });
     return true;
   }
 
@@ -161,6 +160,9 @@ export class DamageCalculator {
     this.eventBus.emit(EvtType.DAMAGE_DEALT, {
       sourceId, targetId, basePower, finalDamage, killed, breakdown, preventedByBuff,
     });
+    if (killed) {
+      this.eventBus.emit(EvtType.CHARACTER_DIED, { targetId, sourceId, finalDamage });
+    }
     return { sourceId, targetId, basePower, finalDamage, killed, breakdown, preventedByBuff };
   }
 }
