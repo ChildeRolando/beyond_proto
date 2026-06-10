@@ -431,11 +431,23 @@ export class BattleSessionController {
     // Check that character has this skill in their visible pool
     const visible = this.visibleSkillsForChar(char);
     if (!visible.some(s => s.id === skillId)) return false;
-    // Only block if the character has already submitted this turn
-    if (this.localSubmittedSet.has(charId)) return false;
+    // If character has already submitted their main action, only allow
+    // skills that can still use a remaining action slot (e.g. finesse).
+    if (this.localSubmittedSet.has(charId) && !this._canSpendActionSlotForPreview(charId, skillId)) {
+      return false;
+    }
     const nm = this._callbacks.getNetworkManager();
     if (nm && nm.mode !== 'local' && nm.iSubmitted) return false;
     return true;
+  }
+
+  /** Whether a specific skill can still consume an action slot (main or finesse).
+   *  Delegates to ActionPointSystem.canSubmit — does NOT check CD/resources. */
+  _canSpendActionSlotForPreview(charId, skillId) {
+    const char = this.engine.registry.get(charId);
+    if (!char || char.alive === false) return false;
+    const result = this.engine.actionPointSystem?.canSubmit(char, skillId);
+    return Boolean(result?.ok);
   }
 
   isRequiredActionReady(charId) {
