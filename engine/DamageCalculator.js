@@ -82,7 +82,7 @@ export class DamageCalculator {
         if (this.formationSystem.isCenterHex(f.id, tq, tr)) continue;
         const fPool = this.resourceSystem.getAll(f.id);
         if (!fPool || !fPool.energy || fPool.energy <= 0) continue;
-        let result = applyFormationEnergy(fPool, remaining, this.eventBus);
+        let result = applyFormationEnergy(fPool, remaining, this.eventBus, targetId);
         formationAbsorbed += result.absorbed;
         remaining = result.remaining;
         f.energy = fPool.energy;
@@ -128,13 +128,13 @@ export class DamageCalculator {
     if (remaining <= 0) return this._result(sourceId, targetId, basePower, 0, false, breakdown, false);
 
     // Layer 3: Rage mitigation
-    result = applyRage(targetPool, remaining, this.eventBus);
+    result = applyRage(targetPool, remaining, this.eventBus, targetId);
     breakdown.push({ layer: 'RAGE', absorbed: result.absorbed, passed: result.remaining });
     remaining = result.remaining;
     if (remaining <= 0) return this._result(sourceId, targetId, basePower, 0, false, breakdown, false);
 
     // Layer 4: Block
-    result = applyBlock(targetPool, remaining, this.eventBus);
+    result = applyBlock(targetPool, remaining, this.eventBus, targetId);
     breakdown.push({ layer: 'BLOCK', absorbed: result.absorbed, passed: result.remaining });
     remaining = result.remaining;
     if (remaining <= 0) return this._result(sourceId, targetId, basePower, 0, false, breakdown, false);

@@ -12,7 +12,7 @@ export function applyShield(targetPool, incomingDamage, eventBus, targetId) {
   return { absorbed, remaining: incomingDamage - absorbed };
 }
 
-export function applyRage(targetPool, incomingDamage, eventBus) {
+export function applyRage(targetPool, incomingDamage, eventBus, targetId) {
   if (!targetPool.rage || targetPool.rage <= 0) return { absorbed: 0, remaining: incomingDamage };
   // 2 rage = 100 damage mitigated
   const maxMitigate = Math.floor(targetPool.rage / 2) * 100;
@@ -21,20 +21,20 @@ export function applyRage(targetPool, incomingDamage, eventBus) {
   const actualRage = Math.min(targetPool.rage, rageUsed);
   targetPool.rage -= actualRage;
   const actualAbsorb = actualRage * 50;
-  eventBus.emit(EvtType.RAGE_MITIGATED, { absorbed: actualAbsorb, rageUsed: actualRage, remaining: targetPool.rage });
+  eventBus.emit(EvtType.RAGE_MITIGATED, { entityId: targetId, absorbed: actualAbsorb, rageUsed: actualRage, remaining: targetPool.rage });
   return { absorbed: actualAbsorb, remaining: incomingDamage - actualAbsorb };
 }
 
-export function applyBlock(targetPool, incomingDamage, eventBus) {
+export function applyBlock(targetPool, incomingDamage, eventBus, targetId) {
   // Shooter block: 300 power, permanent until broken by 破气针
   if (!targetPool || targetPool.blockActive !== true) return { absorbed: 0, remaining: incomingDamage };
   const blockPower = 300;
   const absorbed = Math.min(blockPower, incomingDamage);
-  eventBus.emit(EvtType.BLOCK_TRIGGERED, { absorbed });
+  eventBus.emit(EvtType.BLOCK_TRIGGERED, { entityId: targetId, absorbed });
   return { absorbed, remaining: incomingDamage - absorbed };
 }
 
-export function applyFormationEnergy(formationPool, incomingDamage, eventBus) {
+export function applyFormationEnergy(formationPool, incomingDamage, eventBus, targetId) {
   if (!formationPool || !formationPool.energy || formationPool.energy <= 0) return { absorbed: 0, remaining: incomingDamage };
   // 1 energy = 1 damage
   const maxAbsorb = formationPool.energy;
@@ -42,6 +42,6 @@ export function applyFormationEnergy(formationPool, incomingDamage, eventBus) {
   if (absorbed <= 0 || isNaN(absorbed)) return { absorbed: 0, remaining: incomingDamage };
   const energyUsed = absorbed;
   formationPool.energy -= energyUsed;
-  eventBus.emit(EvtType.FORMATION_ABSORBED, { absorbed, energyUsed, remaining: formationPool.energy });
+  eventBus.emit(EvtType.FORMATION_ABSORBED, { entityId: targetId, absorbed, energyUsed, remaining: formationPool.energy });
   return { absorbed, remaining: incomingDamage - absorbed };
 }

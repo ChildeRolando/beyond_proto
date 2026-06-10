@@ -73,6 +73,7 @@ export function normalizeResolutionEvent(raw = {}) {
 
     subjectId:     raw.subjectId     || raw.actorId || null,
     targetId:      raw.targetId      || null,
+    targetName:    raw.targetName    || null,
 
     targetPos:     raw.targetPos     || null,
     from:          raw.from          || null,

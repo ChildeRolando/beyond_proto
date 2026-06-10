@@ -257,36 +257,22 @@ export class ResolutionEventRecorder {
         result: data.killed ? 'killed' : 'hit',
         reason: data.preventedByBuff ? 'prevented_by_buff' : null,
       });
-      // Also record absorption breakdowns
-      if (Array.isArray(data.breakdown)) {
-        for (const b of data.breakdown) {
-          if (b.absorbed > 0) {
-            const targetChar = this.#registry?.get?.(data.targetId);
-            this.record({
-              id: nextEventId(),
-              eventType: ResolutionEventType.DAMAGE_ABSORBED,
-              actionId: this.#actionContext?.actionId || null,
-              actorId: data.sourceId,
-              targetId: data.targetId,
-              targetName: targetChar?.name || null,
-              layer: b.layer || null,
-              absorbed: b.absorbed,
-            });
-          }
-        }
-      }
     });
 
     // SHIELD_ABSORBED / RAGE_MITIGATED / BLOCK_TRIGGERED / FORMATION_ABSORBED → damage_absorbed
+    // These are the single canonical source — DAMAGE_DEALT.breakdown is NOT used for
+    // absorption because it only fires with active actionContext (missing projectile damage).
     const absorbHandler = (data) => {
       if (!this.#enabled || !this.#currentPhase) return;
+      const targetChar = this.#registry?.get?.(data.entityId);
       this.record({
         id: nextEventId(),
         eventType: ResolutionEventType.DAMAGE_ABSORBED,
         actionId: this.#actionContext?.actionId || null,
         targetId: data.entityId,
-        absorbed: data.absorbed ?? null,
+        targetName: targetChar?.name || null,
         layer: data._layer || null,
+        absorbed: data.absorbed ?? null,
       });
     };
     on(EvtType.SHIELD_ABSORBED, (d) => absorbHandler({ ...d, _layer: 'SHIELD' }));
