@@ -7,8 +7,8 @@ export const DEFAULT_RL_SCENARIOS = {
   mage_vs_warrior_basic: {
     seed: 0,
     maxTurns: 30,
-    p1Pos: { q: 0, r: -2 },
-    p2Pos: { q: 0, r: 2 },
+    p1Pos: { q: 1, r: -2 },
+    p2Pos: { q: 1, r: 1 },
     players: [
       {
         playerId: 'player1', class: '法师', roleId: 'mage_mirror',
@@ -26,8 +26,8 @@ export const DEFAULT_RL_SCENARIOS = {
   shooter_vs_mage_basic: {
     seed: 0,
     maxTurns: 30,
-    p1Pos: { q: 0, r: -2 },
-    p2Pos: { q: 0, r: 2 },
+    p1Pos: { q: 1, r: -2 },
+    p2Pos: { q: 1, r: 1 },
     players: [
       {
         playerId: 'player1', class: '射手', roleId: 'shooter_gunfighter',
@@ -45,8 +45,8 @@ export const DEFAULT_RL_SCENARIOS = {
   jimmy_vs_mage_basic: {
     seed: 0,
     maxTurns: 30,
-    p1Pos: { q: 0, r: -2 },
-    p2Pos: { q: 0, r: 2 },
+    p1Pos: { q: 1, r: -2 },
+    p2Pos: { q: 1, r: 1 },
     players: [
       {
         playerId: 'player1', class: '战士', roleId: 'warrior_jimmy',

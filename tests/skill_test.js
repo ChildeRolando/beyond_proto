@@ -558,14 +558,17 @@ async function testWarriorSkills() {
     result('纳刀状态应用', e.buffManager.hasStatus(w, 'SHEATHED'));
   }
 
-  // 纳刀 intercepts projectile
+  // 纳刀 intercepts projectile → gains INDRA_BLADE
   {
     const { e, m, w } = freshEngine({ magePos: { q:0, r:-2 }, warriorPos: { q:0, r:1 } });
-    // T1: mage gather, warrior sheathe
-    await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_sheathe' });
-    // T2: mage blast at warrior (0,1) — sheathe intercepts
-    await doTurn(e, { id: m, skill: 'mage_blast', target: { q:0, r:1 } }, { id: w, skill: 'warrior_rage' });
-    result('纳刀拦截弹体(战士存活)', isAlive(e, w), `warrior alive=${isAlive(e, w)}`);
+    // Give mage 1 qi so it can fire blast in the same turn (SHEATHED only intercepts in same turn)
+    e.resourceSystem.add(m, 'qi', 1);
+    // Same turn: warrior sheathes (speed 3, SHEATHED applied first), then mage blasts (speed 1)
+    // resolveStep(1) advances projectile → SHEATHED intercepts → INDRA_BLADE applied
+    await doTurn(e, { id: m, skill: 'mage_blast', target: { q:0, r:1 } }, { id: w, skill: 'warrior_sheathe' });
+    const hasIndra = e.buffManager.hasStatus(w, 'INDRA_BLADE');
+    const warriorAlive = isAlive(e, w);
+    result('纳刀拦截弹体→引刀(战士存活)', warriorAlive && hasIndra, `warrior alive=${warriorAlive}, indra=${hasIndra}`);
   }
 
   // --- warrior_feint: 退寸进尺 ---
@@ -603,22 +606,32 @@ async function testWarriorSkills() {
     const { e, m, w } = freshEngine({ magePos: { q:0, r:0 }, warriorPos: { q:0, r:1 } });
     // T1-2: build rage (iaido costs 3 rage)
     await runTurns(e, m, w, 2, 'mage_gather', 'warrior_rage');
-    // T3: sheathe (SHEATHED duration=1 lasts through next turn)
+    // T3: sheathe (for INDRA_BLADE mechanic, but iaido no longer consumes SHEATHED directly)
     await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_sheathe' });
-    // T4: iaido on mage (0,0). Has SHEATHED → consumed, range 2, cost refunded. Power 100.
+    // T4: iaido on mage (0,0). Range 4, cost 3 rage, power 100.
     await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_iaido', target: { q:0, r:0 } });
     const mShield = e.resourceSystem.getShield(m);
     const hasSheathed = e.buffManager.hasStatus(w, 'SHEATHED');
-    result('居合斩消耗纳刀造成100伤害', isAlive(e, m) && mShield === 200 && !hasSheathed, `shield=${mShield}, alive=${isAlive(e, m)}, sheathed=${hasSheathed}`);
+    // SHEATHED no longer consumed by 居合斩 — only consumed by projectile interception (→INDRA_BLADE)
+    result('居合斩范围4造成100伤害(SHEATHED不消耗)', isAlive(e, m) && mShield === 200, `shield=${mShield}, alive=${isAlive(e, m)}, sheathed=${hasSheathed}`);
   }
 
   {
     const { e, m, w } = freshEngine({ magePos: { q:0, r:0 }, warriorPos: { q:0, r:1 } });
-    // No sheathe — power 100, range 1, cost 3
+    // No sheathe — range 4, cost 3 rage, power 100
     await runTurns(e, m, w, 2, 'mage_gather', 'warrior_rage');
     await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_iaido', target: { q:0, r:0 } });
     const mShield = e.resourceSystem.getShield(m);
-    result('居合斩无纳刀=100威力', mShield === 200, `shield=${mShield} (300-100)`);
+    result('居合斩范围4=100威力', mShield === 200, `shield=${mShield} (300-100)`);
+  }
+
+  // 居合斩 CD=4
+  {
+    const { e, m, w } = freshEngine({ magePos: { q:0, r:0 }, warriorPos: { q:0, r:1 } });
+    await runTurns(e, m, w, 2, 'mage_gather', 'warrior_rage');
+    await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_iaido', target: { q:0, r:0 } });
+    const cd = e.skillCooldowns.getRemaining(w, 'warrior_iaido');
+    result('居合斩CD=4', cd === 4, `cd=${cd}`);
   }
 
   // --- warrior_hook: 无情铁手 ---
@@ -858,7 +871,7 @@ async function testShooterSkills() {
   h2('shooter_bell — 丧钟为你而鸣');
   {
     const eng = new GameEngine();
-    eng.initBattle({ player1Class: '射手', player2Class: '战士' });
+    eng.initBattle({ player1Class: '射手', player2Class: '战士', p1Pos: { q: 0, r: -2 }, p2Pos: { q: 0, r: 2 } });
     const s = eng.getCharacterIdByClass('射手');
     const w = eng.getCharacterIdByClass('战士');
 

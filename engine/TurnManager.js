@@ -81,6 +81,14 @@ export class TurnManager {
         this._checkMindsEyeOnDamage(data.sourceId, data.targetId);
       }
     });
+    // 引刀: refresh 居合斩 CD when INDRA_BLADE is applied
+    this.#eventBus.on(EvtType.STATUS_APPLIED, (data) => {
+      if (data.statusType === 'INDRA_BLADE' && data.entityId) {
+        this.#skillCooldowns?.resetCooldown(data.entityId, 'warrior_iaido');
+        const char = this.#registry.get(data.entityId);
+        this.#logger?.log(`${char?.name || data.entityId} 引刀：居合斩CD刷新`, 'rg');
+      }
+    });
 
     // Structured event recorder — captures EventBus events as ResolutionEvents
     this.#eventRecorder = new ResolutionEventRecorder(this.#eventBus, this.#registry);
@@ -541,6 +549,24 @@ export class TurnManager {
     });
     if (beforeCtx === false) return;
 
+    // 余波消费: 小气功波发动时消耗1层（CONSUME_RESOURCE已被SkillResolver跳过）
+    if (cmd.skillId === 'mage_small_qi_blast' && cmd.type !== CmdType.CONSUME_RESOURCE) {
+      const existing = this.#buffManager.getActiveBuffs(cmd.actorId)
+        .find(b => b.statusType === 'AFTERSHOCK');
+      if (existing) {
+        const stacks = existing.data.stacks || 0;
+        if (stacks > 1) {
+          existing.data.stacks = stacks - 1;
+          const actor = this.#registry.get(cmd.actorId);
+          this.#logger?.log(`${actor?.name || cmd.actorId} 余波消耗1层（剩${stacks - 1}层）`, 's');
+        } else {
+          this.#buffManager.removeByType(cmd.actorId, 'AFTERSHOCK');
+          const actor = this.#registry.get(cmd.actorId);
+          this.#logger?.log(`${actor?.name || cmd.actorId} 余波耗尽`, 's');
+        }
+      }
+    }
+
     switch (cmd.type) {
         case CmdType.GAIN_RESOURCE:
           this._execGainResource(cmd);
@@ -873,6 +899,22 @@ export class TurnManager {
       return;
     }
     this.#resourceSystem.subtract(cmd.actorId, cmd.payload.resource, amount);
+
+    // 小气功波: paying cost grants 2 余波 stacks
+    if (cmd.skillId === 'mage_small_qi_blast' && cmd.payload.resource === 'qi') {
+      const existing = this.#buffManager.getActiveBuffs(cmd.actorId)
+        .find(b => b.statusType === 'AFTERSHOCK');
+      const newStacks = (existing?.data?.stacks || 0) + 2;
+      if (existing) {
+        existing.data.stacks = newStacks;
+        const actor = this.#registry.get(cmd.actorId);
+        this.#logger?.log(`${actor?.name || cmd.actorId} 余波 +2（共${newStacks}层）`, 's');
+      } else {
+        this.#buffManager.apply(cmd.actorId, 'AFTERSHOCK', -1, cmd.actorId, { stacks: 2 });
+        const actor = this.#registry.get(cmd.actorId);
+        this.#logger?.log(`${actor?.name || cmd.actorId} 余波 +2`, 's');
+      }
+    }
   }
 
   _execMoveWalk(cmd) {
@@ -989,14 +1031,10 @@ export class TurnManager {
       ? this.#buffManager.getEffectivePower(cmd.actorId, cmd.payload.power)
       : cmd.payload.power;
 
-    // Consume SHEATHED for enhanced melee (居合斩)
-    if (cmd.payload.consumeSheathed && this.#buffManager.hasStatus(cmd.actorId, 'SHEATHED')) {
-      // Remove SHEATHED buff and enhance the attack
-      this.#buffManager.removeByStatus(cmd.actorId, 'SHEATHED');
-      cmd.payload.range = 2; // enhanced range
-      // Refund the rage cost (cost becomes 0)
-      this.#resourceSystem?.add(cmd.actorId, 'rage', 3);
-      this.#logger?.log(`${actor?.name || cmd.actorId} 纳刀解放！居合斩强化`, 'rg');
+    // Consume INDRA_BLADE for 居合斩 (cost already reduced to 0 by SkillResolver)
+    if (this.#buffManager.hasStatus(cmd.actorId, 'INDRA_BLADE')) {
+      this.#buffManager.removeByType(cmd.actorId, 'INDRA_BLADE');
+      this.#logger?.log(`${actor?.name || cmd.actorId} 引刀解放！居合斩`, 'rg');
     }
 
     // Create melee projectile — handles same-hex and ranged via body-contact system

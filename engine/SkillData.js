@@ -63,6 +63,16 @@ export const SKILLS = {
     desc: '技能概念：连续发射九枚小型气功弹。\n游戏作用：生成9枚直线飞行弹体，依次向目标方向飞行。\n范围：99（无限）；威力：50×9，总计450；速度：1；费用：气3',
   },
 
+  mage_small_qi_blast: {
+    id: 'mage_small_qi_blast', name: '小气功波', icon: 'assets/skill-icons/mage/mage_small_qi_blast.png', class: '法师', type: '攻击',
+    cost: { qi: 1 }, speed: 1, targeting: { shape: 'HEX', range: 99 },
+    effects: [
+      { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 1 },
+      { cmd: 'ATTACK_PROJECTILE', power: 50 },
+    ],
+    desc: '技能概念：发射小型气功弹，支付费用时积蓄余波能量。\n游戏作用：支付cost时获得2层[余波]；[余波]使下次小气功波cost=0并消耗一层。\n范围：99（无限）；威力：50；速度：1；费用：气1',
+  },
+
   mage_realm_sweep: {
     id: 'mage_realm_sweep', name: '横扫千军', icon: 'assets/skill-icons/mage/mage_realm_sweep.png', class: '法师', type: '攻击',
     cost: { qi: 7 }, speed: 1, targeting: { shape: 'AOE_SELF', radius: 2 },
@@ -312,7 +322,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SHEATHED', target: 'SELF' },
     ],
-    desc: '技能概念：进入纳刀反击架势。\n游戏作用：获得纳刀状态；自动反击进入范围的弹体或敌人仅一次，反击威力300。\n范围：自身；威力：反击300；速度：3；费用：无',
+    desc: '技能概念：进入纳刀反击架势。\n游戏作用：获得纳刀状态，自动拦截范围内弹体（威力300）；成功斩破弹体后获得[引刀]：刷新居合斩CD并使下次居合斩cost=0。\n范围：自身；威力：反击300；速度：3；费用：无；冷却：2',
   },
 
   warrior_feint: {
@@ -342,13 +352,13 @@ export const SKILLS = {
 
   warrior_iaido: {
     id: 'warrior_iaido', name: '居合斩', icon: 'assets/skill-icons/warrior/warrior_iaido.png', class: '战士', type: '攻击',
-    cost: { rage: 3 }, speed: 2, targeting: { shape: 'HEX', range: 2 },
+    cost: { rage: 3 }, speed: 1, cooldown: 4, targeting: { shape: 'HEX', range: 4 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 3 },
-      { cmd: 'ATTACK_MELEE', power: 100, range: 1, consumeSheathed: true },
+      { cmd: 'ATTACK_MELEE', power: 100, range: 4 },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '技能概念：以纳刀状态为前置的强化居合斩。\n游戏作用：若处于纳刀状态则消耗纳刀状态，范围扩展至2且费用变为0；否则范围1。命中时获得1点怒气。\n范围：2（纳刀）/1；威力：100；速度：2；费用：怒气3',
+    desc: '技能概念：拔刀高速居合斩。\n游戏作用：范围4的高速斩击；若拥有[引刀]状态则费用变为0且刷新冷却；命中时获得1点怒气。\n范围：4；威力：100；速度：1；费用：怒气3；冷却：4',
   },
 
   warrior_hook: {
@@ -937,7 +947,7 @@ for (const skill of Object.values(SKILLS)) {
 // Skill lists by class for UI
 export const SKILLS_BY_CLASS = {
   '法师': [
-    'mage_gather', 'mage_small_blast', 'mage_blast', 'mage_bigblast',
+    'mage_gather', 'mage_small_blast', 'mage_small_qi_blast', 'mage_blast', 'mage_bigblast',
     'mage_burst',
     'mage_realm_sweep', 'mage_buddha_palm',
     'mage_jump', 'mage_teleport', 'mage_shield_repair', 'mage_armor_breaker', 'mage_qi_siphon',

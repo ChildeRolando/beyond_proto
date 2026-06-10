@@ -36,6 +36,29 @@ export class SkillResolver {
       effectiveCost = { rage: rageCost };
     }
 
+    // 引刀: 居合斩 cost = 0
+    let hasIndraBlade = false;
+    if (skillId === 'warrior_iaido') {
+      const buffs = this.buffManager?.getActiveBuffs(actorId) || [];
+      const indra = buffs.find(b => b.statusType === 'INDRA_BLADE');
+      if (indra) {
+        hasIndraBlade = true;
+        effectiveCost = {};
+      }
+    }
+
+    // 余波: 小气功波 cost = 0 (consumes 1 stack)
+    let hasAftershock = false;
+    if (skillId === 'mage_small_qi_blast') {
+      const buffs = this.buffManager?.getActiveBuffs(actorId) || [];
+      const aftershock = buffs.find(b => b.statusType === 'AFTERSHOCK');
+      const stacks = aftershock?.data?.stacks || 0;
+      if (stacks > 0) {
+        hasAftershock = true;
+        effectiveCost = {};
+      }
+    }
+
     // Validate cost — fold in pending resource gains from already-submitted actions
     if (!opts.skipCostCheck && Object.keys(effectiveCost).length > 0) {
       const available = { ...this.resourceSystem.getAll(actorId) };
@@ -63,6 +86,10 @@ export class SkillResolver {
       });
     }
     for (const eff of skill.effects) {
+      // Skip CONSUME_RESOURCE when 引刀 makes 居合斩 cost 0
+      if (eff.cmd === 'CONSUME_RESOURCE' && hasIndraBlade) continue;
+      // Skip CONSUME_RESOURCE when 余波 makes 小气功波 cost 0
+      if (eff.cmd === 'CONSUME_RESOURCE' && hasAftershock) continue;
       const result = this._translateEffect(eff, actor, targetPos, skill, sid);
       if (!result) continue;
       if (Array.isArray(result)) commands.push(...result);

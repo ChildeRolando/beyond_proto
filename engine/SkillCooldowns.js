@@ -33,6 +33,12 @@ export class SkillCooldowns {
     }
   }
 
+  resetCooldown(characterId, skillId) {
+    const map = this.#cooldowns.get(characterId);
+    if (!map) return;
+    map.delete(skillId);
+  }
+
   tick(characterId) {
     const map = this.#cooldowns.get(characterId);
     if (!map) return;

@@ -145,7 +145,7 @@
 ### warrior_sheathe — 纳刀
 
 ✅ 纳刀状态应用
-✅ 纳刀拦截弹体(战士存活) — warrior alive=true
+✅ 纳刀拦截弹体→引刀(战士存活) — warrior alive=true, indra=true
 
 ### warrior_feint — 退寸进尺
 
@@ -157,8 +157,9 @@
 
 ### warrior_iaido — 居合斩
 
-✅ 居合斩消耗纳刀造成100伤害 — shield=200, alive=true, sheathed=false
-✅ 居合斩无纳刀=100威力 — shield=200 (300-100)
+✅ 居合斩范围4造成100伤害(SHEATHED不消耗) — shield=200, alive=true, sheathed=false
+✅ 居合斩范围4=100威力 — shield=200 (300-100)
+✅ 居合斩CD=4 — cd=4
 
 ### warrior_hook — 无情铁手
 
@@ -275,4 +276,4 @@
 
 ---
 
-**总计: 138 通过, 0 失败**
+**总计: 139 通过, 0 失败**

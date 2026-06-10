@@ -22,6 +22,20 @@ export const STATUS_DEFS = {
     duration: 1,        // expires at end of next turn
     blocking: false,
   },
+  INDRA_BLADE: {
+    id: 'INDRA_BLADE',
+    name: '引刀',
+    desc: '居合斩CD刷新，下次居合斩cost=0',
+    duration: 2,        // lasts until end of next turn
+    blocking: false,
+  },
+  AFTERSHOCK: {
+    id: 'AFTERSHOCK',
+    name: '余波',
+    desc: '下次小气功波cost=0，发动时消耗一层',
+    duration: -1,       // permanent until stacks consumed
+    blocking: false,
+  },
   BLOCKING: {
     id: 'BLOCKING',
     name: '格挡',

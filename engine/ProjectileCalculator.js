@@ -334,11 +334,11 @@ export class ProjectileCalculator {
 
         if (ip >= proj.power) {
           proj.alive = false;
-          // If interceptor has SHEATHED buff, upgrade it to permanent
-          buffManager.lockSheathed(entity.id);
+          // 纳刀斩破弹体 → 获得引刀（刷新居合斩CD，下次居合斩cost=0）
+          buffManager.apply(entity.id, 'INDRA_BLADE', 2, entity.id);
           const ownerName = registry.get(proj.ownerId)?.name || proj.ownerId;
           const meleeTag = proj.flags.includes('MELEE') ? '斩击' : '弹体';
-          this.#logger?.log(`${entity.name || entity.id} ⚔ 拦截(${ownerName})！威${ip}斩破${meleeTag}威${proj.power}`, 'rg');
+          this.#logger?.log(`${entity.name || entity.id} ⚔ 拦截(${ownerName})！威${ip}斩破${meleeTag}威${proj.power} → 引刀`, 'rg');
           this.#keyframes.push({
             projectileId: proj.id, event: 'intercepted', q, r, interceptorId: entity.id,
           });

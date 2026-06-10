@@ -118,8 +118,8 @@ export function legacyDuelToScenario(scenario = {}) {
   const p2Source = usingPlayerConfigs
     ? (scenario.players.find(p => p.playerId === 'player2') || scenario.players[1])
     : { class: scenario.player2Class || '战士', playerId: 'player2' };
-  const p1Pos = scenario.p1Pos || { q: 0, r: -2 };
-  const p2Pos = scenario.p2Pos || { q: 0, r: 2 };
+  const p1Pos = scenario.p1Pos || { q: 1, r: -2 };
+  const p2Pos = scenario.p2Pos || { q: 1, r: 1 };
   const legacyFullClassSkills = !usingPlayerConfigs;
 
   const combatants = [
