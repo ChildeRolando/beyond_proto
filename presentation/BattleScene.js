@@ -24,6 +24,21 @@ export function createBattleScene({
   effects = [],
   playback = null,
 } = {}) {
+  // Shallow-clone interaction and effects so the returned scene is
+  // safe to mutate without polluting the store's internal state.
+  const safeInteraction = {
+    hoverEffectArea: [],
+    validTargets: [],
+    hoveredHex: null,
+    localSubmittedCharacterIds: [],
+    remoteSubmittedCharacterIds: [],
+    selectedCharacterId: null,
+    lastHoveredCharacterId: null,
+    ...interaction,
+  };
+  const safeEffects = [...effects];
+  const safePlayback = playback ? { ...playback } : null;
+
   return {
     mode,
     turn: state?.turn ?? null,
@@ -36,17 +51,9 @@ export function createBattleScene({
     casings: state?.casings || [],
     wildBullets: state?.wildBullets || [],
     logs: state?.logs || [],
-    interaction: {
-      hoverEffectArea: interaction.hoverEffectArea || [],
-      validTargets: interaction.validTargets || [],
-      hoveredHex: interaction.hoveredHex || null,
-      localSubmittedCharacterIds: interaction.localSubmittedCharacterIds || [],
-      remoteSubmittedCharacterIds: interaction.remoteSubmittedCharacterIds || [],
-      selectedCharacterId: interaction.selectedCharacterId || null,
-      lastHoveredCharacterId: interaction.lastHoveredCharacterId || null,
-    },
-    effects,
-    playback,
+    interaction: safeInteraction,
+    effects: safeEffects,
+    playback: safePlayback,
   };
 }
 
