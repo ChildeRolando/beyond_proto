@@ -106,9 +106,18 @@ export class ResolutionEventRecorder {
     });
   }
 
-  /** Record a projectile_created event. */
-  recordProjectileCreated(projectileId, actorId, skillId, actionId, fromPos, toPos, power, speed) {
+  /** Record a projectile_created event with full domain metadata. */
+  recordProjectileCreated(projectileId, actorId, skillId, actionId, fromPos, toPos, power, speed, metadata = null) {
     if (!this.#currentPhase) return null;
+    const meta = metadata || {};
+    const flags = meta.flags || [];
+    const isMelee = flags.includes('MELEE');
+    const projectileType = flags.includes('MELEE') ? 'melee'
+      : flags.includes('STATIONARY') ? 'stationary'
+      : flags.includes('AOE_RADIUS_1') ? 'aoe'
+      : 'projectile';
+    // Convert path from [[q,r],...] to [{q,r},...]
+    const path = (meta.path || []).map(p => (Array.isArray(p) ? { q: p[0], r: p[1] } : p));
     return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.PROJECTILE_CREATED,
@@ -119,45 +128,73 @@ export class ResolutionEventRecorder {
       from: fromPos || null,
       to: toPos || null,
       basePower: power ?? null,
-      projectileType: 'projectile',
+      projectileType,
+      metadata: {
+        path,
+        flags,
+        speed: meta.speed ?? speed ?? null,
+        isMelee,
+        projectileType,
+      },
     });
   }
 
-  /** Record a projectile_collided event. */
-  recordProjectileCollided(projectileId, targetId, targetPos, damage) {
+  /** Record a projectile_collided event (body contact or AOE explosion). */
+  recordProjectileCollided(projectileId, targetId, targetPos, damage, actionId = null, metadata = null) {
     if (!this.#currentPhase) return null;
     const targetChar = targetId ? this.#registry?.get?.(targetId) : null;
+    const meta = metadata || {};
     return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.PROJECTILE_COLLIDED,
+      actionId: actionId ?? meta.actionId ?? null,
       projectileId,
       targetId,
       targetPos: targetPos || null,
       targetName: targetChar?.name || null,
       finalDamage: damage ?? null,
+      metadata: {
+        hitType: meta.hitType || 'body_contact',
+        contactPos: meta.contactPos || (targetPos ? { q: targetPos.q, r: targetPos.r } : null),
+        isMelee: meta.isMelee || false,
+        flags: meta.flags || [],
+        ownerId: meta.ownerId || null,
+      },
     });
   }
 
-  /** Record a projectile_expired event (disappeared without hitting). */
-  recordProjectileExpired(projectileId, reason) {
+  /** Record a projectile_expired event (disappeared without hitting).
+   *  Movement is derived from projectile_created.metadata.path.
+   */
+  recordProjectileExpired(projectileId, reason, metadata = null) {
     if (!this.#currentPhase) return null;
+    const meta = metadata || {};
     return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.PROJECTILE_EXPIRED,
       projectileId,
-      reason: reason || null,
+      reason: reason || 'unknown',
+      metadata: {
+        lastPos: meta.lastPos || null,
+      },
     });
   }
 
-  /** Record a projectile_intercepted event. */
-  recordProjectileIntercepted(projectileId, interceptorId, interceptPower) {
+  /** Record a projectile_intercepted event (buff-based, e.g. 纳刀). */
+  recordProjectileIntercepted(projectileId, interceptorId, interceptPower, metadata = null) {
     if (!this.#currentPhase) return null;
+    const meta = metadata || {};
     return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.PROJECTILE_INTERCEPTED,
       projectileId,
       targetId: interceptorId,
       basePower: interceptPower ?? null,
+      metadata: {
+        interceptPower: interceptPower ?? null,
+        projectilePower: meta.projectilePower ?? null,
+        interceptType: meta.interceptType || 'buff_intercept',
+      },
     });
   }
 

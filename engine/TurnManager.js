@@ -260,7 +260,12 @@ export class TurnManager {
               hitProjIds.add(r.projectileId);
               if (r.hit) {
                 this.#eventRecorder.recordProjectileCollided(
-                  r.projectileId, r.targetId, null, r.damage
+                  r.projectileId, r.targetId, null, r.damage, r.actionId,
+                  { hitType: r.isAoe ? 'aoe_explosion' : 'body_contact',
+                    contactPos: { q: r.q, r: r.r },
+                    isMelee: r.isMelee || false,
+                    flags: r.flags || [],
+                    ownerId: r.ownerId }
                 );
                 // Set action context to the projectile's actionId, then record damage and death
                 if (r.actionId) {
@@ -297,7 +302,8 @@ export class TurnManager {
               hitProjIds.add(r.projectileId);
               if (r.intercepted) {
                 this.#eventRecorder.recordProjectileIntercepted(
-                  r.projectileId, r.interceptorId, r.interceptPower
+                  r.projectileId, r.interceptorId, r.interceptPower,
+                  { projectilePower: r.projectilePower ?? null }
                 );
               }
             }
@@ -315,6 +321,7 @@ export class TurnManager {
                   actionId: c.actionId,
                   metadata: {
                     collisionType: c.type,
+                    contactPos: c.q != null ? { q: c.q, r: c.r } : null,
                     isMelee: c.flags?.includes('MELEE') || false,
                     otherIsMelee: c.otherFlags?.includes('MELEE') || false,
                     power: c.power,
@@ -332,6 +339,7 @@ export class TurnManager {
                   actionId: c.actionId,
                   metadata: {
                     collisionType: c.type,
+                    contactPos: c.q != null ? { q: c.q, r: c.r } : null,
                     isMelee: c.flags?.includes('MELEE') || false,
                     otherIsMelee: c.otherFlags?.includes('MELEE') || false,
                     power: c.power,
@@ -350,13 +358,14 @@ export class TurnManager {
           const postProjIds = new Set(postProjs.map(p => p.id));
           for (const pid of preProjIds) {
             if (!hitProjIds.has(pid) && !postProjIds.has(pid)) {
-              this.#eventRecorder.recordProjectileExpired(pid, null);
+              this.#eventRecorder.recordProjectileExpired(pid, 'destroyed');
             }
           }
           // Also check projectiles in the post list that are dead but not in hitProjIds
           for (const p of postProjs) {
             if (!p.alive && !hitProjIds.has(p.id)) {
-              this.#eventRecorder.recordProjectileExpired(p.id, null);
+              this.#eventRecorder.recordProjectileExpired(p.id, 'path_end',
+                { lastPos: p.path?.[p.stepIndex] ? { q: p.path[p.stepIndex][0], r: p.path[p.stepIndex][1] } : null });
             }
           }
           // Restore action context to last command (for subsequent EventBus events)
@@ -1000,7 +1009,8 @@ export class TurnManager {
       if (proj && this.#eventRecorder) {
         this.#eventRecorder.recordProjectileCreated(
           proj.id, cmd.actorId, cmd.skillId, actionId,
-          { q: fromQ, r: fromR }, { q: toQ, r: toR }, power, effectiveSpeed
+          { q: fromQ, r: fromR }, { q: toQ, r: toR }, power, effectiveSpeed,
+          { path: proj.path, flags: proj.flags, speed: effectiveSpeed }
         );
       }
     }
@@ -1042,7 +1052,8 @@ export class TurnManager {
       if (proj && this.#eventRecorder) {
         this.#eventRecorder.recordProjectileCreated(
           proj.id, cmd.actorId, cmd.skillId, actionId,
-          { q: fromQ, r: fromR }, { q: toQ, r: toR }, power, effectiveSpeed
+          { q: fromQ, r: fromR }, { q: toQ, r: toR }, power, effectiveSpeed,
+          { path: proj.path, flags: proj.flags, speed: effectiveSpeed }
         );
       }
     }
@@ -1135,7 +1146,8 @@ export class TurnManager {
         if (proj && this.#eventRecorder) {
           this.#eventRecorder.recordProjectileCreated(
             proj.id, cmd.actorId, cmd.skillId, actionId,
-            { q: hq, r: hr }, { q: hq, r: hr }, power, speed
+            { q: hq, r: hr }, { q: hq, r: hr }, power, speed,
+            { path: proj.path, flags: proj.flags, speed: speed }
           );
         }
       }

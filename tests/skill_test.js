@@ -2,6 +2,7 @@
 // Run: node tests/skill_test.js
 
 import { GameEngine } from '../engine/GameEngine.js';
+import { ResolutionEventRecorder } from '../engine/resolution/ResolutionEventRecorder.js';
 import { SKILLS } from '../engine/SkillData.js';
 import { hexDistance } from '../engine/HexMath.js';
 import { writeFileSync } from 'fs';
@@ -1303,6 +1304,154 @@ h1('Task 2.2: animation storage/API removed from ProjectileCalculator');
 		result('projectile entry excludes animEvents', !('animEvents' in entry),
 			entry && Object.keys(entry).some(k => k === 'animEvents') ? JSON.stringify(Object.keys(entry)).slice(0, 80) : undefined);
 	}
+}
+
+// Task 2.3: projectile domain event metadata completeness
+h1('Task 2.3: projectile domain event metadata');
+{
+  const mockBus = { on: () => 0, off: () => {} };
+
+  // ═══ A. projectile_created has metadata ═══
+  {
+    const rec = new ResolutionEventRecorder(mockBus, null);
+    rec.startTurn(1);
+    rec.startPhase(2);
+    rec.recordProjectileCreated(
+      'proj-test-1', 'actor-1', 'mage_blast', 'action-1',
+      { q: 0, r: 0 }, { q: 2, r: 0 }, 100, 1,
+      { path: [[0, 0], [1, 0], [2, 0]], flags: [], speed: 1 }
+    );
+    rec.endPhase();
+    const r = rec.finalize();
+    const e = (r.phases[0]?.events || []).find(ev => ev.eventType === 'projectile_created');
+
+    result('A1: projectile_created exists', e != null);
+    result('A2: projectileId', e?.projectileId === 'proj-test-1');
+    result('A3: actorId', e?.actorId === 'actor-1');
+    result('A4: actionId', e?.actionId === 'action-1');
+    result('A5: skillId', e?.skillId === 'mage_blast');
+    result('A6: from/to', e?.from != null && e?.to != null);
+    result('A7: basePower', e?.basePower === 100);
+    result('A8: metadata.path array', Array.isArray(e?.metadata?.path));
+    result('A9: path[0] {q,r}', e?.metadata?.path?.[0]?.q === 0 && e.metadata.path[0].r === 0);
+    result('A10: metadata.flags array', Array.isArray(e?.metadata?.flags));
+    result('A11: isMelee boolean', typeof e?.metadata?.isMelee === 'boolean');
+    result('A12: projectileType valid', ['projectile', 'melee', 'aoe', 'stationary'].includes(e?.metadata?.projectileType));
+    result('A13: no-flag = projectile', e?.metadata?.projectileType === 'projectile');
+  }
+
+  // ═══ B. melee projectile ═══
+  {
+    const rec = new ResolutionEventRecorder(mockBus, null);
+    rec.startTurn(1);
+    rec.startPhase(1);
+    rec.recordProjectileCreated(
+      'proj-melee', 'warrior', 'warrior_slash', 'action-melee',
+      { q: 0, r: 0 }, { q: 1, r: 0 }, 100, 1,
+      { path: [[0, 0], [1, 0]], flags: ['MELEE'], speed: 1 }
+    );
+    rec.endPhase();
+    const e = (rec.finalize().phases[0]?.events || []).find(ev => ev.eventType === 'projectile_created');
+    result('B1: isMelee true', e?.metadata?.isMelee === true);
+    result('B2: projectileType melee', e?.metadata?.projectileType === 'melee');
+    result('B3: flags MELEE', e?.metadata?.flags?.includes('MELEE'));
+  }
+
+  // ═══ C. stationary / aoe projectileType ═══
+  {
+    const rec = new ResolutionEventRecorder(mockBus, null);
+    rec.startTurn(1);
+    rec.startPhase(1);
+    rec.recordProjectileCreated('proj-stat', 'a', 's', 'a1', { q: 0, r: 0 }, { q: 0, r: 0 }, 100, 0,
+      { path: [[0, 0]], flags: ['STATIONARY'], speed: 0 });
+    rec.endPhase();
+    const e = (rec.finalize().phases[0]?.events || []).find(ev => ev.eventType === 'projectile_created');
+    result('C1: stationary', e?.metadata?.projectileType === 'stationary');
+  }
+  {
+    const rec = new ResolutionEventRecorder(mockBus, null);
+    rec.startTurn(1);
+    rec.startPhase(1);
+    rec.recordProjectileCreated('proj-aoe', 'a', 's', 'a1', { q: 0, r: 0 }, { q: 2, r: 0 }, 100, 1,
+      { path: [[0, 0], [1, 0], [2, 0]], flags: ['AOE_RADIUS_1'], speed: 1 });
+    rec.endPhase();
+    const e = (rec.finalize().phases[0]?.events || []).find(ev => ev.eventType === 'projectile_created');
+    result('C2: aoe', e?.metadata?.projectileType === 'aoe');
+  }
+
+  // ═══ D. body-contact collided metadata ═══
+  {
+    const rec = new ResolutionEventRecorder(mockBus, null);
+    rec.startTurn(1);
+    rec.startPhase(1);
+    rec.recordProjectileCollided(
+      'proj-hit', 'target', null, 50, 'action-hit',
+      { hitType: 'body_contact', contactPos: { q: 2, r: 0 }, isMelee: false, flags: [], ownerId: 'actor-1' }
+    );
+    rec.endPhase();
+    const e = (rec.finalize().phases[0]?.events || []).find(ev => ev.eventType === 'projectile_collided');
+    result('D1: collided exists', e != null);
+    result('D2: actionId', e?.actionId === 'action-hit');
+    result('D3: targetId', e?.targetId === 'target');
+    result('D4: finalDamage', e?.finalDamage === 50);
+    result('D5: hitType', e?.metadata?.hitType === 'body_contact');
+    result('D6: contactPos', e?.metadata?.contactPos?.q === 2);
+    result('D7: flags array', Array.isArray(e?.metadata?.flags));
+  }
+
+  // ═══ E. expired / intercepted metadata ═══
+  {
+    const rec = new ResolutionEventRecorder(mockBus, null);
+    rec.startTurn(1);
+    rec.startPhase(1);
+    rec.recordProjectileExpired('proj-exp', 'path_end', { lastPos: { q: 3, r: 0 } });
+    rec.recordProjectileIntercepted('proj-int', 'interceptor', 80, { projectilePower: 100 });
+    rec.endPhase();
+    const res = rec.finalize();
+    const expired = (res.phases[0]?.events || []).find(ev => ev.eventType === 'projectile_expired');
+    const intercepted = (res.phases[0]?.events || []).find(ev => ev.eventType === 'projectile_intercepted');
+
+    result('E1: expired exists', expired != null);
+    result('E2: reason path_end', expired?.reason === 'path_end');
+    result('E3: lastPos', expired?.metadata?.lastPos?.q === 3);
+
+    result('E4: intercepted exists', intercepted != null);
+    result('E5: interceptPower', intercepted?.metadata?.interceptPower === 80);
+    result('E6: projectilePower', intercepted?.metadata?.projectilePower === 100);
+    result('E7: interceptType', intercepted?.metadata?.interceptType === 'buff_intercept');
+  }
+
+  // ═══ F. Path conversion: [[q,r]] → [{q,r}] ═══
+  {
+    const rec = new ResolutionEventRecorder(mockBus, null);
+    rec.startTurn(1);
+    rec.startPhase(1);
+    rec.recordProjectileCreated(
+      'proj-path', 'a', 's', 'a1', { q: 0, r: 0 }, { q: 3, r: 0 }, 100, 1,
+      { path: [[0, 0], [1, 0], [2, 0], [3, 0]], flags: [], speed: 1 }
+    );
+    rec.endPhase();
+    const e = (rec.finalize().phases[0]?.events || []).find(ev => ev.eventType === 'projectile_created');
+    const path = e?.metadata?.path;
+    result('F1: path length 4', path?.length === 4);
+    result('F2: all entries are {q,r}', path?.every(p => typeof p.q === 'number' && typeof p.r === 'number'));
+    result('F3: first entry', path?.[0]?.q === 0 && path?.[0]?.r === 0);
+    result('F4: last entry', path?.[3]?.q === 3 && path?.[3]?.r === 0);
+  }
+
+  // ═══ G. Animation state regression ═══
+  {
+    const engine2 = new GameEngine();
+    engine2.initBattle({ player1Class: '法师', player2Class: '战士' });
+    const state = engine2.getState();
+    result('G1: getState no keyframes', !('keyframes' in state));
+    result('G2: getState no animEvents', !('animEvents' in state));
+
+    const snap = engine2.createSnapshot();
+    const pp = snap.projectiles || {};
+    result('G3: snapshot.projectiles no keyframes', !('keyframes' in pp));
+    result('G4: snapshot.projectiles no animEvents', !('animEvents' in pp));
+  }
 }
 
 REPORT.push('\n---');

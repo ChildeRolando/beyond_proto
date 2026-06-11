@@ -447,6 +447,10 @@ export class ProjectileCalculator {
       hit,
       killed: resultKilled,
       damage: resultDamage,
+      q, r,
+      isAoe,
+      isMelee: proj.flags.includes('MELEE') || false,
+      flags: [...proj.flags],
     });
   }
 
