@@ -21,7 +21,12 @@ test('BattleSessionController exposes a render view snapshot', () => {
 });
 
 test('BattleCanvasRenderer consumes the render view snapshot instead of mutable battle fields', () => {
-  expect(rendererSrc).toMatch(/getRenderViewState\s*\(/);
+  // After o5.3: renderer no longer calls getRenderViewState() — it receives
+  // renderView via legacyView.renderView (passed by BattleRenderCoordinator).
+  // Session/engine access has been removed from the renderer entirely.
+  expect(rendererSrc).toMatch(/renderView/);
+  expect(rendererSrc).not.toMatch(/this\.battleSession/);
+  expect(rendererSrc).not.toMatch(/this\.getEngine/);
   expect(rendererSrc).not.toMatch(/battleSession\.hoverEffectArea/);
   expect(rendererSrc).not.toMatch(/battleSession\.validTargets/);
   expect(rendererSrc).not.toMatch(/battleSession\.hoveredHex/);

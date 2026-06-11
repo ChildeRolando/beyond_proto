@@ -90,14 +90,6 @@ test('battle canvas draws role portraits for hex characters', () => {
   const renderer = new BattleCanvasRenderer({
     canvas: { width: 0, height: 0, clientWidth: 800, clientHeight: 600 },
     context: ctx,
-    battleSession: {
-      getRenderViewState() {
-        return {};
-      },
-    },
-    getEngine() {
-      return createFakeEngine();
-    },
     geometry: {
       hexCenter() {
         return [100, 100];
@@ -129,7 +121,12 @@ test('battle canvas draws role portraits for hex characters', () => {
     portraitCacheVersion: 'test-cache',
   });
 
-  renderer.renderBoard();
+  const fakeEngine = createFakeEngine();
+  renderer.renderBoard(-1, 0, {
+    state: fakeEngine.getState(),
+    renderView: {},
+    engine: fakeEngine,
+  });
 
   assert.ok(
     ctx.calls.drawImage.length > 0,

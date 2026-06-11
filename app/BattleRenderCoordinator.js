@@ -150,8 +150,12 @@ export function createBattleRenderCoordinator({
       // Live mode: use the new BattleScene pipeline
       renderLiveScene();
     } else {
-      // Animation/playback mode: keep legacy renderBoard path
-      getBattleCanvasRenderer()?.renderBoard(animStep, subT);
+      // Animation/playback mode: legacy renderBoard with explicit state/view
+      const session = getBattleSession?.();
+      const engine = session?.engine;
+      const state = session?.getRenderState?.() || engine?.getState?.() || {};
+      const renderView = session?.getRenderViewState?.() || {};
+      getBattleCanvasRenderer()?.renderBoard(animStep, subT, { state, renderView, engine });
     }
     renderPanels();
     renderLog();

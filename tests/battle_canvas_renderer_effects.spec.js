@@ -80,8 +80,6 @@ function createRenderer(overrides = {}) {
   return new BattleCanvasRenderer({
     canvas: { width: 800, height: 600, clientWidth: 800, clientHeight: 600 },
     context: overrides.context || createMockContext(),
-    battleSession: overrides.battleSession || { getRenderViewState() { return {}; }, getRenderState() { return {}; } },
-    getEngine: overrides.getEngine || (() => ({ getState() { return {}; } })),
     geometry: overrides.geometry || createMockGeometry(),
     visualEffects: overrides.visualEffects || createCountingVisualEffects(),
     portraitCacheVersion: 'test',

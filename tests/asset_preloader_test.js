@@ -67,37 +67,6 @@ test('BattleCanvasRenderer reuses a preloaded portrait image from the shared cac
     const renderer = new BattleCanvasRenderer({
       canvas: { width: 0, height: 0, clientWidth: 800, clientHeight: 600 },
       context: {},
-      battleSession: {
-        getRenderViewState() {
-          return {};
-        },
-      },
-      getEngine() {
-        return {
-          getState() {
-            return { characters: [], casings: [], wildBullets: [] };
-          },
-          projectileCalculator: {
-            projectiles: [],
-            generateKeyframes() { return []; },
-            getAnimEvents() { return []; },
-          },
-          registry: {
-            characters() { return []; },
-            entities() { return []; },
-          },
-          resourceSystem: {
-            getAll() {
-              return { shieldActive: false };
-            },
-          },
-          formationSystem: {
-            getFormation() {
-              return null;
-            },
-          },
-        };
-      },
       geometry: {
         hexCenter() {
           return [100, 100];

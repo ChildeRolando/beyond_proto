@@ -8,11 +8,9 @@ function clamp01(value) {
 }
 
 export class BattleCanvasRenderer {
-  constructor({ canvas, context, battleSession, getEngine, geometry, visualEffects, portraitCacheVersion = PORTRAIT_CACHE_VERSION, assetImageCache = new Map() }) {
+  constructor({ canvas, context, geometry, visualEffects, portraitCacheVersion = PORTRAIT_CACHE_VERSION, assetImageCache = new Map() }) {
     this.canvas = canvas;
     this.context = context;
-    this.battleSession = battleSession;
-    this.getEngine = getEngine;
     this.geometry = geometry;
     this.visualEffects = visualEffects;
     this.portraitCacheVersion = portraitCacheVersion;
@@ -41,7 +39,7 @@ export class BattleCanvasRenderer {
   /**
    * Scene-safe portrait image getter.
    * Same cache behaviour as getCharacterPortraitImage but onLoad does NOT
-   * call renderBoard() — so render(scene) never re-enters the legacy path.
+   * call renderBoard() — so render(scene) never re-enters legacy animation.
    */
   getCharacterPortraitImageForScene(char) {
     const roleId = char?.roleId;
@@ -512,18 +510,21 @@ export class BattleCanvasRenderer {
     ctx.fill();
   }
 
-  renderBoard(animStep = -1, subT = 0) {
-    const engine = this.getEngine?.();
+  renderBoard(animStep = -1, subT = 0, legacyView = null) {
     const ctx = this.context;
     const { hexCenter, hexCorners, isOnBoard } = this.geometry;
-    if (!engine || !ctx || !hexCenter || !hexCorners || !isOnBoard) return;
-    const renderView = this.battleSession.getRenderViewState() || {};
+    if (!ctx || !hexCenter || !hexCorners || !isOnBoard) return;
+    // Legacy view data must be supplied by the caller (BattleRenderCoordinator).
+    // renderBoard receives all state/view/engine via legacyView parameter.
+    const state = legacyView?.state || {};
+    const renderView = legacyView?.renderView || {};
+    const engine = legacyView?.engine || null;
+    if (!state || Object.keys(state).length === 0) return; // no-op without data
     const hoverEffectArea = renderView.hoverEffectArea || [];
     const validTargets = renderView.validTargets || [];
     const hoveredHex = renderView.hoveredHex;
     const localSubmittedCharacterIds = new Set(renderView.localSubmittedCharacterIds || []);
     const remoteSubmittedCharacterIds = new Set(renderView.remoteSubmittedCharacterIds || []);
-    const state = this.battleSession.getRenderState?.() || engine.getState();
 
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -799,7 +800,7 @@ export class BattleCanvasRenderer {
       }
 
       if (e.type === 'FORMATION') {
-        const formation = engine.formationSystem.getFormation(e.id);
+        const formation = engine?.formationSystem?.getFormation?.(e.id);
         const hexes = formation ? formation.coverageHexes : [[e.position.q, e.position.r]];
         for (const [hq, hr] of hexes) {
           const [hcx, hcy] = hexCenter(hq, hr);

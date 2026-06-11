@@ -193,8 +193,6 @@ export function createAppRuntime() {
   battleCanvasRenderer = new BattleCanvasRenderer({
     canvas,
     context,
-    battleSession,
-    getEngine: () => battleSession.engine,
     geometry,
     visualEffects,
     portraitCacheVersion: PORTRAIT_CACHE_VERSION,

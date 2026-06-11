@@ -95,11 +95,6 @@ function createRenderer(overrides = {}) {
   return new BattleCanvasRenderer({
     canvas: overrides.canvas || { width: 800, height: 600, clientWidth: 800, clientHeight: 600 },
     context: overrides.context || createMockContext(),
-    battleSession: overrides.battleSession || {
-      getRenderViewState() { return {}; },
-      getRenderState() { return {}; },
-    },
-    getEngine: overrides.getEngine || (() => ({ getState() { return {}; } })),
     geometry: overrides.geometry || createMockGeometry(),
     visualEffects: overrides.visualEffects || createMockVisualEffects(),
     portraitCacheVersion: overrides.portraitCacheVersion || 'test',
@@ -325,6 +320,13 @@ console.log('\n=== Test 4: source boundary scan ===');
 
   console.log('\n[4c] render(scene) does not call battleSession');
   assert(!noComments.includes('battleSession'), 'render(scene) does not call battleSession');
+
+  console.log('\n[4d] whole file does not contain this.battleSession');
+  const wholeFile = src.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert(!wholeFile.includes('this.battleSession'), 'no this.battleSession anywhere');
+
+  console.log('\n[4e] whole file does not contain this.getEngine');
+  assert(!wholeFile.includes('this.getEngine'), 'no this.getEngine anywhere');
 }
 
 // ═══════════════════════════════════════════
@@ -618,22 +620,30 @@ console.log('\n=== Test 10: getCharacterPortraitImageForScene boundary ===');
 }
 
 // ═══════════════════════════════════════════
-// Test 11: render(scene) does not indirectly use battleSession/getEngine
+// Test 11: constructor no longer accepts battleSession/getEngine
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 11: render(scene) does not call getEngine or battleSession ===');
+console.log('\n=== Test 11: constructor no longer has battleSession/getEngine ===');
 
 {
-  const throwingGetEngine = () => { throw new Error('getEngine should not be called from render(scene)'); };
-  const throwingBattleSession = {
-    getRenderViewState: () => { throw new Error('getRenderViewState should not be called from render(scene)'); },
-    getRenderState: () => { throw new Error('getRenderState should not be called from render(scene)'); },
-  };
-  const renderer = createRenderer({
-    getEngine: throwingGetEngine,
-    battleSession: throwingBattleSession,
-  });
+  console.log('\n[11a] instantiate without battleSession/getEngine does not throw');
+  let threw = false;
+  try {
+    const r = createRenderer();
+  } catch (e) {
+    threw = true;
+    console.error(`    ${e.message}`);
+  }
+  assert(!threw, 'constructor without battleSession/getEngine safe');
 
+  console.log('\n[11b] renderer.battleSession is undefined');
+  const renderer = createRenderer();
+  assertEquals(renderer.battleSession, undefined, 'no this.battleSession');
+
+  console.log('\n[11c] renderer.getEngine is undefined');
+  assertEquals(renderer.getEngine, undefined, 'no this.getEngine');
+
+  console.log('\n[11d] render(scene) still works without session/engine');
   const char = makeCharacterEntity();
   const scene = makeMinimalScene({
     entities: [char],
@@ -641,32 +651,73 @@ console.log('\n=== Test 11: render(scene) does not call getEngine or battleSessi
     projectiles: [{ id: 'proj-1', position: { q: 1, r: 0 }, power: 50, alive: true }],
     effects: [{ id: 'fx-1', effectType: 'projectile_impact', progress: 0.5, payload: { contactPos: { q: 1, r: 0 } } }],
   });
-
-  console.log('\n[11a] render(scene) does not call getEngine or battleSession methods');
-  let threw = false;
-  let errorMsg = '';
+  threw = false;
   try {
     renderer.render(scene);
   } catch (e) {
     threw = true;
-    errorMsg = e.message;
+    console.error(`    ${e.message}`);
   }
-  assert(!threw, `render(scene) does not throw: ${errorMsg}`);
+  assert(!threw, 'render(scene) works without session/engine');
 
-  console.log('\n[11b] image onLoad still safe with throwing engine/session');
+  console.log('\n[11e] image onLoad still safe');
   if (typeof globalThis.Image !== 'undefined' && globalThis.Image.instances) {
     for (const img of globalThis.Image.instances) {
       if (typeof img.onload === 'function') {
-        try {
-          img.onload();
-        } catch (e) {
-          threw = true;
-          errorMsg = e.message;
-        }
+        try { img.onload(); } catch (e) { threw = true; }
       }
     }
   }
-  assert(!threw, `image onLoad does not throw: ${errorMsg}`);
+  assert(!threw, 'image onLoad safe');
+}
+
+// ═══════════════════════════════════════════
+// Test 12: renderBoard with legacyView param works
+// ═══════════════════════════════════════════
+
+console.log('\n=== Test 12: renderBoard with legacyView param ===');
+
+{
+  console.log('\n[12a] renderBoard with legacyView does not throw');
+  const renderer = createRenderer();
+  const char = makeCharacterEntity();
+  const legacyView = {
+    state: {
+      characters: [char],
+      projectiles: [],
+      casings: [],
+      wildBullets: [],
+      entities: [char],
+      keyframes: [],
+      animEvents: [],
+    },
+    renderView: {
+      hoverEffectArea: [],
+      validTargets: [],
+      hoveredHex: null,
+      localSubmittedCharacterIds: [],
+      remoteSubmittedCharacterIds: [],
+    },
+    engine: null,
+  };
+  let threw = false;
+  try {
+    renderer.renderBoard(-1, 0, legacyView);
+  } catch (e) {
+    threw = true;
+    console.error(`    ${e.message}`);
+  }
+  assert(!threw, 'renderBoard with legacyView safe');
+
+  console.log('\n[12b] renderBoard without legacyView is no-op');
+  threw = false;
+  try {
+    renderer.renderBoard(0, 0.5, null);
+  } catch (e) {
+    threw = true;
+    console.error(`    ${e.message}`);
+  }
+  assert(!threw, 'renderBoard(null) safe no-op');
 }
 
 // ═══════════════════════════════════════════
