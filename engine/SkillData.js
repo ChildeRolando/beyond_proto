@@ -6,7 +6,7 @@ export const SKILLS = {
   // 法师 (Mage) — 18 skills
   // =========================================================================
   mage_gather: {
-    id: 'mage_gather', name: '集气护盾', icon: 'assets/skill-icons/mage/mage_gather.png', class: '法师', type: '蓄气',
+    id: 'mage_gather', name: '集气护盾', icon: 'assets/skill-icons/mage/mage_gather.webp', class: '法师', type: '蓄气',
     cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SHIELD_ACTIVE', target: 'SELF' },
@@ -16,7 +16,7 @@ export const SKILLS = {
   },
 
   mage_blast: {
-    id: 'mage_blast', name: '气功波', icon: 'assets/skill-icons/mage/mage_blast.png', class: '法师', type: '攻击',
+    id: 'mage_blast', name: '气功波', icon: 'assets/skill-icons/mage/mage_blast.webp', class: '法师', type: '攻击',
     cost: { qi: 1 }, speed: 1, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 1 },
@@ -26,7 +26,7 @@ export const SKILLS = {
   },
 
   mage_small_blast: {
-    id: 'mage_small_blast', name: '疾波', icon: 'assets/skill-icons/mage/mage_small_blast.png', class: '法师', type: '攻击',
+    id: 'mage_small_blast', name: '疾波', icon: 'assets/skill-icons/mage/mage_small_blast.webp', class: '法师', type: '攻击',
     cost: { qi: 3 }, speed: 2, targeting: { shape: 'HEX', range: 5 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -36,7 +36,7 @@ export const SKILLS = {
   },
 
   mage_bigblast: {
-    id: 'mage_bigblast', name: '大气功波', icon: 'assets/skill-icons/mage/mage_bigblast.png', class: '法师', type: '攻击',
+    id: 'mage_bigblast', name: '大气功波', icon: 'assets/skill-icons/mage/mage_bigblast.webp', class: '法师', type: '攻击',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -46,7 +46,7 @@ export const SKILLS = {
   },
 
   mage_burst: {
-    id: 'mage_burst', name: '连弹', icon: 'assets/skill-icons/mage/mage_burst.png', class: '法师', type: '攻击',
+    id: 'mage_burst', name: '连弹', icon: 'assets/skill-icons/mage/mage_burst.webp', class: '法师', type: '攻击',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -64,7 +64,7 @@ export const SKILLS = {
   },
 
   mage_small_qi_blast: {
-    id: 'mage_small_qi_blast', name: '小气功波', icon: 'assets/skill-icons/mage/mage_small_qi_blast.png', class: '法师', type: '攻击',
+    id: 'mage_small_qi_blast', name: '小气功波', icon: 'assets/skill-icons/mage/mage_small_qi_blast.webp', class: '法师', type: '攻击',
     cost: { qi: 1 }, speed: 1, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 1 },
@@ -74,7 +74,7 @@ export const SKILLS = {
   },
 
   mage_realm_sweep: {
-    id: 'mage_realm_sweep', name: '横扫千军', icon: 'assets/skill-icons/mage/mage_realm_sweep.png', class: '法师', type: '攻击',
+    id: 'mage_realm_sweep', name: '横扫千军', icon: 'assets/skill-icons/mage/mage_realm_sweep.webp', class: '法师', type: '攻击',
     cost: { qi: 7 }, speed: 1, targeting: { shape: 'AOE_SELF', radius: 2 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 7 },
@@ -84,7 +84,7 @@ export const SKILLS = {
   },
 
   mage_buddha_palm: {
-    id: 'mage_buddha_palm', name: '如来神掌', icon: 'assets/skill-icons/mage/mage_buddha_palm.png', class: '法师', type: '攻击',
+    id: 'mage_buddha_palm', name: '如来神掌', icon: 'assets/skill-icons/mage/mage_buddha_palm.webp', class: '法师', type: '攻击',
     cost: { qi: 5 }, speed: 1, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
@@ -94,7 +94,7 @@ export const SKILLS = {
   },
 
   mage_teleport: {
-    id: 'mage_teleport', name: '缩地成寸', icon: 'assets/skill-icons/mage/mage_teleport.png', class: '法师', type: '移动',
+    id: 'mage_teleport', name: '缩地成寸', icon: 'assets/skill-icons/mage/mage_teleport.webp', class: '法师', type: '移动',
     cost: { qi: 1 }, speed: 2, targeting: { shape: 'HEX', range: 3,
       filter: 'NOT_OCCUPIED_BY_ENEMY' },
     effects: [
@@ -105,7 +105,7 @@ export const SKILLS = {
   },
 
   mage_reactive: {
-    id: 'mage_reactive', name: '反应装甲', icon: 'assets/skill-icons/mage/mage_reactive.png', class: '法师', type: '特殊',
+    id: 'mage_reactive', name: '反应装甲', icon: 'assets/skill-icons/mage/mage_reactive.webp', class: '法师', type: '特殊',
     cost: {}, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'SPAWN_STATIONARY_AOE', power: 'SHIELD_CURRENT', radius: 1, includeCenter: true },
@@ -114,7 +114,7 @@ export const SKILLS = {
   },
 
   mage_shield_repair: {
-    id: 'mage_shield_repair', name: '补盾', icon: 'assets/skill-icons/mage/mage_shield_repair.png', class: '法师', type: '防御',
+    id: 'mage_shield_repair', name: '补盾', icon: 'assets/skill-icons/mage/mage_shield_repair.webp', class: '法师', type: '防御',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -124,7 +124,7 @@ export const SKILLS = {
   },
 
   mage_armor_breaker: {
-    id: 'mage_armor_breaker', name: '破气针', icon: 'assets/skill-icons/mage/mage_armor_breaker.png', class: '法师', type: '攻击',
+    id: 'mage_armor_breaker', name: '破气针', icon: 'assets/skill-icons/mage/mage_armor_breaker.webp', class: '法师', type: '攻击',
     cost: { qi: 2 }, speed: 1, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 2 },
@@ -134,7 +134,7 @@ export const SKILLS = {
   },
 
   mage_qi_siphon: {
-    id: 'mage_qi_siphon', name: '引气针', icon: 'assets/skill-icons/mage/mage_qi_siphon.png', class: '法师', type: '攻击',
+    id: 'mage_qi_siphon', name: '引气针', icon: 'assets/skill-icons/mage/mage_qi_siphon.webp', class: '法师', type: '攻击',
     cost: {}, speed: 1, cooldown: 3, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'ATTACK_PROJECTILE', power: 0, flags: ['ARMOR_PIERCE', 'COST_SEAL'] },
@@ -144,7 +144,7 @@ export const SKILLS = {
   },
 
   mage_jump: {
-    id: 'mage_jump', name: '折返跃迁', icon: 'assets/skill-icons/mage/mage_jump.png', class: '法师', type: '移动',
+    id: 'mage_jump', name: '折返跃迁', icon: 'assets/skill-icons/mage/mage_jump.webp', class: '法师', type: '移动',
     cost: {}, speed: 3, targeting: { shape: 'HEX', range: 1 },
     effects: [
       { cmd: 'SET_FLAG', flag: 'jumpReturn', value: true, target: 'SELF' },
@@ -154,7 +154,7 @@ export const SKILLS = {
   },
 
   mage_sword_flight: {
-    id: 'mage_sword_flight', name: '御剑', icon: 'assets/skill-icons/mage/mage_sword_flight.png', class: '法师', type: '移动',
+    id: 'mage_sword_flight', name: '御剑', icon: 'assets/skill-icons/mage/mage_sword_flight.webp', class: '法师', type: '移动',
     cost: { qi: 3 }, speed: 2, targeting: { shape: 'DIRECTION', range: 1 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -164,7 +164,7 @@ export const SKILLS = {
   },
 
   mage_dimension_gate: {
-    id: 'mage_dimension_gate', name: '次元之门', icon: 'assets/skill-icons/mage/mage_dimension_gate.png', class: '法师', type: '特殊',
+    id: 'mage_dimension_gate', name: '次元之门', icon: 'assets/skill-icons/mage/mage_dimension_gate.webp', class: '法师', type: '特殊',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'HEX', range: 3 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -174,7 +174,7 @@ export const SKILLS = {
   },
 
   mage_breath_small: {
-    id: 'mage_breath_small', name: '吐纳·小周天', icon: 'assets/skill-icons/mage/mage_breath_small.png', class: '法师', type: '蓄气',
+    id: 'mage_breath_small', name: '吐纳·小周天', icon: 'assets/skill-icons/mage/mage_breath_small.webp', class: '法师', type: '蓄气',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -184,7 +184,7 @@ export const SKILLS = {
   },
 
   mage_breath_big: {
-    id: 'mage_breath_big', name: '吐纳·大周天', icon: 'assets/skill-icons/mage/mage_breath_big.png', class: '法师', type: '蓄气',
+    id: 'mage_breath_big', name: '吐纳·大周天', icon: 'assets/skill-icons/mage/mage_breath_big.webp', class: '法师', type: '蓄气',
     cost: { qi: 5 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
@@ -194,7 +194,7 @@ export const SKILLS = {
   },
 
   mage_breath_tide: {
-    id: 'mage_breath_tide', name: '气海潮汐', icon: 'assets/skill-icons/mage/mage_breath_tide.png', class: '法师', type: '蓄气',
+    id: 'mage_breath_tide', name: '气海潮汐', icon: 'assets/skill-icons/mage/mage_breath_tide.webp', class: '法师', type: '蓄气',
     cost: { qi: 5 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
@@ -204,7 +204,7 @@ export const SKILLS = {
   },
 
   mage_lion_roar: {
-    id: 'mage_lion_roar', name: '狮吼', icon: 'assets/skill-icons/mage/mage_lion_roar.png', class: '法师', type: '攻击',
+    id: 'mage_lion_roar', name: '狮吼', icon: 'assets/skill-icons/mage/mage_lion_roar.webp', class: '法师', type: '攻击',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -214,7 +214,7 @@ export const SKILLS = {
   },
 
   mage_double_cast: {
-    id: 'mage_double_cast', name: '二重咏唱', icon: 'assets/skill-icons/mage/mage_double_cast.png', class: '法师', type: '特殊',
+    id: 'mage_double_cast', name: '二重咏唱', icon: 'assets/skill-icons/mage/mage_double_cast.webp', class: '法师', type: '特殊',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -224,7 +224,7 @@ export const SKILLS = {
   },
 
   mage_triple_cast: {
-    id: 'mage_triple_cast', name: '三重咏唱', icon: 'assets/skill-icons/mage/mage_triple_cast.png', class: '法师', type: '特殊',
+    id: 'mage_triple_cast', name: '三重咏唱', icon: 'assets/skill-icons/mage/mage_triple_cast.webp', class: '法师', type: '特殊',
     cost: { qi: 5 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
@@ -234,7 +234,7 @@ export const SKILLS = {
   },
 
   mage_sword_hang: {
-    id: 'mage_sword_hang', name: '悬剑·落剑', icon: 'assets/skill-icons/mage/mage_sword_hang.png', class: '法师', type: '攻击',
+    id: 'mage_sword_hang', name: '悬剑·落剑', icon: 'assets/skill-icons/mage/mage_sword_hang.webp', class: '法师', type: '攻击',
     cost: { qi: 3 }, speed: 2, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -244,7 +244,7 @@ export const SKILLS = {
   },
 
   mage_galaxy: {
-    id: 'mage_galaxy', name: '银河远征', icon: 'assets/skill-icons/mage/mage_galaxy.png', class: '法师', type: '特殊',
+    id: 'mage_galaxy', name: '银河远征', icon: 'assets/skill-icons/mage/mage_galaxy.webp', class: '法师', type: '特殊',
     cost: { qi: 5 }, speed: 2, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
@@ -254,7 +254,7 @@ export const SKILLS = {
   },
 
   mage_formation: {
-    id: 'mage_formation', name: '结阵', icon: 'assets/skill-icons/mage/mage_formation.png', class: '法师', type: '特殊',
+    id: 'mage_formation', name: '结阵', icon: 'assets/skill-icons/mage/mage_formation.webp', class: '法师', type: '特殊',
     cost: { qi: 3 }, speed: 1, targeting: { shape: 'HEX', range: 5 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
@@ -264,7 +264,7 @@ export const SKILLS = {
   },
 
   mage_dimension_slash: {
-    id: 'mage_dimension_slash', name: '次元斩', icon: 'assets/skill-icons/mage/mage_dimension_slash.png', class: '法师', type: '攻击',
+    id: 'mage_dimension_slash', name: '次元斩', icon: 'assets/skill-icons/mage/mage_dimension_slash.webp', class: '法师', type: '攻击',
     cost: { qi: 10 }, speed: 2, targeting: { shape: 'HEX', range: 8 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 10 },
@@ -277,7 +277,7 @@ export const SKILLS = {
   // 战士 (Warrior) — 16 skills
   // =========================================================================
   warrior_rage: {
-    id: 'warrior_rage', name: '盛怒', icon: 'assets/skill-icons/warrior/warrior_rage.png', class: '战士', type: '蓄气',
+    id: 'warrior_rage', name: '盛怒', icon: 'assets/skill-icons/warrior/warrior_rage.webp', class: '战士', type: '蓄气',
     cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'SET_FLAG', flag: 'pendingRage', value: true, target: 'SELF' },
@@ -286,7 +286,7 @@ export const SKILLS = {
   },
 
   warrior_move: {
-    id: 'warrior_move', name: '移动', icon: 'assets/skill-icons/warrior/warrior_move.png', class: '战士', type: '移动',
+    id: 'warrior_move', name: '移动', icon: 'assets/skill-icons/warrior/warrior_move.webp', class: '战士', type: '移动',
     cost: {}, speed: 3, targeting: { shape: 'HEX', range: 1 },
     effects: [
       { cmd: 'MOVE_WALK', target: 'TARGET_POS' },
@@ -295,7 +295,7 @@ export const SKILLS = {
   },
 
   warrior_slash: {
-    id: 'warrior_slash', name: '普通斩', icon: 'assets/skill-icons/warrior/warrior_slash.png', class: '战士', type: '攻击',
+    id: 'warrior_slash', name: '普通斩', icon: 'assets/skill-icons/warrior/warrior_slash.webp', class: '战士', type: '攻击',
     cost: {}, speed: 1, targeting: { shape: 'HEX', range: 1 },
     effects: [
       { cmd: 'ATTACK_MELEE', power: 100, range: 1 },
@@ -305,7 +305,7 @@ export const SKILLS = {
   },
 
   warrior_dash: {
-    id: 'warrior_dash', name: '踏前斩', icon: 'assets/skill-icons/warrior/warrior_dash.png', class: '战士', type: '攻击',
+    id: 'warrior_dash', name: '踏前斩', icon: 'assets/skill-icons/warrior/warrior_dash.webp', class: '战士', type: '攻击',
     cost: { rage: 1 }, speed: 1, targeting: { shape: 'HEX', range: 1 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 1 },
@@ -316,7 +316,7 @@ export const SKILLS = {
   },
 
   warrior_sheathe: {
-    id: 'warrior_sheathe', name: '纳刀', icon: 'assets/skill-icons/warrior/warrior_sheathe.png', class: '战士', type: '防御',
+    id: 'warrior_sheathe', name: '纳刀', icon: 'assets/skill-icons/warrior/warrior_sheathe.webp', class: '战士', type: '防御',
     cost: {}, speed: 3, targeting: { shape: 'SELF' }, cooldown: 2,
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SHEATHED', target: 'SELF' },
@@ -325,7 +325,7 @@ export const SKILLS = {
   },
 
   warrior_feint: {
-    id: 'warrior_feint', name: '退寸进尺', icon: 'assets/skill-icons/warrior/warrior_feint.png', class: '战士', type: '攻击',
+    id: 'warrior_feint', name: '退寸进尺', icon: 'assets/skill-icons/warrior/warrior_feint.webp', class: '战士', type: '攻击',
     cost: { rage: 1 }, speed: 2, targeting: { shape: 'HEX', range: 1 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 1 },
@@ -338,7 +338,7 @@ export const SKILLS = {
   },
 
   warrior_swallow: {
-    id: 'warrior_swallow', name: '燕返', icon: 'assets/skill-icons/warrior/warrior_swallow.png', class: '战士', type: '攻击',
+    id: 'warrior_swallow', name: '燕返', icon: 'assets/skill-icons/warrior/warrior_swallow.webp', class: '战士', type: '攻击',
     cost: { rage: 1 }, speed: 1, targeting: { shape: 'HEX', range: 1 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 1 },
@@ -350,7 +350,7 @@ export const SKILLS = {
   },
 
   warrior_iaido: {
-    id: 'warrior_iaido', name: '居合斩', icon: 'assets/skill-icons/warrior/warrior_iaido.png', class: '战士', type: '攻击',
+    id: 'warrior_iaido', name: '居合斩', icon: 'assets/skill-icons/warrior/warrior_iaido.webp', class: '战士', type: '攻击',
     cost: { rage: 3 }, speed: 1, cooldown: 4, targeting: { shape: 'HEX', range: 4 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 3 },
@@ -361,7 +361,7 @@ export const SKILLS = {
   },
 
   warrior_hook: {
-    id: 'warrior_hook', name: '无情铁手', icon: 'assets/skill-icons/warrior/warrior_hook.png', class: '战士', type: '特殊',
+    id: 'warrior_hook', name: '无情铁手', icon: 'assets/skill-icons/warrior/warrior_hook.webp', class: '战士', type: '特殊',
     cost: { rage: 2 }, speed: 2, targeting: { shape: 'FAN', range: 3 }, cooldown: 6,
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 2 },
@@ -371,7 +371,7 @@ export const SKILLS = {
   },
 
   warrior_lock: {
-    id: 'warrior_lock', name: '杀意锁定', icon: 'assets/skill-icons/warrior/warrior_lock.png', class: '战士', type: '特殊',
+    id: 'warrior_lock', name: '杀意锁定', icon: 'assets/skill-icons/warrior/warrior_lock.webp', class: '战士', type: '特殊',
     cost: { rage: 2 }, speed: 1, targeting: { shape: 'HEX', range: 6 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 2 },
@@ -381,7 +381,7 @@ export const SKILLS = {
   },
 
   warrior_blink_strike: {
-    id: 'warrior_blink_strike', name: '冷血追命', icon: 'assets/skill-icons/warrior/warrior_blink_strike.png', class: '战士', type: '攻击',
+    id: 'warrior_blink_strike', name: '冷血追命', icon: 'assets/skill-icons/warrior/warrior_blink_strike.webp', class: '战士', type: '攻击',
     cost: { rage: 3 }, speed: 1, targeting: { shape: 'HEX', range: 5 }, cooldown: 6,
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 3 },
@@ -393,7 +393,7 @@ export const SKILLS = {
   },
 
   warrior_flash: {
-    id: 'warrior_flash', name: '一闪', icon: 'assets/skill-icons/warrior/warrior_flash.png', class: '战士', type: '攻击',
+    id: 'warrior_flash', name: '一闪', icon: 'assets/skill-icons/warrior/warrior_flash.webp', class: '战士', type: '攻击',
     cost: { rage: 3 }, speed: 2, targeting: { shape: 'DIRECTION', range: 2 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 3 },
@@ -404,7 +404,7 @@ export const SKILLS = {
   },
 
   warrior_meteor: {
-    id: 'warrior_meteor', name: '大荒星陨', icon: 'assets/skill-icons/warrior/warrior_meteor.png', class: '战士', type: '攻击',
+    id: 'warrior_meteor', name: '大荒星陨', icon: 'assets/skill-icons/warrior/warrior_meteor.webp', class: '战士', type: '攻击',
     cost: { rage: 7 }, speed: 2, targeting: { shape: 'HEX', range: 8 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 7 },
@@ -414,7 +414,7 @@ export const SKILLS = {
   },
 
   warrior_meteor_resolve: {
-    id: 'warrior_meteor_resolve', name: '大荒星陨·坠', icon: 'assets/skill-icons/warrior/warrior_meteor_resolve.png', class: '战士', type: '攻击',
+    id: 'warrior_meteor_resolve', name: '大荒星陨·坠', icon: 'assets/skill-icons/warrior/warrior_meteor_resolve.webp', class: '战士', type: '攻击',
     cost: {}, speed: 2, targeting: { shape: 'SELF' }, hidden: true,
     effects: [
       { cmd: 'METEOR_DROP' },
@@ -423,7 +423,7 @@ export const SKILLS = {
   },
 
   warrior_formation_break: {
-    id: 'warrior_formation_break', name: '阵法堪破', icon: 'assets/skill-icons/warrior/warrior_formation_break.png', class: '战士', type: '特殊',
+    id: 'warrior_formation_break', name: '阵法堪破', icon: 'assets/skill-icons/warrior/warrior_formation_break.webp', class: '战士', type: '特殊',
     cost: {}, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'BREAK_FORMATION' },
@@ -432,7 +432,7 @@ export const SKILLS = {
   },
 
   warrior_realm_sweep: {
-    id: 'warrior_realm_sweep', name: '横扫千军', icon: 'assets/skill-icons/warrior/warrior_realm_sweep.png', class: '战士', type: '攻击',
+    id: 'warrior_realm_sweep', name: '横扫千军', icon: 'assets/skill-icons/warrior/warrior_realm_sweep.webp', class: '战士', type: '攻击',
     cost: { rage: 7 }, speed: 1, targeting: { shape: 'AOE_SELF', radius: 2 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 7 },
@@ -442,7 +442,7 @@ export const SKILLS = {
   },
 
   warrior_dimension_slash: {
-    id: 'warrior_dimension_slash', name: '次元斩', icon: 'assets/skill-icons/warrior/warrior_dimension_slash.png', class: '战士', type: '攻击',
+    id: 'warrior_dimension_slash', name: '次元斩', icon: 'assets/skill-icons/warrior/warrior_dimension_slash.webp', class: '战士', type: '攻击',
     cost: { rage: 10 }, speed: 2, targeting: { shape: 'HEX', range: 8 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 10 },
@@ -455,7 +455,7 @@ export const SKILLS = {
   // 射手 (Shooter) — 12 skills
   // =========================================================================
   shooter_attack: {
-    id: 'shooter_attack', name: '普通攻击', icon: 'assets/skill-icons/shooter/shooter_attack.png', class: '射手', type: '攻击',
+    id: 'shooter_attack', name: '普通攻击', icon: 'assets/skill-icons/shooter/shooter_attack.webp', class: '射手', type: '攻击',
     cost: { ammo: 1 }, speed: 1, targeting: { shape: 'HEX', range: 6 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 1 },
@@ -465,7 +465,7 @@ export const SKILLS = {
   },
 
   shooter_reload: {
-    id: 'shooter_reload', name: '上膛', icon: 'assets/skill-icons/shooter/shooter_reload.png', class: '射手', type: '特殊',
+    id: 'shooter_reload', name: '上膛', icon: 'assets/skill-icons/shooter/shooter_reload.webp', class: '射手', type: '特殊',
     cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'RELOAD_AMMO' },
@@ -474,7 +474,7 @@ export const SKILLS = {
   },
 
   shooter_roll: {
-    id: 'shooter_roll', name: '翻滚', icon: 'assets/skill-icons/shooter/shooter_roll.png', class: '射手', type: '移动',
+    id: 'shooter_roll', name: '翻滚', icon: 'assets/skill-icons/shooter/shooter_roll.webp', class: '射手', type: '移动',
     cost: {}, speed: 3, targeting: { shape: 'HEX', range: 2 },
     effects: [
       { cmd: 'MOVE_TELEPORT', target: 'TARGET_POS' },
@@ -484,7 +484,7 @@ export const SKILLS = {
   },
 
   shooter_bell: {
-    id: 'shooter_bell', name: '丧钟为你而鸣', icon: 'assets/skill-icons/shooter/shooter_bell.png', class: '射手', type: '攻击',
+    id: 'shooter_bell', name: '丧钟为你而鸣', icon: 'assets/skill-icons/shooter/shooter_bell.webp', class: '射手', type: '攻击',
     cost: {}, speed: 1, targeting: { shape: 'HEX', range: 6 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 'ALL' },
@@ -495,7 +495,7 @@ export const SKILLS = {
   },
 
   shooter_aim: {
-    id: 'shooter_aim', name: '预瞄', icon: 'assets/skill-icons/shooter/shooter_aim.png', class: '射手', type: '特殊',
+    id: 'shooter_aim', name: '预瞄', icon: 'assets/skill-icons/shooter/shooter_aim.webp', class: '射手', type: '特殊',
     cost: {}, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SPEED_BOOST', target: 'SELF', duration: 1 },
@@ -504,7 +504,7 @@ export const SKILLS = {
   },
 
   shooter_predict: {
-    id: 'shooter_predict', name: '预判', icon: 'assets/skill-icons/shooter/shooter_predict.png', class: '射手', type: '特殊',
+    id: 'shooter_predict', name: '预判', icon: 'assets/skill-icons/shooter/shooter_predict.webp', class: '射手', type: '特殊',
     cost: {}, speed: 1, targeting: { shape: 'HEX', range: 6 },
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SURE_HIT', target: 'TARGET', duration: 1 },
@@ -513,7 +513,7 @@ export const SKILLS = {
   },
 
   shooter_hook: {
-    id: 'shooter_hook', name: '钩锁', icon: 'assets/skill-icons/shooter/shooter_hook.png', class: '射手', type: '移动',
+    id: 'shooter_hook', name: '钩锁', icon: 'assets/skill-icons/shooter/shooter_hook.webp', class: '射手', type: '移动',
     cost: { ammo: 1 }, speed: 2, targeting: { shape: 'HEX', range: 5 }, cooldown: 2,
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 1 },
@@ -524,7 +524,7 @@ export const SKILLS = {
   },
 
   shooter_slow_shot: {
-    id: 'shooter_slow_shot', name: '阻滞射击', icon: 'assets/skill-icons/shooter/shooter_slow_shot.png', class: '射手', type: '攻击',
+    id: 'shooter_slow_shot', name: '阻滞射击', icon: 'assets/skill-icons/shooter/shooter_slow_shot.webp', class: '射手', type: '攻击',
     cost: { ammo: 2 }, speed: 1, targeting: { shape: 'HEX', range: 6 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 2 },
@@ -535,7 +535,7 @@ export const SKILLS = {
   },
 
   shooter_armor_pierce: {
-    id: 'shooter_armor_pierce', name: '穿甲弹', icon: 'assets/skill-icons/shooter/shooter_armor_pierce.png', class: '射手', type: '攻击',
+    id: 'shooter_armor_pierce', name: '穿甲弹', icon: 'assets/skill-icons/shooter/shooter_armor_pierce.webp', class: '射手', type: '攻击',
     cost: { ammo: 2 }, speed: 1, targeting: { shape: 'HEX', range: 6 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 2 },
@@ -545,7 +545,7 @@ export const SKILLS = {
   },
 
   shooter_cover_fire: {
-    id: 'shooter_cover_fire', name: '掩护射击', icon: 'assets/skill-icons/shooter/shooter_cover_fire.png', class: '射手', type: '防御',
+    id: 'shooter_cover_fire', name: '掩护射击', icon: 'assets/skill-icons/shooter/shooter_cover_fire.webp', class: '射手', type: '防御',
     cost: { ammo: 3 }, speed: 3, targeting: { shape: 'SELF' }, cooldown: 3,
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 3 },
@@ -555,7 +555,7 @@ export const SKILLS = {
   },
 
   shooter_gun_dance: {
-    id: 'shooter_gun_dance', name: '枪舞', icon: 'assets/skill-icons/shooter/shooter_gun_dance.png', class: '射手', type: '攻击',
+    id: 'shooter_gun_dance', name: '枪舞', icon: 'assets/skill-icons/shooter/shooter_gun_dance.webp', class: '射手', type: '攻击',
     cost: { ammo: 4 }, speed: 1, targeting: { shape: 'AOE_SELF', radius: 2 }, cooldown: 4,
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 4 },
@@ -568,7 +568,7 @@ export const SKILLS = {
   },
 
   shooter_bell_resolve: {
-    id: 'shooter_bell_resolve', name: '丧钟·响', icon: 'assets/skill-icons/shooter/shooter_bell_resolve.png', class: '射手', type: '攻击',
+    id: 'shooter_bell_resolve', name: '丧钟·响', icon: 'assets/skill-icons/shooter/shooter_bell_resolve.webp', class: '射手', type: '攻击',
     cost: {}, speed: 2, targeting: { shape: 'HEX', range: 6 }, hidden: true,
     effects: [
       { cmd: 'ATTACK_PROJECTILE', power: 100, flags: ['CASING_DROP'] },
@@ -577,7 +577,7 @@ export const SKILLS = {
   },
 
   shooter_causality: {
-    id: 'shooter_causality', name: '洞穿因果的一枪', icon: 'assets/skill-icons/shooter/shooter_causality.png', class: '射手', type: '攻击',
+    id: 'shooter_causality', name: '洞穿因果的一枪', icon: 'assets/skill-icons/shooter/shooter_causality.webp', class: '射手', type: '攻击',
     cost: { ammo: 6 }, speed: 1, targeting: { shape: 'HEX', range: 10 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 6 },
@@ -587,7 +587,7 @@ export const SKILLS = {
   },
 
   shooter_iaido: {
-    id: 'shooter_iaido', name: '美式居合', icon: 'assets/skill-icons/shooter/shooter_iaido.png', class: '射手', type: '攻击',
+    id: 'shooter_iaido', name: '美式居合', icon: 'assets/skill-icons/shooter/shooter_iaido.webp', class: '射手', type: '攻击',
     cost: { ammo: 2 }, speed: 2, targeting: { shape: 'HEX', range: 6 },
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 2 },
@@ -633,7 +633,7 @@ export const SKILLS = {
   },
 
   role_jimmy_marrow_wine: {
-    id: 'role_jimmy_marrow_wine', name: '易经洗髓酒', icon: 'assets/skill-icons/role/role_jimmy_marrow_wine.png', class: '战士', type: '角色',
+    id: 'role_jimmy_marrow_wine', name: '易经洗髓酒', icon: 'assets/skill-icons/role/role_jimmy_marrow_wine.webp', class: '战士', type: '角色',
     cost: { rage: 3 }, speed: 1, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'MARROW_UPGRADE' },
@@ -641,7 +641,7 @@ export const SKILLS = {
     desc: '技能概念：饮用洗髓酒永久提升自身洗髓层数。\n游戏作用：增加洗髓层数；层数越高后续饮酒费用越高；依次获得5层强化（怒气获得+1/攻击距离+1/移动和饮酒视为灵巧/怒气获得+1/威力+100）。\n范围：自身；威力：无；速度：1；费用：怒气按层数递增，3/4/4/5/5',
   },
   role_duelist_windstep: {
-    id: 'role_duelist_windstep', name: '逐风步', icon: 'assets/skill-icons/role/role_duelist_windstep.png', class: '战士', type: '角色',
+    id: 'role_duelist_windstep', name: '逐风步', icon: 'assets/skill-icons/role/role_duelist_windstep.webp', class: '战士', type: '角色',
     cost: { rage: 1 }, speed: 1, targeting: { shape: 'HEX', range: 2 }, cooldown: 3,
     effects: [
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 1 },
@@ -688,7 +688,7 @@ export const SKILLS = {
   },
 
   role_gunfighter_quick_action: {
-    id: 'role_gunfighter_quick_action', name: '灵巧行动', icon: 'assets/skill-icons/role/role_gunfighter_quick_action.png', class: '射手', type: '角色',
+    id: 'role_gunfighter_quick_action', name: '灵巧行动', icon: 'assets/skill-icons/role/role_gunfighter_quick_action.webp', class: '射手', type: '角色',
     cost: {}, speed: 3, targeting: { shape: 'SELF' }, hidden: true,
     effects: [
       { cmd: 'PASS', placeholderMessage: '灵巧行动是枪侠被动特质，不作为主动技能提交' },
@@ -696,7 +696,7 @@ export const SKILLS = {
     desc: '技能概念：枪侠被动特性——每回合额外灵巧行动。\n游戏作用：每回合主行动后可额外提交一个费用为0的行动。此技能为被动特质标记，不可主动选择。\n范围：自身；威力：无；速度：3；费用：无',
   },
   role_helldiver_supply_drop: {
-    id: 'role_helldiver_supply_drop', name: '呼叫补给', icon: 'assets/skill-icons/role/role_helldiver_supply_drop.png', class: '射手', type: '角色',
+    id: 'role_helldiver_supply_drop', name: '呼叫补给', icon: 'assets/skill-icons/role/role_helldiver_supply_drop.webp', class: '射手', type: '角色',
     cost: {}, speed: 1, targeting: { shape: 'HEX', range: 6 }, cooldown: 6,
     effects: [
       { cmd: 'DROP_SUPPLY_CRATE' },
@@ -704,7 +704,7 @@ export const SKILLS = {
     desc: '技能概念：呼叫空投补给箱到目标位置。\n游戏作用：目标格空投降落补给箱；可被角色拾取，角色拾取后背包弹药+3。\n范围：6；威力：无；速度：1；费用：无',
   },
   role_helldiver_bombardment: {
-    id: 'role_helldiver_bombardment', name: '呼叫轰炸', icon: 'assets/skill-icons/role/role_helldiver_supply_drop.png', class: '射手', type: '角色',
+    id: 'role_helldiver_bombardment', name: '呼叫轰炸', icon: 'assets/skill-icons/role/role_helldiver_supply_drop.webp', class: '射手', type: '角色',
     cost: {}, speed: 1, targeting: { shape: 'HEX', range: 6 }, cooldown: 6,
     effects: [
       { cmd: 'DELAYED_SKILL', resolveInTurns: 1, skillId: 'role_helldiver_bombardment_resolve' },
@@ -721,7 +721,7 @@ export const SKILLS = {
     desc: '技能概念：轰炸弹体自动结算。\n游戏作用：对轰炸标记位置发射直线飞行弹体。此技能由呼叫轰炸自动触发，不可主动选择。\n范围：6；威力：100；速度：1；费用：无',
   },
   role_yan_empty_gun: {
-    id: 'role_yan_empty_gun', name: '我赌你的枪里没有子弹', icon: 'assets/skill-icons/role/role_yan_empty_gun.png', class: '射手', type: '角色',
+    id: 'role_yan_empty_gun', name: '我赌你的枪里没有子弹', icon: 'assets/skill-icons/role/role_yan_empty_gun.webp', class: '射手', type: '角色',
     cost: {}, speed: 3, targeting: { shape: 'HEX', range: 6 }, maxUses: 1,
     effects: [
       { cmd: 'APPLY_STATUS', status: 'YAN_EMPTY_GUN', target: 'TARGET', duration: 1 },
@@ -747,7 +747,7 @@ export const SKILLS = {
     desc: '技能概念：吉米被动，回合结束时自动消耗怒气突破洗髓层数。\n游戏作用：回合结束时若怒气达标（5/6/7/8/9），自动扣除怒气并获得永久强化（依次为怒+1/攻击距离+1/移动视为灵巧/怒+1/威力+100）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_gunfighter_finesse: {
-    id: 'trait_gunfighter_finesse', name: '灵巧', icon: 'assets/skill-icons/shooter/shooter_roll.png', class: '射手', type: '特质',
+    id: 'trait_gunfighter_finesse', name: '灵巧', icon: 'assets/skill-icons/shooter/shooter_roll.webp', class: '射手', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'PASS', placeholderMessage: '灵巧：每两回合获得一个灵巧行动点，可提交一个额外cost0行动' },
@@ -755,7 +755,7 @@ export const SKILLS = {
     desc: '技能概念：每两回合获得一个灵巧行动点。\n游戏作用：每两回合获得一个灵巧行动点，可额外提交一个费用为0的行动，不占用主行动点数。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_gunfighter_strong: {
-    id: 'trait_gunfighter_strong', name: '强者', icon: 'assets/skill-icons/shooter/shooter_attack.png', class: '射手', type: '特质',
+    id: 'trait_gunfighter_strong', name: '强者', icon: 'assets/skill-icons/shooter/shooter_attack.webp', class: '射手', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'PASS', placeholderMessage: '强者：携带这个被动的人是一个强者' },
@@ -763,7 +763,7 @@ export const SKILLS = {
     desc: '技能概念：枪侠被动特质"强者"，无实际战斗效果。\n游戏作用：仅作为被动特质标记存在，无战斗数值影响。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_yan_death_wind: {
-    id: 'trait_yan_death_wind', name: '死亡如风', icon: 'assets/skill-icons/shooter/shooter_reload.png', class: '射手', type: '特质',
+    id: 'trait_yan_death_wind', name: '死亡如风', icon: 'assets/skill-icons/shooter/shooter_reload.webp', class: '射手', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'PASS', placeholderMessage: '死亡如风：对手攻击落空时自动装填' },
@@ -771,7 +771,7 @@ export const SKILLS = {
     desc: '技能概念：对手攻击落空时自动装填弹药。\n游戏作用：每当对手发起攻击但未命中时，获得1子弹并立即执行一次上膛（不占用行动）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_helldiver_laser_weapon: {
-    id: 'trait_helldiver_laser_weapon', name: '激光武器', icon: 'assets/skill-icons/shooter/shooter_aim.png', class: '射手', type: '特质',
+    id: 'trait_helldiver_laser_weapon', name: '激光武器', icon: 'assets/skill-icons/shooter/shooter_aim.webp', class: '射手', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'PASS', placeholderMessage: '激光武器：每回合结束背包弹药+1，无上限' },
@@ -779,7 +779,7 @@ export const SKILLS = {
     desc: '技能概念：每回合自动获得背包弹药。\n游戏作用：每回合结束时背包弹药+1，无弹药上限。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_helldiver_priority_ready: {
-    id: 'trait_helldiver_priority_ready', name: '优先战备', icon: 'assets/skill-icons/shooter/shooter_bell.png', class: '射手', type: '特质',
+    id: 'trait_helldiver_priority_ready', name: '优先战备', icon: 'assets/skill-icons/shooter/shooter_bell.webp', class: '射手', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'PASS', placeholderMessage: '优先战备：呼叫技能延迟-1回合，本回合即结算' },
@@ -787,7 +787,7 @@ export const SKILLS = {
     desc: '技能概念：呼叫类技能延迟减少。\n游戏作用：呼叫类技能（轰炸、补给）延迟-1回合，即本回合提交后当回合立即结算。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_helldiver_fast_ready: {
-    id: 'trait_helldiver_fast_ready', name: '快速战备', icon: 'assets/skill-icons/shooter/shooter_gun_dance.png', class: '射手', type: '特质',
+    id: 'trait_helldiver_fast_ready', name: '快速战备', icon: 'assets/skill-icons/shooter/shooter_gun_dance.webp', class: '射手', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'PASS', placeholderMessage: '快速战备：呼叫技能+50技能急速' },
@@ -795,7 +795,7 @@ export const SKILLS = {
     desc: '技能概念：呼叫类技能冷却缩短。\n游戏作用：呼叫技能+50技能急速，冷却时间从6回合缩短为4回合。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_helldiver_speed_draw: {
-    id: 'trait_helldiver_speed_draw', name: '全凭手速', icon: 'assets/skill-icons/shooter/shooter_hook.png', class: '射手', type: '特质',
+    id: 'trait_helldiver_speed_draw', name: '全凭手速', icon: 'assets/skill-icons/shooter/shooter_hook.webp', class: '射手', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
       { cmd: 'PASS', placeholderMessage: '全凭手速：呼叫行动视为灵巧行动，每回合无限灵巧呼叫点' },

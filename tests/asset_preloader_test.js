@@ -16,7 +16,7 @@ test('collectBattleAssetUrls returns unique skill and portrait urls', () => {
   });
 
   assert.equal(urls.length, new Set(urls).size, 'urls should be deduplicated');
-  assert.ok(urls.includes('assets/skill-icons/mage/mage_gather.png'));
+  assert.ok(urls.includes('assets/skill-icons/mage/mage_gather.webp'));
   assert.ok(urls.includes('assets/character-portraits/icons/shooter_gunfighter.webp?v=test-cache'));
   assert.ok(urls.includes('assets/character-portraits/shooter_gunfighter.webp?v=test-cache'));
 });
@@ -31,12 +31,12 @@ test('createAssetPreloader reuses the same image object for repeated urls', () =
     },
   });
 
-  const first = preloader.preload('assets/skill-icons/mage/mage_gather.png');
-  const second = preloader.preload('assets/skill-icons/mage/mage_gather.png');
+  const first = preloader.preload('assets/skill-icons/mage/mage_gather.webp');
+  const second = preloader.preload('assets/skill-icons/mage/mage_gather.webp');
 
   assert.equal(created.length, 1, 'only one image should be created for the same url');
   assert.equal(first, second, 'the cached image instance should be reused');
-  assert.equal(first.src, 'assets/skill-icons/mage/mage_gather.png');
+  assert.equal(first.src, 'assets/skill-icons/mage/mage_gather.webp');
 });
 
 test('BattleCanvasRenderer reuses a preloaded portrait image from the shared cache', () => {

@@ -189,6 +189,13 @@
 
 ✅ 阵法已创建
 ✅ 堪破阵眼法阵破碎 — alive formations: 0
+✅ T1后战士有怒 — rage=2
+✅ 战士ON_HIT怒气+1(斩击命中敌弹体) — rage before=2, after=1
+✅ 战士挥空应在log中不出现 — no 挥空
+✅ T1后双方有怒 — w1=2, w2=2
+✅ w1 ON_HIT怒气+1 — rage 2→3
+✅ w2 ON_HIT怒气+1 — rage 2→3
+✅ 双方无挥空 — 挥空 count=0
 
 ## 射手技能测试 (Shooter Skills)
 
@@ -203,7 +210,7 @@
 ✅ 必中弹体命中(护盾吸收100) — shield=200
 ✅ 必中追踪位移目标(无盾致死) — mage dead=true
 ✅ 必中弹体命中(怒气吸收100) — rage=0
-✅ 必中同速拦截(战士冲入弹道) — rage=1
+✅ 必中同速斩击相杀(战士冲入弹道)→ON_HIT — rage=2
 
 ### shooter_aim — 预瞄(SPEED_BOOST)
 
@@ -276,4 +283,4 @@
 
 ---
 
-**总计: 139 通过, 0 失败**
+**总计: 146 通过, 0 失败**

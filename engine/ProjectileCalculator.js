@@ -235,24 +235,39 @@ export class ProjectileCalculator {
               projectileId: strong.id, otherProjectileId: weak.id,
               power: strong.power, otherPower: weak.power,
               q: cq, r: cr,
+              ownerId: strong.ownerId, actionId: strong.actionId, flags: [...strong.flags],
+              otherOwnerId: weak.ownerId, otherActionId: weak.actionId, otherFlags: [...weak.flags],
             });
             this.#lastCollisions.push({
               type: 'mutual_destroy',
               projectileId: weak.id, otherProjectileId: strong.id,
               power: weak.power, otherPower: strong.power,
               q: cq, r: cr,
+              ownerId: weak.ownerId, actionId: weak.actionId, flags: [...weak.flags],
+              otherOwnerId: strong.ownerId, otherActionId: strong.actionId, otherFlags: [...strong.flags],
             });
           } else {
             weak.alive = false;
             destroyed.add(weak.id);
             const tag = (strongMelee || weakMelee) ? '⚔💥 斩击贯穿！' : '💥 弹体贯穿！';
             this.#logger?.log(`${tag}余威${strong.power}(不降威)`, 'sh');
-            // Record canonical collision event for the destroyed projectile
+            // Record canonical collision events for both projectiles
             this.#lastCollisions.push({
               type: 'overpowered',
               projectileId: weak.id, otherProjectileId: strong.id,
               power: weak.power, otherPower: strong.power,
               q: cq, r: cr,
+              ownerId: weak.ownerId, actionId: weak.actionId, flags: [...weak.flags],
+              otherOwnerId: strong.ownerId, otherActionId: strong.actionId, otherFlags: [...strong.flags],
+            });
+            // Also record for the strong (surviving) projectile — it made contact
+            this.#lastCollisions.push({
+              type: 'overpowered',
+              projectileId: strong.id, otherProjectileId: weak.id,
+              power: strong.power, otherPower: weak.power,
+              q: cq, r: cr,
+              ownerId: strong.ownerId, actionId: strong.actionId, flags: [...strong.flags],
+              otherOwnerId: weak.ownerId, otherActionId: weak.actionId, otherFlags: [...weak.flags],
             });
           }
         }
@@ -282,11 +297,17 @@ export class ProjectileCalculator {
             this.#logger?.log(`${tag}威${a.power} vs 威${b.power}`, 'die');
             this.#lastCollisions.push({
               type: 'mutual_destroy', projectileId: a.id, otherProjectileId: b.id,
-              power: a.power, otherPower: b.power, q: (aCurQ + bCurQ) / 2, r: (aCurR + bCurR) / 2,
+              power: a.power, otherPower: b.power,
+              q: (aCurQ + bCurQ) / 2, r: (aCurR + bCurR) / 2,
+              ownerId: a.ownerId, actionId: a.actionId, flags: [...a.flags],
+              otherOwnerId: b.ownerId, otherActionId: b.actionId, otherFlags: [...b.flags],
             });
             this.#lastCollisions.push({
               type: 'mutual_destroy', projectileId: b.id, otherProjectileId: a.id,
-              power: b.power, otherPower: a.power, q: (aCurQ + bCurQ) / 2, r: (aCurR + bCurR) / 2,
+              power: b.power, otherPower: a.power,
+              q: (aCurQ + bCurQ) / 2, r: (aCurR + bCurR) / 2,
+              ownerId: b.ownerId, actionId: b.actionId, flags: [...b.flags],
+              otherOwnerId: a.ownerId, otherActionId: a.actionId, otherFlags: [...a.flags],
             });
           } else {
             const strong = a.power > b.power ? a : b;
@@ -298,7 +319,18 @@ export class ProjectileCalculator {
             this.#logger?.log(`${tag}余威${strong.power}(不降威)`, 'sh');
             this.#lastCollisions.push({
               type: 'overpowered', projectileId: weak.id, otherProjectileId: strong.id,
-              power: weak.power, otherPower: strong.power, q: weak.path[weak.stepIndex][0], r: weak.path[weak.stepIndex][1],
+              power: weak.power, otherPower: strong.power,
+              q: weak.path[weak.stepIndex][0], r: weak.path[weak.stepIndex][1],
+              ownerId: weak.ownerId, actionId: weak.actionId, flags: [...weak.flags],
+              otherOwnerId: strong.ownerId, otherActionId: strong.actionId, otherFlags: [...strong.flags],
+            });
+            // Also record for the strong (surviving) projectile
+            this.#lastCollisions.push({
+              type: 'overpowered', projectileId: strong.id, otherProjectileId: weak.id,
+              power: strong.power, otherPower: weak.power,
+              q: strong.path[strong.stepIndex][0], r: strong.path[strong.stepIndex][1],
+              ownerId: strong.ownerId, actionId: strong.actionId, flags: [...strong.flags],
+              otherOwnerId: weak.ownerId, otherActionId: weak.actionId, otherFlags: [...weak.flags],
             });
           }
         }

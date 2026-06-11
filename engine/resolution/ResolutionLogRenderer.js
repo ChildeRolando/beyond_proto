@@ -123,6 +123,15 @@ export function renderEventLogEntry(event, charById = new Map()) {
   }
 
   if (et === 'projectile_collided') {
+    // Distinguish: 斩击相杀 / 弹体相杀 / 斩击贯穿 / 弹体贯穿
+    const isMelee = event.isMelee || event.otherIsMelee;
+    if (event.collisionType === 'mutual_destroy') {
+      return { actionId: event.actionId || null, text: isMelee ? '⚔💥 斩击相杀' : '💥 弹体相杀', type: 'projectile' };
+    }
+    if (event.collisionType === 'overpowered') {
+      return { actionId: event.actionId || null, text: isMelee ? '⚔💥 斩击贯穿' : '💥 弹体贯穿', type: 'projectile' };
+    }
+    // Fallback for legacy collision events without collisionType metadata
     const tgt = targetName || '目标';
     const dmg = event.finalDamage != null ? ` (${event.finalDamage})` : '';
     return { actionId: event.actionId || null, text: `弹体碰撞：${tgt}${dmg}`, type: 'projectile' };
@@ -133,6 +142,7 @@ export function renderEventLogEntry(event, charById = new Map()) {
   }
 
   if (et === 'projectile_intercepted') {
+    // Buff interception only (e.g. 纳刀), not collision-based
     const interceptorName = targetName || event.targetId || '未知';
     return { actionId: event.actionId || null, text: `弹体被拦截：${interceptorName}`, type: 'projectile' };
   }

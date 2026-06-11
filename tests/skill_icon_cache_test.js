@@ -13,7 +13,7 @@ test('skill icon cache reuses image object for same src', () => {
     return { src: '', complete: true, naturalWidth: 32 };
   };
 
-  const skill = { icon: 'assets/skill-icons/warrior/warrior_move.png' };
+  const skill = { icon: 'assets/skill-icons/warrior/warrior_move.webp' };
 
   const first = getCachedSkillIconImage(skill, { createImage });
   const second = getCachedSkillIconImage(skill, { createImage });

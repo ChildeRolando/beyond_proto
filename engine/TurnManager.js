@@ -316,14 +316,29 @@ export class TurnManager {
                   eventType: 'projectile_collided',
                   projectileId: c.projectileId,
                   targetId: c.otherProjectileId,
+                  collisionType: c.type,
+                  isMelee: c.flags?.includes('MELEE') || false,
+                  otherIsMelee: c.otherFlags?.includes('MELEE') || false,
+                  power: c.power,
+                  otherPower: c.otherPower,
+                  ownerId: c.ownerId,
+                  otherOwnerId: c.otherOwnerId,
+                  actionId: c.actionId,
                 });
               } else if (c.type === 'overpowered') {
                 this.#eventRecorder.record({
                   id: `rev-collide-${c.projectileId}`,
-                  eventType: 'projectile_intercepted',
+                  eventType: 'projectile_collided',
                   projectileId: c.projectileId,
                   targetId: c.otherProjectileId,
-                  basePower: c.otherPower,
+                  collisionType: c.type,
+                  isMelee: c.flags?.includes('MELEE') || false,
+                  otherIsMelee: c.otherFlags?.includes('MELEE') || false,
+                  power: c.power,
+                  otherPower: c.otherPower,
+                  ownerId: c.ownerId,
+                  otherOwnerId: c.otherOwnerId,
+                  actionId: c.actionId,
                 });
               }
             }
@@ -366,6 +381,22 @@ export class TurnManager {
             if (r.targetId) { entry.targetId = r.targetId; entry.targetName = r.targetName; }
             resultByAction.set(r.actionId, entry);
           }
+        }
+
+        // Also incorporate projectile-vs-projectile collisions into resultByAction.
+        // MELEE projectiles that collide with enemy projectiles count as hits
+        // (prevents 挥空 and ensures GAIN_RESOURCE ON_HIT fires).
+        for (const c of results.collisions || []) {
+          if (!c.flags?.includes('MELEE')) continue;
+          if (!c.actionId) continue;
+          if (c.ownerId === c.otherOwnerId) continue;
+          const entry = resultByAction.get(c.actionId) || {
+            hit: false, targetId: null, targetName: null, killed: false, damage: 0,
+          };
+          entry.hit = true;
+          entry.hitProjectile = true;
+          resultByAction.set(c.actionId, entry);
+          this.#lastHitByActor.set(c.ownerId, true);
         }
 
         // Finalize pending attack events.
