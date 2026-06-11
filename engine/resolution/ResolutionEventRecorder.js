@@ -194,8 +194,8 @@ export class ResolutionEventRecorder {
       schemaVersion: 2,
       turnNumber: this.#currentTurn,
       phases,
-      finalSnapshot: null,
-      initialSnapshot: null,
+      initialSnapshot,
+      finalSnapshot,
     };
   }
 

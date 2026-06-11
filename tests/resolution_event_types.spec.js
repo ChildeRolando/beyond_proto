@@ -2,6 +2,7 @@
 // Run: node tests/resolution_event_types.spec.js
 
 import { ResolutionEventType, isResolutionEventType, normalizeResolutionEvent, assertResolutionEvent } from '../engine/resolution/ResolutionEventTypes.js';
+import { ResolutionEventRecorder } from '../engine/resolution/ResolutionEventRecorder.js';
 
 let pass = 0, fail = 0;
 
@@ -279,6 +280,58 @@ console.log('[5c] event without metadata works (null metadata)');
   });
   assertEquals(e.metadata, null, 'no metadata → null');
   assertEquals(e.eventType, 'projectile_collided', 'eventType still valid');
+}
+
+// ═══════════════════════════════════════════
+// Part 6: finalize returns correct snapshots
+// ═══════════════════════════════════════════
+
+console.log('\n=== Part 6: ResolutionEventRecorder finalize returns snapshots ===');
+
+{
+  // Minimal mock EventBus
+  const mockBus = { on: () => 0, off: () => {} };
+  const recorder = new ResolutionEventRecorder(mockBus, null);
+
+  recorder.startTurn(3);
+  const phase = recorder.startPhase(2, 'speed', 1);
+  recorder.record({
+    eventType: 'action_declared',
+    actorId: 'a1',
+    skillId: 's1',
+    actionId: 'act-1',
+  });
+  recorder.endPhase(phase);
+
+  const initSnap = { version: 1, registry: { entities: ['init'] } };
+  const finalSnap = { version: 1, registry: { entities: ['final'] } };
+  const result = recorder.finalize({ initialSnapshot: initSnap, finalSnapshot: finalSnap });
+
+  console.log('[6a] finalize returns initialSnapshot');
+  assert(result.initialSnapshot === initSnap, 'initialSnapshot is the passed object');
+
+  console.log('[6b] finalize returns finalSnapshot');
+  assert(result.finalSnapshot === finalSnap, 'finalSnapshot is the passed object');
+
+  console.log('[6c] result has schemaVersion 2');
+  assertEquals(result.schemaVersion, 2, 'schemaVersion is 2');
+
+  console.log('[6d] result has no endState');
+  assert(!('endState' in result), 'no endState on result');
+
+  console.log('[6e] result has no finalViewState');
+  assert(!('finalViewState' in result), 'no finalViewState on result');
+
+  console.log('[6f] result has no viewState');
+  assert(!('viewState' in result), 'no viewState on result');
+
+  console.log('[6g] finalize with no args returns null snapshots');
+  const recorder2 = new ResolutionEventRecorder(mockBus, null);
+  recorder2.startTurn(1);
+  recorder2.startPhase(1);
+  const r2 = recorder2.finalize();
+  assertEquals(r2.initialSnapshot, null, 'no-arg initialSnapshot is null');
+  assertEquals(r2.finalSnapshot, null, 'no-arg finalSnapshot is null');
 }
 
 // ─── Summary ───
