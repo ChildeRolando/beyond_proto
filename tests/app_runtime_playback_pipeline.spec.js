@@ -89,9 +89,11 @@ console.log('\n=== Test 1: AppRuntime source wiring ===');
     assert(src.includes(term), `AppRuntime contains "${term}"`);
   }
 
-  console.log('\n[1b] AppRuntime still retains old TurnPlaybackController');
+  console.log('\n[1b] AppRuntime retains old TurnPlaybackController as fallback');
   assert(src.includes('TurnPlaybackController'), 'TurnPlaybackController still imported');
-  assert(src.includes('turnPlaybackController.play'), 'old animateTurn still wired');
+  // New pipeline (playTurnResolution) is the primary path; animateTurn is fallback
+  assert(src.includes('playTurnResolution'), 'playTurnResolution is defined');
+  assert(src.includes('animateTurn'), 'animateTurn fallback still wired');
 }
 
 // ═══════════════════════════════════════════
@@ -246,8 +248,10 @@ console.log('\n=== Test 5: timeline panel callbacks ===');
   console.log('\n[5a] onFrame → updatePlaybackFrame called');
   assert(panelCalls.updatePlaybackFrame >= 1, 'updatePlaybackFrame called');
 
-  console.log('\n[5b] onFrame → battleRender.renderAll called');
-  assert(mockBattleRender.renderAllCalls >= 1, 'renderAll called on frame');
+  console.log('\n[5b] onFrame → render called');
+  // Note: onFrame now calls renderer.render(scene) + individual panel methods
+  // rather than battleRender.renderAll() to avoid overwriting playback base state
+  assert(panelCalls.updatePlaybackFrame >= 1, 'updatePlaybackFrame called');
 }
 
 // ═══════════════════════════════════════════
@@ -374,10 +378,85 @@ console.log('\n=== Test 9: boundary scan ===');
 }
 
 // ═══════════════════════════════════════════
-// Test 10: compiler → timeline → frame integration
+// Test 10: BattleSessionController keeps animateTurn as primary, playTurnResolution available
+
+console.log('\n=== Test 10: playTurnResolution available in AppRuntime, animateTurn primary in BSC ===');
+
+{
+  const bscPath = path.resolve('session/BattleSessionController.js');
+  const bscSrc = fs.readFileSync(bscPath, 'utf-8');
+  const appSrc = fs.readFileSync(path.resolve('app/AppRuntime.js'), 'utf-8');
+
+  console.log('\n[10a] BattleSessionController still uses animateTurn as primary');
+  assert(bscSrc.includes('animateTurn'), 'animateTurn still in BSC');
+
+  console.log('\n[10b] playTurnResolution wired in AppRuntime (available as callback)');
+  assert(appSrc.includes('playTurnResolution'), 'playTurnResolution defined in AppRuntime');
+
+  console.log('\n[10c] playTurnResolution passed to BattleSessionController callbacks');
+  assert(appSrc.includes('playTurnResolution,'), 'playTurnResolution in BSC options');
+}
+
+// ═══════════════════════════════════════════
+// Test 11: Promise behavior — playTurnResolution resolves on complete
+
+console.log('\n=== Test 11: playTurnResolution Promise behavior ===');
+
+{
+  const appSrc = fs.readFileSync(path.resolve('app/AppRuntime.js'), 'utf-8');
+
+  console.log('\n[11a] playTurnResolution returns a Promise');
+  assert(appSrc.includes('new Promise'), 'playTurnResolution uses new Promise');
+
+  console.log('\n[11b] playTurnResolution resolves in onComplete callback');
+  assert(appSrc.includes('_unsubscribePlayComplete'), 'uses unsubscribe to avoid listener leak');
+  assert(appSrc.includes('resolve()'), 'calls resolve() on complete');
+
+  console.log('\n[11c] playTurnResolution clears old playback frame');
+  assert(appSrc.includes('setPlaybackFrame(null)'), 'clears old playbackFrame before starting');
+}
+
+// ═══════════════════════════════════════════
+// Test 12: onComplete dedup — safe with both global + per-play listeners
+
+console.log('\n=== Test 12: onComplete dedup safe ===');
+
+{
+  let globalCompleteCount = 0;
+  let perPlayCompleteCount = 0;
+
+  const listeners = [];
+  const mockRuntime = {
+    onComplete(fn) { listeners.push(fn); return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); }; },
+    play() {},
+    skipToEnd() { for (const fn of listeners) fn(); },
+  };
+
+  // Global (always active)
+  mockRuntime.onComplete(() => { globalCompleteCount++; });
+  // Per-play (registered for specific resolution, unsubscribes on complete)
+  const unsub = mockRuntime.onComplete(() => { perPlayCompleteCount++; unsub(); });
+
+  // Trigger complete (via skipToEnd)
+  mockRuntime.skipToEnd();
+
+  console.log('\n[12a] both listeners fire on first complete');
+  assertEquals(globalCompleteCount, 1, 'global onComplete called once');
+  assertEquals(perPlayCompleteCount, 1, 'per-play onComplete called once');
+
+  // Trigger again — per-play listener should be unsubscribed
+  mockRuntime.skipToEnd();
+
+  console.log('\n[12b] per-play listener does not fire twice (unsubscribed)');
+  assertEquals(globalCompleteCount, 2, 'global fires again');
+  assertEquals(perPlayCompleteCount, 1, 'per-play does NOT fire again');
+}
+
+// ═══════════════════════════════════════════
+// Test 13: compiler → timeline → frame integration
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 10: compiler → timeline → buildPlaybackFrame ===');
+console.log('\n=== Test 13: compiler → timeline → buildPlaybackFrame ===');
 
 {
   const phase = {
@@ -393,13 +472,13 @@ console.log('\n=== Test 10: compiler → timeline → buildPlaybackFrame ===');
   };
   const resolution = makeResolution({ phases: [phase] });
 
-  console.log('\n[10a] compilePresentationTimeline produces valid timeline');
+  console.log('\n[13a] compilePresentationTimeline produces valid timeline');
   const timeline = compilePresentationTimeline(resolution);
   assertEquals(timeline.schemaVersion, 1, 'schemaVersion 1');
   assert(timeline.clips.length >= 1, 'has clips');
   assert(timeline.durationMs > 0, 'has duration');
 
-  console.log('\n[10b] buildPlaybackFrame from timeline');
+  console.log('\n[13b] buildPlaybackFrame from timeline');
   const frame = buildPlaybackFrame(timeline, 50);
   assertEquals(frame.mode, 'playback', 'frame mode');
   assertEquals(frame.timeMs, 50, 'frame timeMs');

@@ -281,6 +281,81 @@
 ✅ G6: Clean end → opponentReady false
 ✅ H1: Double BATTLE_END same result
 
+## Task 2.1: getState excludes keyframes/animEvents
+
+✅ getState excludes keyframes
+✅ getState excludes animEvents
+✅ getState still has characters
+✅ getState still has entities
+✅ getState still has projectiles
+✅ getState still has logs
+✅ getState still has turn
+✅ getState still has phase
+✅ getState still has teams
+✅ getState still has rules
+
+## Task 2.2: animation storage/API removed from ProjectileCalculator
+
+✅ serialize() excludes keyframes
+✅ serialize() excludes animEvents
+✅ serialize() still has projectiles
+✅ serialize() still has lastHits
+✅ deserialize() roundtrip succeeds
+✅ generateKeyframes removed
+✅ clearKeyframes removed
+✅ addAnimEvent removed
+✅ getAnimEvents removed
+✅ clearAnimEvents removed
+✅ createProjectile still works
+✅ snapshot.projectiles payload excludes keyframes
+✅ snapshot.projectiles payload excludes animEvents
+✅ snapshot.projectiles.projectiles has 1 entry — got 1
+✅ projectile entry excludes keyframes
+✅ projectile entry excludes animEvents
+
+## Task 2.3: projectile domain event metadata
+
+✅ A1: projectile_created exists
+✅ A2: projectileId
+✅ A3: actorId
+✅ A4: actionId
+✅ A5: skillId
+✅ A6: from/to
+✅ A7: basePower
+✅ A8: metadata.path array
+✅ A9: path[0] {q,r}
+✅ A10: metadata.flags array
+✅ A11: isMelee boolean
+✅ A12: projectileType valid
+✅ A13: no-flag = projectile
+✅ B1: isMelee true
+✅ B2: projectileType melee
+✅ B3: flags MELEE
+✅ C1: stationary
+✅ C2: aoe
+✅ D1: collided exists
+✅ D2: actionId
+✅ D3: targetId
+✅ D4: finalDamage
+✅ D5: hitType
+✅ D6: contactPos
+✅ D7: flags array
+✅ E1: expired exists
+✅ E2: reason path_end
+✅ E3: lastPos
+✅ E4: intercepted exists
+✅ E5: interceptPower
+✅ E6: projectilePower
+✅ E7: interceptType
+✅ F1: path length 4
+✅ F2: all entries are {q,r}
+✅ F3: first entry
+✅ F4: last entry
+✅ G1: getState no keyframes
+✅ G2: getState no animEvents
+✅ G3: snapshot.projectiles no keyframes
+✅ G4: snapshot.projectiles no animEvents
+
 ---
 
-**总计: 146 通过, 0 失败**
+**总计: 212 通过, 0 失败**

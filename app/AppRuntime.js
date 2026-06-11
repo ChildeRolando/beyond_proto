@@ -129,7 +129,17 @@ export function createAppRuntime() {
   playbackRuntime.onFrame((frame) => {
     battleSceneStore.setPlaybackFrame(frame);
     timelinePanel.updatePlaybackFrame(frame);
-    battleRender.renderAll();
+    // During playback, render the scene directly from the store (don't go through
+    // renderLiveScene which would overwrite the stored base state with engine state).
+    if (battleCanvasRenderer) {
+      const scene = battleSceneStore.getScene();
+      battleCanvasRenderer.render(scene);
+    }
+    // Still update panels/logs/turn UI via the coordinator
+    battleRender.renderPanels();
+    battleRender.renderLog();
+    battleRender.updateTurnUi();
+    battleRender.renderTutorialHud();
   });
 
   playbackRuntime.onComplete(() => {
@@ -138,15 +148,44 @@ export function createAppRuntime() {
 
   timelinePanel.bindSkip(() => playbackRuntime.skipToEnd());
 
-  // ── playTurnResolution: new pipeline entry point ──
-  const playTurnResolution = async ({ resolution, finalSnapshot, turnData }) => {
-    const timeline = compilePresentationTimeline(resolution);
-    timelinePanel.renderResolution(resolution);
-    if (battleSession?.engine) {
-      battleSceneStore.setBaseState(battleSession.engine.getState());
-    }
-    battleSceneStore.setInteraction(battleSession?.getRenderViewState?.() || {});
-    playbackRuntime.play(timeline);
+  // ── playTurnResolution: new pipeline entry point (returns Promise, resolves on complete) ──
+  let _unsubscribePlayComplete = null;
+
+  const playTurnResolution = ({ resolution, finalSnapshot, turnData }) => {
+    return new Promise((resolve) => {
+      // Clean up any previous per-play complete listener
+      if (_unsubscribePlayComplete) {
+        _unsubscribePlayComplete();
+        _unsubscribePlayComplete = null;
+      }
+
+      // Clear old playback frame so getScene() starts fresh
+      battleSceneStore.setPlaybackFrame(null);
+
+      const timeline = compilePresentationTimeline(resolution);
+      timelinePanel.renderResolution(resolution);
+
+      if (battleSession?.engine) {
+        battleSceneStore.setBaseState(battleSession.engine.getState());
+      }
+      battleSceneStore.setInteraction(battleSession?.getRenderViewState?.() || {});
+
+      // Fallback: if timeline has no clips (durationMs === 0), resolve immediately.
+      // The old animateTurn fallback handles non-projectile resolutions better.
+      if (!timeline || timeline.durationMs <= 0) {
+        resolve();
+        return;
+      }
+
+      // Resolve only when this specific playback completes
+      _unsubscribePlayComplete = playbackRuntime.onComplete(() => {
+        _unsubscribePlayComplete?.();
+        _unsubscribePlayComplete = null;
+        resolve();
+      });
+
+      playbackRuntime.play(timeline);
+    });
   };
 
   // ── Battle render coordinator ──

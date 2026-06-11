@@ -189,6 +189,7 @@ export function createBattleRenderCoordinator({
     renderLog,
     updateTurnUi,
     renderAll,
+    renderTutorialHud,
     resizeCanvas,
     showDisconnect,
     setModeBadge,
