@@ -1215,6 +1215,35 @@ function deliverAll(p1, p2) {
 	result('H1: Double BATTLE_END same result', p.opponentReadyForRematch === afterFirst);
 }
 
+// Task 2.1: GameEngine.getState() no longer returns keyframes/animEvents
+h1('Task 2.1: getState excludes keyframes/animEvents');
+{
+	const engine = new GameEngine();
+	engine.initBattle({
+		player1Class: '法师',
+		player2Class: '战士',
+	});
+	const state = engine.getState();
+
+	// 1. keyframes must not be in state
+	result('getState excludes keyframes', !('keyframes' in state),
+		state.keyframes === undefined ? undefined : `unexpected: ${typeof state.keyframes}`);
+
+	// 2. animEvents must not be in state
+	result('getState excludes animEvents', !('animEvents' in state),
+		state.animEvents === undefined ? undefined : `unexpected: ${typeof state.animEvents}`);
+
+	// 3. Stable fields still present
+	result('getState still has characters', Array.isArray(state.characters) && state.characters.length >= 2);
+	result('getState still has entities', Array.isArray(state.entities) && state.entities.length >= 2);
+	result('getState still has projectiles', Array.isArray(state.projectiles));
+	result('getState still has logs', Array.isArray(state.logs));
+	result('getState still has turn', typeof state.turn === 'number');
+	result('getState still has phase', typeof state.phase === 'string' || state.phase === null);
+	result('getState still has teams', Array.isArray(state.teams));
+	result('getState still has rules', state.rules !== undefined);
+}
+
 REPORT.push('\n---');
 REPORT.push(`\n**总计: ${passCount} 通过, ${failCount} 失败**\n`);
 

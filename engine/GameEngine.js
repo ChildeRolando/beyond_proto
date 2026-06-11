@@ -337,11 +337,7 @@ export class GameEngine {
       })),
       casings: this._getCasingsState(),
       wildBullets: this.projectileCalculator.getWildBullets(),
-      animEvents: typeof this.projectileCalculator.getAnimEvents === 'function'
-        ? this.projectileCalculator.getAnimEvents().map(evt => ({ ...evt }))
-        : [],
       logs: this.logger.getEntries(20),
-      keyframes: this.projectileCalculator.generateKeyframes(),
     };
   }
 
