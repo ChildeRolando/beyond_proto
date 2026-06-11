@@ -1,6 +1,12 @@
 import { setCanvasSize } from '../../engine/HexMath.js';
 import { PORTRAIT_CACHE_VERSION, getBattlePortraitSrc, getCachedBattlePortraitImage, getPortraitImageCache } from '../portrait/PortraitAssets.js';
 
+function clamp01(value) {
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+}
+
 export class BattleCanvasRenderer {
   constructor({ canvas, context, battleSession, getEngine, geometry, visualEffects, portraitCacheVersion = PORTRAIT_CACHE_VERSION, assetImageCache = new Map() }) {
     this.canvas = canvas;
@@ -335,23 +341,175 @@ export class BattleCanvasRenderer {
       ctx.fill();
     }
 
-    // ── Effects (lightweight: draw impact markers from effects with positions) ──
+    // ── Effects (scene.effects → VisualEffects) ──
+    this.#renderSceneEffects(scene);
+  }
+
+  /**
+   * Render all scene effects. Pure scene→canvas adapter.
+   * Does NOT read keyframes, animEvents, animStep, subT, getEngine, or battleSession.
+   */
+  #renderSceneEffects(scene) {
     const effects = scene.effects || [];
     for (const fx of effects) {
-      if (fx.effectType === 'projectile_impact') {
-        const cp = fx.payload?.contactPos;
-        if (cp) {
-          this.visualEffects?.drawImpactEffect?.(cp.q, cp.r, fx.payload?.finalDamage || 50, fx.payload?.isMelee || false, fx.progress || 0);
+      const p = fx.progress ?? 0;
+      const clampedProgress = clamp01(p);
+      const type = fx.effectType || '';
+
+      try {
+        switch (type) {
+          // ── Projectile launch ──
+          case 'projectile_launch':
+          case 'projectile': {
+            const path = fx.payload?.path;
+            const from = fx.payload?.from;
+            const to = fx.payload?.to;
+            const power = fx.payload?.basePower ?? 50;
+            const isMelee = fx.payload?.isMelee || false;
+            // Skip melee — drawn as slash
+            if (isMelee) break;
+            // Interpolate position along path
+            if (Array.isArray(path) && path.length > 0) {
+              const idx = clampedProgress * (path.length - 1);
+              const i0 = Math.floor(idx);
+              const i1 = Math.min(i0 + 1, path.length - 1);
+              const frac = idx - i0;
+              const q = path[i0].q + (path[i1].q - path[i0].q) * frac;
+              const r = path[i0].r + (path[i1].r - path[i0].r) * frac;
+              this.#drawSceneProjectile(q, r, power);
+            } else if (from && to) {
+              const q = from.q + (to.q - from.q) * clampedProgress;
+              const r = from.r + (to.r - from.r) * clampedProgress;
+              this.#drawSceneProjectile(q, r, power);
+            }
+            break;
+          }
+
+          // ── Projectile impact ──
+          case 'projectile_impact':
+          case 'impact': {
+            const cp = fx.payload?.contactPos || fx.payload?.targetPos;
+            if (cp) {
+              const age = 1 - clampedProgress; // progress 0→1 maps to age 1→0
+              this.visualEffects?.drawImpactEffect?.(cp.q, cp.r, fx.payload?.finalDamage || 50, fx.payload?.isMelee || false, age);
+            }
+            break;
+          }
+
+          // ── Melee slash ──
+          case 'melee_slash':
+          case 'slash': {
+            const from = fx.payload?.from;
+            const to = fx.payload?.to;
+            if (from && to) {
+              this.visualEffects?.drawSlashArc?.(from.q, from.r, to.q, to.r, fx.payload?.basePower || 50, clampedProgress);
+            }
+            break;
+          }
+
+          // ── Movement ──
+          case 'move':
+          case 'walk': {
+            const mfrom = fx.payload?.from;
+            const mto = fx.payload?.to;
+            if (mfrom && mto) {
+              this.visualEffects?.drawWalkTrail?.(mfrom.q, mfrom.r, mto.q, mto.r, clampedProgress);
+            }
+            break;
+          }
+          case 'dash': {
+            const dfrom = fx.payload?.from;
+            const dto = fx.payload?.to;
+            if (dfrom && dto) {
+              this.visualEffects?.drawDashTrail?.(dfrom.q, dfrom.r, dto.q, dto.r, clampedProgress);
+            }
+            break;
+          }
+          case 'teleport': {
+            const tfrom = fx.payload?.from;
+            const tto = fx.payload?.to;
+            if (tfrom && tto) {
+              this.visualEffects?.drawTeleportEffect?.(tfrom.q, tfrom.r, tto.q, tto.r, clampedProgress);
+            }
+            break;
+          }
+
+          // ── Gather ──
+          case 'gather': {
+            const gpos = fx.payload?.position;
+            if (gpos) {
+              const color = fx.payload?.color || (fx.payload?.resource === 'qi' ? '#8b5cf6' : '#ffcc66');
+              this.visualEffects?.drawGatherEffect?.(gpos.q, gpos.r, color, fx.payload?.amount || 1, clampedProgress);
+            }
+            break;
+          }
+
+          // ── Damage number ──
+          case 'damage_number': {
+            const dpos = fx.payload?.position || fx.payload?.targetPos;
+            if (dpos) {
+              const [dcx, dcy] = this.geometry.hexCenter(dpos.q, dpos.r);
+              const ctx = this.context;
+              const alpha = 1 - clampedProgress;
+              const offsetY = -20 - clampedProgress * 30;
+              ctx.save();
+              ctx.globalAlpha = Math.max(0, alpha);
+              ctx.fillStyle = '#ff4444';
+              ctx.font = 'bold 16px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(String(fx.payload?.value ?? ''), dcx, dcy + offsetY);
+              ctx.restore();
+            }
+            break;
+          }
+
+          // ── Death ──
+          case 'death': {
+            const deathPos = fx.payload?.position;
+            if (deathPos) {
+              const [dcx2, dcy2] = this.geometry.hexCenter(deathPos.q, deathPos.r);
+              const ctx2 = this.context;
+              const alpha2 = 1 - clampedProgress;
+              ctx2.save();
+              ctx2.globalAlpha = Math.max(0, alpha2);
+              ctx2.beginPath();
+              ctx2.arc(dcx2, dcy2, 20 + clampedProgress * 25, 0, Math.PI * 2);
+              ctx2.strokeStyle = 'rgba(255,60,60,0.7)';
+              ctx2.lineWidth = 2;
+              ctx2.stroke();
+              ctx2.restore();
+            }
+            break;
+          }
+
+          // ── Unknown / future effect types — silently skip ──
+          default:
+            break;
         }
-      }
-      if (fx.effectType === 'melee_slash') {
-        const from = fx.payload?.from;
-        const to = fx.payload?.to;
-        if (from && to) {
-          this.visualEffects?.drawSlashArc?.(from.q, from.r, to.q, to.r, fx.payload?.basePower || 50, fx.progress || 0);
-        }
+      } catch (_e) {
+        // Individual effect render failure must not break the scene
       }
     }
+  }
+
+  /** Draw a single projectile at an interpolated hex position (scene-safe, no keyframes). */
+  #drawSceneProjectile(q, r, power) {
+    const [cx, cy] = this.geometry.hexCenter(q, r);
+    const ctx = this.context;
+    const size = 5 + Math.min(10, power / 50);
+    ctx.beginPath();
+    ctx.arc(cx, cy, size + 5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, size, 0, Math.PI * 2);
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, size);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.3, '#ffcc66');
+    g.addColorStop(0.7, '#e05555');
+    g.addColorStop(1, '#801010');
+    ctx.fillStyle = g;
+    ctx.fill();
   }
 
   renderBoard(animStep = -1, subT = 0) {
