@@ -14,6 +14,8 @@
  * @param {number} [opts.durationMs=0] — total duration of this frame
  * @param {string|null} [opts.phaseId=null]
  * @param {string[]} [opts.activeActionIds=[]]
+ * @param {string[]} [opts.activeClipIds=[]] — clip ids active at this time (Milestone 3)
+ * @param {Array} [opts.activeClips=[]] — active clip objects at this time (Milestone 3)
  * @param {object|null} [opts.sceneState=null] — interpolated scene state at this time
  * @param {Array} [opts.effects=[]] — active visual effects at this time
  * @returns {object} PlaybackFrame
@@ -23,6 +25,8 @@ export function createPlaybackFrame({
   durationMs = 0,
   phaseId = null,
   activeActionIds = [],
+  activeClipIds = [],
+  activeClips = [],
   sceneState = null,
   effects = [],
 } = {}) {
@@ -32,6 +36,8 @@ export function createPlaybackFrame({
     durationMs,
     phaseId,
     activeActionIds,
+    activeClipIds,
+    activeClips,
     sceneState,
     effects,
   };
