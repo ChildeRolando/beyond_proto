@@ -55,34 +55,10 @@ export function createBattleLifecycleService({
   }
 
   async function animateTurn() {
-    const battleSession = getBattleSession();
-    // Task 2.2: generateKeyframes/getAnimEvents removed from ProjectileCalculator.
-    // Animation data will be provided by PresentationTimelineCompiler in a future milestone.
-    // For now, animateTurn is a no-op (no crash, no visual animation).
-    const calc = battleSession.engine.projectileCalculator;
-    const keyframes = typeof calc.generateKeyframes === 'function' ? calc.generateKeyframes() : [];
-    const animEvents = typeof calc.getAnimEvents === 'function' ? calc.getAnimEvents() : [];
-    const projs = calc.projectiles || [];
-    if (keyframes.length === 0 && animEvents.length === 0 && projs.length === 0) return;
-
-    const maxStep = Math.max(
-      keyframes.reduce((max, kf) => Math.max(max, kf.step || 0), 0),
-      animEvents.reduce((max, e) => Math.max(max, (e.step || 0) + (e.duration || 1) - 1), 0)
-    );
-    const SUBFRAMES = 4;
-    const frameMs = 25;
-
-    for (let s = 0; s <= maxStep; s++) {
-      const startSub = s === 0 ? 0 : 1;
-      for (let sub = startSub; sub <= SUBFRAMES; sub++) {
-        await sleep(frameMs);
-        renderAll(s, sub / SUBFRAMES);
-      }
-    }
-    await sleep(200);
+    // Task 2.2: engine no longer owns animation storage.
+    // PresentationTimelineCompiler will provide playback frames in a later milestone.
+    // For now, emit one stable frame so the board redraws after turn execution.
     renderAll(-1, 0);
-    if (typeof calc.clearKeyframes === 'function') calc.clearKeyframes();
-    if (typeof calc.clearAnimEvents === 'function') calc.clearAnimEvents();
   }
 
   async function executeCurrentTurn() {

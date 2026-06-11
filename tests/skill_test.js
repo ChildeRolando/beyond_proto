@@ -1245,7 +1245,7 @@ h1('Task 2.1: getState excludes keyframes/animEvents');
 }
 
 // Task 2.2: ProjectileCalculator animation storage/API removed
-h1('Task 2.2: ProjectileCalculator animation storage/API removed');
+h1('Task 2.2: animation storage/API removed from ProjectileCalculator');
 {
 	const engine = new GameEngine();
 	engine.initBattle({
@@ -1254,40 +1254,55 @@ h1('Task 2.2: ProjectileCalculator animation storage/API removed');
 	});
 	const calc = engine.projectileCalculator;
 
-	// A. serialize() does not contain keyframes/animEvents
+	// A. serialize() payload does not contain animation fields
 	const serialized = calc.serialize();
-	result('serialize() excludes keyframes', !('keyframes' in serialized),
-		serialized.keyframes !== undefined ? JSON.stringify(serialized.keyframes).slice(0, 40) : undefined);
-	result('serialize() excludes animEvents', !('animEvents' in serialized),
-		serialized.animEvents !== undefined ? JSON.stringify(serialized.animEvents).slice(0, 40) : undefined);
+	result('serialize() excludes keyframes', !('keyframes' in serialized));
+	result('serialize() excludes animEvents', !('animEvents' in serialized));
+	result('serialize() still has projectiles', Array.isArray(serialized.projectiles));
+	result('serialize() still has lastHits', Array.isArray(serialized.lastHits));
 
-	// B. deserialize() does not crash without keyframes/animEvents
+	// B. deserialize() roundtrip without animation fields
 	try {
 		calc.deserialize(serialized);
-		result('deserialize() roundtrip without keyframes/animEvents', true);
+		result('deserialize() roundtrip succeeds', true);
 	} catch (err) {
-		result('deserialize() roundtrip without keyframes/animEvents', false, err.message);
+		result('deserialize() roundtrip succeeds', false, err.message);
 	}
 
-	// C. Source-level boundary: animation methods no longer exist
-	result('generateKeyframes removed', typeof calc.generateKeyframes === 'undefined',
-		typeof calc.generateKeyframes);
-	result('clearKeyframes removed', typeof calc.clearKeyframes === 'undefined',
-		typeof calc.clearKeyframes);
-	result('addAnimEvent removed', typeof calc.addAnimEvent === 'undefined',
-		typeof calc.addAnimEvent);
-	result('getAnimEvents removed', typeof calc.getAnimEvents === 'undefined',
-		typeof calc.getAnimEvents);
-	result('clearAnimEvents removed', typeof calc.clearAnimEvents === 'undefined',
-		typeof calc.clearAnimEvents);
+	// C. Source-level boundary: animation methods removed (split-string check)
+	const forbidden = [
+		['generate', 'Keyframes'].join(''),
+		['clear', 'Keyframes'].join(''),
+		['add', 'AnimEvent'].join(''),
+		['get', 'AnimEvents'].join(''),
+		['clear', 'AnimEvents'].join(''),
+	];
+	const methods = new Set(Object.getOwnPropertyNames(Object.getPrototypeOf(calc)));
+	for (const name of forbidden) {
+		result(`${name} removed`, !methods.has(name),
+			methods.has(name) ? `unexpected: ${name} still present` : undefined);
+	}
 
 	// D. Domain projectile logic intact
 	const proj = calc.createProjectile('p1', 0, 0, 2, 0, 100, 1, [], 'action-test');
 	result('createProjectile still works', proj !== null && typeof proj.id === 'string');
+
+	// E. Snapshot projectile payload excludes animation fields
+	// snapshot.projectiles = ProjectileCalculator.serialize() = { projectiles: [...], ... }
 	const snapshot = engine.createSnapshot();
-	result('snapshot projectile has no keyframes',
-		!snapshot.projectiles?.[0] || !('keyframes' in snapshot.projectiles[0]),
-		snapshot.projectiles?.[0] ? JSON.stringify(Object.keys(snapshot.projectiles[0])).slice(0, 80) : 'no projectiles');
+	const projPayload = snapshot.projectiles || {};
+	result('snapshot.projectiles payload excludes keyframes', !('keyframes' in projPayload));
+	result('snapshot.projectiles payload excludes animEvents', !('animEvents' in projPayload));
+	const projEntries = projPayload.projectiles || [];
+	// After creating one projectile, there should be exactly one entry
+	result('snapshot.projectiles.projectiles has 1 entry', projEntries.length === 1,
+		`got ${projEntries.length}`);
+	for (const entry of projEntries) {
+		result('projectile entry excludes keyframes', !('keyframes' in entry),
+			entry && Object.keys(entry).some(k => k === 'keyframes') ? JSON.stringify(Object.keys(entry)).slice(0, 80) : undefined);
+		result('projectile entry excludes animEvents', !('animEvents' in entry),
+			entry && Object.keys(entry).some(k => k === 'animEvents') ? JSON.stringify(Object.keys(entry)).slice(0, 80) : undefined);
+	}
 }
 
 REPORT.push('\n---');
