@@ -49,6 +49,10 @@ import { seedSkillIconCacheFromPreloader } from '../ui/shared/SkillIconAssets.js
 import { createTurnResolutionBuilder } from '../engine/resolution/TurnResolutionBuilder.js';
 import { BattleSceneStore } from '../presentation/BattleSceneStore.js';
 import { renderLiveBattleScene } from './BattleScenePipeline.js';
+import { TurnPlaybackRuntime } from '../playback/TurnPlaybackRuntime.js';
+import { createResolutionTimelinePanel } from '../ui/battle/ResolutionTimelinePanel.js';
+import { compilePresentationTimeline } from '../presentation/PresentationTimelineCompiler.js';
+import { buildPlaybackFrame } from '../playback/PresentationTimelinePlayback.js';
 
 export function createAppRuntime() {
   const CLASSES = ['法师', '战士', '射手'];
@@ -106,6 +110,45 @@ export function createAppRuntime() {
     renderer: battleCanvasRenderer,
   });
 
+  // ── Playback runtime (new pipeline, o6.2) ──
+  const playbackRuntime = new TurnPlaybackRuntime({
+    buildFrame: (timeline, timeMs) => buildPlaybackFrame(timeline, timeMs),
+    requestFrame: (cb) => requestAnimationFrame(cb),
+    cancelFrame: (id) => cancelAnimationFrame(id),
+    now: () => performance.now(),
+  });
+
+  // ── Timeline panel (new pipeline, o6.2) ──
+  const timelinePanel = createResolutionTimelinePanel({
+    getEl,
+    getCharacterPortraitSrc: (char) => battleCanvasRenderer?.getCharacterPortraitSrc?.(char) || '',
+    getCurrentGameMode,
+  });
+
+  // ── Wire playback runtime → scene store + timeline panel + render ──
+  playbackRuntime.onFrame((frame) => {
+    battleSceneStore.setPlaybackFrame(frame);
+    timelinePanel.updatePlaybackFrame(frame);
+    battleRender.renderAll();
+  });
+
+  playbackRuntime.onComplete(() => {
+    timelinePanel.markComplete('回放完成');
+  });
+
+  timelinePanel.bindSkip(() => playbackRuntime.skipToEnd());
+
+  // ── playTurnResolution: new pipeline entry point ──
+  const playTurnResolution = async ({ resolution, finalSnapshot, turnData }) => {
+    const timeline = compilePresentationTimeline(resolution);
+    timelinePanel.renderResolution(resolution);
+    if (battleSession?.engine) {
+      battleSceneStore.setBaseState(battleSession.engine.getState());
+    }
+    battleSceneStore.setInteraction(battleSession?.getRenderViewState?.() || {});
+    playbackRuntime.play(timeline);
+  };
+
   // ── Battle render coordinator ──
   const battleRender = createBattleRenderCoordinator({
     getEl,
@@ -147,6 +190,7 @@ export function createAppRuntime() {
     appendChatMessage: (sender, text) => chatController?.appendMessage(sender, text),
     resizeCanvas: battleRender.resizeCanvas,
     animateTurn: (turnData) => turnPlaybackController.play(turnData),
+    playTurnResolution,
     buildTurnResolution: () => turnResolutionBuilder.build(battleSession.engine),
     resetResolutionPlayback: () => turnPlaybackController?.reset?.(),
   });
