@@ -481,6 +481,195 @@ console.log('\n=== Test 7: interaction state consumed from scene ===');
 }
 
 // ═══════════════════════════════════════════
+// Test 8: render(scene) does NOT trigger renderBoard
+// ═══════════════════════════════════════════
+
+console.log('\n=== Test 8: render(scene) does NOT trigger renderBoard ===');
+
+{
+  // Reset MockImage instances so only images created by THIS test are checked
+  if (typeof globalThis.Image !== 'undefined' && globalThis.Image.instances) {
+    globalThis.Image.instances.length = 0;
+  }
+
+  const renderer = createRenderer();
+  let renderBoardCallCount = 0;
+  const originalRenderBoard = renderer.renderBoard.bind(renderer);
+  renderer.renderBoard = function (...args) {
+    renderBoardCallCount++;
+    return originalRenderBoard(...args);
+  };
+
+  const char = makeCharacterEntity();
+  const sceneWithChar = makeMinimalScene({
+    entities: [char],
+    characters: [char],
+  });
+
+  console.log('\n[8a] render(scene) does not call renderBoard directly');
+  renderBoardCallCount = 0;
+  renderer.render(sceneWithChar);
+  assertEquals(renderBoardCallCount, 0, 'renderBoard NOT called during render(scene)');
+
+  console.log('\n[8b] portrait onLoad does not call renderBoard');
+  if (typeof globalThis.Image !== 'undefined' && globalThis.Image.instances) {
+    for (const img of globalThis.Image.instances) {
+      if (typeof img.onload === 'function') {
+        img.onload();
+      }
+    }
+  }
+  assertEquals(renderBoardCallCount, 0, 'renderBoard NOT called after image onload');
+
+  // Restore
+  renderer.renderBoard = originalRenderBoard;
+}
+
+// ═══════════════════════════════════════════
+// Test 9: render(scene) method body — no Date.now() / Math.random() / renderBoard
+// ═══════════════════════════════════════════
+
+console.log('\n=== Test 9: render(scene) body source scan for forbidden APIs ===');
+
+{
+  const filePath = path.resolve('ui/battle/BattleCanvasRenderer.js');
+  const src = fs.readFileSync(filePath, 'utf-8');
+
+  // Extract render(scene) method body
+  const renderStart = src.indexOf('  render(scene)');
+  const afterRender = src.substring(renderStart);
+  const nextMethodMatch = afterRender.match(/\n  [a-zA-Z_]+\(/);
+  let renderBody;
+  if (nextMethodMatch) {
+    renderBody = afterRender.substring(0, afterRender.indexOf(nextMethodMatch[0]));
+  } else {
+    renderBody = afterRender;
+  }
+
+  const noComments = renderBody.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  const FORBIDDEN_IN_RENDER_SCENE = [
+    'Date.now()',
+    'Math.random()',
+    'renderBoard',
+    'GameEngine',
+    'BattleSessionController',
+    'TurnPlaybackController',
+    'keyframes',
+    'animEvents',
+    'getAnimEvents',
+    'generateKeyframes',
+    'getCharacterPortraitImage(',
+  ];
+
+  console.log('\n[9a] render(scene) body does not contain forbidden patterns');
+  for (const term of FORBIDDEN_IN_RENDER_SCENE) {
+    const found = noComments.includes(term);
+    if (found) {
+      console.error(`    Found "${term}" in render(scene) body!`);
+    }
+    assert(!found, `no "${term}" in render(scene) method body`);
+  }
+
+  console.log('\n[9b] render(scene) uses getCharacterPortraitImageForScene instead');
+  assert(noComments.includes('getCharacterPortraitImageForScene'), 'uses scene-safe portrait helper');
+}
+
+// ═══════════════════════════════════════════
+// Test 10: getCharacterPortraitImageForScene helper — no renderBoard reference
+// ═══════════════════════════════════════════
+
+console.log('\n=== Test 10: getCharacterPortraitImageForScene boundary ===');
+
+{
+  const filePath = path.resolve('ui/battle/BattleCanvasRenderer.js');
+  const src = fs.readFileSync(filePath, 'utf-8');
+
+  // Extract getCharacterPortraitImageForScene method body
+  const helperStart = src.indexOf('  getCharacterPortraitImageForScene(');
+  assert(helperStart >= 0, 'getCharacterPortraitImageForScene method found');
+
+  const afterHelper = src.substring(helperStart);
+  const nextMethod = afterHelper.match(/\n  [a-zA-Z_]+\(/);
+  let helperBody;
+  if (nextMethod) {
+    helperBody = afterHelper.substring(0, afterHelper.indexOf(nextMethod[0]));
+  } else {
+    helperBody = afterHelper;
+  }
+
+  const noComments = helperBody.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  console.log('\n[10a] helper does not reference renderBoard');
+  assert(!noComments.includes('renderBoard'), 'getCharacterPortraitImageForScene does not call renderBoard');
+
+  console.log('\n[10b] helper does not reference getEngine or battleSession');
+  assert(!noComments.includes('getEngine'), 'helper does not call getEngine');
+  assert(!noComments.includes('battleSession'), 'helper does not call battleSession');
+
+  console.log('\n[10c] helper does not reference keyframes/animEvents');
+  assert(!noComments.includes('keyframes'), 'helper does not reference keyframes');
+  assert(!noComments.includes('animEvents'), 'helper does not reference animEvents');
+
+  console.log('\n[10d] helper onLoad is no-op');
+  const stripped = noComments.replace(/\s+/g, ' ');
+  assert(stripped.includes('onLoad = () => {}') || stripped.includes('onLoad=()=>{}') || stripped.includes('onLoad = () =>{ }'),
+    'onLoad is a no-op (empty body)');
+}
+
+// ═══════════════════════════════════════════
+// Test 11: render(scene) does not indirectly use battleSession/getEngine
+// ═══════════════════════════════════════════
+
+console.log('\n=== Test 11: render(scene) does not call getEngine or battleSession ===');
+
+{
+  const throwingGetEngine = () => { throw new Error('getEngine should not be called from render(scene)'); };
+  const throwingBattleSession = {
+    getRenderViewState: () => { throw new Error('getRenderViewState should not be called from render(scene)'); },
+    getRenderState: () => { throw new Error('getRenderState should not be called from render(scene)'); },
+  };
+  const renderer = createRenderer({
+    getEngine: throwingGetEngine,
+    battleSession: throwingBattleSession,
+  });
+
+  const char = makeCharacterEntity();
+  const scene = makeMinimalScene({
+    entities: [char],
+    characters: [char],
+    projectiles: [{ id: 'proj-1', position: { q: 1, r: 0 }, power: 50, alive: true }],
+    effects: [{ id: 'fx-1', effectType: 'projectile_impact', progress: 0.5, payload: { contactPos: { q: 1, r: 0 } } }],
+  });
+
+  console.log('\n[11a] render(scene) does not call getEngine or battleSession methods');
+  let threw = false;
+  let errorMsg = '';
+  try {
+    renderer.render(scene);
+  } catch (e) {
+    threw = true;
+    errorMsg = e.message;
+  }
+  assert(!threw, `render(scene) does not throw: ${errorMsg}`);
+
+  console.log('\n[11b] image onLoad still safe with throwing engine/session');
+  if (typeof globalThis.Image !== 'undefined' && globalThis.Image.instances) {
+    for (const img of globalThis.Image.instances) {
+      if (typeof img.onload === 'function') {
+        try {
+          img.onload();
+        } catch (e) {
+          threw = true;
+          errorMsg = e.message;
+        }
+      }
+    }
+  }
+  assert(!threw, `image onLoad does not throw: ${errorMsg}`);
+}
+
+// ═══════════════════════════════════════════
 // Summary
 // ═══════════════════════════════════════════
 

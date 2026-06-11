@@ -32,6 +32,19 @@ export class BattleCanvasRenderer {
     return getCachedBattlePortraitImage(roleId, { cacheVersion: this.portraitCacheVersion, onLoad });
   }
 
+  /**
+   * Scene-safe portrait image getter.
+   * Same cache behaviour as getCharacterPortraitImage but onLoad does NOT
+   * call renderBoard() — so render(scene) never re-enters the legacy path.
+   */
+  getCharacterPortraitImageForScene(char) {
+    const roleId = char?.roleId;
+    if (!roleId) return null;
+    // No-op onLoad: portrait loading will be picked up on the next frame
+    const onLoad = () => {};
+    return getCachedBattlePortraitImage(roleId, { cacheVersion: this.portraitCacheVersion, onLoad });
+  }
+
   resize() {
     const wrap = document.getElementById('canvas-wrap');
     const w = wrap?.clientWidth || this.canvas.clientWidth;
@@ -69,7 +82,9 @@ export class BattleCanvasRenderer {
     const hoveredHex = interaction.hoveredHex;
 
     // ── Draw hex grid ──
-    const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 1000);
+    // Pulse driven by scene playback time or static default; render(scene) does NOT read wall-clock.
+    const pulseSourceMs = scene.playback?.timeMs ?? 0;
+    const pulse = 0.5 + 0.5 * Math.sin(pulseSourceMs / 1000);
 
     for (let q = -3; q <= 3; q++) {
       for (let r = -3; r <= 3; r++) {
@@ -197,8 +212,8 @@ export class BattleCanvasRenderer {
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Portrait or label
-        const portrait = this.getCharacterPortraitImage(e);
+        // Portrait or label (scene-safe: onLoad does NOT call renderBoard)
+        const portrait = this.getCharacterPortraitImageForScene(e);
         if (portrait && portrait.complete && portrait.naturalWidth > 0) {
           const portraitSize = 32;
           ctx.save?.();
