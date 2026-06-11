@@ -4,9 +4,13 @@
 // Pure data store. Does NOT read GameEngine, BattleSessionController, DOM,
 // canvas, or renderer code. Does NOT mutate inputs. Does NOT advance time.
 //
+// All inputs are deep-cloned on write so external mutation of the original
+// objects never pollutes the store. getScene() returns a fresh BattleScene
+// (also cloned) so consumers cannot pollute the store through the output.
+//
 // Milestone 3 / Task 3.2
 
-import { createBattleScene } from './BattleScene.js';
+import { createBattleScene, clonePlainData } from './BattleScene.js';
 
 /**
  * Store that holds the current battle presentation state and produces
@@ -29,27 +33,27 @@ export class BattleSceneStore {
    * @param {object|null} [initialState=null] — initial battle state (from GameEngine.getState or snapshot)
    */
   constructor(initialState = null) {
-    this.#baseState = initialState;
+    this.#baseState = initialState ? clonePlainData(initialState) : null;
   }
 
   /** Replace the base battle state (called once per turn or on snapshot restore). */
   setBaseState(state) {
-    this.#baseState = state || null;
+    this.#baseState = state ? clonePlainData(state) : null;
   }
 
   /** Replace the UI interaction state (called each frame from the input controller). */
   setInteraction(interaction) {
-    this.#interaction = interaction || {};
+    this.#interaction = interaction ? clonePlainData(interaction) : {};
   }
 
   /** Set the current playback frame (when in playback/replay mode). */
   setPlaybackFrame(frame) {
-    this.#playbackFrame = frame || null;
+    this.#playbackFrame = frame ? clonePlainData(frame) : null;
   }
 
   /** Set the active presentation effects for the current frame. */
   setEffects(effects) {
-    this.#effects = effects || [];
+    this.#effects = effects ? clonePlainData(effects) : [];
   }
 
   /**
@@ -57,7 +61,8 @@ export class BattleSceneStore {
    *
    * - mode is 'playback' when a playbackFrame is set, otherwise 'live'.
    * - effects come from playbackFrame.effects if available, otherwise from setEffects().
-   * - All inputs are shallow-cloned so the returned scene is safe to mutate.
+   * - All data is already cloned on write; createBattleScene clones again
+   *   (defense in depth — the scene contract guarantees isolation).
    *
    * @returns {object} BattleScene
    */

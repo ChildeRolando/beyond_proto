@@ -197,7 +197,7 @@ console.log('\n=== Test 3: interaction state preserved ===');
 }
 
 // ═══════════════════════════════════════════
-// Test 4: immutability
+// Test 4: immutability (deep isolation)
 // ═══════════════════════════════════════════
 
 console.log('\n=== Test 4: immutability ===');
@@ -213,30 +213,104 @@ console.log('\n=== Test 4: immutability ===');
   store.setEffects(effects);
   store.setPlaybackFrame(playbackFrame);
 
-  console.log('\n[4a] mutating returned scene does not pollute store internal state');
+  // ── A: returned scene mutation does not pollute store ──
+
+  console.log('\n[4a] scene.characters deep mutation isolated');
   const scene1 = store.getScene();
-  scene1.interaction.selectedCharacterId = 'mutated';
-  scene1.interaction.hoveredHex = { q: 99, r: 99 };
-  scene1.effects.push({ id: 'injected' });
-  scene1.playback.timeMs = 9999;
+  assertEquals(scene1.characters[0].hp, 100, 'initial hp');
+  assertEquals(scene1.characters.length, 2, 'initial character count');
+  scene1.characters[0].hp = 999;
+  scene1.characters.push({ id: 'fake', name: 'Injected' });
 
   const scene2 = store.getScene();
-  assertEquals(scene2.interaction.selectedCharacterId, 'char-1', 'interaction unchanged after scene mutation');
-  assertDeepEquals(scene2.interaction.hoveredHex, { q: 1, r: 1 }, 'hoveredHex unchanged');
-  assertEquals(scene2.effects.length, 1, 'effects length unchanged (no injected effect)');
-  assertEquals(scene2.playback.timeMs, 500, 'playback.timeMs unchanged');
+  assertEquals(scene2.characters[0].hp, 100, 'hp unchanged after scene mutation');
+  assertEquals(scene2.characters.length, 2, 'character count unchanged (no injected)');
 
-  console.log('\n[4b] original input objects not mutated by store');
-  assertEquals(interaction.selectedCharacterId, 'char-1', 'original interaction unchanged');
-  assertEquals(effects.length, 1, 'original effects array unchanged');
-  assertEquals(playbackFrame.timeMs, 500, 'original playbackFrame unchanged');
+  console.log('\n[4b] scene.projectiles deep mutation isolated');
+  assertEquals(scene1.projectiles[0].id, 'proj-1', 'initial projectile id');
+  scene1.projectiles[0].id = 'mutated-proj';
+  assertEquals(scene2.projectiles[0].id, 'proj-1', 'projectile id unchanged');
 
-  console.log('\n[4c] getScene returns fresh object each call');
+  console.log('\n[4c] scene.logs deep mutation isolated');
+  assertEquals(scene1.logs[0].text, 'Warrior attacks', 'initial log text');
+  scene1.logs[0].text = 'mutated-log';
+  assertEquals(scene2.logs[0].text, 'Warrior attacks', 'log text unchanged');
+
+  // ── B: original input object not mutated ──
+
+  console.log('\n[4d] original baseState not mutated');
   const scene3 = store.getScene();
+  scene3.characters[0].hp = 777;
+  scene3.projectiles[0].id = 'bad-proj';
+  scene3.logs[0].text = 'bad-log';
+  assertEquals(baseState.characters[0].hp, 100, 'original character hp unchanged');
+  assertEquals(baseState.projectiles[0].id, 'proj-1', 'original projectile id unchanged');
+  assertEquals(baseState.logs[0].text, 'Warrior attacks', 'original log text unchanged');
+
+  // ── C: external baseState mutation after setBaseState does not pollute store ──
+
+  console.log('\n[4e] external mutation after setBaseState isolated');
+  const freshState = makeBaseState({ turn: 5 });
+  store.setBaseState(freshState);
+  // Mutate the original object AFTER passing it to the store
+  freshState.characters[0].hp = 12345;
+  freshState.characters.push({ id: 'injected-late', name: 'Late' });
   const scene4 = store.getScene();
-  assert(scene3 !== scene4, 'getScene returns new object each time');
-  assert(scene3.interaction !== scene4.interaction, 'interaction is new object each time');
-  assert(scene3.effects !== scene4.effects, 'effects is new array each time');
+  assertEquals(scene4.characters[0].hp, 100, 'hp NOT 12345 — store cloned on input');
+  assertEquals(scene4.characters.length, 2, 'no late-injected character');
+  assertEquals(scene4.turn, 5, 'turn still captured');
+
+  // ── D: nested interaction / effects / playback mutation ──
+
+  console.log('\n[4f] nested interaction mutation isolated');
+  const scene5 = store.getScene();
+  scene5.interaction.hoveredHex.q = 99;
+  scene5.interaction.selectedCharacterId = 'mutated';
+  const scene6 = store.getScene();
+  assertEquals(scene6.interaction.hoveredHex.q, 1, 'hoveredHex.q unchanged');
+  assertEquals(scene6.interaction.selectedCharacterId, 'char-1', 'selectedCharacterId unchanged');
+
+  console.log('\n[4g] nested playbackFrame.effects mutation isolated');
+  // playbackFrame is still active, so effects come from playbackFrame.effects
+  scene5.effects[0].id = 'mutated-effect';
+  const scene7 = store.getScene();
+  assertEquals(scene7.effects[0].id, 'fx-1', 'effect id unchanged (from playbackFrame.effects)');
+
+  console.log('\n[4g2] explicit effects also isolated (no playbackFrame)');
+  store.setPlaybackFrame(null);
+  store.setEffects([{ id: 'explicit-fx', val: 42 }]);
+  const sExplicit1 = store.getScene();
+  sExplicit1.effects[0].id = 'mutated-explicit';
+  const sExplicit2 = store.getScene();
+  assertEquals(sExplicit2.effects[0].id, 'explicit-fx', 'explicit effect id unchanged');
+  assertEquals(sExplicit2.effects[0].val, 42, 'explicit effect val unchanged');
+  // Restore playbackFrame for subsequent tests
+  store.setPlaybackFrame(playbackFrame);
+
+  console.log('\n[4h] nested playback mutation isolated');
+  store.setPlaybackFrame(playbackFrame);
+  const scene8 = store.getScene();
+  scene8.playback.activeActionIds.push('fake-action');
+  scene8.playback.timeMs = 9999;
+  const scene9 = store.getScene();
+  assertEquals(scene9.playback.activeActionIds.length, 1, 'activeActionIds unchanged');
+  assertEquals(scene9.playback.timeMs, 500, 'playback.timeMs unchanged');
+
+  console.log('\n[4i] original interaction/effects/playback not mutated');
+  assertEquals(interaction.selectedCharacterId, 'char-1', 'original interaction unchanged');
+  assertEquals(interaction.hoveredHex.q, 1, 'original hoveredHex.q unchanged');
+  assertEquals(effects[0].id, 'fx-a', 'original effects unchanged');
+  assertEquals(playbackFrame.timeMs, 500, 'original playbackFrame unchanged');
+  assert(playbackFrame.activeActionIds.length === 1, 'original activeActionIds unchanged');
+
+  console.log('\n[4j] getScene returns fresh objects');
+  const s1 = store.getScene();
+  const s2 = store.getScene();
+  assert(s1 !== s2, 'getScene returns new object each time');
+  assert(s1.interaction !== s2.interaction, 'interaction is new object');
+  assert(s1.effects !== s2.effects, 'effects is new array');
+  assert(s1.playback !== s2.playback, 'playback is new object');
+  assert(s1.characters !== s2.characters, 'characters is new array');
 }
 
 // ═══════════════════════════════════════════

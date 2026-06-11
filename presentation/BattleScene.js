@@ -7,7 +7,31 @@
 // consumed exclusively by BattleCanvasRenderer.render(scene).
 
 /**
+ * Deep-clone plain JSON-compatible data (POJOs, arrays, primitives).
+ * Uses structuredClone when available; falls back to JSON round-trip.
+ * Does NOT support functions, DOM nodes, or class instances.
+ *
+ * @param {*} value
+ * @returns {*} deep copy
+ */
+export function clonePlainData(value) {
+  if (value === null || value === undefined) return value;
+  // Prefer structuredClone (Node 17+, modern browsers)
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(value);
+    } catch (_e) {
+      // Fall through to JSON fallback (e.g. if value has non-cloneable parts)
+    }
+  }
+  // JSON fallback: handles POJOs, arrays, primitives
+  return JSON.parse(JSON.stringify(value));
+}
+
+/**
  * Create a canonical BattleScene object with safe defaults.
+ * All inputs are deep-cloned — mutating the returned scene does NOT
+ * affect the original inputs or the store's internal state.
  *
  * @param {object} opts
  * @param {'live'|'playback'} [opts.mode='live']
@@ -24,9 +48,13 @@ export function createBattleScene({
   effects = [],
   playback = null,
 } = {}) {
-  // Shallow-clone interaction and effects so the returned scene is
-  // safe to mutate without polluting the store's internal state.
-  const safeInteraction = {
+  // Deep-clone all inputs so the returned scene is fully isolated
+  const safeState = state ? clonePlainData(state) : {};
+  const safeEffects = clonePlainData(effects || []);
+  const safePlayback = playback ? clonePlainData(playback) : null;
+
+  // Interaction: merge defaults then deep-clone
+  const mergedInteraction = {
     hoverEffectArea: [],
     validTargets: [],
     hoveredHex: null,
@@ -36,21 +64,20 @@ export function createBattleScene({
     lastHoveredCharacterId: null,
     ...interaction,
   };
-  const safeEffects = [...effects];
-  const safePlayback = playback ? { ...playback } : null;
+  const safeInteraction = clonePlainData(mergedInteraction);
 
   return {
     mode,
-    turn: state?.turn ?? null,
-    phase: state?.phase ?? null,
-    teams: state?.teams || [],
-    rules: state?.rules || null,
-    entities: state?.entities || [],
-    characters: state?.characters || [],
-    projectiles: state?.projectiles || [],
-    casings: state?.casings || [],
-    wildBullets: state?.wildBullets || [],
-    logs: state?.logs || [],
+    turn: safeState.turn ?? null,
+    phase: safeState.phase ?? null,
+    teams: safeState.teams || [],
+    rules: safeState.rules || null,
+    entities: safeState.entities || [],
+    characters: safeState.characters || [],
+    projectiles: safeState.projectiles || [],
+    casings: safeState.casings || [],
+    wildBullets: safeState.wildBullets || [],
+    logs: safeState.logs || [],
     interaction: safeInteraction,
     effects: safeEffects,
     playback: safePlayback,
