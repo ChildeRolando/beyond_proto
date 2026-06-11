@@ -124,11 +124,14 @@ export function renderEventLogEntry(event, charById = new Map()) {
 
   if (et === 'projectile_collided') {
     // Distinguish: 斩击相杀 / 弹体相杀 / 斩击贯穿 / 弹体贯穿
-    const isMelee = event.isMelee || event.otherIsMelee;
-    if (event.collisionType === 'mutual_destroy') {
+    // Read collision details from metadata (v2) or fall back to top-level fields (legacy)
+    const meta = event.metadata || null;
+    const collisionType = meta?.collisionType || event.collisionType || null;
+    const isMelee = meta?.isMelee || meta?.otherIsMelee || event.isMelee || event.otherIsMelee;
+    if (collisionType === 'mutual_destroy') {
       return { actionId: event.actionId || null, text: isMelee ? '⚔💥 斩击相杀' : '💥 弹体相杀', type: 'projectile' };
     }
-    if (event.collisionType === 'overpowered') {
+    if (collisionType === 'overpowered') {
       return { actionId: event.actionId || null, text: isMelee ? '⚔💥 斩击贯穿' : '💥 弹体贯穿', type: 'projectile' };
     }
     // Fallback for legacy collision events without collisionType metadata

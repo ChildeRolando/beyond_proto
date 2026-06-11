@@ -497,10 +497,10 @@ test('Test 10: projectile-vs-projectile collision records canonical collided/int
   );
   expect(clashEvents.length).toBeGreaterThanOrEqual(1);
 
-  // ── Assert: log mentions projectile collision text ──
+  // ── Assert: log mentions projectile collision text (相杀/贯穿 from metadata, or fallback 弹体碰撞) ──
   const canonicalLog = await page.evaluate(() => window.__resolutionTest.getCanonicalLog());
   const clashLogs = canonicalLog.filter(e =>
-    e.type === 'projectile' && /弹体碰撞|弹体被拦截/.test(e.text)
+    e.type === 'projectile' && /相杀|贯穿|弹体碰撞|弹体被拦截/.test(e.text)
   );
   expect(clashLogs.length).toBeGreaterThanOrEqual(1);
 });

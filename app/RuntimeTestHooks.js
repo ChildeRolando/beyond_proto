@@ -285,6 +285,35 @@ export function installRuntimeTestHooks({
           },
         ],
       },
+      immediate_miss: {
+        mode: 'duel',
+        teams: commonTeams,
+        rules: { friendlyFire: false },
+        combatants: [
+          {
+            id: 'flash_warrior',
+            teamId: 'player1',
+            ownerId: 'player1',
+            control: 'human',
+            class: '战士',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['warrior_flash'],
+            position: { q: 0, r: 0 },
+            resources: { rage: 3 },
+          },
+          {
+            id: 'far_target',
+            teamId: 'player2',
+            ownerId: 'player2',
+            control: 'human',
+            class: '战士',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['warrior_rage'],
+            position: { q: 3, r: 3 },  // far from the dash path (0,0)→(2,0)
+            resources: {},
+          },
+        ],
+      },
       cooldown_test: {
         mode: 'duel',
         teams: commonTeams,

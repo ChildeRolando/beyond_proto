@@ -220,6 +220,67 @@ console.log('[4d] empty phases pass batch assertion');
   }
 }
 
+// ═══════════════════════════════════════════
+// Part 5: metadata preservation
+// ═══════════════════════════════════════════
+
+console.log('\n=== Part 5: metadata preservation ===');
+
+console.log('[5a] normalizeResolutionEvent preserves metadata field');
+{
+  const raw = {
+    eventType: 'projectile_collided',
+    projectileId: 'proj-1',
+    targetId: 'proj-2',
+    actionId: 'act-1',
+    metadata: {
+      collisionType: 'mutual_destroy',
+      isMelee: false,
+      otherIsMelee: false,
+      power: 100,
+      otherPower: 100,
+      ownerId: 'char-a',
+      otherOwnerId: 'char-b',
+    },
+  };
+  const e = normalizeResolutionEvent(raw);
+  assert(e.metadata !== null, 'metadata is preserved');
+  assertEquals(e.metadata.collisionType, 'mutual_destroy', 'metadata.collisionType preserved');
+  assertEquals(e.metadata.isMelee, false, 'metadata.isMelee preserved');
+  assertEquals(e.metadata.power, 100, 'metadata.power preserved');
+  assertEquals(e.metadata.ownerId, 'char-a', 'metadata.ownerId preserved');
+  assertEquals(e.eventType, 'projectile_collided', 'standard eventType preserved');
+  assertEquals(e.projectileId, 'proj-1', 'standard projectileId preserved');
+}
+
+console.log('[5b] projectile_collided with metadata passes assertResolutionEvent');
+{
+  const e = normalizeResolutionEvent({
+    eventType: 'projectile_collided',
+    projectileId: 'proj-1',
+    targetId: 'proj-2',
+    metadata: { collisionType: 'overpowered', isMelee: true, otherIsMelee: false, power: 150, otherPower: 50, ownerId: 'a', otherOwnerId: 'b' },
+  });
+  try {
+    assertResolutionEvent(e);
+    assert(true, 'projectile_collided with metadata passes assertion');
+  } catch (err) {
+    assert(false, `should not throw: ${err.message}`);
+  }
+}
+
+console.log('[5c] event without metadata works (null metadata)');
+{
+  const e = normalizeResolutionEvent({
+    eventType: 'projectile_collided',
+    projectileId: 'proj-1',
+    targetId: 'char-1',
+    finalDamage: 50,
+  });
+  assertEquals(e.metadata, null, 'no metadata → null');
+  assertEquals(e.eventType, 'projectile_collided', 'eventType still valid');
+}
+
 // ─── Summary ───
 
 console.log(`\n${'='.repeat(40)}`);

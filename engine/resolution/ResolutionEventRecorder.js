@@ -182,7 +182,7 @@ export class ResolutionEventRecorder {
   }
 
   /** Stop recording and return the resolution object. */
-  finalize({ finalViewState } = {}) {
+  finalize({ initialSnapshot = null, finalSnapshot = null } = {}) {
     this.#enabled = false;
     this._detachListeners();
     this.#actionContext = null;

@@ -312,14 +312,16 @@ export class TurnManager {
                   eventType: 'projectile_collided',
                   projectileId: c.projectileId,
                   targetId: c.otherProjectileId,
-                  collisionType: c.type,
-                  isMelee: c.flags?.includes('MELEE') || false,
-                  otherIsMelee: c.otherFlags?.includes('MELEE') || false,
-                  power: c.power,
-                  otherPower: c.otherPower,
-                  ownerId: c.ownerId,
-                  otherOwnerId: c.otherOwnerId,
                   actionId: c.actionId,
+                  metadata: {
+                    collisionType: c.type,
+                    isMelee: c.flags?.includes('MELEE') || false,
+                    otherIsMelee: c.otherFlags?.includes('MELEE') || false,
+                    power: c.power,
+                    otherPower: c.otherPower,
+                    ownerId: c.ownerId,
+                    otherOwnerId: c.otherOwnerId,
+                  },
                 });
               } else if (c.type === 'overpowered') {
                 this.#eventRecorder.record({
@@ -327,14 +329,16 @@ export class TurnManager {
                   eventType: 'projectile_collided',
                   projectileId: c.projectileId,
                   targetId: c.otherProjectileId,
-                  collisionType: c.type,
-                  isMelee: c.flags?.includes('MELEE') || false,
-                  otherIsMelee: c.otherFlags?.includes('MELEE') || false,
-                  power: c.power,
-                  otherPower: c.otherPower,
-                  ownerId: c.ownerId,
-                  otherOwnerId: c.otherOwnerId,
                   actionId: c.actionId,
+                  metadata: {
+                    collisionType: c.type,
+                    isMelee: c.flags?.includes('MELEE') || false,
+                    otherIsMelee: c.otherFlags?.includes('MELEE') || false,
+                    power: c.power,
+                    otherPower: c.otherPower,
+                    ownerId: c.ownerId,
+                    otherOwnerId: c.otherOwnerId,
+                  },
                 });
               }
             }
@@ -703,9 +707,15 @@ export class TurnManager {
     });
 
     // Dispatch ON_ATTACK_MISSED for immediate attacks that missed
+    // and record canonical action_failed for the resolution event stream.
     if (this._isImmediateAttack(cmd) && !this.#lastHitByActor.get(cmd.actorId)) {
       const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, { attackerId: cmd.actorId });
       this._processDeathWindReloads(missCtx);
+      // Record canonical action_failed (deferred attacks are handled by #pendingAttackRecords)
+      if (this.#eventRecorder) {
+        const missActionId = cmd.actionId || cmd.sequenceId || cmd.id || null;
+        this.#eventRecorder.recordActionFailed(missActionId, cmd.actorId, cmd.skillId, 'miss');
+      }
     }
   }
 
