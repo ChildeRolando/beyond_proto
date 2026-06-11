@@ -21,6 +21,13 @@ export const PresentationClipKind = Object.freeze({
   DAMAGE_NUMBER:   'damage_number',
   HIT_FLASH:       'hit_flash',
   DEATH:           'death',
+  // Milestone 3 — canonical projectile clip kinds (from TurnResolution events)
+  PROJECTILE_LAUNCH:   'projectile_launch',
+  MELEE_SLASH:         'melee_slash',
+  PROJECTILE_IMPACT:   'projectile_impact',
+  PROJECTILE_CLASH:    'projectile_clash',
+  PROJECTILE_INTERCEPT: 'projectile_intercept',
+  PROJECTILE_EXPIRE:   'projectile_expire',
 });
 
 /**
