@@ -21,8 +21,6 @@ export class ProjectileCalculator {
   #supplyCrates = new Map();     // posKey → count (worth 3 backpack each)
   #wildBullets = new Map();      // posKey → count
   #wildBulletsCollected = 0;
-  #keyframes = [];
-  #animEvents = [];              // non-projectile visual events (gather, dash, teleport, etc.)
   #lastInterceptions = [];
   #lastHits = [];
   #lastCollisions = [];     // projectile-vs-projectile collisions (相杀, 贯穿)
@@ -69,7 +67,6 @@ export class ProjectileCalculator {
     };
 
     this.#projectiles.push(proj);
-    this.#keyframes.push({ projectileId: proj.id, step: 0, q: fromQ, r: fromR, event: 'fired', speedTier: 0, power, flags: [...flags], fromQ, fromR, toQ, toR });
 
     if (flags.includes('CASING_DROP')) {
       this._dropCasing(fromQ, fromR);
@@ -134,11 +131,6 @@ export class ProjectileCalculator {
 
         proj.stepIndex++;
         const [q, r] = proj.path[proj.stepIndex];
-
-        this.#keyframes.push({
-          projectileId: proj.id, step: proj.stepIndex, q, r,
-          event: 'step', speedTier,
-        });
       }
 
       // --- Check crossing collisions BEFORE body contact (melee-melee swaps annihilate) ---
@@ -172,10 +164,6 @@ export class ProjectileCalculator {
     for (const proj of stationaryProjs) {
       if (proj.alive) {
         proj.alive = false;
-        const [q, r] = proj.path[proj.stepIndex];
-        this.#keyframes.push({
-          projectileId: proj.id, event: 'stationary_expired', q, r,
-        });
       }
     }
 
@@ -184,10 +172,6 @@ export class ProjectileCalculator {
       if (!proj.alive) continue;
       if (proj.stepIndex >= proj.path.length - 1) {
         proj.alive = false;
-        const [q, r] = proj.path[proj.stepIndex];
-        this.#keyframes.push({
-          projectileId: proj.id, step: proj.stepIndex, q, r, event: 'expired', speedTier,
-        });
       }
     }
 
@@ -371,9 +355,6 @@ export class ProjectileCalculator {
           const ownerName = registry.get(proj.ownerId)?.name || proj.ownerId;
           const meleeTag = proj.flags.includes('MELEE') ? '斩击' : '弹体';
           this.#logger?.log(`${entity.name || entity.id} ⚔ 拦截(${ownerName})！威${ip}斩破${meleeTag}威${proj.power} → 引刀`, 'rg');
-          this.#keyframes.push({
-            projectileId: proj.id, event: 'intercepted', q, r, interceptorId: entity.id,
-          });
           return;
         } else {
           proj.power -= ip;
@@ -424,9 +405,6 @@ export class ProjectileCalculator {
         proj.alive = false;
         const aoeOwnerName = registry.get(proj.ownerId)?.name || proj.ownerId;
         this.#logger?.log(`${aoeOwnerName} 💥 弹体爆裂AOE！威${proj.power}`, 'sh');
-        this.#keyframes.push({
-          projectileId: proj.id, event: 'aoe_explosion', q, r, hit,
-        });
       }
     } else {
       for (const e of entities) {
@@ -458,9 +436,6 @@ export class ProjectileCalculator {
           const absLayers = (result.breakdown || []).filter(b => b.absorbed > 0).map(b => b.layer).join('+');
           this.#logger?.log(`${atkName} ${isMeleeHit ? '⚔' : '🔮'}→${tgtName} 被${absLayers || '防御'}吸收 威${proj.power}`, 'sh');
         }
-        this.#keyframes.push({
-          projectileId: proj.id, event: 'body_contact', q, r, targetId: e.id, hit,
-        });
         break;
       }
     }
@@ -483,9 +458,6 @@ export class ProjectileCalculator {
       if (pq === q && pr === r) {
         if (meleePower >= proj.power) {
           proj.alive = false;
-          this.#keyframes.push({
-            projectileId: proj.id, event: 'melee_intercepted', q, r, meleePower,
-          });
           return true;
         } else {
           proj.power -= meleePower;
@@ -653,34 +625,12 @@ export class ProjectileCalculator {
   getWildBulletsCollected() { return this.#wildBulletsCollected; }
   clearWildBulletsCollected() { this.#wildBulletsCollected = 0; }
 
-  generateKeyframes(sinceIndex = 0) {
-    return this.#keyframes.slice(sinceIndex);
-  }
-
-  clearKeyframes() {
-    this.#keyframes.length = 0;
-  }
-
-  addAnimEvent(event) {
-    this.#animEvents.push(event);
-  }
-
-  getAnimEvents() {
-    return this.#animEvents;
-  }
-
-  clearAnimEvents() {
-    this.#animEvents.length = 0;
-  }
-
   reset() {
     this.#projectiles.length = 0;
     this.#casings.clear();
     this.#supplyCrates.clear();
     this.#wildBullets.clear();
     this.#wildBulletsCollected = 0;
-    this.#keyframes.length = 0;
-    this.#animEvents.length = 0;
     this.#lastInterceptions.length = 0;
     this.#lastHits.length = 0;
   }
@@ -692,8 +642,6 @@ export class ProjectileCalculator {
       supplyCrates: [...this.#supplyCrates.entries()],
       wildBullets: [...this.#wildBullets.entries()],
       wildBulletsCollected: this.#wildBulletsCollected,
-      keyframes: structuredClone(this.#keyframes),
-      animEvents: structuredClone(this.#animEvents),
       lastInterceptions: structuredClone(this.#lastInterceptions),
       lastHits: structuredClone(this.#lastHits),
     };
@@ -706,8 +654,6 @@ export class ProjectileCalculator {
     this.#supplyCrates = new Map(data.supplyCrates || []);
     this.#wildBullets = new Map(data.wildBullets || []);
     this.#wildBulletsCollected = data.wildBulletsCollected || 0;
-    this.#keyframes.push(...structuredClone(data.keyframes || []));
-    this.#animEvents.push(...structuredClone(data.animEvents || []));
     this.#lastInterceptions.push(...structuredClone(data.lastInterceptions || []));
     this.#lastHits.push(...structuredClone(data.lastHits || []));
 

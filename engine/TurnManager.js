@@ -796,17 +796,6 @@ export class TurnManager {
     }
     this.#resourceSystem.add(cmd.actorId, resource, finalAmount);
     this.#resourceSystem.recordCostGain(cmd.actorId, resource, finalAmount);
-    // Record gather animation event
-    if (finalAmount > 0 && resource !== 'ammo') {
-      const actor = this.#registry.get(cmd.actorId);
-      if (actor) {
-        const color = resource === 'qi' ? '#8b5cf6' : resource === 'rage' ? '#e05555' : '#d4943a';
-        this.#projectileCalculator?.addAnimEvent({
-          event: 'gather', step: this.#currentAnimStep, duration: 2,
-          q: actor.position.q, r: actor.position.r, color, amount: finalAmount,
-        });
-      }
-    }
   }
 
   _execConsumeResource(cmd) {
@@ -861,10 +850,6 @@ export class TurnManager {
 
     this.#registry.updatePosition(cmd.actorId, fromQ, fromR, toQ, toR);
     this.#eventBus.emit(EvtType.MOVEMENT_COMPLETE, { entityId: cmd.actorId, from: { q: fromQ, r: fromR }, to: { q: toQ, r: toR } });
-    this.#projectileCalculator?.addAnimEvent({
-      event: 'walk', step: this.#currentAnimStep,
-      fromQ, fromR, toQ, toR, charId: cmd.actorId,
-    });
   }
 
   _execMoveTeleport(cmd) {
@@ -876,10 +861,6 @@ export class TurnManager {
     if (!isOnBoard(cmd.targetPos.q, cmd.targetPos.r)) return;
 
     this.#registry.updatePosition(cmd.actorId, fromQ, fromR, cmd.targetPos.q, cmd.targetPos.r);
-    this.#projectileCalculator?.addAnimEvent({
-      event: 'teleport', step: this.#currentAnimStep,
-      fromQ, fromR, toQ: cmd.targetPos.q, toR: cmd.targetPos.r, charId: cmd.actorId,
-    });
   }
 
   _execMoveDash(cmd) {
@@ -918,10 +899,6 @@ export class TurnManager {
 
     this.#registry.updatePosition(cmd.actorId, fromQ, fromR, curQ, curR);
     this.#eventBus.emit(EvtType.MOVEMENT_COMPLETE, { entityId: cmd.actorId, from: { q: fromQ, r: fromR }, to: { q: curQ, r: curR } });
-    this.#projectileCalculator?.addAnimEvent({
-      event: 'dash', step: this.#currentAnimStep,
-      fromQ, fromR, toQ: curQ, toR: curR, charId: cmd.actorId,
-    });
   }
 
   _execAttackMelee(cmd) {
@@ -1311,11 +1288,8 @@ export class TurnManager {
           this.#jumpReturns.set(cmd.actorId, { q: actor.position.q, r: actor.position.r });
         }
       }
-      // Record gather animation when gathering is flagged (e.g., mage shield → qi)
+      // Record pending gather when flagged (e.g., mage shield → qi)
       if (cmd.payload.flag === 'pendingQi') {
-        // Store the anim step so the gather effect plays at the correct time
-        // (only if qi is actually gained at end-of-turn, after shield-hit check)
-        this.#pendingFlags.get(cmd.actorId)._gatherAnimStep = this.#currentAnimStep;
         // Save source actionId + skillId so EOT qi gain is attributed to the correct action
         if (this.#lastActionContext?.actionId) {
           this.#pendingFlags.get(cmd.actorId)._pendingQiSourceActionId = this.#lastActionContext.actionId;
@@ -1435,10 +1409,6 @@ export class TurnManager {
       if (wildCollected > 0) this.#logger?.log(`钩锁途中捡起野生子弹 +${wildCollected}`, 's');
     }
     this.#registry.updatePosition(cmd.actorId, fromQ, fromR, cmd.targetPos.q, cmd.targetPos.r);
-    this.#projectileCalculator?.addAnimEvent({
-      event: 'grapple', step: this.#currentAnimStep,
-      fromQ, fromR, toQ: cmd.targetPos.q, toR: cmd.targetPos.r, charId: cmd.actorId,
-    });
   }
 
   // --- Turn-start hook resolution ---
@@ -1642,14 +1612,7 @@ export class TurnManager {
           if (this.#eventRecorder && srcActionId) {
             this.#eventRecorder.setActionContext(null, null, null, null);
           }
-          const animStep = flags._gatherAnimStep ?? this.#currentAnimStep;
           const gatherActor = this.#registry.get(entityId);
-          if (gatherActor && finalAmount > 0) {
-            this.#projectileCalculator?.addAnimEvent({
-              event: 'gather', step: animStep, duration: 2,
-              q: gatherActor.position.q, r: gatherActor.position.r, color: '#8b5cf6', amount: finalAmount,
-            });
-          }
           this.#logger?.log(`🔮 集气成功 +${finalAmount}气`, 'qi');
         } else {
           this.#logger?.log('🔮 护盾受击，未获气', 'sh');
@@ -1693,10 +1656,6 @@ export class TurnManager {
         const fromQ = actor.position.q, fromR = actor.position.r;
         this.#registry.updatePosition(entityId, fromQ, fromR, pos.q, pos.r);
         this.#eventBus.emit(EvtType.MOVEMENT_COMPLETE, { entityId, from: { q: fromQ, r: fromR }, to: { q: pos.q, r: pos.r } });
-        this.#projectileCalculator?.addAnimEvent({
-          event: 'teleport', step: this.#currentAnimStep,
-          fromQ, fromR, toQ: pos.q, toR: pos.r, charId: entityId,
-        });
         this.#logger?.log(`↩ 跃迁返回 (${pos.q},${pos.r})`, 'mv');
       }
     }

@@ -56,9 +56,13 @@ export function createBattleLifecycleService({
 
   async function animateTurn() {
     const battleSession = getBattleSession();
-    const keyframes = battleSession.engine.projectileCalculator.generateKeyframes();
-    const animEvents = battleSession.engine.projectileCalculator.getAnimEvents();
-    const projs = battleSession.engine.projectileCalculator.projectiles;
+    // Task 2.2: generateKeyframes/getAnimEvents removed from ProjectileCalculator.
+    // Animation data will be provided by PresentationTimelineCompiler in a future milestone.
+    // For now, animateTurn is a no-op (no crash, no visual animation).
+    const calc = battleSession.engine.projectileCalculator;
+    const keyframes = typeof calc.generateKeyframes === 'function' ? calc.generateKeyframes() : [];
+    const animEvents = typeof calc.getAnimEvents === 'function' ? calc.getAnimEvents() : [];
+    const projs = calc.projectiles || [];
     if (keyframes.length === 0 && animEvents.length === 0 && projs.length === 0) return;
 
     const maxStep = Math.max(
@@ -77,8 +81,8 @@ export function createBattleLifecycleService({
     }
     await sleep(200);
     renderAll(-1, 0);
-    battleSession.engine.projectileCalculator.clearKeyframes?.();
-    battleSession.engine.projectileCalculator.clearAnimEvents();
+    if (typeof calc.clearKeyframes === 'function') calc.clearKeyframes();
+    if (typeof calc.clearAnimEvents === 'function') calc.clearAnimEvents();
   }
 
   async function executeCurrentTurn() {

@@ -1244,6 +1244,52 @@ h1('Task 2.1: getState excludes keyframes/animEvents');
 	result('getState still has rules', state.rules !== undefined);
 }
 
+// Task 2.2: ProjectileCalculator animation storage/API removed
+h1('Task 2.2: ProjectileCalculator animation storage/API removed');
+{
+	const engine = new GameEngine();
+	engine.initBattle({
+		player1Class: '法师',
+		player2Class: '战士',
+	});
+	const calc = engine.projectileCalculator;
+
+	// A. serialize() does not contain keyframes/animEvents
+	const serialized = calc.serialize();
+	result('serialize() excludes keyframes', !('keyframes' in serialized),
+		serialized.keyframes !== undefined ? JSON.stringify(serialized.keyframes).slice(0, 40) : undefined);
+	result('serialize() excludes animEvents', !('animEvents' in serialized),
+		serialized.animEvents !== undefined ? JSON.stringify(serialized.animEvents).slice(0, 40) : undefined);
+
+	// B. deserialize() does not crash without keyframes/animEvents
+	try {
+		calc.deserialize(serialized);
+		result('deserialize() roundtrip without keyframes/animEvents', true);
+	} catch (err) {
+		result('deserialize() roundtrip without keyframes/animEvents', false, err.message);
+	}
+
+	// C. Source-level boundary: animation methods no longer exist
+	result('generateKeyframes removed', typeof calc.generateKeyframes === 'undefined',
+		typeof calc.generateKeyframes);
+	result('clearKeyframes removed', typeof calc.clearKeyframes === 'undefined',
+		typeof calc.clearKeyframes);
+	result('addAnimEvent removed', typeof calc.addAnimEvent === 'undefined',
+		typeof calc.addAnimEvent);
+	result('getAnimEvents removed', typeof calc.getAnimEvents === 'undefined',
+		typeof calc.getAnimEvents);
+	result('clearAnimEvents removed', typeof calc.clearAnimEvents === 'undefined',
+		typeof calc.clearAnimEvents);
+
+	// D. Domain projectile logic intact
+	const proj = calc.createProjectile('p1', 0, 0, 2, 0, 100, 1, [], 'action-test');
+	result('createProjectile still works', proj !== null && typeof proj.id === 'string');
+	const snapshot = engine.createSnapshot();
+	result('snapshot projectile has no keyframes',
+		!snapshot.projectiles?.[0] || !('keyframes' in snapshot.projectiles[0]),
+		snapshot.projectiles?.[0] ? JSON.stringify(Object.keys(snapshot.projectiles[0])).slice(0, 80) : 'no projectiles');
+}
+
 REPORT.push('\n---');
 REPORT.push(`\n**总计: ${passCount} 通过, ${failCount} 失败**\n`);
 
