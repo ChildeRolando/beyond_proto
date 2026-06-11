@@ -4,9 +4,18 @@
 // Milestone 3 / Task 3.5
 
 import { renderLiveBattleScene } from '../app/BattleScenePipeline.js';
+import { createBattleRenderCoordinator } from '../app/BattleRenderCoordinator.js';
 import { BattleSceneStore } from '../presentation/BattleSceneStore.js';
 import * as fs from 'fs';
 import * as path from 'path';
+
+// Minimal DOM mock for Node.js
+globalThis.document = {
+  getElementById() { return null; },
+  querySelector() { return null; },
+  querySelectorAll() { return []; },
+  createElement() { return { style: {}, classList: { add() {} } }; },
+};
 
 let pass = 0, fail = 0;
 
@@ -266,9 +275,24 @@ console.log('\n=== Test 5: no old animation fields ===');
   const sceneStore = new BattleSceneStore();
   const renderer = createMockRenderer();
 
-  // Inject forbidden fields into engine state — they should NOT appear in scene
-  // (engine no longer produces them, but test defensively)
-  renderLiveBattleScene({ engine, battleSession, sceneStore, renderer });
+  // Actually inject forbidden fields into engine state — they must NOT appear in scene
+  const injectedEngine = createMockEngine({
+    characters: [{ id: 'char-1', name: 'Warrior', position: { q: 0, r: 0 }, alive: true, hp: 100 }],
+    projectiles: [{ id: 'proj-1', position: { q: 1, r: 0 }, alive: true, power: 50 }],
+  });
+  // Hijack getState to inject keyframes/animEvents into the returned state
+  const originalGetState = injectedEngine.getState.bind(injectedEngine);
+  injectedEngine.getState = () => {
+    const state = originalGetState();
+    state.keyframes = [{ fake: true, step: 1 }];
+    state.animEvents = [{ fake: true, event: 'gather' }];
+    if (state.projectiles?.[0]) {
+      state.projectiles[0].keyframes = [{ fake: true }];
+      state.projectiles[0].animEvents = [{ fake: true }];
+    }
+    return state;
+  };
+  renderLiveBattleScene({ engine: injectedEngine, battleSession, sceneStore, renderer });
   const scene = renderer.calls.render[0].scene;
 
   console.log('\n[5a] scene does not have keyframes');
@@ -325,6 +349,156 @@ console.log('\n=== Test 6: pipeline defensive with missing inputs ===');
     console.error(`    Throw: ${e.message}`);
   }
   assert(!threw, 'engine without getState handled gracefully');
+}
+
+// ═══════════════════════════════════════════
+// Test 7: renderAll(-1) uses live scene pipeline (BattleRenderCoordinator integration)
+// ═══════════════════════════════════════════
+
+console.log('\n=== Test 7: renderAll(-1) uses live scene pipeline ===');
+
+{
+  let renderLiveSceneCallCount = 0;
+  let renderBoardCallCount = 0;
+
+  function makeSessionMock() {
+    return {
+      getBattlePanelsContext: () => ({
+        state: { characters: [], projectiles: [] },
+        getEl: () => null,
+      }),
+      combatLogStore: { getEntries: () => [] },
+      getRenderState: () => ({}),
+      engine: { turnManager: { turnNumber: 1, phase: 'RESOLVE' } },
+      isResolutionPlaybackActive: () => false,
+      getTutorialState: () => ({}),
+    };
+  }
+
+  const coordinator = createBattleRenderCoordinator({
+    getEl: () => null,
+    getBattleSession: () => makeSessionMock(),
+    getBattleCanvasRenderer: () => ({
+      render(scene) {},
+      renderBoard(animStep, subT) { renderBoardCallCount++; },
+    }),
+    renderLiveScene: () => { renderLiveSceneCallCount++; },
+  });
+
+  console.log('\n[7a] renderAll() calls renderLiveScene (animStep defaults to -1)');
+  renderLiveSceneCallCount = 0;
+  renderBoardCallCount = 0;
+  coordinator.renderAll();
+  assertEquals(renderLiveSceneCallCount, 1, 'renderLiveScene called once');
+  assertEquals(renderBoardCallCount, 0, 'renderBoard NOT called');
+
+  console.log('\n[7b] renderAll(-1, 0) calls renderLiveScene');
+  renderLiveSceneCallCount = 0;
+  renderBoardCallCount = 0;
+  coordinator.renderAll(-1, 0);
+  assertEquals(renderLiveSceneCallCount, 1, 'renderLiveScene called once');
+  assertEquals(renderBoardCallCount, 0, 'renderBoard NOT called');
+}
+
+// ═══════════════════════════════════════════
+// Test 8: renderAll(animStep >= 0) keeps legacy renderBoard
+// ═══════════════════════════════════════════
+
+console.log('\n=== Test 8: renderAll(animStep >= 0) legacy fallback ===');
+
+{
+  let renderLiveSceneCallCount = 0;
+  let renderBoardCallCount = 0;
+
+  function makeSessionMock8() {
+    return {
+      getBattlePanelsContext: () => ({
+        state: { characters: [], projectiles: [] },
+        getEl: () => null,
+      }),
+      combatLogStore: { getEntries: () => [] },
+      getRenderState: () => ({}),
+      engine: { turnManager: { turnNumber: 1, phase: 'EXECUTE' } },
+      isResolutionPlaybackActive: () => false,
+      getTutorialState: () => ({}),
+    };
+  }
+
+  const coordinator = createBattleRenderCoordinator({
+    getEl: () => null,
+    getBattleSession: () => makeSessionMock8(),
+    getBattleCanvasRenderer: () => ({
+      render(scene) {},
+      renderBoard(animStep, subT) { renderBoardCallCount++; },
+    }),
+    renderLiveScene: () => { renderLiveSceneCallCount++; },
+  });
+
+  console.log('\n[8a] renderAll(0, 0.5) calls renderBoard (legacy animation path)');
+  renderLiveSceneCallCount = 0;
+  renderBoardCallCount = 0;
+  coordinator.renderAll(0, 0.5);
+  assertEquals(renderBoardCallCount, 1, 'renderBoard called for animation');
+  assertEquals(renderLiveSceneCallCount, 0, 'renderLiveScene NOT called');
+
+  console.log('\n[8b] renderAll(5, 0) calls renderBoard (legacy)');
+  renderLiveSceneCallCount = 0;
+  renderBoardCallCount = 0;
+  coordinator.renderAll(5, 0);
+  assertEquals(renderBoardCallCount, 1, 'renderBoard called');
+  assertEquals(renderLiveSceneCallCount, 0, 'renderLiveScene NOT called');
+
+  console.log('\n[8c] coordinator without renderLiveScene falls back to renderBoard');
+  const legacyCoordinator = createBattleRenderCoordinator({
+    getEl: () => null,
+    getBattleSession: () => makeSessionMock8(),
+    getBattleCanvasRenderer: () => ({
+      render(scene) {},
+      renderBoard(animStep, subT) { renderBoardCallCount++; },
+    }),
+    // No renderLiveScene
+  });
+  renderBoardCallCount = 0;
+  legacyCoordinator.renderAll();
+  assertEquals(renderBoardCallCount, 1, 'renderBoard called when no renderLiveScene');
+}
+
+// ═══════════════════════════════════════════
+// Test 9: AppRuntime source scan — imports BattleSceneStore and renderLiveBattleScene
+// ═══════════════════════════════════════════
+
+console.log('\n=== Test 9: AppRuntime source scan ===');
+
+{
+  const appRuntimePath = path.resolve('app/AppRuntime.js');
+  const src = fs.readFileSync(appRuntimePath, 'utf-8');
+
+  console.log('\n[9a] AppRuntime imports BattleSceneStore');
+  assert(src.includes(`'../presentation/BattleSceneStore.js'`), 'imports BattleSceneStore');
+
+  console.log('\n[9b] AppRuntime imports renderLiveBattleScene');
+  assert(src.includes(`'./BattleScenePipeline.js'`), 'imports renderLiveBattleScene from BattleScenePipeline');
+
+  console.log('\n[9c] AppRuntime creates BattleSceneStore');
+  assert(src.includes('new BattleSceneStore()'), 'instantiates BattleSceneStore');
+
+  console.log('\n[9d] AppRuntime passes renderLiveScene to createBattleRenderCoordinator');
+  assert(src.includes('renderLiveScene'), 'passes renderLiveScene to coordinator');
+
+  console.log('\n[9e] renderLiveScene callback calls renderLiveBattleScene');
+  assert(src.includes('renderLiveBattleScene'), 'calls renderLiveBattleScene');
+
+  console.log('\n[9f] renderLiveScene passes engine to pipeline');
+  assert(src.includes('engine'), 'passes engine');
+
+  console.log('\n[9g] renderLiveScene passes battleSession to pipeline');
+  assert(src.includes('battleSession'), 'passes battleSession');
+
+  console.log('\n[9h] renderLiveScene passes sceneStore to pipeline');
+  assert(src.includes('sceneStore'), 'passes sceneStore');
+
+  console.log('\n[9i] renderLiveScene passes renderer to pipeline');
+  assert(src.includes('renderer'), 'passes renderer');
 }
 
 // ═══════════════════════════════════════════

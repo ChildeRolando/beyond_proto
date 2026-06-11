@@ -7,6 +7,7 @@ export function createBattleRenderCoordinator({
   getEl,
   getBattleSession,
   getBattleCanvasRenderer,
+  renderLiveScene,
 }) {
   const setDisplay = (id, value) => { const el = getEl(id); if (el) el.style.display = value; };
   const setText = (id, text) => {
@@ -145,7 +146,13 @@ export function createBattleRenderCoordinator({
   }
 
   function renderAll(animStep = -1, subT = 0) {
-    getBattleCanvasRenderer()?.renderBoard(animStep, subT);
+    if (animStep === -1 && renderLiveScene) {
+      // Live mode: use the new BattleScene pipeline
+      renderLiveScene();
+    } else {
+      // Animation/playback mode: keep legacy renderBoard path
+      getBattleCanvasRenderer()?.renderBoard(animStep, subT);
+    }
     renderPanels();
     renderLog();
     updateTurnUi();

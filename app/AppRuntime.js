@@ -47,6 +47,8 @@ import { installRuntimeTestHooks } from './RuntimeTestHooks.js';
 import { PORTRAIT_CACHE_VERSION } from '../ui/portrait/PortraitAssets.js';
 import { seedSkillIconCacheFromPreloader } from '../ui/shared/SkillIconAssets.js';
 import { createTurnResolutionBuilder } from '../engine/resolution/TurnResolutionBuilder.js';
+import { BattleSceneStore } from '../presentation/BattleSceneStore.js';
+import { renderLiveBattleScene } from './BattleScenePipeline.js';
 
 export function createAppRuntime() {
   const CLASSES = ['法师', '战士', '射手'];
@@ -95,11 +97,21 @@ export function createAppRuntime() {
   const getGameOverController = () => gameOverController;
   const getStartLobbyUi = () => startLobbyUi;
 
+  // ── BattleSceneStore (live pipeline) ──
+  const battleSceneStore = new BattleSceneStore();
+  const renderLiveScene = () => renderLiveBattleScene({
+    engine: battleSession?.engine,
+    battleSession,
+    sceneStore: battleSceneStore,
+    renderer: battleCanvasRenderer,
+  });
+
   // ── Battle render coordinator ──
   const battleRender = createBattleRenderCoordinator({
     getEl,
     getBattleSession,
     getBattleCanvasRenderer,
+    renderLiveScene,
   });
 
   // ── Battle lifecycle service ──
