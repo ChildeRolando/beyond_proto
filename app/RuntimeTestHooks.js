@@ -285,6 +285,35 @@ export function installRuntimeTestHooks({
           },
         ],
       },
+      melee_slash_test: {
+        mode: 'duel',
+        teams: commonTeams,
+        rules: { friendlyFire: false },
+        combatants: [
+          {
+            id: 'slasher',
+            teamId: 'player1',
+            ownerId: 'player1',
+            control: 'human',
+            class: '战士',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['warrior_slash'],
+            position: { q: 0, r: 0 },
+            resources: {},
+          },
+          {
+            id: 'slash_target',
+            teamId: 'player2',
+            ownerId: 'player2',
+            control: 'human',
+            class: '法师',
+            roleLoadoutSkillIds: [],
+            loadoutSkillIds: ['mage_gather'],
+            position: { q: 1, r: 0 },  // adjacent for melee range 1
+            resources: { qi: 2 },
+          },
+        ],
+      },
       immediate_miss: {
         mode: 'duel',
         teams: commonTeams,

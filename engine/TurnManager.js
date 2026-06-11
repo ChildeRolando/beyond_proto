@@ -961,7 +961,8 @@ export class TurnManager {
       if (proj && this.#eventRecorder) {
         this.#eventRecorder.recordProjectileCreated(
           proj.id, cmd.actorId, cmd.skillId, actionId,
-          { q: originQ, r: originR }, { q: targetQ, r: targetR }, power, effectiveSpeed
+          { q: originQ, r: originR }, { q: targetQ, r: targetR }, power, effectiveSpeed,
+          { path: proj.path, flags: proj.flags, speed: effectiveSpeed }
         );
       }
     }

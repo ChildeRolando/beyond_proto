@@ -439,3 +439,111 @@ test('Test 10: immediate attack miss produces canonical action_failed', async ({
     expect(fe.actorId).toBe('flash_warrior');
   }
 });
+
+// ─── Test 11: Real warrior_slash melee projectile metadata ───
+
+test('Test 11: warrior_slash produces projectile_created with melee metadata', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForFunction(() => Boolean(window.__resolutionTest));
+
+  // melee_slash_test scenario: slasher at (0,0) with warrior_slash, slash_target at (1,0) adjacent
+  await page.evaluate(() => window.__resolutionTest.startDeterministicSpeedScenario('melee_slash_test'));
+  await expect(page.locator('#app')).toBeVisible();
+
+  // Submit warrior_slash from slasher targeting slash_target at adjacent hex
+  await page.evaluate(() => {
+    window.__resolutionTest.forceSubmitAction('slasher', 'warrior_slash', { q: 1, r: 0 });
+    window.__resolutionTest.forceSubmitAction('slash_target', 'mage_gather', null);
+  });
+
+  const executed = await page.evaluate(() => window.__resolutionTest.executeRealTurnAndGetResolution());
+  const resolution = executed?.resolution;
+  expect(resolution).not.toBeNull();
+
+  const allEvents = (resolution.phases || []).flatMap(p => p.events || []);
+
+  // Find warrior_slash projectile_created
+  const slashCreated = allEvents.find(e =>
+    e.eventType === 'projectile_created' && e.skillId === 'warrior_slash'
+  );
+  expect(slashCreated).toBeTruthy();
+  expect(slashCreated.metadata.isMelee).toBe(true);
+  expect(slashCreated.metadata.projectileType).toBe('melee');
+  expect(slashCreated.metadata.flags).toContain('MELEE');
+  expect(Array.isArray(slashCreated.metadata.path)).toBe(true);
+  expect(slashCreated.metadata.path.length).toBeGreaterThanOrEqual(1);
+  expect(typeof slashCreated.metadata.path[0].q).toBe('number');
+});
+
+// ─── Test 12: Real mage_blast projectile metadata ───
+
+test('Test 12: mage_blast produces projectile_created with projectile metadata', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForFunction(() => Boolean(window.__resolutionTest));
+
+  // multi_attack scenario: attacker has mage_blast
+  await page.evaluate(() => window.__resolutionTest.startDeterministicSpeedScenario('multi_attack'));
+  await expect(page.locator('#app')).toBeVisible();
+
+  await page.evaluate(() => {
+    window.__resolutionTest.forceSubmitAction('attacker', 'mage_blast', { q: 0, r: 2 });
+    window.__resolutionTest.forceSubmitAction('target_hit', 'warrior_rage', null);
+  });
+
+  const executed = await page.evaluate(() => window.__resolutionTest.executeRealTurnAndGetResolution());
+  const resolution = executed?.resolution;
+  expect(resolution).not.toBeNull();
+
+  const allEvents = (resolution.phases || []).flatMap(p => p.events || []);
+
+  const blastCreated = allEvents.find(e =>
+    e.eventType === 'projectile_created' && e.skillId === 'mage_blast'
+  );
+  expect(blastCreated).toBeTruthy();
+  expect(blastCreated.metadata.projectileType).toBe('projectile');
+  expect(blastCreated.metadata.isMelee).toBe(false);
+  expect(Array.isArray(blastCreated.metadata.path)).toBe(true);
+  expect(blastCreated.metadata.path.length).toBeGreaterThanOrEqual(2);
+  expect(Array.isArray(blastCreated.metadata.flags)).toBe(true);
+  expect(blastCreated.actorId).toBeTruthy();
+  expect(blastCreated.basePower).toBeGreaterThan(0);
+});
+
+// ─── Test 13: Real projectile hit metadata ───
+
+test('Test 13: projectile hit produces collided event with contact metadata', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForFunction(() => Boolean(window.__resolutionTest));
+
+  // Use multi_attack: attacker (mage_blast) attacking target_hit at range 2
+  await page.evaluate(() => window.__resolutionTest.startDeterministicSpeedScenario('multi_attack'));
+  await expect(page.locator('#app')).toBeVisible();
+
+  await page.evaluate(() => {
+    window.__resolutionTest.forceSubmitAction('attacker', 'mage_blast', { q: 0, r: 2 });
+    window.__resolutionTest.forceSubmitAction('target_hit', 'warrior_rage', null);
+  });
+
+  const executed = await page.evaluate(() => window.__resolutionTest.executeRealTurnAndGetResolution());
+  const resolution = executed?.resolution;
+  expect(resolution).not.toBeNull();
+
+  const allEvents = (resolution.phases || []).flatMap(p => p.events || []);
+
+  // Find projectile_collided with hitType metadata (body contact, not clash)
+  const hitCollided = allEvents.find(e =>
+    e.eventType === 'projectile_collided' && e.metadata?.hitType
+  );
+  // May not exist if the hit is absorbed entirely by rage/etc — but if it does, check shape
+  if (hitCollided) {
+    expect(hitCollided.metadata.contactPos).toBeTruthy();
+    expect(Array.isArray(hitCollided.metadata.flags)).toBe(true);
+    expect(hitCollided.finalDamage).not.toBeNull();
+  } else {
+    // If all damage was absorbed, there should still be damage_applied or damage_absorbed
+    const damageEvents = allEvents.filter(e =>
+      e.eventType === 'damage_applied' || e.eventType === 'damage_absorbed'
+    );
+    expect(damageEvents.length).toBeGreaterThanOrEqual(1);
+  }
+});
