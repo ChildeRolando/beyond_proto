@@ -22,21 +22,22 @@ export const PresentationClipKind = Object.freeze({
   HIT_FLASH:       'hit_flash',
   DEATH:           'death',
   // Milestone 3 — canonical projectile clip kinds (from TurnResolution events)
-  PROJECTILE_LAUNCH:   'projectile_launch',
-  MELEE_SLASH:         'melee_slash',
-  PROJECTILE_IMPACT:   'projectile_impact',
-  PROJECTILE_CLASH:    'projectile_clash',
-  PROJECTILE_INTERCEPT: 'projectile_intercept',
-  PROJECTILE_EXPIRE:   'projectile_expire',
+  PROJECTILE_LAUNCH:            'projectile_launch',
+  MELEE_SLASH:                  'melee_slash',
+  PROJECTILE_IMPACT:            'projectile_impact',
+  PROJECTILE_CLASH:             'projectile_clash',
+  PROJECTILE_INTERCEPT:         'projectile_intercept',
+  PROJECTILE_EXPIRE:            'projectile_expire',
+  STATIONARY_PROJECTILE_SPAWN:  'stationary_projectile_spawn',
 });
 
 /**
- * Returns true if kind is a registered PresentationClipKind value.
- * @param {string} kind
+ * Returns true if clipType is a registered PresentationClipKind value.
+ * @param {string} clipType
  * @returns {boolean}
  */
-export function isPresentationClipKind(kind) {
-  return Object.values(PresentationClipKind).includes(kind);
+export function isPresentationClipKind(clipType) {
+  return Object.values(PresentationClipKind).includes(clipType);
 }
 
 /**
@@ -44,7 +45,7 @@ export function isPresentationClipKind(kind) {
  *
  * @param {object} opts
  * @param {string|null} [opts.id=null]
- * @param {string} opts.kind — must be a PresentationClipKind value
+ * @param {string} opts.clipType — must be a PresentationClipKind value
  * @param {string|null} [opts.phaseId=null]
  * @param {string|null} [opts.actionId=null]
  * @param {number} [opts.startMs=0]
@@ -54,7 +55,7 @@ export function isPresentationClipKind(kind) {
  */
 export function createPresentationClip({
   id,
-  kind,
+  clipType,
   phaseId = null,
   actionId = null,
   startMs = 0,
@@ -63,7 +64,7 @@ export function createPresentationClip({
 } = {}) {
   return {
     id: id || null,
-    kind,
+    clipType,
     phaseId,
     actionId,
     startMs,

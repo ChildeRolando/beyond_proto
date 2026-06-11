@@ -18,13 +18,6 @@ function assertEquals(actual, expected, label) {
   else { fail++; console.error(`  FAIL: ${label} — expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`); }
 }
 
-function assertDeepEquals(actual, expected, label) {
-  const a = JSON.stringify(actual);
-  const b = JSON.stringify(expected);
-  if (a === b) { pass++; }
-  else { fail++; console.error(`  FAIL: ${label} — expected ${b}, got ${a}`); }
-}
-
 // ═══════════════════════════════════════════
 // Helpers: build minimal TurnResolution fixtures
 // ═══════════════════════════════════════════
@@ -149,11 +142,15 @@ console.log('\n=== Test 1: projectile_created → projectile_launch ===');
   assert(Array.isArray(timeline.clips), 'clips is array');
   assert(timeline.clips.length >= 1, 'at least 1 clip');
 
-  const launchClip = timeline.clips.find(c => c.kind === PresentationClipKind.PROJECTILE_LAUNCH);
+  const launchClip = timeline.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_LAUNCH);
   assert(launchClip !== undefined, 'projectile_launch clip exists');
 
-  console.log('\n[1b] launch clip payload');
-  assertEquals(launchClip.kind, PresentationClipKind.PROJECTILE_LAUNCH, 'kind is projectile_launch');
+  console.log('\n[1b] clip uses clipType (canonical field)');
+  assertEquals(typeof launchClip.clipType, 'string', 'clipType is string');
+  assertEquals(launchClip.clipType, PresentationClipKind.PROJECTILE_LAUNCH, 'clipType is projectile_launch');
+  assertEquals(launchClip.kind, undefined, 'clip.kind is undefined — clipType is canonical');
+
+  console.log('\n[1c] launch clip payload');
   assertEquals(launchClip.payload.projectileId, 'proj-1', 'projectileId correct');
   assertEquals(launchClip.payload.path.length, 3, 'path length === 3');
   assertEquals(launchClip.payload.from.q, 0, 'from.q === 0');
@@ -165,13 +162,13 @@ console.log('\n=== Test 1: projectile_created → projectile_launch ===');
   assertEquals(launchClip.payload.isMelee, false, 'isMelee === false');
   assertEquals(launchClip.payload.speed, 3, 'speed === 3');
 
-  console.log('\n[1c] launch clip timing');
+  console.log('\n[1d] launch clip timing');
   assert(launchClip.startMs >= 0, 'startMs >= 0');
   assert(launchClip.durationMs >= 120, 'durationMs >= minProjectileDurationMs');
   // path.length(3) * 80 = 240, so durationMs should be >= 240
   assert(launchClip.durationMs >= 240, 'durationMs based on path length (3*80=240)');
 
-  console.log('\n[1d] launch clip source linking');
+  console.log('\n[1e] launch clip source linking');
   assertEquals(launchClip.sourceEventId, 'ev-001', 'sourceEventId === event id');
   assertEquals(launchClip.actionId, 'act-1', 'actionId correct');
   assertEquals(launchClip.actorId, 'char-a', 'actorId correct');
@@ -198,12 +195,13 @@ console.log('\n=== Test 2: melee projectile → melee_slash ===');
   const resolution = makeResolution(1, [phase]);
   const timeline = compilePresentationTimeline(resolution);
 
-  console.log('\n[2a] melee_slash clip exists');
-  const slashClip = timeline.clips.find(c => c.kind === PresentationClipKind.MELEE_SLASH);
+  console.log('\n[2a] melee_slash clip exists with clipType');
+  const slashClip = timeline.clips.find(c => c.clipType === PresentationClipKind.MELEE_SLASH);
   assert(slashClip !== undefined, 'melee_slash clip exists');
+  assertEquals(slashClip.clipType, PresentationClipKind.MELEE_SLASH, 'clipType is melee_slash');
+  assertEquals(slashClip.kind, undefined, 'clip.kind is undefined');
 
   console.log('\n[2b] melee_slash payload');
-  assertEquals(slashClip.kind, PresentationClipKind.MELEE_SLASH, 'kind is melee_slash');
   assertEquals(slashClip.payload.isMelee, true, 'isMelee === true');
   assertEquals(slashClip.payload.projectileType, 'melee', 'projectileType === melee');
   assert(slashClip.payload.flags.includes('MELEE'), 'flags includes MELEE');
@@ -247,14 +245,15 @@ console.log('\n=== Test 3: projectile_collided → projectile_impact ===');
   const resolution = makeResolution(1, [phase]);
   const timeline = compilePresentationTimeline(resolution);
 
-  console.log('\n[3a] both clips exist');
-  const launchClip = timeline.clips.find(c => c.kind === PresentationClipKind.PROJECTILE_LAUNCH);
-  const impactClip = timeline.clips.find(c => c.kind === PresentationClipKind.PROJECTILE_IMPACT);
+  console.log('\n[3a] both clips exist with clipType');
+  const launchClip = timeline.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_LAUNCH);
+  const impactClip = timeline.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_IMPACT);
   assert(launchClip !== undefined, 'projectile_launch exists');
+  assertEquals(launchClip.clipType, PresentationClipKind.PROJECTILE_LAUNCH, 'launch clipType correct');
   assert(impactClip !== undefined, 'projectile_impact exists');
+  assertEquals(impactClip.clipType, PresentationClipKind.PROJECTILE_IMPACT, 'impact clipType correct');
 
   console.log('\n[3b] impact clip payload');
-  assertEquals(impactClip.kind, PresentationClipKind.PROJECTILE_IMPACT, 'kind is projectile_impact');
   assertEquals(impactClip.payload.projectileId, 'proj-1', 'projectileId correct');
   assertEquals(impactClip.payload.targetId, 'char-b', 'targetId correct');
   assert(impactClip.payload.contactPos !== null, 'contactPos exists');
@@ -307,12 +306,13 @@ console.log('\n=== Test 4: projectile-vs-projectile collision → projectile_cla
   const resolution = makeResolution(1, [phase]);
   const timeline = compilePresentationTimeline(resolution);
 
-  console.log('\n[4a] clash clip exists');
-  const clashClip = timeline.clips.find(c => c.kind === PresentationClipKind.PROJECTILE_CLASH);
+  console.log('\n[4a] clash clip exists with clipType');
+  const clashClip = timeline.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_CLASH);
   assert(clashClip !== undefined, 'projectile_clash exists');
+  assertEquals(clashClip.clipType, PresentationClipKind.PROJECTILE_CLASH, 'clipType is projectile_clash');
+  assertEquals(clashClip.kind, undefined, 'clip.kind is undefined');
 
   console.log('\n[4b] clash clip payload');
-  assertEquals(clashClip.kind, PresentationClipKind.PROJECTILE_CLASH, 'kind is projectile_clash');
   assertEquals(clashClip.payload.projectileId, 'proj-a', 'projectileId correct');
   assertEquals(clashClip.payload.otherProjectileId, 'proj-b', 'otherProjectileId === targetId');
   assertEquals(clashClip.payload.collisionType, 'mutual_destroy', 'collisionType correct');
@@ -323,7 +323,7 @@ console.log('\n=== Test 4: projectile-vs-projectile collision → projectile_cla
   assert(clashClip.payload.contactPos !== null, 'contactPos exists');
 
   console.log('\n[4c] clash timing');
-  const launchClip = timeline.clips.find(c => c.kind === PresentationClipKind.PROJECTILE_LAUNCH);
+  const launchClip = timeline.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_LAUNCH);
   assert(clashClip.startMs >= launchClip.startMs + launchClip.durationMs,
     'clash.startMs >= launch.startMs + launch.durationMs');
   assertEquals(clashClip.durationMs, 180, 'clash durationMs === 180');
@@ -357,9 +357,9 @@ console.log('\n=== Test 5: intercept + expired ===');
   const resIntercept = makeResolution(2, [phaseIntercept]);
   const tlIntercept = compilePresentationTimeline(resIntercept);
 
-  const interceptClip = tlIntercept.clips.find(c => c.kind === PresentationClipKind.PROJECTILE_INTERCEPT);
+  const interceptClip = tlIntercept.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_INTERCEPT);
   assert(interceptClip !== undefined, 'projectile_intercept clip exists');
-  assertEquals(interceptClip.kind, PresentationClipKind.PROJECTILE_INTERCEPT, 'kind is projectile_intercept');
+  assertEquals(interceptClip.clipType, PresentationClipKind.PROJECTILE_INTERCEPT, 'clipType is projectile_intercept');
   assertEquals(interceptClip.payload.projectileId, 'proj-1', 'projectileId correct');
   assertEquals(interceptClip.payload.interceptorId, 'char-c', 'interceptorId === targetId');
   assertEquals(interceptClip.payload.interceptPower, 80, 'interceptPower correct');
@@ -378,9 +378,9 @@ console.log('\n=== Test 5: intercept + expired ===');
   const resExpire = makeResolution(3, [phaseExpire]);
   const tlExpire = compilePresentationTimeline(resExpire);
 
-  const expireClip = tlExpire.clips.find(c => c.kind === PresentationClipKind.PROJECTILE_EXPIRE);
+  const expireClip = tlExpire.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_EXPIRE);
   assert(expireClip !== undefined, 'projectile_expire clip exists');
-  assertEquals(expireClip.kind, PresentationClipKind.PROJECTILE_EXPIRE, 'kind is projectile_expire');
+  assertEquals(expireClip.clipType, PresentationClipKind.PROJECTILE_EXPIRE, 'clipType is projectile_expire');
   assertEquals(expireClip.payload.projectileId, 'proj-1', 'projectileId correct');
   assertEquals(expireClip.payload.reason, 'max_range', 'reason correct');
   assert(expireClip.payload.lastPos !== null, 'lastPos exists');
@@ -389,7 +389,7 @@ console.log('\n=== Test 5: intercept + expired ===');
   assertEquals(expireClip.durationMs, 80, 'expire durationMs === 80 (msPerEvent)');
 
   console.log('\n[5c] intercept/expire timing relative to launch');
-  const launchClip5 = tlIntercept.clips.find(c => c.kind === PresentationClipKind.PROJECTILE_LAUNCH);
+  const launchClip5 = tlIntercept.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_LAUNCH);
   assert(interceptClip.startMs >= launchClip5.startMs + launchClip5.durationMs,
     'intercept.startMs >= launch.startMs + launch.durationMs');
 }
@@ -422,7 +422,6 @@ console.log('\n=== Test 6: determinism ===');
   console.log('\n[6c] class-based API matches function API with same options');
   const t5 = compiler.compile(resolution);
   const s5 = JSON.stringify(t5);
-  // Function API with defaults should match class with defaults
   assertEquals(s1, s5, 'function API with defaults === class API with defaults');
 }
 
@@ -499,8 +498,8 @@ console.log('\n=== Test 8: multi-phase cumulative timing ===');
   const timeline = compilePresentationTimeline(resolution);
 
   console.log('\n[8a] phase 2 clips start after phase 1 max end time');
-  const launchClip = timeline.clips.find(c => c.kind === PresentationClipKind.PROJECTILE_LAUNCH);
-  const impactClip = timeline.clips.find(c => c.kind === PresentationClipKind.PROJECTILE_IMPACT);
+  const launchClip = timeline.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_LAUNCH);
+  const impactClip = timeline.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_IMPACT);
 
   // Phase 1: launch at 0 + 0*80 = 0, duration = 3*80 = 240
   // Phase 1 max end = 240
@@ -512,13 +511,13 @@ console.log('\n=== Test 8: multi-phase cumulative timing ===');
 }
 
 // ═══════════════════════════════════════════
-// Test 9: stationary projectile clip type
+// Test 9: stationary projectile → stationary_projectile_spawn
 // ═══════════════════════════════════════════
 
 console.log('\n=== Test 9: stationary / aoe projectile clip types ===');
 
 {
-  console.log('\n[9a] stationary projectile → projectile_launch');
+  console.log('\n[9a] stationary projectile → stationary_projectile_spawn');
   const ev = makeProjectileCreatedEvent({
     projectileType: 'stationary',
     metadata: {
@@ -533,8 +532,9 @@ console.log('\n=== Test 9: stationary / aoe projectile clip types ===');
   const resolution = makeResolution(1, [phase]);
   const timeline = compilePresentationTimeline(resolution);
   const clip = timeline.clips[0];
-  assertEquals(clip.kind, PresentationClipKind.PROJECTILE_LAUNCH, 'stationary → projectile_launch');
+  assertEquals(clip.clipType, PresentationClipKind.STATIONARY_PROJECTILE_SPAWN, 'stationary → stationary_projectile_spawn');
   assertEquals(clip.payload.projectileType, 'stationary', 'projectileType preserved');
+  assert(clip.payload.flags.includes('STATIONARY'), 'flags includes STATIONARY');
 
   console.log('\n[9b] aoe projectile → projectile_launch');
   const ev2 = makeProjectileCreatedEvent({
@@ -551,12 +551,12 @@ console.log('\n=== Test 9: stationary / aoe projectile clip types ===');
   const resolution2 = makeResolution(1, [phase2]);
   const timeline2 = compilePresentationTimeline(resolution2);
   const clip2 = timeline2.clips[0];
-  assertEquals(clip2.kind, PresentationClipKind.PROJECTILE_LAUNCH, 'aoe → projectile_launch');
+  assertEquals(clip2.clipType, PresentationClipKind.PROJECTILE_LAUNCH, 'aoe → projectile_launch');
   assertEquals(clip2.payload.projectileType, 'aoe', 'projectileType preserved');
 }
 
 // ═══════════════════════════════════════════
-// Test 10: custom options
+// Test 10: custom timing options
 // ═══════════════════════════════════════════
 
 console.log('\n=== Test 10: custom timing options ===');
@@ -580,8 +580,8 @@ console.log('\n=== Test 10: custom timing options ===');
   };
   const timeline = compilePresentationTimeline(resolution, customOpts);
 
-  const launchClip = timeline.clips.find(c => c.kind === PresentationClipKind.PROJECTILE_LAUNCH);
-  const impactClip = timeline.clips.find(c => c.kind === PresentationClipKind.PROJECTILE_IMPACT);
+  const launchClip = timeline.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_LAUNCH);
+  const impactClip = timeline.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_IMPACT);
 
   // path.length(3) * 60 = 180, min is 200 → 200
   assertEquals(launchClip.durationMs, 200, 'custom minProjectileDurationMs applied');
@@ -620,19 +620,20 @@ console.log('\n=== Test 11: non-projectile events skipped ===');
   console.log('\n[11a] only projectile events produce clips');
   assertEquals(timeline.clips.length, 1, 'only 1 clip (projectile_launch)');
   assertEquals(timeline.clips[0].sourceEventId, 'ev-launch', 'correct event compiled');
+  assertEquals(timeline.clips[0].clipType, PresentationClipKind.PROJECTILE_LAUNCH, 'clipType is projectile_launch');
 
   console.log('\n[11b] non-projectile events do not create clips');
-  const kinds = timeline.clips.map(c => c.kind);
-  assert(!kinds.includes('resource_changed'), 'no resource clip');
-  assert(!kinds.includes('character_moved'), 'no move clip');
-  assert(!kinds.includes('damage_applied'), 'no damage clip');
+  const clipTypes = timeline.clips.map(c => c.clipType);
+  assert(!clipTypes.includes('resource_changed'), 'no resource clip');
+  assert(!clipTypes.includes('character_moved'), 'no move clip');
+  assert(!clipTypes.includes('damage_applied'), 'no damage clip');
 }
 
 // ═══════════════════════════════════════════
 // Test 12: aoe_explosion hitType → impact
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 12: aoe_explosion hitType → impact');
+console.log('\n=== Test 12: aoe_explosion hitType → impact ===');
 
 {
   const launchEv = makeProjectileCreatedEvent({
@@ -663,8 +664,9 @@ console.log('\n=== Test 12: aoe_explosion hitType → impact');
   const resolution = makeResolution(1, [phase]);
   const timeline = compilePresentationTimeline(resolution);
 
-  const impactClip = timeline.clips.find(c => c.kind === PresentationClipKind.PROJECTILE_IMPACT);
+  const impactClip = timeline.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_IMPACT);
   assert(impactClip !== undefined, 'aoe impact clip exists');
+  assertEquals(impactClip.clipType, PresentationClipKind.PROJECTILE_IMPACT, 'clipType is projectile_impact');
   assertEquals(impactClip.payload.hitType, 'aoe_explosion', 'hitType === aoe_explosion');
   assert(impactClip.payload.flags.includes('AOE_RADIUS_1'), 'flags preserved');
 }
