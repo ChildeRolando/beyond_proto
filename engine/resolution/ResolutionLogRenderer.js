@@ -171,13 +171,33 @@ export function renderTurnLog(resolution) {
     });
   }
 
-  // Build char lookup from all viewStates
+  // Build char lookup from all phase afterSnapshots + finalSnapshot
   const charById = new Map();
   for (const phase of resolution.phases || []) {
-    for (const char of (phase.viewState?.characters || [])) {
-      if (!charById.has(char.id)) charById.set(char.id, char);
+    const entities = phase.afterSnapshot?.registry?.entities || [];
+    for (const e of entities) {
+      if (e.type === 'CHARACTER' && !charById.has(e.id)) {
+        charById.set(e.id, { id: e.id, name: e.name, ownerId: e.ownerId });
+      }
     }
   }
+  // Also collect from beforeSnapshot as fallback (first phase may not have afterSnapshot yet)
+  for (const phase of resolution.phases || []) {
+    const entities = phase.beforeSnapshot?.registry?.entities || [];
+    for (const e of entities) {
+      if (e.type === 'CHARACTER' && !charById.has(e.id)) {
+        charById.set(e.id, { id: e.id, name: e.name, ownerId: e.ownerId });
+      }
+    }
+  }
+  // Fallback: finalSnapshot
+  const finalEntities = resolution.finalSnapshot?.registry?.entities || [];
+  for (const e of finalEntities) {
+    if (e.type === 'CHARACTER' && !charById.has(e.id)) {
+      charById.set(e.id, { id: e.id, name: e.name, ownerId: e.ownerId });
+    }
+  }
+  // Legacy compat: endState (for resolutions produced before schema v2)
   for (const char of (resolution.endState?.characters || [])) {
     if (!charById.has(char.id)) charById.set(char.id, char);
   }

@@ -209,8 +209,8 @@ test('Test 5: every TurnResolution event has a valid eventType', async ({ page }
 
   const allEvents = (resolution.phases || []).flatMap(p => p.events || []);
 
-  // All events must have eventType
-  const validTypes = [
+  // Every event must have a canonical eventType (no coarse fallback types)
+  const canonicalTypes = [
     'action_declared', 'action_failed',
     'resource_changed',
     'status_applied', 'status_removed', 'status_expired',
@@ -220,21 +220,26 @@ test('Test 5: every TurnResolution event has a valid eventType', async ({ page }
     'damage_applied', 'damage_absorbed',
     'character_died',
     'turn_started', 'battle_ended',
-    // Legacy coarse types still accepted as fallback during migration
-    'move', 'attack', 'resource', 'status', 'utility',
   ];
+  // Coarse legacy types must NOT appear as eventType in phase.events
+  const forbiddenTypes = ['move', 'attack', 'resource', 'status', 'utility'];
 
-  // Every event should have at least a recognizable type (eventType or legacy type)
   for (const evt of allEvents) {
-    const effectiveType = evt.eventType || evt.type;
-    expect(validTypes).toContain(effectiveType);
+    // Every event must have a canonical eventType
+    expect(canonicalTypes).toContain(evt.eventType);
+    // No event should have only a legacy coarse type
+    expect(forbiddenTypes).not.toContain(evt.eventType);
+    // No event should have eventType === null or undefined
+    expect(evt.eventType).toBeTruthy();
   }
 
-  // Events with canonical eventType should NOT use legacy-only types as eventType
-  const canonicalEvents = allEvents.filter(e => e.eventType);
-  const legacyOnlyTypes = ['move', 'attack', 'resource', 'status', 'utility'];
-  for (const evt of canonicalEvents) {
-    expect(legacyOnlyTypes).not.toContain(evt.eventType);
+  // All events pass assertResolutionEvent (simulated client-side)
+  for (const evt of allEvents) {
+    expect(() => {
+      if (!evt || !canonicalTypes.includes(evt.eventType)) {
+        throw new Error(`Invalid ResolutionEvent: eventType "${evt.eventType}" is not registered`);
+      }
+    }).not.toThrow();
   }
 });
 

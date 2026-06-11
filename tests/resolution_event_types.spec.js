@@ -135,6 +135,91 @@ console.log('\n[3c] missing eventType throws');
   }
 }
 
+// ─── Batch assertion helper for TurnResolution ───
+
+console.log('\n=== Part 4: Batch resolution event validation ===');
+
+function assertAllResolutionEvents(resolution) {
+  for (const phase of resolution.phases || []) {
+    for (const event of phase.events || []) {
+      assertResolutionEvent(event);
+    }
+  }
+}
+
+console.log('[4a] valid resolution passes batch assertion');
+{
+  const validResolution = {
+    phases: [
+      {
+        events: [
+          { eventType: 'action_declared', actorId: 'a', skillId: 's' },
+          { eventType: 'character_moved', actorId: 'a', from: { q: 0, r: 0 }, to: { q: 1, r: 0 } },
+          { eventType: 'projectile_created', actorId: 'a' },
+          { eventType: 'damage_applied', targetId: 'b', finalDamage: 100 },
+        ],
+      },
+    ],
+  };
+  try {
+    assertAllResolutionEvents(validResolution);
+    assert(true, 'batch assertion passes');
+  } catch (err) {
+    assert(false, `batch assertion should not throw: ${err.message}`);
+  }
+}
+
+console.log('[4b] resolution with coarse type fails batch assertion');
+{
+  const invalidResolution = {
+    phases: [
+      {
+        events: [
+          { eventType: 'action_declared', actorId: 'a', skillId: 's' },
+          { eventType: 'attack', actorId: 'a' },  // coarse type — must fail
+        ],
+      },
+    ],
+  };
+  try {
+    assertAllResolutionEvents(invalidResolution);
+    assert(false, 'should have thrown on coarse event type');
+  } catch (err) {
+    assert(err.message.includes('Invalid'), 'throws on coarse event type');
+  }
+}
+
+console.log('[4c] resolution with null eventType fails batch assertion');
+{
+  const invalidResolution = {
+    phases: [
+      {
+        events: [
+          { eventType: 'action_declared', actorId: 'a', skillId: 's' },
+          {},  // no eventType
+        ],
+      },
+    ],
+  };
+  try {
+    assertAllResolutionEvents(invalidResolution);
+    assert(false, 'should have thrown on missing eventType');
+  } catch (err) {
+    assert(true, 'throws on missing eventType');
+  }
+}
+
+console.log('[4d] empty phases pass batch assertion');
+{
+  const emptyResolution = { phases: [] };
+  try {
+    assertAllResolutionEvents(emptyResolution);
+    assert(true, 'empty phases pass');
+  } catch (err) {
+    assert(false, `empty phases should not throw: ${err.message}`);
+  }
+}
+
 // ─── Summary ───
 
 console.log(`\n${'='.repeat(40)}`);

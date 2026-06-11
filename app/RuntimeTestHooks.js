@@ -513,17 +513,20 @@ export function installRuntimeTestHooks({
       // Clear submitted state so UI renders correctly for next turn
       battleSession.localSubmittedSet.clear();
 
-      // Capture post-execution view states for each phase and build canonical action summaries
-      const viewState = engine.getState();
+      // Capture post-execution snapshots for each phase and build canonical action summaries
+      const finalSnapshot = engine.createSnapshot();
+      const charactersView = { characters: (finalSnapshot.registry?.entities || []).filter(e => e.type === 'CHARACTER') };
       for (const phase of phases) {
-        phase.viewState = { characters: viewState.characters.map(c => ({ ...c })) };
-        phase.actions = buildActionSummaries(phase, phase.viewState);
+        phase.afterSnapshot = finalSnapshot;
+        phase.actions = buildActionSummaries(phase, charactersView);
       }
 
       const resolution = {
+        schemaVersion: 2,
         turnNumber: engine.turnManager.turnNumber - 1, // turn was already incremented
         phases: phases.filter(p => p.events.length > 0),
-        endState: viewState,
+        initialSnapshot: null,
+        finalSnapshot,
       };
 
       // Store and append to CombatLogStore so append-only tests work

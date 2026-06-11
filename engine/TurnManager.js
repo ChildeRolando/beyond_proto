@@ -47,7 +47,7 @@ export class TurnManager {
   #resourceFailed = new Set();  // sequenceIds whose resource cost check failed at exec time
   #canceledSequences = new Set(); // sequenceIds canceled by interruption/reaction effects
   #projectileAttackers = new Set(); // actorIds that fired projectiles this speed tier
-  #legacyPhaseEvents = [];           // legacy events for attack finalization (not player-facing)
+  #pendingAttackRecords = [];        // internal attack records for hit/miss finalization (not in resolution)
   #lastActionContext = null;          // saved action context for projectile damage attribution
   #usedActionIds = new Set();         // actionIds that have started cooldown/used this turn
   #cooldownSnapshot = null;           // pre-turn cooldown state for tick exclusion
@@ -217,15 +217,11 @@ export class TurnManager {
           );
         }
         this._executeCommand(cmd);
-        if (phaseRecord) {
-          const legacyEvent = this._createResolutionEvent(cmd, spd, this.#legacyPhaseEvents.length, beforeActor);
-          if (this.#eventRecorder) {
-            // EventRecorder captures canonical events from EventBus.
-            // Legacy events go to a debug array for attack finalization, NOT player-facing phase.events.
-            this.#legacyPhaseEvents.push(legacyEvent);
-          } else {
-            phaseRecord.events.push(legacyEvent);
-          }
+        // Track deferred attack commands for hit/miss finalization after projectile
+        // resolution. Immediate attacks (ATTACK_AOE_SELF, ATTACK_AOE_PATH) handle
+        // their own hit/miss in _executeCommand and don't go through projectile body-contact.
+        if (this._isAttackCommand(cmd) && !this._isImmediateAttack(cmd)) {
+          this.#pendingAttackRecords.push(this._createPendingAttackRecord(cmd, spd));
         }
       }
 
@@ -399,60 +395,56 @@ export class TurnManager {
           this.#lastHitByActor.set(c.ownerId, true);
         }
 
-        // Finalize pending attack events.
-        // When EventRecorder is active, work on #legacyPhaseEvents (not player-facing).
-        const attackEvents = this.#eventRecorder ? this.#legacyPhaseEvents : (phaseRecord?.events || []);
-        for (const evt of attackEvents) {
-          if (evt.type !== 'attack' || evt.result !== 'pending') continue;
+        // Finalize pending attack records from projectile results.
+        for (const rec of this.#pendingAttackRecords) {
+          if (rec.result !== 'pending') continue;
 
-          if (evt.actionId) {
-            const result = resultByAction.get(evt.actionId);
+          if (rec.actionId) {
+            const result = resultByAction.get(rec.actionId);
             if (result) {
-              evt.result = result.hit ? 'hit' : 'miss';
-              if (result.targetId) { evt.targetId = result.targetId; evt.targetName = result.targetName; }
-              if (result.killed) evt.killed = true;
-              if (result.damage) evt.damage = result.damage;
-              this.#lastHitByActor.set(evt.actorId, result.hit);
+              rec.result = result.hit ? 'hit' : 'miss';
+              if (result.targetId) { rec.targetId = result.targetId; rec.targetName = result.targetName; }
+              if (result.killed) rec.killed = true;
+              if (result.damage) rec.damage = result.damage;
+              this.#lastHitByActor.set(rec.actorId, result.hit);
             } else {
-              evt.result = 'miss';
-              this.#lastHitByActor.set(evt.actorId, false);
+              rec.result = 'miss';
+              this.#lastHitByActor.set(rec.actorId, false);
             }
           } else {
-            if (this.#lastHitByActor.has(evt.actorId)) {
-              evt.result = this.#lastHitByActor.get(evt.actorId) ? 'hit' : 'miss';
+            if (this.#lastHitByActor.has(rec.actorId)) {
+              rec.result = this.#lastHitByActor.get(rec.actorId) ? 'hit' : 'miss';
             } else {
-              this.#lastHitByActor.set(evt.actorId, false);
-              evt.result = 'miss';
+              this.#lastHitByActor.set(rec.actorId, false);
+              rec.result = 'miss';
             }
           }
         }
       }
 
       // Dispatch ON_ATTACK_MISSED per-action, and record action_failed for misses.
-      const missSourceEvents = this.#eventRecorder ? this.#legacyPhaseEvents : (phaseRecord?.events || []);
-      for (const evt of missSourceEvents) {
-        if (evt.type !== 'attack') continue;
-        if (evt.result !== 'miss') continue;
-        const attacker = this.#registry.get(evt.actorId);
+      for (const rec of this.#pendingAttackRecords) {
+        if (rec.result !== 'miss') continue;
+        const attacker = this.#registry.get(rec.actorId);
         if (attacker) {
-          const icon = evt.skillId && SKILLS[evt.skillId]?.type === '射击' ? '🔮' : '⚔';
-          this.#logger?.log(`${attacker.name || evt.actorId} ${icon} 挥空`, 's');
+          const icon = rec.skillId && SKILLS[rec.skillId]?.type === '射击' ? '🔮' : '⚔';
+          this.#logger?.log(`${attacker.name || rec.actorId} ${icon} 挥空`, 's');
         }
         const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, {
-          attackerId: evt.actorId,
-          actionId: evt.actionId,
+          attackerId: rec.actorId,
+          actionId: rec.actionId,
         });
         this._processDeathWindReloads(missCtx);
 
         // Record action_failed for canonical event stream
         if (this.#eventRecorder && phaseRecord) {
           this.#eventRecorder.recordActionFailed(
-            evt.actionId, evt.actorId, evt.skillId, 'miss'
+            rec.actionId, rec.actorId, rec.skillId, 'miss'
           );
         }
       }
-      // Clear legacy events after processing
-      this.#legacyPhaseEvents = [];
+      // Clear pending attack records after processing
+      this.#pendingAttackRecords = [];
       this.#projectileAttackers.clear();
 
       // Now execute deferred ON_HIT GAIN_RESOURCE commands
@@ -460,14 +452,6 @@ export class TurnManager {
         if (this.#phase === TurnPhase.BATTLE_END) break;
         const beforeActor = this.#registry.get(cmd.actorId);
         this._executeCommand(cmd);
-        if (phaseRecord) {
-          const legacyEvent = this._createResolutionEvent(cmd, spd, this.#legacyPhaseEvents.length, beforeActor);
-          if (this.#eventRecorder) {
-            this.#legacyPhaseEvents.push(legacyEvent);
-          } else {
-            phaseRecord.events.push(legacyEvent);
-          }
-        }
       }
 
       // 御剑 auto-move at speed 2 — runs AFTER commands so freshly-applied SWORD_FLIGHT is visible
@@ -747,117 +731,19 @@ export class TurnManager {
     ].includes(cmd.type);
   }
 
-  _getResolutionEventType(cmd) {
-    switch (cmd.type) {
-      case CmdType.MOVE_WALK:
-      case CmdType.MOVE_TELEPORT:
-      case CmdType.MOVE_DASH:
-      case CmdType.MOVE_PULL:
-      case CmdType.MOVE_GRAPNEL:
-      case CmdType.WINDSTEP_SLASH:
-        return 'move';
-      case CmdType.ATTACK_MELEE:
-      case CmdType.ATTACK_PROJECTILE:
-      case CmdType.ATTACK_AOE_SELF:
-      case CmdType.ATTACK_AOE_PATH:
-      case CmdType.ATTACK_AOE_TARGET:
-      case CmdType.SPAWN_STATIONARY_AOE:
-        return 'attack';
-      case CmdType.GAIN_RESOURCE:
-      case CmdType.CONSUME_RESOURCE:
-        return 'resource';
-      case CmdType.APPLY_STATUS:
-      case CmdType.REMOVE_STATUS:
-        return 'status';
-      case CmdType.CREATE_GATE:
-      case CmdType.CREATE_FORMATION:
-      case CmdType.BREAK_FORMATION:
-      case CmdType.DROP_SUPPLY_CRATE:
-      case CmdType.DELAYED_SKILL:
-      case CmdType.GALAXY_SUBTURN:
-      case CmdType.MARROW_UPGRADE:
-      case CmdType.MULTI_CAST:
-      case CmdType.PASS:
-        return 'utility';
-      default:
-        return 'command';
-    }
-  }
-
-  _createResolutionEvent(cmd, speed, index, beforeActor) {
-    const afterActor = this.#registry.get(cmd.actorId);
-    const actionId = cmd.actionId || cmd.sequenceId || cmd.id || null;
-    const legacyType = this._getResolutionEventType(cmd);
-    const event = {
-      id: cmd.sequenceId ? `${cmd.sequenceId}:${index}` : `${this.#turnNumber}-${speed}-${index}-${cmd.type}-${cmd.actorId || 'system'}`,
-      actionId,
-      eventType: this._mapLegacyTypeToEventType(legacyType, cmd),
-      type: legacyType,  // legacy compatibility
+  /** Create a lightweight pending attack record for deferred hit/miss finalization. */
+  _createPendingAttackRecord(cmd, speed) {
+    return {
+      actionId: cmd.actionId || cmd.sequenceId || null,
       actorId: cmd.actorId || null,
       skillId: cmd.skillId || null,
       speed,
+      result: 'pending',
+      targetId: null,
+      targetName: null,
+      killed: false,
+      damage: 0,
     };
-
-    if (cmd.targetPos) {
-      event.targetPos = { q: cmd.targetPos.q, r: cmd.targetPos.r };
-    }
-
-    if (legacyType === 'move') {
-      event.eventType = 'character_moved';
-      const beforePos = beforeActor?.position;
-      const afterPos = afterActor?.position;
-      if (beforePos) event.from = { q: beforePos.q, r: beforePos.r };
-      if (afterPos) event.to = { q: afterPos.q, r: afterPos.r };
-      if (!event.to && event.targetPos) event.to = { ...event.targetPos };
-    }
-
-    if (legacyType === 'attack') {
-      // Capture target info from the registry at event creation time
-      if (cmd.targetPos) {
-        const targetChar = this.#registry.characters().find(
-          c => c.position.q === cmd.targetPos.q && c.position.r === cmd.targetPos.r && c.alive !== false
-        );
-        if (targetChar) {
-          event.targetId = targetChar.id;
-          event.targetName = targetChar.name || targetChar.id;
-        }
-      }
-
-      // Deferred attacks — hit result depends on projectile/body-contact resolution
-      const isDeferred = cmd.type === CmdType.ATTACK_MELEE ||
-        cmd.type === CmdType.ATTACK_PROJECTILE ||
-        cmd.type === CmdType.ATTACK_AOE_TARGET;
-      if (isDeferred) {
-        event.result = 'pending';
-      } else {
-        event.result = this.#lastHitByActor.has(cmd.actorId)
-          ? (this.#lastHitByActor.get(cmd.actorId) ? 'hit' : 'miss')
-          : 'pending';
-      }
-    }
-
-    if (legacyType === 'resource') {
-      // Do NOT auto-promote to resource_changed — these legacy events lack delta.
-      // The EventBus RESOURCE_CHANGED → resource_changed events (from the
-      // ResolutionEventRecorder) have correct signed delta and take precedence.
-      event.eventType = null;
-      event.resource = cmd.payload?.resource || null;
-      event.amount = cmd.payload?.amount ?? null;
-      event.condition = cmd.payload?.condition || null;
-    }
-
-    return event;
-  }
-
-  /** Map legacy coarse type to canonical ResolutionEventType. */
-  _mapLegacyTypeToEventType(legacyType, _cmd) {
-    switch (legacyType) {
-      case 'move': return 'character_moved';
-      case 'resource': return 'resource_changed';
-      case 'status': return 'status_applied';
-      // 'attack' and 'utility' don't map 1:1 — set by finalizer or recorder
-      default: return null;
-    }
   }
 
   _processDeathWindReloads(ctx) {

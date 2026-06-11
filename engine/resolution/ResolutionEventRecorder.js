@@ -43,15 +43,15 @@ export class ResolutionEventRecorder {
   /** Start a new speed phase. Returns the phase object (compat with onPhaseStart). */
   startPhase(speed, kind = 'speed', commandCount = 0) {
     const phase = {
-      speed,
+      speed: speed ?? null,
       phaseKind: kind,
       commandCount,
       events: [],
       summary: '',
       actionCount: 0,
       actions: [],
-      snapshot: null,
-      viewState: null,
+      beforeSnapshot: null,
+      afterSnapshot: null,
     };
     this.#phases.push(phase);
     this.#currentPhase = phase;
@@ -191,9 +191,11 @@ export class ResolutionEventRecorder {
     const phases = this.#phases.filter(p => p.events.length > 0);
 
     return {
+      schemaVersion: 2,
       turnNumber: this.#currentTurn,
       phases,
-      endState: finalViewState || null,
+      finalSnapshot: null,
+      initialSnapshot: null,
     };
   }
 
