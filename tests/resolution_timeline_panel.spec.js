@@ -349,9 +349,9 @@ console.log('\n=== Test 4: updatePlaybackFrame marks active phase/action ===');
   console.log('\n[4b] activeActionIds highlights action cards');
   assert(actionCard.classList.contains('active'), 'action card gets active class');
 
-  console.log('\n[4c] active speed label updated');
+  console.log('\n[4c] active speed label updated (Speed N format)');
   const activeSpeedEl = elStore.getEl('resolution-active-speed');
-  assert(activeSpeedEl.textContent.includes('0.5'), `active speed shows time: ${activeSpeedEl.textContent}`);
+  assert(activeSpeedEl.textContent.includes('Speed'), `active speed shows: ${activeSpeedEl.textContent}`);
 
   console.log('\n[4d] other phase not active');
   assert(!phase2.classList.contains('active'), 'other phase not active');

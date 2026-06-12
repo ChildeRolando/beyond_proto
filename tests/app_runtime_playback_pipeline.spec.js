@@ -378,22 +378,25 @@ console.log('\n=== Test 9: boundary scan ===');
 }
 
 // ═══════════════════════════════════════════
-// Test 10: BattleSessionController keeps animateTurn as primary, playTurnResolution available
+// Test 10: BattleSessionController prefers playTurnResolution
 
-console.log('\n=== Test 10: playTurnResolution available in AppRuntime, animateTurn primary in BSC ===');
+console.log('\n=== Test 10: BattleSessionController prefers playTurnResolution ===');
 
 {
-  const bscPath = path.resolve('session/BattleSessionController.js');
-  const bscSrc = fs.readFileSync(bscPath, 'utf-8');
+  const bscSrc = fs.readFileSync(path.resolve('session/BattleSessionController.js'), 'utf-8');
   const appSrc = fs.readFileSync(path.resolve('app/AppRuntime.js'), 'utf-8');
 
-  console.log('\n[10a] BattleSessionController still uses animateTurn as primary');
-  assert(bscSrc.includes('animateTurn'), 'animateTurn still in BSC');
+  console.log('\n[10a] BSC uses playTurnResolution || animateTurn pattern');
+  assert(bscSrc.includes('playTurnResolution ||'), 'playTurnResolution || animateTurn pattern in BSC');
+  assert(bscSrc.includes('animateTurn'), 'animateTurn fallback retained');
 
-  console.log('\n[10b] playTurnResolution wired in AppRuntime (available as callback)');
+  console.log('\n[10b] executeLocalTurn body contains playTurnResolution');
+  // Verify the pattern appears in method bodies, not just once
+  const playResCount = (bscSrc.match(/playTurnResolution/g) || []).length;
+  assert(playResCount >= 3, `playTurnResolution appears ${playResCount} times (expected >=3: executeLocalTurn + executeP2PTurn + non-preview)`);
+
+  console.log('\n[10c] playTurnResolution defined in AppRuntime and passed to session');
   assert(appSrc.includes('playTurnResolution'), 'playTurnResolution defined in AppRuntime');
-
-  console.log('\n[10c] playTurnResolution passed to BattleSessionController callbacks');
   assert(appSrc.includes('playTurnResolution,'), 'playTurnResolution in BSC options');
 }
 

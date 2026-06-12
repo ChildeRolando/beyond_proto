@@ -9,6 +9,7 @@ export function installRuntimeTestHooks({
   getBattleSession,
   getTutorialManager,
   getTurnPlaybackController,
+  getPlaybackRuntime,
   routeController,
   routeNetworkMessage,
   returnToStart,
@@ -602,18 +603,55 @@ export function installRuntimeTestHooks({
       return true;
     },
     skipPlayback: () => {
+      // Try new pipeline: skip via runtime first
+      const pr = getPlaybackRuntime?.();
+      if (pr) {
+        pr.skipToEnd();
+        return true;
+      }
+      // Fallback: old controller skip
       getTurnPlaybackController?.()?.skip?.();
       const skipBtn = document.querySelector('[data-testid="resolution-skip"]');
       skipBtn?.click?.();
       return true;
     },
     getResolution: () => getBattleSession().getLastTurnResolution?.() || null,
-    getTimelineState: () => getTurnPlaybackController?.()?.getTimelineState?.() || {},
+    getTimelineState: () => {
+      // Try old controller first; if empty, derive from new playback pipeline
+      const oldState = getTurnPlaybackController?.()?.getTimelineState?.() || {};
+      if (oldState.activeSpeed != null) return oldState;
+      // Bridge: derive from new playback runtime / DOM
+      const pr = getPlaybackRuntime?.();
+      if (pr) {
+        const prState = pr.getState();
+        // Read active speed from DOM phase cards (set by updatePlaybackFrame)
+        const activePhaseEl = document.querySelector('.resolution-phase.active, .resolution-phase.selected');
+        let activeSpeed = activePhaseEl ? Number(activePhaseEl.dataset.speed) : null;
+        // If no active phase in DOM, use first phase speed as default during playback
+        if (activeSpeed == null && prState.status === 'playing') {
+          const firstPhaseEl = document.querySelector('.resolution-phase[data-speed]');
+          activeSpeed = firstPhaseEl ? Number(firstPhaseEl.dataset.speed) : null;
+        }
+        return {
+          activeSpeed,
+          playbackStatus: prState.status === 'completed' ? 'complete' : prState.status,
+          timeMs: prState.timeMs,
+          hasTimeline: prState.hasTimeline,
+        };
+      }
+      return {};
+    },
     getUnit: (id) => {
       const state = getBattleSession().getRenderState?.();
       return structuredClone(state?.characters?.find(c => c.id === id) || null);
     },
-    isInputLocked: () => Boolean(getBattleSession().isResolutionPlaybackActive?.() || getTurnPlaybackController?.()?.isPlaying?.()),
+    isInputLocked: () => {
+      const sessionLocked = getBattleSession().isResolutionPlaybackActive?.();
+      const oldPlaying = getTurnPlaybackController?.()?.isPlaying?.();
+      const pr = getPlaybackRuntime?.();
+      const newPlaying = pr ? pr.getState().status === 'playing' : false;
+      return Boolean(sessionLocked || oldPlaying || newPlaying);
+    },
     getCombatLogText: () => {
       const state = getBattleSession().getRenderState?.();
       return (state?.logs || []).map(entry => entry.message).join('\n');

@@ -922,7 +922,8 @@ export class BattleSessionController {
       this._callbacks.setSubmitStatus('回放中...');
       this._callbacks.renderAll();
       try {
-        await this._callbacks.animateTurn?.(preview);
+        const playResolution = this._callbacks.playTurnResolution || this._callbacks.animateTurn;
+      await playResolution?.(preview);
       } finally {
         this.engine.restoreSnapshot(preview.finalSnapshot);
         this.clearResolutionPlaybackState();
@@ -982,14 +983,16 @@ export class BattleSessionController {
       this._callbacks.setSubmitStatus('回放中...');
       this._callbacks.renderAll();
       try {
-        await this._callbacks.animateTurn?.(preview);
+        const playResolution = this._callbacks.playTurnResolution || this._callbacks.animateTurn;
+      await playResolution?.(preview);
       } finally {
         this.engine.restoreSnapshot(preview.finalSnapshot);
         this.clearResolutionPlaybackState();
         this.setResolutionPlaybackLocked(false);
       }
     } else {
-      await this._callbacks.animateTurn?.();
+      const playResolution = this._callbacks.playTurnResolution || this._callbacks.animateTurn;
+      await playResolution?.();
     }
 
     // Append all this turn's events to the persistent combat log

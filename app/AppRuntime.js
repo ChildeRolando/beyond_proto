@@ -170,9 +170,10 @@ export function createAppRuntime() {
       }
       battleSceneStore.setInteraction(battleSession?.getRenderViewState?.() || {});
 
-      // Fallback: if timeline has no clips (durationMs === 0), resolve immediately.
-      // The old animateTurn fallback handles non-projectile resolutions better.
+      // For resolutions without projectile events (0 clips), the new pipeline
+      // has nothing to animate. Resolve immediately so the BSC can continue.
       if (!timeline || timeline.durationMs <= 0) {
+        timelinePanel.markComplete('回放完成');
         resolve();
         return;
       }
@@ -461,6 +462,7 @@ export function createAppRuntime() {
     getBattleSession,
     getTutorialManager,
     getTurnPlaybackController: () => turnPlaybackController,
+    getPlaybackRuntime: () => playbackRuntime,
     routeController,
     routeNetworkMessage: (payload) => handleNetworkMessage(payload),
     returnToStart,

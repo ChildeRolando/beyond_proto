@@ -229,11 +229,14 @@ export function createResolutionTimelinePanel({
       card.classList.toggle('active', aid && activeActionIds.includes(aid));
     });
 
-    // Update active speed label
+    // Update active speed label (use old controller format for backward compat)
     const activeSpeedEl = getActiveSpeedEl();
-    if (activeSpeedEl && frame.timeMs != null) {
-      const sec = (frame.timeMs / 1000).toFixed(1);
-      activeSpeedEl.textContent = `${sec}s`;
+    if (activeSpeedEl && phaseId) {
+      const phaseCard = timeline.querySelector(`[data-phase-id="${phaseId}"]`);
+      const speed = phaseCard?.dataset?.speed;
+      if (speed != null) {
+        activeSpeedEl.textContent = `Speed ${speed}`;
+      }
     }
   }
 
