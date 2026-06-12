@@ -923,7 +923,7 @@ export class BattleSessionController {
       this._callbacks.renderAll();
       try {
         const playResolution = this._callbacks.playTurnResolution || this._callbacks.animateTurn;
-      await playResolution?.(preview);
+        await playResolution?.(preview);
       } finally {
         this.engine.restoreSnapshot(preview.finalSnapshot);
         this.clearResolutionPlaybackState();
@@ -984,7 +984,7 @@ export class BattleSessionController {
       this._callbacks.renderAll();
       try {
         const playResolution = this._callbacks.playTurnResolution || this._callbacks.animateTurn;
-      await playResolution?.(preview);
+        await playResolution?.(preview);
       } finally {
         this.engine.restoreSnapshot(preview.finalSnapshot);
         this.clearResolutionPlaybackState();

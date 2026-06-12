@@ -6,3 +6,4 @@ dist/
 assets/skill-icons/role/fmapp-lite.exe
 assets/skill-icons/role/fmapp-lite.exe.dl
 assets/skill-icons/**/*.png
+test-results/
