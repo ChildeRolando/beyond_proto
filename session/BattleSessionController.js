@@ -991,8 +991,7 @@ export class BattleSessionController {
         this.setResolutionPlaybackLocked(false);
       }
     } else {
-      const playResolution = this._callbacks.playTurnResolution || this._callbacks.animateTurn;
-      await playResolution?.();
+      await this._callbacks.animateTurn?.();
     }
 
     // Append all this turn's events to the persistent combat log

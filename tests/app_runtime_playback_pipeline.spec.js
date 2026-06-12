@@ -386,14 +386,23 @@ console.log('\n=== Test 10: BattleSessionController prefers playTurnResolution =
   const bscSrc = fs.readFileSync(path.resolve('session/BattleSessionController.js'), 'utf-8');
   const appSrc = fs.readFileSync(path.resolve('app/AppRuntime.js'), 'utf-8');
 
-  console.log('\n[10a] BSC uses playTurnResolution || animateTurn pattern');
+  console.log('\n[10a] BSC preview branches use playTurnResolution || animateTurn');
   assert(bscSrc.includes('playTurnResolution ||'), 'playTurnResolution || animateTurn pattern in BSC');
   assert(bscSrc.includes('animateTurn'), 'animateTurn fallback retained');
 
-  console.log('\n[10b] executeLocalTurn body contains playTurnResolution');
-  // Verify the pattern appears in method bodies, not just once
+  console.log('\n[10b] playTurnResolution appears exactly in 2 preview branches');
+  // executeLocalTurn preview + executeP2PTurn preview only (NOT non-preview else)
   const playResCount = (bscSrc.match(/playTurnResolution/g) || []).length;
-  assert(playResCount >= 3, `playTurnResolution appears ${playResCount} times (expected >=3: executeLocalTurn + executeP2PTurn + non-preview)`);
+  assertEquals(playResCount, 2, 'playTurnResolution in 2 preview branches only');
+
+  console.log('\n[10c] non-preview else branch uses animateTurn only (not playTurnResolution)');
+  // Count: playTurnResolution should appear exactly 2 times (2 preview branches)
+  // The non-preview } else { await this._callbacks.animateTurn?.() } is clean
+  const playResCount2 = (bscSrc.match(/playTurnResolution/g) || []).length;
+  assertEquals(playResCount2, 2, 'playTurnResolution only in 2 preview branches, NOT in non-preview else');
+  // Verify the else branch with animateTurn still exists
+  const nonPreviewElsePattern = /}\s*else\s*\{\s*await\s+this\._callbacks\.animateTurn\?\.\(\)/;
+  assert(nonPreviewElsePattern.test(bscSrc), 'non-preview else → animateTurn only');
 
   console.log('\n[10c] playTurnResolution defined in AppRuntime and passed to session');
   assert(appSrc.includes('playTurnResolution'), 'playTurnResolution defined in AppRuntime');
