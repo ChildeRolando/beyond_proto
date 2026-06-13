@@ -49,20 +49,7 @@ export function createBattleScene({
   playback = null,
 } = {}) {
   // Deep-clone all inputs so the returned scene is fully isolated.
-  // Strip forbidden animation fields that must never leak into the scene.
   const rawState = state ? clonePlainData(state) : {};
-  delete rawState.keyframes;
-  delete rawState.animEvents;
-  for (const arr of [rawState.projectiles, rawState.casings, rawState.wildBullets]) {
-    if (Array.isArray(arr)) {
-      for (const item of arr) {
-        if (item && typeof item === 'object') {
-          delete item.keyframes;
-          delete item.animEvents;
-        }
-      }
-    }
-  }
   const safeState = rawState;
   const safeEffects = clonePlainData(effects || []);
   const safePlayback = playback ? clonePlainData(playback) : null;
