@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-06-14 - Task 8.1: 架构边界测试
+
+- 新增 `tests/architecture/playback_architecture_boundary.spec.js`（1491 assertions, 7 组），验证：
+  - engine/ 边界：无 presentation/playback/ui 依赖（BattleCanvasRenderer / BattleSceneStore / PlaybackFrame / DOM / window. / keyframes / animStep / subT / scene.effects）
+  - engine/resolution/ 边界：仅 canonical event machinery，无 presentation/playback/ui 依赖
+  - presentation/ 边界：无 GameEngine / BattleSessionController / BattleCanvasRenderer / DOM / canvas；Compiler 不 mutate engine state
+  - playback/ 边界：无 GameEngine / BattleSessionController / BattleCanvasRenderer / BattleSceneStore / ResolutionTimelinePanel / DOM / canvas
+  - renderer 边界：BattleCanvasRenderer 无 session/engine/log/timeline，有 render(scene) + scene.effects + renderBoard
+  - AppRuntime composition 边界：有线 BattleSceneStore / TurnPlaybackRuntime / createResolutionTimelinePanel / compilePresentationTimeline / buildPlaybackFrame / playTurnResolution；无 TurnPlaybackController / animStep/subT / keyframes / animEvents / getRenderState
+  - BattleSessionController 边界：有 GameEngine + CombatLogStore；无 BattleCanvasRenderer / BattleSceneStore / PresentationTimelineCompiler / TurnPlaybackRuntime / ResolutionTimelinePanel / _resolutionPlaybackState / getRenderState / scene.effects
+- 现有 14 个边界测试全部通过（Node + Playwright）
+- skill_test.js 212 pass
+
 ## 2026-06-14 - o7.3: 重整日志与 timeline 边界
 
 - `BattleSessionController.buildCurrentTurnResolution()` 删除 `combatLogStore.appendResolution` 调用（preview helper 不得污染 canonical log）。
