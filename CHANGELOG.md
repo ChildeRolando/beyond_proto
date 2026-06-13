@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-14 - o7.2: 删除 keyframes/animEvents 兼容
+
+- `BattleCanvasRenderer.renderBoard(legacyView)` 中删除 `keyframes`/`animEvents`/`hitEvents`/`slashEvents` 变量声明及所有相关逻辑。
+- 删除 renderBoard 中 hitFlash 分支（依赖 hitEvents）。
+- 删除 renderBoard 中 `drawImpactEffect`/`drawSlashArc` 的 hitEvents/slashEvents 渲染循环。
+- renderBoard 保留为纯 static render：grid + projectiles + entities + casings + wild bullets。
+- `presentation/BattleScene.js` 中 `delete rawState.keyframes`/`animEvents` 保留为 defensive delete。
+- 新增 `tests/no_keyframes_animEvents_compat.spec.js`（46 assertions, 8 组）。
+- 全 14 Node 测试套件通过（~1092 pass）。
+
 ## 2026-06-14 - o7.1: 删除 animStep/subT 协议
 
 - `BattleRenderCoordinator.renderAll(animStep = -1, subT = 0)` → `renderAll()`，移除 animStep/subT 参数和 if/else 分支，始终调用 `renderLiveScene?.()`。

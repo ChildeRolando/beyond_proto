@@ -530,12 +530,8 @@ export class BattleCanvasRenderer {
 
     const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 1000);
     const projs = state.projectiles || [];
-    const keyframes = state.keyframes || [];
-    const animEvents = state.animEvents || [];
 
     const projPositions = new Map();
-    const hitEvents = [];
-    const slashEvents = [];
 
     for (const proj of projs) {
       if (!proj.alive) continue;
@@ -597,12 +593,6 @@ export class BattleCanvasRenderer {
       }
     }
 
-    for (const hit of hitEvents) {
-      this.visualEffects.drawImpactEffect(hit.q, hit.r, hit.power, hit.isMelee, hit.age);
-    }
-    for (const slash of slashEvents) {
-      this.visualEffects.drawSlashArc(slash.fromQ, slash.fromR, slash.toQ, slash.toR, slash.power, slash.progress);
-    }
     // Static projectile rendering (common block below handles the circles)
 
     const chars = [];
@@ -644,20 +634,12 @@ export class BattleCanvasRenderer {
         const charColor = e.class === '法师' ? '#8b5cf6' : e.class === '战士' ? '#e05555' : '#d4943a';
         const charLabel = e.class === '法师' ? '法' : e.class === '战士' ? '战' : '射';
 
-        let hitFlash = 0;
-        for (const hit of hitEvents) {
-          if (hit.q === e.position.q && hit.r === e.position.r) {
-            hitFlash = 1 - hit.age;
-            break;
-          }
-        }
-
         ctx.beginPath();
         ctx.arc(cx, cy, 18, 0, Math.PI * 2);
-        ctx.fillStyle = hitFlash > 0.3 ? `rgba(255,255,255,${hitFlash})` : charColor;
+        ctx.fillStyle = charColor;
         ctx.fill();
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2 + hitFlash * 3;
+        ctx.lineWidth = 2;
         ctx.stroke();
 
         const portrait = this.getCharacterPortraitImage(e);
