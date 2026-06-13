@@ -8,7 +8,6 @@ export function installRuntimeTestHooks({
   getConfigSession,
   getBattleSession,
   getTutorialManager,
-  getTurnPlaybackController,
   getPlaybackRuntime,
   routeController,
   routeNetworkMessage,
@@ -609,18 +608,13 @@ export function installRuntimeTestHooks({
         pr.skipToEnd();
         return true;
       }
-      // Fallback: old controller skip
-      getTurnPlaybackController?.()?.skip?.();
       const skipBtn = document.querySelector('[data-testid="resolution-skip"]');
       skipBtn?.click?.();
       return true;
     },
     getResolution: () => getBattleSession().getLastTurnResolution?.() || null,
     getTimelineState: () => {
-      // Try old controller first; if empty, derive from new playback pipeline
-      const oldState = getTurnPlaybackController?.()?.getTimelineState?.() || {};
-      if (oldState.activeSpeed != null) return oldState;
-      // Bridge: derive from new playback runtime / DOM
+      // Derive from new playback pipeline / DOM
       const pr = getPlaybackRuntime?.();
       if (pr) {
         const prState = pr.getState();
@@ -647,10 +641,9 @@ export function installRuntimeTestHooks({
     },
     isInputLocked: () => {
       const sessionLocked = getBattleSession().isResolutionPlaybackActive?.();
-      const oldPlaying = getTurnPlaybackController?.()?.isPlaying?.();
       const pr = getPlaybackRuntime?.();
       const newPlaying = pr ? pr.getState().status === 'playing' : false;
-      return Boolean(sessionLocked || oldPlaying || newPlaying);
+      return Boolean(sessionLocked || newPlaying);
     },
     getCombatLogText: () => {
       const state = getBattleSession().engine.getState();

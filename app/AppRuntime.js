@@ -36,7 +36,7 @@ import {
 import { computeEffectArea } from '../ui/battle/EffectAreaCalculator.js';
 import { createBattleRenderCoordinator } from './BattleRenderCoordinator.js';
 import { createBattleLifecycleService } from './BattleLifecycleService.js';
-import { createTurnPlaybackController } from './TurnPlaybackController.js';
+
 import { createStartModeActions } from './StartModeActions.js';
 import { createReturnToStartAction } from './ReturnToStartAction.js';
 import { bindConfigDomEvents } from './ConfigDomBindings.js';
@@ -81,7 +81,6 @@ export function createAppRuntime() {
   let gameOverController = null;
   let startLobbyUi = null;
   let tutorialManager = new TutorialManager();
-  let turnPlaybackController = null;
   const turnResolutionBuilder = createTurnResolutionBuilder();
   let handleNetworkMessage = () => {};
 
@@ -229,22 +228,15 @@ export function createAppRuntime() {
     setRoute: (route) => routeController.setRoute(route),
     appendChatMessage: (sender, text) => chatController?.appendMessage(sender, text),
     resizeCanvas: battleRender.resizeCanvas,
-    animateTurn: (turnData) => turnPlaybackController.play(turnData),
     playTurnResolution,
     buildTurnResolution: () => turnResolutionBuilder.build(battleSession.engine),
-    resetResolutionPlayback: () => turnPlaybackController?.reset?.(),
+    resetResolutionPlayback: () => {
+      playbackRuntime.stop?.();
+      battleSceneStore.setPlaybackFrame(null);
+      timelinePanel.reset?.();
+    },
   });
   battleSession.setTutorialManager(tutorialManager);
-
-  turnPlaybackController = createTurnPlaybackController({
-    getBattleSession: () => battleSession,
-    getEl,
-    getCharacterPortraitSrc: (char) => battleCanvasRenderer?.getCharacterPortraitSrc?.(char) || '',
-    getCurrentGameMode,
-    renderAll: () => battleRender.renderAll(),
-    setSubmitStatus: battleRender.setSubmitStatus,
-    setExecuteDisabled: battleRender.setExecuteDisabled,
-  });
 
   // ── Config session controller ──
   configSession = new ConfigSessionController({
@@ -345,7 +337,6 @@ export function createAppRuntime() {
       getP2PClassSelection: () => getEl('p2p-class-select')?.value || '法师',
       isGameOverShown: battleRender.isGameOverShown,
       setOpponentReadyForRematch: (ready) => gameOverController?.setOpponentReadyForRematch(ready),
-      animateTurn: (turnData) => turnPlaybackController.play(turnData),
     },
   });
 
@@ -461,7 +452,6 @@ export function createAppRuntime() {
     getConfigSession,
     getBattleSession,
     getTutorialManager,
-    getTurnPlaybackController: () => turnPlaybackController,
     getPlaybackRuntime: () => playbackRuntime,
     routeController,
     routeNetworkMessage: (payload) => handleNetworkMessage(payload),

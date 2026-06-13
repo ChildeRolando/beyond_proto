@@ -89,11 +89,11 @@ console.log('\n=== Test 1: AppRuntime source wiring ===');
     assert(src.includes(term), `AppRuntime contains "${term}"`);
   }
 
-  console.log('\n[1b] AppRuntime retains old TurnPlaybackController as fallback');
-  assert(src.includes('TurnPlaybackController'), 'TurnPlaybackController still imported');
-  // New pipeline (playTurnResolution) is the primary path; animateTurn is fallback
+  console.log('\n[1b] AppRuntime no longer imports old TurnPlaybackController (o6.4)');
+  assert(!src.includes('TurnPlaybackController'), 'TurnPlaybackController NOT imported');
+  assert(!src.includes('createTurnPlaybackController'), 'createTurnPlaybackController NOT used');
+  // New pipeline (playTurnResolution) is the sole playback path
   assert(src.includes('playTurnResolution'), 'playTurnResolution is defined');
-  assert(src.includes('animateTurn'), 'animateTurn fallback still wired');
 }
 
 // ═══════════════════════════════════════════
@@ -317,21 +317,20 @@ console.log('\n=== Test 7: bindSkip → runtime.skipToEnd ===');
 }
 
 // ═══════════════════════════════════════════
-// Test 8: old controller retained
+// Test 8: old controller deleted (o6.4)
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 8: old controller retained ===');
+console.log('\n=== Test 8: old controller deleted (o6.4) ===');
 
 {
-  console.log('\n[8a] TurnPlaybackController.js still exists');
+  console.log('\n[8a] TurnPlaybackController.js no longer exists');
   const exists = fs.existsSync(path.resolve('app/TurnPlaybackController.js'));
-  assert(exists, 'TurnPlaybackController.js file exists');
+  assert(!exists, 'TurnPlaybackController.js file removed');
 
-  console.log('\n[8b] AppRuntime still imports TurnPlaybackController');
+  console.log('\n[8b] AppRuntime no longer references TurnPlaybackController');
   const appSrc = fs.readFileSync(path.resolve('app/AppRuntime.js'), 'utf-8');
-  assert(appSrc.includes('TurnPlaybackController'), 'imports TurnPlaybackController');
-  assert(appSrc.includes('createTurnPlaybackController'), 'uses createTurnPlaybackController');
-  assert(appSrc.includes('animateTurn'), 'old animateTurn callback still wired');
+  assert(!appSrc.includes('TurnPlaybackController'), 'TurnPlaybackController not imported');
+  assert(!appSrc.includes('createTurnPlaybackController'), 'createTurnPlaybackController not used');
 }
 
 // ═══════════════════════════════════════════

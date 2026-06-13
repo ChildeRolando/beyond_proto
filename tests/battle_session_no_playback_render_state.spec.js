@@ -114,29 +114,15 @@ console.log('\n=== Test 4: BattleRenderCoordinator no getRenderState ===');
 }
 
 // ═══════════════════════════════════════════
-// Test 5: TurnPlaybackController no longer writes playback render state
+// Test 5: Old TurnPlaybackController deleted (o6.4)
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 5: TurnPlaybackController no playback render state writes ===');
+console.log('\n=== Test 5: Old TurnPlaybackController deleted ===');
 
 {
-  const src = fs.readFileSync(path.resolve('app/TurnPlaybackController.js'), 'utf-8');
-  const noComments = src.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
-
-  console.log('\n[5a] no setResolutionPlaybackState');
-  assertExcludes(noComments, 'setResolutionPlaybackState', 'no setResolutionPlaybackState');
-
-  console.log('\n[5b] no clearResolutionPlaybackState');
-  assertExcludes(noComments, 'clearResolutionPlaybackState', 'no clearResolutionPlaybackState');
-
-  console.log('\n[5c] no getRenderState');
-  assertExcludes(noComments, 'getRenderState', 'no getRenderState');
-
-  console.log('\n[5d] setResolutionPlaybackLocked retained (input lock)');
-  assertIncludes(noComments, 'setResolutionPlaybackLocked', 'setResolutionPlaybackLocked retained');
-
-  console.log('\n[5e] renderAll still callable');
-  assertIncludes(noComments, 'renderAll', 'renderAll retained');
+  console.log('\n[5a] TurnPlaybackController.js file removed');
+  const exists = fs.existsSync(path.resolve('app/TurnPlaybackController.js'));
+  assert(!exists, 'TurnPlaybackController.js does not exist');
 }
 
 // ═══════════════════════════════════════════

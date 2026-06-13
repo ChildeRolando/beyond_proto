@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-06-13 - o6.4: 删除旧 TurnPlaybackController
+
+- 删除 `app/TurnPlaybackController.js` 文件。
+- AppRuntime 移除 `import { createTurnPlaybackController }`、`let turnPlaybackController`、`createTurnPlaybackController({...})` 块。
+- BSC callbacks 移除 `animateTurn`（preview 分支优先 `playTurnResolution`），`resetResolutionPlayback` 改为新 pipeline（`playbackRuntime.stop` + `setPlaybackFrame(null)` + `timelinePanel.reset`）。
+- NetworkSessionController callbacks 移除 `animateTurn`。
+- RuntimeTestHooks 移除 `getTurnPlaybackController` 参数及所有旧 controller 引用（`skipPlayback` fallback、`getTimelineState` bridge、`isInputLocked` old check）。
+- 新增 `tests/no_old_turn_playback_controller.spec.js`（57 assertions, 9 组）。
+- 更新 `tests/app_runtime_playback_pipeline.spec.js`（Test 1b/8 改为断言旧 controller 已删除）。
+- 更新 `tests/battle_session_no_playback_render_state.spec.js`（Test 5 改为断言文件已删除）。
+- 全 12 测试套件通过（Node: ~994 pass, Playwright: ~400 pass）。
+
 ## 2026-06-13 - o6.3: BSC 删除 playback render state
 
 - 从 `BattleSessionController` 删除 `_resolutionPlaybackState`、`getRenderState()`、`setResolutionPlaybackState()`、`clearResolutionPlaybackState()`。
