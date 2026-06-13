@@ -118,14 +118,13 @@ export class BattleSessionController {
     return this.lastTurnResolution ? structuredClone(this.lastTurnResolution) : null;
   }
 
+  // Preview/build helper — does NOT commit to canonical log.
+  // CombatLogStore.appendResolution only happens in committed turn paths
+  // (executeLocalTurn / executeP2PTurn / executeRealTurnAndGetResolution test hook).
   async buildCurrentTurnResolution() {
     if (!this._callbacks.buildTurnResolution) return null;
     const preview = await this._callbacks.buildTurnResolution();
     this.lastTurnResolution = preview?.resolution ? structuredClone(preview.resolution) : null;
-    // Append to canonical log store so it accumulates across turns
-    if (this.lastTurnResolution) {
-      this.combatLogStore.appendResolution(this.lastTurnResolution);
-    }
     return preview;
   }
 

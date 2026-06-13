@@ -548,6 +548,8 @@ export function installRuntimeTestHooks({
       }
       return result;
     },
+    // Preview-only: builds TurnResolution from engine clone, does NOT commit to CombatLogStore.
+    // Use executeRealTurnAndGetResolution() for tests that need canonical log accumulation.
     executeTurnAndGetResolution: async () => {
       const battleSession = getBattleSession();
       const preview = await battleSession.buildCurrentTurnResolution();

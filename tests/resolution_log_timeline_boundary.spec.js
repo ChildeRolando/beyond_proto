@@ -178,11 +178,13 @@ console.log('\n=== Test C: RuntimeTestHooks semantic boundary ===');
   assertIncludes(getUnitFn, 'engine.getState()', 'getUnit reads engine state');
   assertIncludes(getUnitFn, 'structuredClone', 'getUnit returns structured clone');
 
-  console.log('\n[C7] getLegacyLogText renamed from getCombatLogText for clarity');
-  // Check that the legacy log accessor is clearly named
+  console.log('\n[C7] getLegacyLogText exists, getCombatLogText absent (renamed o7.3)');
+  assertIncludes(noComments, 'getLegacyLogText:', 'getLegacyLogText defined');
+  assertExcludes(noComments, 'getCombatLogText:', 'getCombatLogText removed');
+  // Verify legacy log accessor reads from engine state.logs
   const legacyLogFn = src.substring(
-    src.indexOf('getLegacyLogText:') !== -1 ? src.indexOf('getLegacyLogText:') : src.indexOf('getCombatLogText:'),
-    src.indexOf('getCanonicalLog:', src.indexOf('getLegacyLogText:') !== -1 ? src.indexOf('getLegacyLogText:') : src.indexOf('getCombatLogText:'))
+    src.indexOf('getLegacyLogText:'),
+    src.indexOf('getCanonicalLog:', src.indexOf('getLegacyLogText:'))
   );
   assertIncludes(legacyLogFn, 'engine.getState()', 'legacy log reads engine state');
   assertIncludes(legacyLogFn, 'state?.logs', 'legacy log reads state.logs');
@@ -225,10 +227,13 @@ console.log('\n=== Test D: No scene.effects → combat log coupling ===');
 
     if (hasSceneEffects && hasLogTerms) {
       console.log(`\n[D] ${f}: scene.effects + log terms coexist — checking context`);
-      // If both exist, verify they're in separate functions (not coupled)
-      // BattleCanvasRenderer is excluded from this check (it's supposed to have scene.effects)
-      if (f !== 'ui/battle/BattleCanvasRenderer.js') {
-        console.error(`  WARNING: ${f} has both scene.effects and log terms`);
+      // BattleCanvasRenderer legitimately has scene.effects for rendering — it's excluded
+      if (f === 'ui/battle/BattleCanvasRenderer.js') {
+        console.log(`  renderer exemption: scene.effects for visuals is legitimate`);
+      } else {
+        // App-layer files must NOT couple scene.effects with log store/log renderer
+        console.error(`  FAIL: ${f} has both scene.effects and log terms`);
+        fail++;
       }
     }
 
@@ -243,8 +248,6 @@ console.log('\n=== Test D: No scene.effects → combat log coupling ===');
     } else {
       console.log(`  no log terms`);
     }
-    // For app files: scene.effects and log terms should NOT be in same function
-    // Pass by default unless there's clear cross-coupling
     pass++; // file checked
   }
 }
@@ -412,6 +415,84 @@ console.log('\n=== Test H: BattleSessionController log boundary ===');
 
   console.log('\n[H7] BSC does NOT import ResolutionLogRenderer');
   assertExcludes(noComments, 'ResolutionLogRenderer', 'no log renderer import');
+
+  console.log('\n[H8] buildCurrentTurnResolution does NOT append to CombatLogStore');
+  // Extract buildCurrentTurnResolution body
+  const buildFnStart = src.indexOf('async buildCurrentTurnResolution()');
+  const buildFnEnd = src.indexOf('isResolutionPlaybackActive', buildFnStart);
+  const buildFnBody = src.substring(buildFnStart, buildFnEnd);
+  assertExcludes(stripComments(buildFnBody), 'appendResolution', 'no appendResolution in buildCurrentTurnResolution');
+  assertExcludes(stripComments(buildFnBody), 'combatLogStore.appendResolution', 'no combatLogStore.appendResolution in preview helper');
+
+  console.log('\n[H9] appendResolution only in committed execution paths');
+  // Verify: every combatLogStore.appendResolution in BSC is in a committed function.
+  // Use delimiter-based extraction (avoid brace counting which breaks on default params).
+  const bscAppendCount = (src.match(/combatLogStore\.appendResolution/g) || []).length;
+
+  // executeLocalTurn: last execution method in file; after it comes _getPveAiCharacterIds
+  const localStart = src.indexOf('async executeLocalTurn()');
+  const localEnd = src.indexOf('_getPveAiCharacterIds()', localStart);
+  const localBody = localEnd > 0 ? src.substring(localStart, localEnd) : src.substring(localStart);
+  const localAppendCount = (localBody.match(/combatLogStore\.appendResolution/g) || []).length;
+
+  // executeP2PTurn: after handleRemoteAction, before executeLocalTurn
+  const p2pStart = src.indexOf('async executeP2PTurn(');
+  const p2pEnd = src.indexOf('async executeLocalTurn()', p2pStart);
+  const p2pBody = p2pEnd > 0 ? src.substring(p2pStart, p2pEnd) : '';
+  const p2pAppendCount = (p2pBody.match(/combatLogStore\.appendResolution/g) || []).length;
+
+  assert(localAppendCount >= 1, `executeLocalTurn has ${localAppendCount} appendResolution (expected >= 1)`);
+  assert(p2pAppendCount >= 1, `executeP2PTurn has ${p2pAppendCount} appendResolution (expected >= 1)`);
+
+  // All BSC appendResolution calls must be in committed execution paths
+  assert(bscAppendCount === localAppendCount + p2pAppendCount,
+    `All ${bscAppendCount} BSC appendResolution in committed paths (${localAppendCount} local + ${p2pAppendCount} p2p)`);
+}
+
+// ═══════════════════════════════════════════
+// Test I: RuntimeTestHooks preview helpers do NOT mutate CombatLogStore
+// ═══════════════════════════════════════════
+
+console.log('\n=== Test I: RuntimeTestHooks preview helpers do NOT mutate CombatLogStore ===');
+
+{
+  const src = fs.readFileSync(path.resolve('app/RuntimeTestHooks.js'), 'utf-8');
+  const noComments = stripComments(src);
+
+  console.log('\n[I1] executeTurnAndGetResolution is labeled preview-only');
+  // Comment is on the line(s) immediately above the function key — search wider range
+  const execFnKeyIdx = src.indexOf('executeTurnAndGetResolution:');
+  const execFnPreContext = src.substring(Math.max(0, execFnKeyIdx - 200), execFnKeyIdx);
+  const execFnEnd = src.indexOf('executeRealTurnAndGetResolution:', execFnKeyIdx);
+  const execFnBody = src.substring(execFnKeyIdx, execFnEnd > 0 ? execFnEnd : src.length);
+  // Comment is in the pre-context (lines above the key)
+  const hasPreviewComment = execFnPreContext.includes('Preview-only') || execFnBody.includes('Preview-only');
+  assert(hasPreviewComment, 'executeTurnAndGetResolution has preview-only comment');
+
+  console.log('\n[I2] executeTurnAndGetResolution does NOT call appendResolution');
+  assertExcludes(stripComments(execFnBody), 'appendResolution', 'no appendResolution in preview helper');
+
+  console.log('\n[I3] executeTurnAndGetResolution calls buildCurrentTurnResolution');
+  assertIncludes(noComments, 'executeTurnAndGetResolution:', 'preview helper exists');
+  // It calls buildCurrentTurnResolution which no longer appends
+
+  console.log('\n[I4] executeRealTurnAndGetResolution IS allowed to append (committed real turn)');
+  // executeRealTurnAndGetResolution executes on real engine and manually appends — this is legitimate
+  const realFnStart = src.indexOf('executeRealTurnAndGetResolution:');
+  if (realFnStart > 0) {
+    const realFnBody = src.substring(realFnStart, src.indexOf('playCurrentResolution:', realFnStart));
+    // Real turn hook may contain appendResolution — that's committed path
+    assertIncludes(noComments, 'executeRealTurnAndGetResolution:', 'real turn helper exists');
+  }
+
+  console.log('\n[I5] playTurnResolution does NOT append to CombatLogStore');
+  // playTurnResolution in AppRuntime is the playback entry point — must not touch log
+  const appSrc = stripComments(fs.readFileSync(path.resolve('app/AppRuntime.js'), 'utf-8'));
+  const playFnStart = appSrc.indexOf('const playTurnResolution');
+  const playFnEnd = appSrc.indexOf('const battleRender', playFnStart);
+  const playFnBody = appSrc.substring(playFnStart, playFnEnd);
+  assertExcludes(playFnBody, 'appendResolution', 'playTurnResolution does not append');
+  assertExcludes(playFnBody, 'combatLogStore', 'playTurnResolution does not touch combatLogStore');
 }
 
 // ═══════════════════════════════════════════
