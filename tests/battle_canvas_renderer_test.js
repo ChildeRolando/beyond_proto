@@ -122,7 +122,7 @@ test('battle canvas draws role portraits for hex characters', () => {
   });
 
   const fakeEngine = createFakeEngine();
-  renderer.renderBoard(-1, 0, {
+  renderer.renderBoard({
     state: fakeEngine.getState(),
     renderView: {},
     engine: fakeEngine,

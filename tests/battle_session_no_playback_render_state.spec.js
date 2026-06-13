@@ -106,8 +106,8 @@ console.log('\n=== Test 4: BattleRenderCoordinator no getRenderState ===');
   console.log('\n[4a] no getRenderState in coordinator');
   assertExcludes(noComments, 'getRenderState', 'no getRenderState');
 
-  console.log('\n[4b] legacy fallback uses engine.getState');
-  assertIncludes(noComments, "engine?.getState?.() || session?.getState?.()", 'engine.getState || session.getState in legacy renderAll');
+  console.log('\n[4b] renderAll no longer uses engine.getState (o7.1 — renderBoard fallback removed from coordinator)');
+  assertExcludes(noComments, "engine?.getState?.() || session?.getState?.()", 'legacy engine.getState fallback removed from coordinator');
 
   console.log('\n[4c] renderLog fallback uses engine.getState first');
   assertIncludes(noComments, "battleSession.engine?.getState?.() || battleSession?.getState?.()", 'engine.getState first in renderLog');

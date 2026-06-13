@@ -58,7 +58,7 @@ export function createBattleLifecycleService({
     // Task 2.2: engine no longer owns animation storage.
     // PresentationTimelineCompiler will provide playback frames in a later milestone.
     // For now, emit one stable frame so the board redraws after turn execution.
-    renderAll(-1, 0);
+    renderAll();
   }
 
   async function executeCurrentTurn() {

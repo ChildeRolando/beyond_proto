@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-06-14 - o7.1: 删除 animStep/subT 协议
+
+- `BattleRenderCoordinator.renderAll(animStep = -1, subT = 0)` → `renderAll()`，移除 animStep/subT 参数和 if/else 分支，始终调用 `renderLiveScene?.()`。
+- 移除 coordinator 中对 `renderBoard(animStep, subT, { state, renderView, engine })` 的 legacy fallback 调用。
+- `AppRuntime.js` line 206 `renderAll: (s, sub)` → `renderAll: ()`。
+- `BattleLifecycleService.js` `renderAll(-1, 0)` → `renderAll()`。
+- `BattleCanvasRenderer.renderBoard(animStep = -1, subT = 0, legacyView = null)` → `renderBoard(legacyView = null)`。
+- 移除 renderBoard 内部的 `if (animStep >= 0)` keyframe 动画分支（保留静态渲染路径）。
+- 移除 renderBoard 内部的 `if (animStep >= 0)` animEvents 渲染分支。
+- 移除 renderBoard 中对 `drawProjectileTrail(projId, pos, animStep, keyframes)` 的调用。
+- keyframes/animEvents 变量声明保留为 dead legacy fields（留给 Task 7.2）。
+- 新增 `tests/no_anim_step_subt_protocol.spec.js`（47 assertions, 8 组）。
+- 更新 `tests/no_old_turn_playback_controller.spec.js` Test 7b/7c（断言新签名）。
+- 更新 `tests/live_scene_pipeline_contract.spec.js` Test 7/8（移除 legacy fallback 测试）。
+- 更新 `tests/battle_canvas_renderer_scene_contract.spec.js` Test 12（renderBoard 新签名）。
+- 更新 `tests/battle_canvas_renderer_test.js`（renderBoard 新签名）。
+- 更新 `tests/battle_session_no_playback_render_state.spec.js` Test 4b（coordinator 不再有 engine.getState fallback）。
+- 更新 `tests/architecture/app-runtime-composition.spec.js` 和 `canvas-renderer-split.spec.js`（coordinator 不再调用 renderBoard）。
+- 全 13 个 Node 测试套件通过（~1046 pass），Playwright 398 pass（10 pre-existing failures）。
+
 ## 2026-06-13 - o6.4: 删除旧 TurnPlaybackController
 
 - 删除 `app/TurnPlaybackController.js` 文件。

@@ -702,7 +702,7 @@ console.log('\n=== Test 12: renderBoard with legacyView param ===');
   };
   let threw = false;
   try {
-    renderer.renderBoard(-1, 0, legacyView);
+    renderer.renderBoard(legacyView);
   } catch (e) {
     threw = true;
     console.error(`    ${e.message}`);
@@ -712,7 +712,7 @@ console.log('\n=== Test 12: renderBoard with legacyView param ===');
   console.log('\n[12b] renderBoard without legacyView is no-op');
   threw = false;
   try {
-    renderer.renderBoard(0, 0.5, null);
+    renderer.renderBoard(null);
   } catch (e) {
     threw = true;
     console.error(`    ${e.message}`);

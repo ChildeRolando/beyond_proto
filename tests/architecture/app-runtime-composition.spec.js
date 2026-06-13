@@ -37,8 +37,9 @@ test('AppRuntime wires controllers and renderers instead of owning gameplay stat
   expect(appSrc).toMatch(/new\s+BattleCanvasRenderer\s*\(/);
   expect(appSrc).toMatch(/createNetworkMessageRouter\s*\(/);
   expect(appSrc).toMatch(/createBattleRenderCoordinator\s*\(/);
-  // renderBoard must live in BattleRenderCoordinator, not AppRuntime
-  expect(renderCoordSrc).toMatch(/getBattleCanvasRenderer\s*\(\s*\)\s*\?\.\s*renderBoard\s*\(/);
+  // renderBoard lives in BattleCanvasRenderer.js (o7.1 — coordinator uses renderLiveScene, not renderBoard)
+  // AppRuntime does not directly own canvas drawing functions
+  expect(renderCoordSrc).not.toMatch(/getBattleCanvasRenderer\s*\(\s*\)\s*\?\.\s*renderBoard\s*\(/);
   expect(appSrc).not.toMatch(/\blet\s+configPlayers\b/);
   expect(appSrc).not.toMatch(/\blet\s+configMode\b/);
   expect(appSrc).not.toMatch(/\blet\s+networkManager\b/);

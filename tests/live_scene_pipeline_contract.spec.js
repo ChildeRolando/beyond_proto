@@ -352,10 +352,10 @@ console.log('\n=== Test 6: pipeline defensive with missing inputs ===');
 }
 
 // ═══════════════════════════════════════════
-// Test 7: renderAll(-1) uses live scene pipeline (BattleRenderCoordinator integration)
+// Test 7: renderAll() always uses live scene pipeline (o7.1 — animStep/subT removed)
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 7: renderAll(-1) uses live scene pipeline ===');
+console.log('\n=== Test 7: renderAll() always uses live scene pipeline ===');
 
 {
   let renderLiveSceneCallCount = 0;
@@ -380,31 +380,32 @@ console.log('\n=== Test 7: renderAll(-1) uses live scene pipeline ===');
     getBattleSession: () => makeSessionMock(),
     getBattleCanvasRenderer: () => ({
       render(scene) {},
-      renderBoard(animStep, subT) { renderBoardCallCount++; },
+      renderBoard(legacyView) { renderBoardCallCount++; },
     }),
     renderLiveScene: () => { renderLiveSceneCallCount++; },
   });
 
-  console.log('\n[7a] renderAll() calls renderLiveScene (animStep defaults to -1)');
+  console.log('\n[7a] renderAll() calls renderLiveScene');
   renderLiveSceneCallCount = 0;
   renderBoardCallCount = 0;
   coordinator.renderAll();
   assertEquals(renderLiveSceneCallCount, 1, 'renderLiveScene called once');
   assertEquals(renderBoardCallCount, 0, 'renderBoard NOT called');
 
-  console.log('\n[7b] renderAll(-1, 0) calls renderLiveScene');
+  console.log('\n[7b] renderAll() does not accept animStep/subT arguments');
+  // renderAll() ignores extra arguments — still calls renderLiveScene
   renderLiveSceneCallCount = 0;
   renderBoardCallCount = 0;
   coordinator.renderAll(-1, 0);
-  assertEquals(renderLiveSceneCallCount, 1, 'renderLiveScene called once');
+  assertEquals(renderLiveSceneCallCount, 1, 'renderLiveScene still called (extra args ignored)');
   assertEquals(renderBoardCallCount, 0, 'renderBoard NOT called');
 }
 
 // ═══════════════════════════════════════════
-// Test 8: renderAll(animStep >= 0) keeps legacy renderBoard
+// Test 8: renderAll() no longer falls back to renderBoard (o7.1 — legacy fallback removed)
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 8: renderAll(animStep >= 0) legacy fallback ===');
+console.log('\n=== Test 8: renderAll() no legacy renderBoard fallback ===');
 
 {
   let renderLiveSceneCallCount = 0;
@@ -429,38 +430,31 @@ console.log('\n=== Test 8: renderAll(animStep >= 0) legacy fallback ===');
     getBattleSession: () => makeSessionMock8(),
     getBattleCanvasRenderer: () => ({
       render(scene) {},
-      renderBoard(animStep, subT) { renderBoardCallCount++; },
+      renderBoard(legacyView) { renderBoardCallCount++; },
     }),
     renderLiveScene: () => { renderLiveSceneCallCount++; },
   });
 
-  console.log('\n[8a] renderAll(0, 0.5) calls renderBoard (legacy animation path)');
+  console.log('\n[8a] renderAll() always prefers renderLiveScene even with animStep >= 0 args');
   renderLiveSceneCallCount = 0;
   renderBoardCallCount = 0;
   coordinator.renderAll(0, 0.5);
-  assertEquals(renderBoardCallCount, 1, 'renderBoard called for animation');
-  assertEquals(renderLiveSceneCallCount, 0, 'renderLiveScene NOT called');
+  assertEquals(renderLiveSceneCallCount, 1, 'renderLiveScene called (legacy args ignored)');
+  assertEquals(renderBoardCallCount, 0, 'renderBoard NOT called');
 
-  console.log('\n[8b] renderAll(5, 0) calls renderBoard (legacy)');
-  renderLiveSceneCallCount = 0;
-  renderBoardCallCount = 0;
-  coordinator.renderAll(5, 0);
-  assertEquals(renderBoardCallCount, 1, 'renderBoard called');
-  assertEquals(renderLiveSceneCallCount, 0, 'renderLiveScene NOT called');
-
-  console.log('\n[8c] coordinator without renderLiveScene falls back to renderBoard');
+  console.log('\n[8b] coordinator without renderLiveScene is safe no-op');
   const legacyCoordinator = createBattleRenderCoordinator({
     getEl: () => null,
     getBattleSession: () => makeSessionMock8(),
     getBattleCanvasRenderer: () => ({
       render(scene) {},
-      renderBoard(animStep, subT) { renderBoardCallCount++; },
+      renderBoard(legacyView) { renderBoardCallCount++; },
     }),
     // No renderLiveScene
   });
   renderBoardCallCount = 0;
   legacyCoordinator.renderAll();
-  assertEquals(renderBoardCallCount, 1, 'renderBoard called when no renderLiveScene');
+  assertEquals(renderBoardCallCount, 0, 'renderBoard NOT called when no renderLiveScene (no legacy fallback)');
 }
 
 // ═══════════════════════════════════════════

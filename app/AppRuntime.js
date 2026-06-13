@@ -203,7 +203,7 @@ export function createAppRuntime() {
     getNetworkManager,
     isPveMode,
     isTutorialMode,
-    renderAll: (s, sub) => battleRender.renderAll(s, sub),
+    renderAll: () => battleRender.renderAll(),
     clearLog: battleRender.clearLog,
     setSubmitStatus: battleRender.setSubmitStatus,
     setExecuteDisabled: battleRender.setExecuteDisabled,

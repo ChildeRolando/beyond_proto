@@ -510,7 +510,7 @@ export class BattleCanvasRenderer {
     ctx.fill();
   }
 
-  renderBoard(animStep = -1, subT = 0, legacyView = null) {
+  renderBoard(legacyView = null) {
     const ctx = this.context;
     const { hexCenter, hexCorners, isOnBoard } = this.geometry;
     if (!ctx || !hexCenter || !hexCorners || !isOnBoard) return;
@@ -537,81 +537,20 @@ export class BattleCanvasRenderer {
     const hitEvents = [];
     const slashEvents = [];
 
-    const kfGroups = new Map();
-    for (const kf of keyframes) {
-      if (!kfGroups.has(kf.projectileId)) kfGroups.set(kf.projectileId, []);
-      kfGroups.get(kf.projectileId).push(kf);
-    }
-
-    if (animStep >= 0) {
-      for (const [projId, kfs] of kfGroups) {
-        kfs.sort((a, b) => a.step - b.step);
-        const firedKf = kfs.find(k => k.event === 'fired');
-        if (!firedKf) continue;
-        const isMelee = Boolean(firedKf.flags?.includes('MELEE'));
-        const power = firedKf.power || 0;
-        const fromQ = firedKf.fromQ;
-        const fromR = firedKf.fromR;
-        const toQ = firedKf.toQ;
-        const toR = firedKf.toR;
-
-        let curKf = null;
-        let nextKf = null;
-        for (let i = kfs.length - 1; i >= 0; i--) {
-          if (kfs[i].step <= animStep) {
-            curKf = kfs[i];
-            nextKf = kfs[i + 1] || null;
-            break;
-          }
-        }
-        if (!curKf && kfs.length > 0) {
-          curKf = kfs[0];
-          nextKf = kfs[1] || null;
-        }
-        if (!curKf) continue;
-
-        let iq = curKf.q;
-        let ir = curKf.r;
-        if (nextKf && nextKf.q !== undefined) {
-          iq = curKf.q + (nextKf.q - curKf.q) * subT;
-          ir = curKf.r + (nextKf.r - curKf.r) * subT;
-        }
-
-        const bodyContactStep = kfs.find(k => k.event === 'body_contact')?.step ?? Infinity;
-        const expiredStep = kfs.find(k => k.event === 'expired')?.step ?? Infinity;
-        const deathStep = Math.min(bodyContactStep, expiredStep);
-        const alive = animStep < deathStep || (animStep === deathStep && subT < 0.5);
-
-        projPositions.set(projId, { q: iq, r: ir, alive, isMelee, power, fromQ, fromR, toQ, toR });
-
-        for (const evt of kfs.filter(k => k.step === animStep)) {
-          if (evt.event === 'body_contact') {
-            hitEvents.push({ q: evt.q, r: evt.r, power, isMelee, age: subT });
-          }
-          if (isMelee && evt.event === 'fired') {
-            slashEvents.push({ fromQ, fromR, toQ, toR, power, progress: subT });
-          }
-          if (isMelee && evt.event === 'body_contact') {
-            slashEvents.push({ fromQ, fromR, toQ: evt.q, toR: evt.r, power, progress: 1 });
-          }
-        }
-      }
-    } else {
-      for (const proj of projs) {
-        if (!proj.alive) continue;
-        const [q, r] = proj.path?.[proj.stepIndex] || [proj.q, proj.r];
-        projPositions.set(proj.id, {
-          q,
-          r,
-          alive: true,
-          isMelee: proj.flags?.includes('MELEE') || false,
-          power: proj.power || 0,
-          fromQ: proj.fromQ,
-          fromR: proj.fromR,
-          toQ: proj.toQ,
-          toR: proj.toR,
-        });
-      }
+    for (const proj of projs) {
+      if (!proj.alive) continue;
+      const [q, r] = proj.path?.[proj.stepIndex] || [proj.q, proj.r];
+      projPositions.set(proj.id, {
+        q,
+        r,
+        alive: true,
+        isMelee: proj.flags?.includes('MELEE') || false,
+        power: proj.power || 0,
+        fromQ: proj.fromQ,
+        fromR: proj.fromR,
+        toQ: proj.toQ,
+        toR: proj.toR,
+      });
     }
 
     for (let q = -3; q <= 3; q++) {
@@ -664,36 +603,7 @@ export class BattleCanvasRenderer {
     for (const slash of slashEvents) {
       this.visualEffects.drawSlashArc(slash.fromQ, slash.fromR, slash.toQ, slash.toR, slash.power, slash.progress);
     }
-    for (const [projId, pos] of projPositions) {
-      if (!pos.alive || pos.isMelee) continue;
-      this.visualEffects.drawProjectileTrail(projId, pos, animStep, keyframes);
-    }
-
-    if (animStep >= 0) {
-      for (const evt of animEvents) {
-        const evtStart = evt.step;
-        const evtEnd = evtStart + (evt.duration || 1);
-        if (animStep < evtStart || animStep >= evtEnd) continue;
-        const progress = (animStep - evtStart + subT) / (evt.duration || 1);
-        switch (evt.event) {
-          case 'gather':
-            this.visualEffects.drawGatherEffect(evt.q, evt.r, evt.color, evt.amount, progress);
-            break;
-          case 'dash':
-            this.visualEffects.drawDashTrail(evt.fromQ, evt.fromR, evt.toQ, evt.toR, progress);
-            break;
-          case 'teleport':
-            this.visualEffects.drawTeleportEffect(evt.fromQ, evt.fromR, evt.toQ, evt.toR, progress);
-            break;
-          case 'walk':
-            this.visualEffects.drawWalkTrail(evt.fromQ, evt.fromR, evt.toQ, evt.toR, progress);
-            break;
-          case 'grapple':
-            this.visualEffects.drawGrappleLine(evt.fromQ, evt.fromR, evt.toQ, evt.toR, progress);
-            break;
-        }
-      }
-    }
+    // Static projectile rendering (common block below handles the circles)
 
     const chars = [];
     for (const e of state.characters || []) {

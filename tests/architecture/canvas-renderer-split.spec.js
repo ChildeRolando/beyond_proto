@@ -23,8 +23,10 @@ test('AppRuntime wires the battle canvas renderer split', () => {
   expect(appSrc).toMatch(/import\s+\{\s*createVisualEffects\s*\}\s+from\s+['"]\.\.\/ui\/battle\/VisualEffects\.js['"]/);
   expect(appSrc).toMatch(/new\s+BattleCanvasRenderer\s*\(/);
   expect(appSrc).toMatch(/createVisualEffects\s*\(/);
-  // renderBoard now delegates through BattleRenderCoordinator
-  expect(renderCoordSrc).toMatch(/getBattleCanvasRenderer\s*\(\s*\)\s*\?\.\s*renderBoard\s*\(/);
+  // renderBoard lives in BattleCanvasRenderer.js (legacy static path, o7.1).
+  // BattleRenderCoordinator no longer calls renderBoard — it uses renderLiveScene pipeline.
+  expect(renderCoordSrc).not.toMatch(/getBattleCanvasRenderer\s*\(\s*\)\s*\?\.\s*renderBoard\s*\(/);
+  expect(rendererSrc).toMatch(/renderBoard\s*\(/);
   expect(appSrc).not.toMatch(/\bfunction\s+renderBoard\b/);
   expect(appSrc).not.toMatch(/\bfunction\s+drawSlashArc\b/);
   expect(appSrc).not.toMatch(/\bfunction\s+drawImpactEffect\b/);

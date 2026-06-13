@@ -145,18 +145,9 @@ export function createBattleRenderCoordinator({
     }
   }
 
-  function renderAll(animStep = -1, subT = 0) {
-    if (animStep === -1 && renderLiveScene) {
-      // Live mode: use the new BattleScene pipeline
-      renderLiveScene();
-    } else {
-      // Animation/playback mode: legacy renderBoard with explicit state/view
-      const session = getBattleSession?.();
-      const engine = session?.engine;
-      const state = engine?.getState?.() || session?.getState?.() || {};
-      const renderView = session?.getRenderViewState?.() || {};
-      getBattleCanvasRenderer()?.renderBoard(animStep, subT, { state, renderView, engine });
-    }
+  function renderAll() {
+    // Always use the live BattleScene pipeline (animStep/subT protocol removed o7.1)
+    renderLiveScene?.();
     renderPanels();
     renderLog();
     updateTurnUi();

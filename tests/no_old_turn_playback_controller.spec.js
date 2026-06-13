@@ -168,11 +168,11 @@ console.log('\n=== Test 7: old render compatibility retained ===');
   console.log('\n[7a] BattleCanvasRenderer still has renderBoard');
   assertIncludes(rendererSrc, 'renderBoard', 'renderBoard retained in renderer');
 
-  console.log('\n[7b] BattleRenderCoordinator still has renderAll(animStep = -1, subT = 0)');
-  assertIncludes(coordSrc, 'renderAll(animStep = -1, subT = 0)', 'renderAll retained');
+  console.log('\n[7b] BattleRenderCoordinator renderAll() no longer takes animStep/subT (o7.1)');
+  assertIncludes(coordSrc, 'function renderAll()', 'renderAll() retained without animStep/subT');
 
-  console.log('\n[7c] BattleRenderCoordinator still passes state/renderView/engine to renderBoard');
-  assertIncludes(coordSrc, 'renderBoard(animStep, subT, { state, renderView, engine })', 'renderBoard with legacy args');
+  console.log('\n[7c] BattleRenderCoordinator no longer calls renderBoard with animStep/subT');
+  assertExcludes(coordSrc, 'renderBoard(animStep', 'renderBoard no longer called with animStep/subT from coordinator');
 }
 
 // ═══════════════════════════════════════════
