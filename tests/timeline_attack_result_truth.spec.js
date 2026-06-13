@@ -197,7 +197,7 @@ test('Test 3: same actor two attacks — results are per-event not per-actor', a
 
   // ON_ATTACK_MISSED dispatched per-action: combat log must contain miss for the
   // attack that missed (not suppressed by the hit from the same actor).
-  const logText = await page.evaluate(() => window.__resolutionTest.getCombatLogText());
+  const logText = await page.evaluate(() => window.__resolutionTest.getLegacyLogText());
   expect(logText).toMatch(/挥空/);
 
   // The miss event must carry actionId so ON_ATTACK_MISSED hook receivers

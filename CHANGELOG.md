@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-06-14 - o7.3: 重整日志与 timeline 边界
+
+- 新增 `tests/resolution_log_timeline_boundary.spec.js`（94 assertions, 8 组），验证：
+  - ResolutionTimelinePanel 边界（无 BSC/GameEngine/BattleSceneStore/Renderer/Runtime 耦合）
+  - Combat log 边界（renderLog 只读 combatLogStore + engine state fallback）
+  - RuntimeTestHooks 语义边界（getResolution/getTimelineState/getCanonicalLog 分离清晰）
+  - 无 scene.effects → combat log 耦合、无 renderer → log 耦合
+  - AppRuntime onFrame 绕行通过 coordinator，不直接访问 log store
+  - BSC 不导入 ResolutionLogRenderer
+  - 回归检查：animStep/subT、keyframes/animEvents、TurnPlaybackController、playback render state 全部保持删除
+- `RuntimeTestHooks.getCombatLogText` → `getLegacyLogText` 重命名澄清语义
+- 更新 `tests/resolution_event_stream.spec.js`、`tests/timeline_attack_result_truth.spec.js` 使用新名称
+- 全 14 Node 测试套件通过；10 个 Playwright 失败为预存问题
+
 ## 2026-06-14 - o7.2: 删除 keyframes/animEvents 兼容
 
 - `BattleCanvasRenderer.renderBoard(legacyView)` 中删除 `keyframes`/`animEvents`/`hitEvents`/`slashEvents` 变量声明及所有相关逻辑。

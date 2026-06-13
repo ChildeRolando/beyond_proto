@@ -264,7 +264,7 @@ test('Test 6: canonical log and legacy logger do not produce duplicate text', as
   expect(canonicalLog.length).toBeGreaterThan(0);
 
   // Legacy log text (from Logger)
-  const legacyLogText = await page.evaluate(() => window.__resolutionTest.getCombatLogText());
+  const legacyLogText = await page.evaluate(() => window.__resolutionTest.getLegacyLogText());
 
   // The canonical log text should NOT be a substring match for the full legacy log
   // (they should be distinct sources)

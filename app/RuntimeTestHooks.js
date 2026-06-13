@@ -645,7 +645,9 @@ export function installRuntimeTestHooks({
       const newPlaying = pr ? pr.getState().status === 'playing' : false;
       return Boolean(sessionLocked || newPlaying);
     },
-    getCombatLogText: () => {
+    // Legacy Logger accessor — returns raw text from engine state.logs (pre-CombatLogStore).
+    // Use getCanonicalLog() for the structured canonical log from CombatLogStore / renderTurnLog.
+    getLegacyLogText: () => {
       const state = getBattleSession().engine.getState();
       return (state?.logs || []).map(entry => entry.message).join('\n');
     },
