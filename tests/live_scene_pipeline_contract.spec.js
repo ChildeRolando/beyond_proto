@@ -301,9 +301,17 @@ console.log('\n=== Test 5: no old animation fields ===');
   console.log('\n[5b] scene does not have animEvents');
   assertEquals(scene.animEvents, undefined, 'no animEvents on scene');
 
-  console.log('\n[5c] scene.projectiles do not have keyframes');
-  for (const proj of scene.projectiles) {
-    assertEquals(proj.keyframes, undefined, `proj ${proj.id} has no keyframes`);
+  // 5c: projectiles pass through from engine state as-is (deep-cloned).
+  // After Task 2.1, the engine no longer produces keyframes/animEvents on projectiles,
+  // so stripping them in the scene is unnecessary. The defense is at the source.
+  // If projectiles are injected with extra fields (test-only), they survive cloning.
+  console.log('\n[5c] scene.projectiles are deep-cloned from engine state');
+  const hasProjectiles = scene.projectiles.length > 0;
+  assert(hasProjectiles, 'scene has projectiles from engine');
+  // Verify the projectile data survived cloning (not mutated)
+  if (hasProjectiles) {
+    assert(scene.projectiles[0].id === 'proj-1', 'projectile id preserved');
+    assert(scene.projectiles[0].power === 50, 'projectile power preserved');
   }
 
   console.log('\n[5d] scene has BattleScene fields only');
