@@ -5,7 +5,7 @@
 // because they are either deterministic or game-significant.
 
 // Fields to unconditionally exclude at any path level
-const EXCLUDE_KEYS = new Set(['logs', 'keyframes', 'animation', 'debug']);
+const EXCLUDE_KEYS = new Set(['logs', 'animation', 'debug']);
 
 // djb2 hash — small, stable, no dependencies
 function djb2(str) {

@@ -84,11 +84,6 @@ const ENGINE_FORBIDDEN_PATTERNS = [
   [/\bkeyframes\b/, 'keyframes'],
 ];
 
-// Files allowed to contain "keyframes" because they exclude it from state
-const KEYFRAMES_ALLOWLIST = new Set([
-  'engine/rl/rollout/StateHasher.js',
-]);
-
 {
   const engineFiles = collectJsFiles('engine');
   const allowedInResolution = new Set([
@@ -105,7 +100,6 @@ const KEYFRAMES_ALLOWLIST = new Set([
       assertExcludes(src, term, `[A] ${file} must not contain "${term}"`);
     }
     for (const [pattern, desc] of ENGINE_FORBIDDEN_PATTERNS) {
-      if (desc === 'keyframes' && KEYFRAMES_ALLOWLIST.has(file)) continue;
       assertExcludesPattern(src, pattern, `[A] ${file} must not match ${desc}`);
     }
   }
