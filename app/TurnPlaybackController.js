@@ -302,11 +302,6 @@ export function createTurnPlaybackController({
     state.phaseStartCountBySpeed = new Map();
 
     battleSession.setResolutionPlaybackLocked?.(true);
-      battleSession.setResolutionPlaybackState?.({
-        viewState: battleSession.getRenderState?.() || battleSession.getState?.() || battleSession.engine?.getState?.(),
-        resolution: state.resolution,
-        activeSpeed: null,
-      });
     setExecuteDisabled?.(true);
     setSubmitStatus?.('回放中...');
 
@@ -335,21 +330,10 @@ export function createTurnPlaybackController({
 
         if (state.skipRequested) break;
 
-        battleSession.setResolutionPlaybackState?.({
-          viewState: phase.viewState || battleSession.getRenderState?.() || battleSession.engine?.getState?.(),
-          resolution: state.resolution,
-          activeSpeed: phase.speed,
-        });
         markPhaseComplete(phase.speed);
         renderAll?.();
       }
 
-      battleSession.setResolutionPlaybackState?.({
-        viewState: state.resolution.endState || battleSession.getRenderState?.() || battleSession.engine?.getState?.(),
-        resolution: state.resolution,
-        activeSpeed: 'end',
-        complete: true,
-      });
       state.playbackStatus = state.skipRequested ? 'skipped' : 'complete';
       setActiveSpeed('end', state.skipRequested ? '已跳过' : '回放完成');
       markComplete(state.skipRequested ? '已跳过' : '回放完成');

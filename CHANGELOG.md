@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-06-13 - o6.3: BSC 删除 playback render state
+
+- 从 `BattleSessionController` 删除 `_resolutionPlaybackState`、`getRenderState()`、`setResolutionPlaybackState()`、`clearResolutionPlaybackState()`。
+- 保留 input lock：`_resolutionPlaybackLocked`、`isResolutionPlaybackActive()`、`setResolutionPlaybackLocked(locked)`。
+- `getBattlePanelsContext()` 和 `getViewState()` 改为使用 `this.getState()`。
+- `BattleRenderCoordinator` 两处 fallback 改为 `engine?.getState?.()` 优先，不再依赖 `getRenderState`。
+- `TurnPlaybackController` 移除 3 处 `setResolutionPlaybackState`/`getRenderState` 调用，保留 `setResolutionPlaybackLocked` + `renderAll`。
+- `RuntimeTestHooks` 三处 `getRenderState` 改为 `engine.getState()`。
+- 新增 `tests/battle_session_no_playback_render_state.spec.js`（35 assertions, 9 组 source scan）。
+- 旧系统完整保留：TurnPlaybackController、renderBoard legacy、renderAll(animStep, subT)。
+
 ## 2026-06-08 - R1 审查修复：resultByAction 全量记录、真实同角色多攻击测试
 
 - `resultByAction` 替代 `hitByAction`：记录 hit 和 miss 两种结果，同角色混合命中/挥空不再互相污染。

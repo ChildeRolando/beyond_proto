@@ -56,7 +56,6 @@ export class BattleSessionController {
     this.skillsPerPage = 10;
     this.tutorialManager = null;
     this.lastTurnResolution = null;
-    this._resolutionPlaybackState = null;
     this._resolutionPlaybackLocked = false;
     this.combatLogStore = new CombatLogStore();
 
@@ -115,10 +114,6 @@ export class BattleSessionController {
     return this.engine.getState();
   }
 
-  getRenderState() {
-    return this._resolutionPlaybackState?.viewState || this.engine.getState();
-  }
-
   getLastTurnResolution() {
     return this.lastTurnResolution ? structuredClone(this.lastTurnResolution) : null;
   }
@@ -142,17 +137,9 @@ export class BattleSessionController {
     this._resolutionPlaybackLocked = Boolean(locked);
   }
 
-  setResolutionPlaybackState(state) {
-    this._resolutionPlaybackState = state ? structuredClone(state) : null;
-  }
-
-  clearResolutionPlaybackState() {
-    this._resolutionPlaybackState = null;
-  }
-
   getViewState() {
     return {
-      state: this.getRenderState(),
+      state: this.getState(),
       selectedSkill: this.selectedSkill,
       viewingSkill: this.viewingSkill,
       validTargets: this.validTargets,
@@ -186,7 +173,7 @@ export class BattleSessionController {
   }
 
   getBattlePanelsContext(extra = {}) {
-    const state = this.getRenderState();
+    const state = this.getState();
     return {
       state,
       selectedCharacterId: this.selectedCharacterId,
@@ -277,7 +264,7 @@ export class BattleSessionController {
     this.activeSidebarTab = 'log';
     this.skillPages.clear();
     this.lastTurnResolution = null;
-    this.clearResolutionPlaybackState();
+
     this.setResolutionPlaybackLocked(false);
     if (this._callbacks.resizeCanvas) this._callbacks.resizeCanvas();
     this._callbacks.renderAll();
@@ -314,7 +301,7 @@ export class BattleSessionController {
     this.activeSidebarTab = 'log';
     this.skillPages.clear();
     this.lastTurnResolution = null;
-    this.clearResolutionPlaybackState();
+
     this.setResolutionPlaybackLocked(false);
     if (this._callbacks.resizeCanvas) this._callbacks.resizeCanvas();
     this._callbacks.renderAll();
@@ -348,7 +335,7 @@ export class BattleSessionController {
     this.galaxyActionIndex = 0;
     this.galaxyActionTotal = 0;
     this.lastTurnResolution = null;
-    this.clearResolutionPlaybackState();
+
     this.setResolutionPlaybackLocked(false);
   }
 
@@ -640,7 +627,7 @@ export class BattleSessionController {
     this.galaxySelectedSkill = null;
     this.galaxyTargetPos = null;
     this.lastTurnResolution = null;
-    this.clearResolutionPlaybackState();
+
     this.setResolutionPlaybackLocked(false);
   }
 
@@ -660,7 +647,7 @@ export class BattleSessionController {
     this.galaxyActionIndex = 0;
     this.galaxyActionTotal = 0;
     this.lastTurnResolution = null;
-    this.clearResolutionPlaybackState();
+
     this.setResolutionPlaybackLocked(false);
   }
 
@@ -926,7 +913,7 @@ export class BattleSessionController {
         await playResolution?.(preview);
       } finally {
         this.engine.restoreSnapshot(preview.finalSnapshot);
-        this.clearResolutionPlaybackState();
+    
         this.setResolutionPlaybackLocked(false);
       }
     } else if (options.animateTurn) {
@@ -987,7 +974,7 @@ export class BattleSessionController {
         await playResolution?.(preview);
       } finally {
         this.engine.restoreSnapshot(preview.finalSnapshot);
-        this.clearResolutionPlaybackState();
+    
         this.setResolutionPlaybackLocked(false);
       }
     } else {

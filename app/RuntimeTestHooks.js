@@ -536,7 +536,7 @@ export function installRuntimeTestHooks({
       const battleSession = getBattleSession();
       battleSession.setTutorialManager?.(null);
       battleSession.startBattleFromScenario(Date.now(), makeResolutionScenario(kind));
-      return battleSession.getRenderState?.();
+      return battleSession.engine.getState();
     },
     submitAction: (characterId, skillId, targetPos) => getBattleSession().submitAction(characterId, skillId, targetPos ?? null),
     forceSubmitAction: (characterId, skillId, targetPos) => {
@@ -642,7 +642,7 @@ export function installRuntimeTestHooks({
       return {};
     },
     getUnit: (id) => {
-      const state = getBattleSession().getRenderState?.();
+      const state = getBattleSession().engine.getState();
       return structuredClone(state?.characters?.find(c => c.id === id) || null);
     },
     isInputLocked: () => {
@@ -653,7 +653,7 @@ export function installRuntimeTestHooks({
       return Boolean(sessionLocked || oldPlaying || newPlaying);
     },
     getCombatLogText: () => {
-      const state = getBattleSession().getRenderState?.();
+      const state = getBattleSession().engine.getState();
       return (state?.logs || []).map(entry => entry.message).join('\n');
     },
     getCanonicalLog: () => {

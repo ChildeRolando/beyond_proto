@@ -368,7 +368,7 @@ console.log('\n=== Test 7: renderAll(-1) uses live scene pipeline ===');
         getEl: () => null,
       }),
       combatLogStore: { getEntries: () => [] },
-      getRenderState: () => ({}),
+
       engine: { turnManager: { turnNumber: 1, phase: 'RESOLVE' } },
       isResolutionPlaybackActive: () => false,
       getTutorialState: () => ({}),
@@ -417,7 +417,7 @@ console.log('\n=== Test 8: renderAll(animStep >= 0) legacy fallback ===');
         getEl: () => null,
       }),
       combatLogStore: { getEntries: () => [] },
-      getRenderState: () => ({}),
+
       engine: { turnManager: { turnNumber: 1, phase: 'EXECUTE' } },
       isResolutionPlaybackActive: () => false,
       getTutorialState: () => ({}),

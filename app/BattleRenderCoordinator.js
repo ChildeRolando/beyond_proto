@@ -80,7 +80,7 @@ export function createBattleRenderCoordinator({
       ).join('');
     } else {
       // Fallback: legacy Logger entries (raw/debug trace, before first turn completes)
-      const state = battleSession.getRenderState?.() || battleSession.engine?.getState?.();
+      const state = battleSession.engine?.getState?.() || battleSession?.getState?.() || {};
       const entries = state?.logs || battleSession.engine.logger.getEntries();
       logEl.innerHTML = entries.map(e =>
         `<div class="log-entry log-${e.category || 's'}">[${e.turn || '-'}] ${e.message}</div>`
@@ -153,7 +153,7 @@ export function createBattleRenderCoordinator({
       // Animation/playback mode: legacy renderBoard with explicit state/view
       const session = getBattleSession?.();
       const engine = session?.engine;
-      const state = session?.getRenderState?.() || engine?.getState?.() || {};
+      const state = engine?.getState?.() || session?.getState?.() || {};
       const renderView = session?.getRenderViewState?.() || {};
       getBattleCanvasRenderer()?.renderBoard(animStep, subT, { state, renderView, engine });
     }
