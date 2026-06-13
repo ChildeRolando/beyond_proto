@@ -190,7 +190,9 @@ console.log('\n=== Test C: RuntimeTestHooks semantic boundary ===');
   assertIncludes(legacyLogFn, 'state?.logs', 'legacy log reads state.logs');
 
   console.log('\n[C8] RuntimeTestHooks imports renderTurnLog for canonical log');
-  assertIncludes(noComments, 'renderTurnLog', 'renderTurnLog imported from ResolutionLogRenderer');
+  // Verify import line (without spaces after strip) and usage in getCanonicalLog
+  assertIncludes(noComments, 'renderTurnLog', 'renderTurnLog imported');
+  assertIncludes(src, "import { renderTurnLog } from '../engine/resolution/ResolutionLogRenderer.js'", 'import from ResolutionLogRenderer');
 
   console.log('\n[C9] getTimelineState reads activeSpeed from DOM phase cards (not log DOM)');
   assertIncludes(timelineStateFn, 'resolution-phase.active', 'reads timeline phase DOM for activeSpeed');
@@ -473,17 +475,14 @@ console.log('\n=== Test I: RuntimeTestHooks preview helpers do NOT mutate Combat
   assertExcludes(stripComments(execFnBody), 'appendResolution', 'no appendResolution in preview helper');
 
   console.log('\n[I3] executeTurnAndGetResolution calls buildCurrentTurnResolution');
-  assertIncludes(noComments, 'executeTurnAndGetResolution:', 'preview helper exists');
-  // It calls buildCurrentTurnResolution which no longer appends
+  assertIncludes(stripComments(execFnBody), 'buildCurrentTurnResolution', 'calls buildCurrentTurnResolution');
 
   console.log('\n[I4] executeRealTurnAndGetResolution IS allowed to append (committed real turn)');
-  // executeRealTurnAndGetResolution executes on real engine and manually appends — this is legitimate
+  assertIncludes(noComments, 'executeRealTurnAndGetResolution:', 'real turn helper exists');
   const realFnStart = src.indexOf('executeRealTurnAndGetResolution:');
-  if (realFnStart > 0) {
-    const realFnBody = src.substring(realFnStart, src.indexOf('playCurrentResolution:', realFnStart));
-    // Real turn hook may contain appendResolution — that's committed path
-    assertIncludes(noComments, 'executeRealTurnAndGetResolution:', 'real turn helper exists');
-  }
+  const realFnBody = src.substring(realFnStart, src.indexOf('playCurrentResolution:', realFnStart));
+  // Real turn hook may contain appendResolution — that's committed path (legitimate)
+  assertIncludes(realFnBody, 'combatLogStore.appendResolution', 'real turn hook appends to combatLogStore');
 
   console.log('\n[I5] playTurnResolution does NOT append to CombatLogStore');
   // playTurnResolution in AppRuntime is the playback entry point — must not touch log
