@@ -165,7 +165,7 @@ test('Test 4: CombatLogStore accumulates entries across turns', async ({ page })
 
   // Execute via buildCurrentTurnResolution (sets lastTurnResolution, appends to CombatLogStore)
   const resolution1 = await page.evaluate(async () => {
-    const res = await window.__resolutionTest.executeTurnAndGetResolution();
+    const res = await window.__resolutionTest.buildPreviewResolution();
     return res;
   });
   expect(resolution1).not.toBeNull();
@@ -180,7 +180,7 @@ test('Test 4: CombatLogStore accumulates entries across turns', async ({ page })
   });
 
   await page.evaluate(async () => {
-    await window.__resolutionTest.executeTurnAndGetResolution();
+    await window.__resolutionTest.buildPreviewResolution();
   });
 
   const logAfter2 = await page.evaluate(() => window.__resolutionTest.getCanonicalLog());

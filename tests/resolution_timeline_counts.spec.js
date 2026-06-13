@@ -33,7 +33,7 @@ test('resolution action count tracks submitted actions instead of events', async
     window.__resolutionTest.submitAction('enemy_slow', 'mage_blast', { q: 0, r: 0 });
   });
 
-  const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
+  const resolution = await page.evaluate(() => window.__resolutionTest.buildPreviewResolution());
   const speed1 = resolution.phases.find(phase => phase.speed === 1);
 
   expect(speed1).toBeTruthy();
@@ -57,7 +57,7 @@ test('resolution phases render action cards with actor, player, skill, and resul
     window.__resolutionTest.submitAction('enemy_b', 'mage_small_blast', { q: 0, r: -1 });
   });
 
-  const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
+  const resolution = await page.evaluate(() => window.__resolutionTest.buildPreviewResolution());
   const speed2 = resolution.phases.find(phase => phase.speed === 2);
 
   expect(speed2).toBeTruthy();

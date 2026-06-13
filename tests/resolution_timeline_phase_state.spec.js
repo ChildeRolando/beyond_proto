@@ -30,7 +30,7 @@ async function submitTurn(page) {
     window.__resolutionTest.submitAction('hero_fast', 'warrior_move', { q: 1, r: 0 });
     window.__resolutionTest.submitAction('enemy_slow', 'mage_blast', { q: 0, r: 0 });
   });
-  await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
+  await page.evaluate(() => window.__resolutionTest.buildPreviewResolution());
   await page.evaluate(() => window.__resolutionTest.playCurrentResolution());
 }
 

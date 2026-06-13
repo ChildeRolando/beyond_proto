@@ -461,20 +461,20 @@ console.log('\n=== Test I: RuntimeTestHooks preview helpers do NOT mutate Combat
   const src = fs.readFileSync(path.resolve('app/RuntimeTestHooks.js'), 'utf-8');
   const noComments = stripComments(src);
 
-  console.log('\n[I1] executeTurnAndGetResolution is labeled preview-only');
+  console.log('\n[I1] buildPreviewResolution is labeled preview-only');
   // Comment is on the line(s) immediately above the function key — search wider range
-  const execFnKeyIdx = src.indexOf('executeTurnAndGetResolution:');
+  const execFnKeyIdx = src.indexOf('buildPreviewResolution:');
   const execFnPreContext = src.substring(Math.max(0, execFnKeyIdx - 200), execFnKeyIdx);
   const execFnEnd = src.indexOf('executeRealTurnAndGetResolution:', execFnKeyIdx);
   const execFnBody = src.substring(execFnKeyIdx, execFnEnd > 0 ? execFnEnd : src.length);
   // Comment is in the pre-context (lines above the key)
   const hasPreviewComment = execFnPreContext.includes('Preview-only') || execFnBody.includes('Preview-only');
-  assert(hasPreviewComment, 'executeTurnAndGetResolution has preview-only comment');
+  assert(hasPreviewComment, 'buildPreviewResolution has preview-only comment');
 
-  console.log('\n[I2] executeTurnAndGetResolution does NOT call appendResolution');
+  console.log('\n[I2] buildPreviewResolution does NOT call appendResolution');
   assertExcludes(stripComments(execFnBody), 'appendResolution', 'no appendResolution in preview helper');
 
-  console.log('\n[I3] executeTurnAndGetResolution calls buildCurrentTurnResolution');
+  console.log('\n[I3] buildPreviewResolution calls buildCurrentTurnResolution');
   assertIncludes(stripComments(execFnBody), 'buildCurrentTurnResolution', 'calls buildCurrentTurnResolution');
 
   console.log('\n[I4] executeRealTurnAndGetResolution IS allowed to append (committed real turn)');

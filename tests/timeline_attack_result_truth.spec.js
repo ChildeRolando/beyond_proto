@@ -96,7 +96,7 @@ test('Test 2: attack targeting empty hex — timeline correctly shows miss', asy
     window.__resolutionTest.submitAction('enemy_slow', 'mage_blast', { q: 0, r: 0 });
   });
 
-  const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
+  const resolution = await page.evaluate(() => window.__resolutionTest.buildPreviewResolution());
 
   // Miss is now recorded as action_failed (canonical), not legacy type 'attack'
   const enemyAttack = (resolution.phases || [])

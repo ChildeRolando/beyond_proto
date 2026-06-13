@@ -48,7 +48,7 @@ test('resolution timeline orders phases from high speed to low speed', async ({ 
   await submitTurnAction(page, 'hero_fast', 'warrior_move', { q: 1, r: 0 });
   await submitTurnAction(page, 'enemy_slow', 'mage_blast', { q: 0, r: 0 });
 
-  const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
+  const resolution = await page.evaluate(() => window.__resolutionTest.buildPreviewResolution());
   expect(resolution.phases.map(phase => phase.speed)).toEqual([3, 1]);
   expect(resolution.phases[0].events.some(event => event.actorId === 'hero_fast' && event.eventType === 'character_moved')).toBe(true);
   expect(resolution.phases[1].events.some(event => event.actorId === 'enemy_slow' && (event.eventType === 'action_failed' || event.eventType === 'projectile_created'))).toBe(true);
@@ -77,7 +77,7 @@ test('same-speed events start together in one playback phase', async ({ page }) 
   await submitTurnAction(page, 'enemy_a', 'mage_small_blast', { q: 0, r: 0 });
   await submitTurnAction(page, 'enemy_b', 'mage_small_blast', { q: 0, r: -1 });
 
-  const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
+  const resolution = await page.evaluate(() => window.__resolutionTest.buildPreviewResolution());
   expect(resolution.phases).toHaveLength(1);
   expect(resolution.phases[0].speed).toBe(2);
   // Canonical events use eventType, not legacy type
@@ -132,7 +132,7 @@ test('skip completes playback and commits the final state', async ({ page }) => 
   await submitTurnAction(page, 'hero_fast', 'warrior_move', { q: 1, r: 0 });
   await submitTurnAction(page, 'enemy_slow', 'mage_blast', { q: 0, r: 0 });
 
-  const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
+  const resolution = await page.evaluate(() => window.__resolutionTest.buildPreviewResolution());
   const characters = (resolution.finalSnapshot?.registry?.entities || [])
     .filter(e => e.type === 'CHARACTER');
   const endHero = characters.find(char => char.id === 'hero_fast');
@@ -162,7 +162,7 @@ test('move before attack keeps the hero safe and records a miss', async ({ page 
   await submitTurnAction(page, 'hero_fast', 'warrior_move', { q: 1, r: 0 });
   await submitTurnAction(page, 'enemy_slow', 'mage_blast', { q: 0, r: 0 });
 
-  const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
+  const resolution = await page.evaluate(() => window.__resolutionTest.buildPreviewResolution());
   const attackEvent = resolution.phases
     .flatMap(phase => phase.events)
     .find(event => event.actorId === 'enemy_slow' && (event.eventType === 'action_failed' || event.eventType === 'projectile_created'));

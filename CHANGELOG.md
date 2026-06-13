@@ -4,7 +4,7 @@
 
 - `BattleSessionController.buildCurrentTurnResolution()` 删除 `combatLogStore.appendResolution` 调用（preview helper 不得污染 canonical log）。
 - `combatLogStore.appendResolution` 仅保留在 committed turn 路径：`executeLocalTurn()`、`executeP2PTurn()`、`executeRealTurnAndGetResolution()` test hook。
-- `RuntimeTestHooks.executeTurnAndGetResolution` 添加 Preview-only 注释，明确语义。
+- `RuntimeTestHooks.executeTurnAndGetResolution` → `buildPreviewResolution` 重命名（preview-only 语义）。
 - `RuntimeTestHooks.getCombatLogText` → `getLegacyLogText` 重命名（legacy Logger accessor）。
 - 新增 `tests/resolution_log_timeline_boundary.spec.js`（107 assertions, 9 组），验证：
   - ResolutionTimelinePanel 边界（无 BSC/GameEngine/BattleSceneStore/Renderer/Runtime 耦合）

@@ -113,7 +113,7 @@ test('Test B: true miss — summaries, timeline, and log all show 挥空', async
     window.__resolutionTest.submitAction('enemy_slow', 'mage_blast', { q: 0, r: 0 });
   });
 
-  const resolution = await page.evaluate(() => window.__resolutionTest.executeTurnAndGetResolution());
+  const resolution = await page.evaluate(() => window.__resolutionTest.buildPreviewResolution());
   expect(resolution).not.toBeNull();
 
   const allActions = (resolution.phases || []).flatMap(p => p.actions || []);
