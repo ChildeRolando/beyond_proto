@@ -594,10 +594,10 @@ console.log('\n=== Test 10: custom timing options ===');
 }
 
 // ═══════════════════════════════════════════
-// Test 11: non-projectile events are skipped
+// Test 11: non-projectile events with visual representations produce clips
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 11: non-projectile events skipped ===');
+console.log('\n=== Test 11: non-projectile event clip compilation ===');
 
 {
   const resourceEv = {
@@ -610,23 +610,36 @@ console.log('\n=== Test 11: non-projectile events skipped ===');
   };
   const damageEv = {
     id: 'ev-dmg', eventType: 'damage_applied',
-    actorId: 'char-a', targetId: 'char-b', finalDamage: 50,
+    actorId: 'char-a', targetId: 'char-b', finalDamage: 50, targetPos: { q: 1, r: 0 },
   };
   const launchEv = makeProjectileCreatedEvent({ id: 'ev-launch' });
   const phase = makePhase(3, [resourceEv, moveEv, damageEv, launchEv]);
   const resolution = makeResolution(1, [phase]);
   const timeline = compilePresentationTimeline(resolution);
 
-  console.log('\n[11a] only projectile events produce clips');
-  assertEquals(timeline.clips.length, 1, 'only 1 clip (projectile_launch)');
-  assertEquals(timeline.clips[0].sourceEventId, 'ev-launch', 'correct event compiled');
-  assertEquals(timeline.clips[0].clipType, PresentationClipKind.PROJECTILE_LAUNCH, 'clipType is projectile_launch');
+  console.log('\n[11a] visualizable events produce clips (3: walk + damage_number + projectile_launch)');
+  assertEquals(timeline.clips.length, 3, '3 clips (walk, damage_number, projectile_launch)');
 
-  console.log('\n[11b] non-projectile events do not create clips');
+  // Verify exact clip types
   const clipTypes = timeline.clips.map(c => c.clipType);
-  assert(!clipTypes.includes('resource_changed'), 'no resource clip');
-  assert(!clipTypes.includes('character_moved'), 'no move clip');
-  assert(!clipTypes.includes('damage_applied'), 'no damage clip');
+  assert(clipTypes.includes('walk'), 'walk clip from character_moved');
+  assert(clipTypes.includes('damage_number'), 'damage_number clip from damage_applied');
+  assert(clipTypes.includes('projectile_launch'), 'projectile_launch clip from projectile_created');
+
+  console.log('\n[11b] resource_changed with negative delta does NOT produce a gather clip');
+  assert(!clipTypes.includes('gather'), 'no gather clip for negative delta');
+  assert(!clipTypes.includes('resource_changed'), 'no resource_changed clip type');
+
+  // Walk clip has correct payload
+  const walkClip = timeline.clips.find(c => c.clipType === 'walk');
+  assertEquals(walkClip.sourceEventId, 'ev-move', 'walk clip from ev-move');
+  assertEquals(walkClip.payload?.from?.q, 0, 'walk from.q=0');
+  assertEquals(walkClip.payload?.to?.q, 1, 'walk to.q=1');
+
+  // Damage clip has correct payload
+  const dmgClip = timeline.clips.find(c => c.clipType === 'damage_number');
+  assertEquals(dmgClip.sourceEventId, 'ev-dmg', 'damage clip from ev-dmg');
+  assertEquals(dmgClip.payload?.value, 50, 'damage value=50');
 }
 
 // ═══════════════════════════════════════════

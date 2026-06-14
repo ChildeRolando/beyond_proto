@@ -26,6 +26,10 @@ const DEFAULTS = Object.freeze({
   msPerProjectileStep: 80,
   minProjectileDurationMs: 120,
   impactDurationMs: 180,
+  movementDurationMs: 200,
+  gatherDurationMs: 300,
+  damageNumberDurationMs: 500,
+  deathDurationMs: 600,
 });
 
 // ── Launch clip type set (for lookup registration) ──
@@ -136,8 +140,20 @@ function compileEvent(event, eventIndex, phaseStartMs, launchByProjectileId, opt
     case 'projectile_expired':
       return compileProjectileExpired(event, eventIndex, phaseStartMs, launchByProjectileId, opts, nextClipId);
 
+    case 'character_moved':
+      return compileCharacterMoved(event, eventIndex, phaseStartMs, opts, nextClipId);
+
+    case 'resource_changed':
+      return compileResourceChanged(event, eventIndex, phaseStartMs, opts, nextClipId);
+
+    case 'damage_applied':
+      return compileDamageApplied(event, eventIndex, phaseStartMs, opts, nextClipId);
+
+    case 'character_died':
+      return compileCharacterDied(event, eventIndex, phaseStartMs, opts, nextClipId);
+
     default:
-      // Non-projectile events are out of scope for Task 3.1
+      // Non-visualizable events produce no clip
       return null;
   }
 }
@@ -304,6 +320,138 @@ function compileProjectileExpired(event, eventIndex, phaseStartMs, launchByProje
       lastPos: meta.lastPos || null,
     },
   };
+}
+
+// ── Movement / resource / damage / death compilers (Task 8.3) ──
+
+/**
+ * Compile a character_moved event into a movement clip.
+ * Clip type is derived from metadata.movementType; defaults to 'walk'.
+ */
+function compileCharacterMoved(event, eventIndex, phaseStartMs, opts, nextClipId) {
+  const meta = event.metadata || {};
+  const movementType = meta.movementType || 'walk';
+  let clipType;
+  switch (movementType) {
+    case 'dash':     clipType = PresentationClipKind.DASH; break;
+    case 'teleport': clipType = PresentationClipKind.TELEPORT; break;
+    case 'walk':
+    default:         clipType = PresentationClipKind.WALK; break;
+  }
+
+  const path = meta.path || (event.from && event.to ? [event.from, event.to] : []);
+  const pathLength = path.length > 0 ? path.length : 2;
+  const durationMs = Math.max(opts.movementDurationMs, pathLength * opts.msPerProjectileStep);
+  const startMs = phaseStartMs + eventIndex * opts.msPerEvent;
+
+  return {
+    id: nextClipId(),
+    clipType,
+    sourceEventId: event.id,
+    actionId: event.actionId || null,
+    actorId: event.actorId || event.subjectId || null,
+    targetId: null,
+    startMs,
+    durationMs,
+    payload: {
+      from: event.from || null,
+      to: event.to || null,
+      path: path.length > 0 ? path : null,
+      movementType,
+    },
+  };
+}
+
+/**
+ * Compile a resource_changed event into a gather clip.
+ * Only positive deltas (gain) produce gather visuals.
+ * Returns null for non-positive deltas (consumption is not a gather animation).
+ */
+function compileResourceChanged(event, eventIndex, phaseStartMs, opts, nextClipId) {
+  const delta = event.delta ?? 0;
+  if (delta <= 0) return null; // consumption is not a gather visual
+
+  const position = event.targetPos || event.from || event.to || null;
+  const resource = event.resource || 'unknown';
+  const color = resourceColor(resource);
+  const startMs = phaseStartMs + eventIndex * opts.msPerEvent;
+
+  return {
+    id: nextClipId(),
+    clipType: PresentationClipKind.GATHER,
+    sourceEventId: event.id,
+    actionId: event.actionId || null,
+    actorId: event.actorId || event.subjectId || null,
+    targetId: null,
+    startMs,
+    durationMs: opts.gatherDurationMs,
+    payload: {
+      position,
+      resource,
+      amount: delta,
+      color,
+    },
+  };
+}
+
+/**
+ * Compile a damage_applied event into a damage_number clip.
+ */
+function compileDamageApplied(event, eventIndex, phaseStartMs, opts, nextClipId) {
+  const value = event.finalDamage ?? event.delta ?? 0;
+  const position = event.targetPos || event.to || null;
+  const startMs = phaseStartMs + eventIndex * opts.msPerEvent;
+
+  return {
+    id: nextClipId(),
+    clipType: PresentationClipKind.DAMAGE_NUMBER,
+    sourceEventId: event.id,
+    actionId: event.actionId || null,
+    actorId: event.actorId || null,
+    targetId: event.targetId || event.subjectId || null,
+    startMs,
+    durationMs: opts.damageNumberDurationMs,
+    payload: {
+      value,
+      position,
+      targetId: event.targetId || event.subjectId || null,
+    },
+  };
+}
+
+/**
+ * Compile a character_died event into a death clip.
+ */
+function compileCharacterDied(event, eventIndex, phaseStartMs, opts, nextClipId) {
+  const position = event.targetPos || event.from || event.to || null;
+  const startMs = phaseStartMs + eventIndex * opts.msPerEvent;
+
+  return {
+    id: nextClipId(),
+    clipType: PresentationClipKind.DEATH,
+    sourceEventId: event.id,
+    actionId: event.actionId || null,
+    actorId: event.actorId || null,
+    targetId: event.targetId || event.subjectId || null,
+    startMs,
+    durationMs: opts.deathDurationMs,
+    payload: {
+      targetId: event.targetId || event.subjectId || null,
+      position,
+    },
+  };
+}
+
+/**
+ * Return a CSS color string for a resource type.
+ */
+function resourceColor(resource) {
+  switch (resource) {
+    case 'qi':   return '#8b5cf6';
+    case 'rage': return '#ffcc66';
+    case 'hp':   return '#ff6666';
+    default:     return '#cccccc';
+  }
 }
 
 // ── Class-based API (alternative entry point) ──

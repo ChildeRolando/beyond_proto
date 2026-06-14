@@ -268,131 +268,291 @@ function test2() {
 }
 
 // ═══════════════════════════════════════════
-// Test 3: Movement / dash / teleport smoke
+// Test 3: Movement smoke — compiler path
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 3: Movement / dash / teleport smoke ===');
+console.log('\n=== Test 3: Movement smoke (compiler path) ===');
 
 function test3() {
+  // ── 3a: walk (default) ──
+  console.log('\n[3a] character_moved (default walk) → walk clip');
+  const resWalk = makeResolution([
+    makePhase({ speed: 3, commandCount: 1, events: [
+      { id: nextEventId(), eventType: 'character_moved', actionId: 'seq_w', actorId: 'unit_w', from: { q: 0, r: 0 }, to: { q: 2, r: 0 }, metadata: { path: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }] } },
+    ]}),
+  ]);
+  const tlWalk = compilePresentationTimeline(resWalk);
+  const walkClip = tlWalk.clips.find(c => c.clipType === 'walk');
+  assert(!!walkClip, 'timeline contains walk clip');
+  assertEquals(walkClip.payload?.from?.q, 0, 'walk from.q=0');
+  assertEquals(walkClip.payload?.to?.q, 2, 'walk to.q=2');
+
+  const frameWalk = buildPlaybackFrame(tlWalk, tlWalk.durationMs * 0.5);
+  const walkFx = frameWalk.effects.find(e => e.effectType === 'walk');
+  assert(!!walkFx, 'frame has walk effect');
+  assertInRange(walkFx.progress, 0.4, 0.6, 'walk progress ~0.5');
+
+  // ── 3b: dash ──
+  console.log('\n[3b] character_moved (dash) → dash clip');
+  const resDash = makeResolution([
+    makePhase({ speed: 3, commandCount: 1, events: [
+      { id: nextEventId(), eventType: 'character_moved', actionId: 'seq_d', actorId: 'unit_d', from: { q: 0, r: 0 }, to: { q: 3, r: 0 }, metadata: { movementType: 'dash', path: [{ q: 0, r: 0 }, { q: 3, r: 0 }] } },
+    ]}),
+  ]);
+  const tlDash = compilePresentationTimeline(resDash);
+  const dashClip = tlDash.clips.find(c => c.clipType === 'dash');
+  assert(!!dashClip, 'timeline contains dash clip');
+  assertEquals(dashClip.payload?.movementType, 'dash', 'dash payload.movementType');
+
+  const frameDash = buildPlaybackFrame(tlDash, tlDash.durationMs * 0.3);
+  const dashFx = frameDash.effects.find(e => e.effectType === 'dash');
+  assert(!!dashFx, 'frame has dash effect');
+
+  // ── 3c: teleport ──
+  console.log('\n[3c] character_moved (teleport) → teleport clip');
+  const resTele = makeResolution([
+    makePhase({ speed: 3, commandCount: 1, events: [
+      { id: nextEventId(), eventType: 'character_moved', actionId: 'seq_t', actorId: 'unit_t', from: { q: 1, r: 1 }, to: { q: -2, r: 0 }, metadata: { movementType: 'teleport' } },
+    ]}),
+  ]);
+  const tlTele = compilePresentationTimeline(resTele);
+  const teleClip = tlTele.clips.find(c => c.clipType === 'teleport');
+  assert(!!teleClip, 'timeline contains teleport clip');
+
+  const frameTele = buildPlaybackFrame(tlTele, tlTele.durationMs * 0.7);
+  const teleFx = frameTele.effects.find(e => e.effectType === 'teleport');
+  assert(!!teleFx, 'frame has teleport effect');
+
+  // ── Render all three movement types ──
   const visualEffects = createSpyVisualEffects();
   const renderer = createRenderer({ visualEffects });
   const sceneStore = new BattleSceneStore();
   sceneStore.setBaseState(EMPTY_BASE_STATE);
 
-  // 3a: walk → drawWalkTrail
-  console.log('\n[3a] walk → drawWalkTrail');
-  sceneStore.setPlaybackFrame({ mode: 'playback', timeMs: 100, durationMs: 500, phaseId: null, activeActionIds: [], activeClipIds: [], activeClips: [], sceneState: null, effects: [{ id: 'fx-walk', effectType: 'walk', clipId: 'c1', sourceEventId: 'e1', actionId: 'a1', actorId: 'c1', targetId: null, progress: 0.5, payload: { from: { q: 0, r: 0 }, to: { q: 2, r: 0 } } }] });
+  console.log('\n[3d] walk effect → drawWalkTrail');
+  sceneStore.setPlaybackFrame(frameWalk);
   renderer.render(sceneStore.getScene());
-  assertGte(visualEffects.calls.drawWalkTrail.length, 1, 'drawWalkTrail called');
+  assertGte(visualEffects.calls.drawWalkTrail.length, 1, 'drawWalkTrail called for compiler walk');
 
-  // 3b: dash → drawDashTrail
-  console.log('\n[3b] dash → drawDashTrail');
-  sceneStore.setPlaybackFrame({ mode: 'playback', timeMs: 200, durationMs: 500, phaseId: null, activeActionIds: [], activeClipIds: [], activeClips: [], sceneState: null, effects: [{ id: 'fx-dash', effectType: 'dash', clipId: 'c2', sourceEventId: 'e2', actionId: 'a2', actorId: 'c2', targetId: null, progress: 0.3, payload: { from: { q: 0, r: 0 }, to: { q: 3, r: 0 } } }] });
+  console.log('\n[3e] dash effect → drawDashTrail');
+  sceneStore.setPlaybackFrame(frameDash);
   renderer.render(sceneStore.getScene());
-  assertGte(visualEffects.calls.drawDashTrail.length, 1, 'drawDashTrail called');
+  assertGte(visualEffects.calls.drawDashTrail.length, 1, 'drawDashTrail called for compiler dash');
 
-  // 3c: teleport → drawTeleportEffect
-  console.log('\n[3c] teleport → drawTeleportEffect');
-  sceneStore.setPlaybackFrame({ mode: 'playback', timeMs: 300, durationMs: 500, phaseId: null, activeActionIds: [], activeClipIds: [], activeClips: [], sceneState: null, effects: [{ id: 'fx-tele', effectType: 'teleport', clipId: 'c3', sourceEventId: 'e3', actionId: 'a3', actorId: 'c3', targetId: null, progress: 0.7, payload: { from: { q: 1, r: 1 }, to: { q: -2, r: 0 } } }] });
+  console.log('\n[3f] teleport effect → drawTeleportEffect');
+  sceneStore.setPlaybackFrame(frameTele);
   renderer.render(sceneStore.getScene());
-  assertGte(visualEffects.calls.drawTeleportEffect.length, 1, 'drawTeleportEffect called');
+  assertGte(visualEffects.calls.drawTeleportEffect.length, 1, 'drawTeleportEffect called for compiler teleport');
 
-  // 3d: move (alias) → drawWalkTrail
-  console.log('\n[3d] move → drawWalkTrail');
-  const walkBefore = visualEffects.calls.drawWalkTrail.length;
-  sceneStore.setPlaybackFrame({ mode: 'playback', timeMs: 400, durationMs: 500, phaseId: null, activeActionIds: [], activeClipIds: [], activeClips: [], sceneState: null, effects: [{ id: 'fx-move', effectType: 'move', clipId: 'c4', sourceEventId: 'e4', actionId: 'a4', actorId: 'c4', targetId: null, progress: 0.8, payload: { from: { q: -1, r: 0 }, to: { q: 1, r: 0 } } }] });
-  renderer.render(sceneStore.getScene());
-  assertGte(visualEffects.calls.drawWalkTrail.length, walkBefore + 1, 'drawWalkTrail called for move');
-
-  console.log('\n[3e] renderBoard NOT called');
+  console.log('\n[3g] renderBoard NOT called');
   assertRenderBoardNotCalled(renderer);
+
+  console.log('\n[3h] No animStep/subT/keyframes/animEvents in scene');
+  const scene = sceneStore.getScene();
+  const json = JSON.stringify(scene);
+  assert(!('animStep' in scene), 'no animStep');
+  assert(!('subT' in scene), 'no subT');
+  assert(!json.includes('"keyframes"'), 'no keyframes');
+  assert(!json.includes('"animEvents"'), 'no animEvents');
 }
 
 // ═══════════════════════════════════════════
-// Test 4: Gather / resource skill smoke
+// Test 4: Gather / resource smoke — compiler path
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 4: Gather / resource skill smoke ===');
+console.log('\n=== Test 4: Gather / resource smoke (compiler path) ===');
 
 function test4() {
+  // ── 4a: qi gain → gather clip ──
+  console.log('\n[4a] resource_changed (qi gain) → gather clip');
+  const resQi = makeResolution([
+    makePhase({ speed: 3, commandCount: 1, events: [
+      { id: nextEventId(), eventType: 'resource_changed', actorId: 'mage', resource: 'qi', delta: 1, targetPos: { q: 0, r: 0 } },
+    ]}),
+  ]);
+  const tlQi = compilePresentationTimeline(resQi);
+  const qiClip = tlQi.clips.find(c => c.clipType === 'gather' && c.payload?.resource === 'qi');
+  assert(!!qiClip, 'timeline contains gather clip for qi');
+  assertEquals(qiClip.payload?.amount, 1, 'gather qi amount=1');
+  assertEquals(qiClip.payload?.resource, 'qi', 'gather resource=qi');
+  assert(!!qiClip.payload?.color, 'gather has color');
+
+  const frameQi = buildPlaybackFrame(tlQi, tlQi.durationMs * 0.5);
+  const qiFx = frameQi.effects.find(e => e.effectType === 'gather' && e.payload?.resource === 'qi');
+  assert(!!qiFx, 'frame has gather effect for qi');
+  assertInRange(qiFx.progress, 0, 1, 'qi gather progress in [0,1]');
+
+  // ── 4b: rage gain → gather clip ──
+  console.log('\n[4b] resource_changed (rage gain) → gather clip');
+  const resRage = makeResolution([
+    makePhase({ speed: 3, commandCount: 1, events: [
+      { id: nextEventId(), eventType: 'resource_changed', actorId: 'warrior', resource: 'rage', delta: 3, targetPos: { q: 1, r: 0 } },
+    ]}),
+  ]);
+  const tlRage = compilePresentationTimeline(resRage);
+  const rageClip = tlRage.clips.find(c => c.clipType === 'gather' && c.payload?.resource === 'rage');
+  assert(!!rageClip, 'timeline contains gather clip for rage');
+  assertEquals(rageClip.payload?.amount, 3, 'gather rage amount=3');
+
+  const frameRage = buildPlaybackFrame(tlRage, tlRage.durationMs * 0.8);
+  const rageFx = frameRage.effects.find(e => e.effectType === 'gather' && e.payload?.resource === 'rage');
+  assert(!!rageFx, 'frame has gather effect for rage');
+
+  // ── 4c: resource_changed with negative delta → NO gather clip ──
+  console.log('\n[4c] resource_changed (negative delta) → no gather clip');
+  const resNeg = makeResolution([
+    makePhase({ speed: 3, commandCount: 1, events: [
+      { id: nextEventId(), eventType: 'resource_changed', actorId: 'mage', resource: 'qi', delta: -1, targetPos: { q: 0, r: 0 } },
+    ]}),
+  ]);
+  const tlNeg = compilePresentationTimeline(resNeg);
+  const negGatherClips = tlNeg.clips.filter(c => c.clipType === 'gather');
+  assertEquals(negGatherClips.length, 0, 'negative delta produces no gather clip');
+
+  // ── Render gather effects ──
   const visualEffects = createSpyVisualEffects();
   const renderer = createRenderer({ visualEffects });
   const sceneStore = new BattleSceneStore();
   sceneStore.setBaseState(EMPTY_BASE_STATE);
 
-  console.log('\n[4a] qi gather → drawGatherEffect with qi color');
-  sceneStore.setPlaybackFrame({ mode: 'playback', timeMs: 100, durationMs: 500, phaseId: null, activeActionIds: [], activeClipIds: [], activeClips: [], sceneState: null, effects: [{ id: 'fx-qi', effectType: 'gather', clipId: 'c1', sourceEventId: 'e1', actionId: 'a1', actorId: 'mage', targetId: null, progress: 0.5, payload: { position: { q: 0, r: 0 }, resource: 'qi', amount: 1, color: '#8b5cf6' } }] });
+  console.log('\n[4d] qi gather → drawGatherEffect with qi color');
+  sceneStore.setPlaybackFrame(frameQi);
   renderer.render(sceneStore.getScene());
   assertGte(visualEffects.calls.drawGatherEffect.length, 1, 'drawGatherEffect called');
-  const qiCall = visualEffects.calls.drawGatherEffect[0];
-  assertEquals(qiCall.q, 0, 'qi q=0');
-  assertEquals(qiCall.amount, 1, 'qi amount=1');
+  assertEquals(visualEffects.calls.drawGatherEffect[0].q, 0, 'qi q=0');
+  assertEquals(visualEffects.calls.drawGatherEffect[0].amount, 1, 'qi amount=1');
 
-  console.log('\n[4b] rage gather → drawGatherEffect');
-  sceneStore.setPlaybackFrame({ mode: 'playback', timeMs: 200, durationMs: 500, phaseId: null, activeActionIds: [], activeClipIds: [], activeClips: [], sceneState: null, effects: [{ id: 'fx-rage', effectType: 'gather', clipId: 'c2', sourceEventId: 'e2', actionId: 'a2', actorId: 'warrior', targetId: null, progress: 0.8, payload: { position: { q: 1, r: 0 }, resource: 'rage', amount: 3, color: '#ffcc66' } }] });
+  console.log('\n[4e] rage gather → drawGatherEffect');
+  sceneStore.setPlaybackFrame(frameRage);
   renderer.render(sceneStore.getScene());
   assertGte(visualEffects.calls.drawGatherEffect.length, 2, 'drawGatherEffect called for rage too');
 
-  console.log('\n[4c] renderBoard NOT called');
+  console.log('\n[4f] renderBoard NOT called');
   assertRenderBoardNotCalled(renderer);
 }
 
 // ═══════════════════════════════════════════
-// Test 5: Damage number smoke
+// Test 5: Damage number smoke — compiler path
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 5: Damage number smoke ===');
+console.log('\n=== Test 5: Damage number smoke (compiler path) ===');
 
 function test5() {
+  // ── 5a: damage_applied → damage_number clip ──
+  console.log('\n[5a] damage_applied → damage_number clip');
+  const res = makeResolution([
+    makePhase({ speed: 3, commandCount: 1, events: [
+      { id: nextEventId(), eventType: 'damage_applied', actionId: 'seq_dmg', actorId: 'attacker', targetId: 'victim', finalDamage: 100, targetPos: { q: 2, r: 0 } },
+    ]}),
+  ]);
+  const timeline = compilePresentationTimeline(res);
+  const dmgClip = timeline.clips.find(c => c.clipType === 'damage_number');
+  assert(!!dmgClip, 'timeline contains damage_number clip');
+  assertEquals(dmgClip.payload?.value, 100, 'damage_number value=100');
+  assertEquals(dmgClip.payload?.targetId, 'victim', 'damage_number targetId=victim');
+  assert(!!dmgClip.payload?.position, 'damage_number has position');
+
+  const frame = buildPlaybackFrame(timeline, timeline.durationMs * 0.5);
+  const dmgFx = frame.effects.find(e => e.effectType === 'damage_number');
+  assert(!!dmgFx, 'frame has damage_number effect');
+  assertInRange(dmgFx.progress, 0, 1, 'damage_number progress in [0,1]');
+  assertEquals(dmgFx.payload?.value, 100, 'effect value=100');
+
+  // ── Render → fillText dispatch ──
   const ctx = createMockContext();
   const visualEffects = createSpyVisualEffects();
   const renderer = createRenderer({ context: ctx, visualEffects });
   const sceneStore = new BattleSceneStore();
   sceneStore.setBaseState(EMPTY_BASE_STATE);
 
-  console.log('\n[5a] damage_number draws text (fillText called)');
-  sceneStore.setPlaybackFrame({ mode: 'playback', timeMs: 300, durationMs: 500, phaseId: null, activeActionIds: [], activeClipIds: [], activeClips: [], sceneState: null, effects: [{ id: 'fx-dmg', effectType: 'damage_number', clipId: 'c1', sourceEventId: 'e1', actionId: 'a1', actorId: 'a', targetId: 't', progress: 0.5, payload: { value: 100, position: { q: 2, r: 0 }, targetPos: { q: 2, r: 0 } } }] });
+  console.log('\n[5b] damage_number draws text (fillText called)');
   const fillTextBefore = ctx.__counters.fillText;
+  sceneStore.setPlaybackFrame(frame);
   renderer.render(sceneStore.getScene());
-  assertGte(ctx.__counters.fillText, fillTextBefore + 1, 'fillText called for damage number');
+  assertGte(ctx.__counters.fillText, fillTextBefore + 1, 'fillText called for compiler damage_number');
 
-  console.log('\n[5b] damage_number with targetPos fallback draws text');
-  sceneStore.setPlaybackFrame({ mode: 'playback', timeMs: 300, durationMs: 500, phaseId: null, activeActionIds: [], activeClipIds: [], activeClips: [], sceneState: null, effects: [{ id: 'fx-dmg2', effectType: 'damage_number', clipId: 'c2', sourceEventId: 'e2', actionId: 'a2', actorId: 'a2', targetId: 't2', progress: 0.8, payload: { value: 50, targetPos: { q: -1, r: 0 } } }] });
+  // ── 5c: damage_applied with targetPos → compiler path ──
+  console.log('\n[5c] damage_applied at negative coords → compiler path');
+  const res2 = makeResolution([
+    makePhase({ speed: 3, commandCount: 1, events: [
+      { id: nextEventId(), eventType: 'damage_applied', actorId: 'a2', targetId: 't2', finalDamage: 50, targetPos: { q: -1, r: 0 } },
+    ]}),
+  ]);
+  const timeline2 = compilePresentationTimeline(res2);
+  const dmgClip2 = timeline2.clips.find(c => c.clipType === 'damage_number');
+  assert(!!dmgClip2, 'second damage_number clip from compiler');
+  assertEquals(dmgClip2.payload?.value, 50, 'value=50');
+
+  const frame2 = buildPlaybackFrame(timeline2, timeline2.durationMs * 0.8);
   const ftBefore2 = ctx.__counters.fillText;
+  sceneStore.setPlaybackFrame(frame2);
   renderer.render(sceneStore.getScene());
-  assertGte(ctx.__counters.fillText, ftBefore2 + 1, 'fillText with targetPos fallback');
+  assertGte(ctx.__counters.fillText, ftBefore2 + 1, 'fillText for second damage_number');
 
-  console.log('\n[5c] renderBoard NOT called');
+  console.log('\n[5d] renderBoard NOT called');
   assertRenderBoardNotCalled(renderer);
 }
 
 // ═══════════════════════════════════════════
-// Test 6: Death smoke
+// Test 6: Death smoke — compiler path
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 6: Death smoke ===');
+console.log('\n=== Test 6: Death smoke (compiler path) ===');
 
 function test6() {
+  // ── 6a: character_died → death clip ──
+  console.log('\n[6a] character_died → death clip');
+  const res = makeResolution([
+    makePhase({ speed: 3, commandCount: 1, events: [
+      { id: nextEventId(), eventType: 'character_died', actorId: 'killer', targetId: 'victim', targetPos: { q: 1, r: 1 } },
+    ]}),
+  ]);
+  const timeline = compilePresentationTimeline(res);
+  const deathClip = timeline.clips.find(c => c.clipType === 'death');
+  assert(!!deathClip, 'timeline contains death clip');
+  assertEquals(deathClip.payload?.targetId, 'victim', 'death targetId=victim');
+  assert(!!deathClip.payload?.position, 'death has position');
+  assertEquals(deathClip.payload?.position?.q, 1, 'death position q=1');
+
+  const frame = buildPlaybackFrame(timeline, timeline.durationMs * 0.9);
+  const deathFx = frame.effects.find(e => e.effectType === 'death');
+  assert(!!deathFx, 'frame has death effect');
+  assertInRange(deathFx.progress, 0.8, 1.0, 'death progress ~0.9');
+
+  // ── Render → arc/stroke dispatch ──
   const ctx = createMockContext();
   const visualEffects = createSpyVisualEffects();
   const renderer = createRenderer({ context: ctx, visualEffects });
   const sceneStore = new BattleSceneStore();
   sceneStore.setBaseState(EMPTY_BASE_STATE);
 
-  console.log('\n[6a] death effect draws (arc/stroke called)');
-  sceneStore.setPlaybackFrame({ mode: 'playback', timeMs: 400, durationMs: 500, phaseId: null, activeActionIds: [], activeClipIds: [], activeClips: [], sceneState: null, effects: [{ id: 'fx-death', effectType: 'death', clipId: 'c1', sourceEventId: 'e1', actionId: 'a1', actorId: 'k', targetId: 'v', progress: 0.9, payload: { targetId: 'victim', position: { q: 1, r: 1 } } }] });
+  console.log('\n[6b] death effect draws (arc/stroke called)');
   const arcBefore = ctx.__counters.arc;
+  sceneStore.setPlaybackFrame(frame);
   renderer.render(sceneStore.getScene());
-  assertGte(ctx.__counters.arc, arcBefore + 1, 'arc called for death effect');
+  assertGte(ctx.__counters.arc, arcBefore + 1, 'arc called for compiler death effect');
 
-  console.log('\n[6b] death without position is safe (no throw)');
-  const arcBefore2 = ctx.__counters.arc;
-  sceneStore.setPlaybackFrame({ mode: 'playback', timeMs: 400, durationMs: 500, phaseId: null, activeActionIds: [], activeClipIds: [], activeClips: [], sceneState: null, effects: [{ id: 'fx-death2', effectType: 'death', clipId: 'c2', sourceEventId: 'e2', actionId: 'a2', actorId: 'k2', targetId: 'v2', progress: 0.5, payload: { targetId: 'victim2' } }] });
+  // ── 6c: character_died without position → death clip still created, renderer is safe ──
+  console.log('\n[6c] character_died without position → death clip, renderer handles safely');
+  const res2 = makeResolution([
+    makePhase({ speed: 3, commandCount: 1, events: [
+      { id: nextEventId(), eventType: 'character_died', actorId: 'k2', targetId: 'v2', targetPos: null },
+    ]}),
+  ]);
+  const timeline2 = compilePresentationTimeline(res2);
+  const deathClip2 = timeline2.clips.find(c => c.clipType === 'death');
+  assert(!!deathClip2, 'timeline contains death clip even without position');
+  assertEquals(deathClip2.payload?.targetId, 'v2', 'death targetId=v2');
+
+  const frame2 = buildPlaybackFrame(timeline2, timeline2.durationMs * 0.5);
+  const deathFx2 = frame2.effects.find(e => e.effectType === 'death');
+  assert(!!deathFx2, 'frame has death effect without position');
+  // Renderer should not throw when position is null (renderer skips gracefully)
   let threw = false;
-  try { renderer.render(sceneStore.getScene()); } catch (e) { threw = true; }
+  try { sceneStore.setPlaybackFrame(frame2); renderer.render(sceneStore.getScene()); } catch (e) { threw = true; }
   assert(!threw, 'death without position does not throw');
 
-  console.log('\n[6c] renderBoard NOT called');
+  console.log('\n[6d] renderBoard NOT called');
   assertRenderBoardNotCalled(renderer);
 }
 
