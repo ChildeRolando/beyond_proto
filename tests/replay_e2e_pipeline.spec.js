@@ -479,10 +479,10 @@ async function test2() {
 }
 
 // ═══════════════════════════════════════════
-// Test 3: Skip playback E2E
+// Test 3: Skip playback through executeLocalTurn (real BSC path)
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 3: Skip playback E2E ===');
+console.log('\n=== Test 3: Skip playback through executeLocalTurn ===');
 
 async function test3() {
   const fakeClock = createFakeClock();
@@ -494,47 +494,75 @@ async function test3() {
   bsc.submitAction('mage_a', 'mage_blast', { q: 2, r: 0 });
   bsc.submitAction('warrior_b', 'warrior_slash', { q: 0, r: 0 });
 
-  const preview = await bsc.buildCurrentTurnResolution();
-  assert(!!preview, '[3a] preview built');
+  // ── Start executeLocalTurn WITHOUT awaiting — it will hang inside
+  //     playTurnResolution because the fake clock never auto-advances.
+  const executePromise = bsc.executeLocalTurn();
+
+  // ── Poll until playback is actively playing
+  const pollStart = Date.now();
+  let playStarted = false;
+  while (Date.now() - pollStart < 2000) {
+    if (spies.playTurnResolutionCalls.length >= 1 &&
+        spies.playCalls.length >= 1 &&
+        spies.playbackRuntime.getState().status === 'playing') {
+      playStarted = true;
+      break;
+    }
+    await new Promise(r => setTimeout(r, 5));
+  }
+  assert(playStarted, '[3a] executeLocalTurn → playTurnResolution → playbackRuntime.play engaged');
+
+  console.log('\n[3b] BSC input lock engaged during playback');
+  assert(bsc.isResolutionPlaybackActive() === true, 'isResolutionPlaybackActive() === true during playback');
+
+  console.log('\n[3c] playTurnResolution called exactly once');
+  assertEquals(spies.playTurnResolutionCalls.length, 1, 'playTurnResolutionCalls === 1');
+
+  // Resolve the stored resolution for later timeline checks
+  const preview = spies.playTurnResolutionCalls[0];
   const timeline = compilePresentationTimeline(preview.resolution);
-  assert(timeline.durationMs > 0, '[3a2] timeline has positive duration');
+  assert(timeline.durationMs > 0, 'timeline has positive duration');
 
-  // Manually drive the pipeline (bypasses executeLocalTurn for deterministic control)
-  spies.battleSceneStore.setPlaybackFrame(null);
-  spies.timelinePanel.renderResolution(preview.resolution);
-  spies.battleSceneStore.setBaseState(bsc.engine.getState());
-
-  const completePromise = new Promise((resolve) => {
-    spies.playbackRuntime.onComplete(() => resolve());
-  });
-
-  spies.playbackRuntime.play(timeline);
-  fakeClock._advanceTime(100);
-
-  console.log('\n[3b] Frames emitted before skip');
-  assertGte(spies.allFrames.length, 1, 'at least one frame emitted before skip');
-
-  // Clear skip spy before the actual skip call
+  // ── Skip to end while executeLocalTurn is mid-playback
   spies.skipCalls.length = 0;
-
   spies.playbackRuntime.skipToEnd();
-  await completePromise;
 
-  console.log('\n[3c] Skip completes playback — status is "completed"');
-  assertEquals(spies.playbackRuntime.getState().status, 'completed', 'runtime status completed');
-
-  console.log('\n[3d] skipToEnd was called exactly once');
+  console.log('\n[3d] skipToEnd called exactly once');
   assertEquals(spies.skipCalls.length, 1, 'skipCalls === 1');
 
-  console.log('\n[3e] markComplete called');
-  const markCalls = spies.timelinePanel.callLog.filter(c => c.method === 'markComplete');
-  assertGte(markCalls.length, 1, 'markComplete called after skip');
+  // ── Now executeLocalTurn should resolve (skipToEnd triggered onComplete →
+  //     playTurnResolution Promise resolved → executeLocalTurn continued)
+  const result = await executePromise;
 
-  console.log('\n[3f] Last frame timeMs === durationMs');
+  console.log('\n[3e] executeLocalTurn resolves after skip');
+  assert(result.success, 'executeLocalTurn returned success');
+
+  console.log('\n[3f] Playback status is completed after skip');
+  assertEquals(spies.playbackRuntime.getState().status, 'completed', 'runtime status completed');
+
+  console.log('\n[3g] markComplete called after skip');
+  const markCalls = spies.timelinePanel.callLog.filter(c => c.method === 'markComplete');
+  assertGte(markCalls.length, 1, 'markComplete called');
+
+  console.log('\n[3h] BSC input lock released after executeLocalTurn resolves');
+  assertEquals(bsc.isResolutionPlaybackActive(), false, 'input lock false after skip+resolve');
+
+  console.log('\n[3i] renderer.render(scene) called at least once during skip');
+  assertGte(spies.renderer.scenes.length, 1, 'render(scene) called');
+
+  console.log('\n[3j] renderBoard NOT called');
+  assertEquals(spies.renderer.renderBoardCalls.length, 0, 'renderBoard call count = 0');
+
+  console.log('\n[3k] Last emitted frame timeMs === timeline.durationMs');
   const lastFrame = spies.allFrames[spies.allFrames.length - 1];
   assertEquals(lastFrame.timeMs, timeline.durationMs, 'final frame at durationMs');
 
-  console.log('\n[3g] Skip via skipToEnd() directly does not throw');
+  console.log('\n[3l] CombatLogStore appended after committed turn (skip path)');
+  const entries = bsc.combatLogStore?.getEntries?.() || [];
+  assertGte(entries.length, 1, 'combatLogStore has entries after skipped turn');
+
+  // ── Supplementary: manual-drive skip still works (fast path verification)
+  console.log('\n[3m] Supplementary: direct skipToEnd on fresh runtime');
   const { bsc: bsc2, spies: spies2 } = createTestBSC({
     scenario: makeProjectileScenario(),
     clock: createFakeClock(),
@@ -545,54 +573,61 @@ async function test3() {
   const timeline2 = compilePresentationTimeline(preview2.resolution);
   if (timeline2.durationMs > 0) {
     spies2.playbackRuntime.play(timeline2);
-    spies2.skipCalls.length = 0;
     spies2.playbackRuntime.skipToEnd();
-    assertEquals(spies2.playbackRuntime.getState().status, 'completed', 'skip leads to completed');
-    assertEquals(spies2.skipCalls.length, 1, 'skip spy incremented');
-    assertGte(spies2.allFrames.length, 1, 'frames emitted during skip');
-  }
-
-  console.log('\n[3h] After skip, runtime.play from 0 works again');
-  if (timeline.durationMs > 0) {
-    const framesBefore = spies.allFrames.length;
-    spies.playbackRuntime.play(timeline);
-    assertGte(spies.allFrames.length, framesBefore + 1, 'new frames after replay');
+    assertEquals(spies2.playbackRuntime.getState().status, 'completed', 'direct skip leads to completed');
+    assertGte(spies2.allFrames.length, 1, 'frames emitted during direct skip');
   }
 }
 
 // ═══════════════════════════════════════════
-// Test 4: Combat log E2E
+// Test 4: CombatLogStore appendResolution exactly once
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 4: Combat log E2E ===');
+console.log('\n=== Test 4: CombatLogStore appendResolution ===');
 
 async function test4() {
-  const { bsc, spies } = createTestBSC({ scenario: makeProjectileScenario() });
+  const { bsc } = createTestBSC({ scenario: makeProjectileScenario() });
 
-  console.log('\n[4a] buildCurrentTurnResolution after submission does NOT append to CombatLogStore');
-  // Submit actions FIRST so the preview has something to build
+  // Spy on appendResolution directly — the authoritative call count
+  const appendCalls = [];
+  const originalAppend = bsc.combatLogStore.appendResolution.bind(bsc.combatLogStore);
+  bsc.combatLogStore.appendResolution = (resolution) => {
+    appendCalls.push(resolution);
+    return originalAppend(resolution);
+  };
+
+  console.log('\n[4a] preview-only: appendResolution called ZERO times');
   bsc.submitAction('mage_a', 'mage_blast', { q: 2, r: 0 });
   bsc.submitAction('warrior_b', 'warrior_slash', { q: 0, r: 0 });
+  await bsc.buildCurrentTurnResolution();
+  assertEquals(appendCalls.length, 0,
+    'buildCurrentTurnResolution (preview-only) does NOT call appendResolution');
 
-  const logBefore = bsc.combatLogStore?.getEntries?.() || [];
-  const initialCount = logBefore.length;
-
-  const preview = await bsc.buildCurrentTurnResolution();
-  const logAfterPreview = bsc.combatLogStore?.getEntries?.() || [];
-  assertEquals(logAfterPreview.length, initialCount,
-    'combatLogStore unchanged after preview-only buildCurrentTurnResolution');
-
-  console.log('\n[4b] executeLocalTurn appends to CombatLogStore');
-  // Resubmit because buildCurrentTurnResolution executed on a clone
+  console.log('\n[4b] committed: appendResolution called EXACTLY ONCE');
+  // Resubmit — buildCurrentTurnResolution consumed submissions on a clone
   bsc.submitAction('mage_a', 'mage_blast', { q: 2, r: 0 });
   bsc.submitAction('warrior_b', 'warrior_slash', { q: 0, r: 0 });
   await bsc.executeLocalTurn();
+  assertEquals(appendCalls.length, 1,
+    'executeLocalTurn calls appendResolution exactly once');
 
-  const logAfterTurn = bsc.combatLogStore?.getEntries?.() || [];
-  assertGte(logAfterTurn.length, 1,
-    'combatLogStore has at least 1 entry after committed turn');
+  console.log('\n[4c] appended resolution has schemaVersion 2 and phases array');
+  assertEquals(appendCalls[0].schemaVersion, 2, 'appended schemaVersion === 2');
+  assert(Array.isArray(appendCalls[0].phases), 'appended resolution has phases array');
+  assertGte(appendCalls[0].phases.length, 1, 'appended resolution has at least 1 phase');
 
-  console.log('\n[4c] getLastTurnResolution + renderTurnLog produces canonical log');
+  console.log('\n[4d] preview-only still 0 after committed turn (no cross-contamination)');
+  const { bsc: bsc2 } = createTestBSC({ scenario: makeProjectileScenario() });
+  const appendCalls2 = [];
+  const orig2 = bsc2.combatLogStore.appendResolution.bind(bsc2.combatLogStore);
+  bsc2.combatLogStore.appendResolution = (r) => { appendCalls2.push(r); return orig2(r); };
+  bsc2.submitAction('mage_a', 'mage_blast', { q: 2, r: 0 });
+  bsc2.submitAction('warrior_b', 'warrior_slash', { q: 0, r: 0 });
+  await bsc2.buildCurrentTurnResolution();
+  assertEquals(appendCalls2.length, 0,
+    'second BSC: preview-only path calls appendResolution 0 times');
+
+  console.log('\n[4e] getLastTurnResolution + renderTurnLog produces canonical log');
   const resolution = bsc.getLastTurnResolution();
   if (resolution && resolution.phases && resolution.phases.length > 0) {
     const canonicalEntries = renderTurnLog(resolution);
@@ -600,17 +635,7 @@ async function test4() {
     assertGte(canonicalEntries.length, 1, 'canonical log has entries');
   }
 
-  console.log('\n[4d] Preview-only path does not append log (fresh BSC, second verification)');
-  const { bsc: bsc2 } = createTestBSC({ scenario: makeProjectileScenario() });
-  const countBefore2 = (bsc2.combatLogStore?.getEntries?.() || []).length;
-  bsc2.submitAction('mage_a', 'mage_blast', { q: 2, r: 0 });
-  bsc2.submitAction('warrior_b', 'warrior_slash', { q: 0, r: 0 });
-  const preview2 = await bsc2.buildCurrentTurnResolution();
-  const logAfter2 = bsc2.combatLogStore?.getEntries?.() || [];
-  assertEquals(logAfter2.length, countBefore2,
-    'combatLogStore unchanged after buildCurrentTurnResolution on fresh BSC');
-
-  console.log('\n[4e] CombatLogStore.reset clears entries');
+  console.log('\n[4f] CombatLogStore.reset clears entries');
   bsc.combatLogStore.reset();
   const afterReset = bsc.combatLogStore?.getEntries?.() || [];
   assertEquals(afterReset.length, 0, 'combatLogStore empty after reset');
