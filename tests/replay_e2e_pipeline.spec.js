@@ -298,11 +298,17 @@ async function test1() {
   // Start execution but don't await yet — check lock state during playback
   const executePromise = bsc.executeLocalTurn();
 
-  // Wait briefly for buildTurnResolution + playTurnResolution to start,
-  // then verify the input lock is engaged during playback.
-  await new Promise(r => setTimeout(r, 10));
-  // (We don't hard-fail on this because async timing is non-deterministic;
-  //  the post-execution assertion below is the reliable check.)
+  // Poll until playTurnResolution starts (playCalls > 0) or timeout.
+  // This proves the input lock engages DURING playback, not just after.
+  const lockPollStart = Date.now();
+  let lockEngagedDuringPlayback = false;
+  while (Date.now() - lockPollStart < 2000) {
+    if (spies.playCalls.length > 0) {
+      lockEngagedDuringPlayback = bsc.isResolutionPlaybackActive();
+      break;
+    }
+    await new Promise(r => setTimeout(r, 10));
+  }
 
   const result = await executePromise;
 
@@ -360,22 +366,21 @@ async function test1() {
   assertEquals(lastScene.playback.timeMs, lastEmittedFrame.timeMs,
     'last scene.playback.timeMs matches last emitted frame.timeMs');
 
-  console.log('\n[1l] Frame→scene→renderer chain is consistent');
-  // Every renderer scene should match the frame emitted before it (same timeMs)
-  for (let i = 0; i < Math.min(spies.renderer.scenes.length, spies.allFrames.length); i++) {
+  console.log('\n[1l] Frame→scene→renderer chain is consistent (exact count match)');
+  assertEquals(spies.renderer.scenes.length, spies.allFrames.length,
+    'renderer.scenes.length === allFrames.length — every frame produces exactly one scene');
+  for (let i = 0; i < spies.allFrames.length; i++) {
     assertEquals(spies.renderer.scenes[i].playback.timeMs, spies.allFrames[i].timeMs,
       `scene[${i}].playback.timeMs === frame[${i}].timeMs`);
   }
 
-  console.log('\n[1m] After playback: input lock is false');
-  assertEquals(bsc.isResolutionPlaybackActive(), false, 'input lock released');
+  console.log('\n[1m] Input lock engaged during playback, released after');
+  assert(lockEngagedDuringPlayback, 'BSC._resolutionPlaybackLocked was true during playback');
+  assertEquals(bsc.isResolutionPlaybackActive(), false, 'input lock released after playback');
 
-  console.log('\n[1n] engine state restored to finalSnapshot (turn + character state match)');
+  console.log('\n[1n] engine state restored to finalSnapshot (deep field comparison)');
   const postEngineState = bsc.engine.getState();
   assert(!!postEngineState, 'engine has state after turn');
-  // Verify the snapshot was applied: engine state should match finalSnapshot characteristics.
-  // (Turn number may or may not increment depending on clone execution path;
-  //  the key invariant is that engine state is non-empty and characters exist.)
   const finalSnapshot = preview.finalSnapshot;
   if (finalSnapshot?.registry?.entities) {
     const postChars = postEngineState.characters || [];
@@ -385,6 +390,13 @@ async function test1() {
     for (const sc of snapChars) {
       const postChar = postChars.find(c => c.id === sc.id);
       assert(!!postChar, `character ${sc.id} exists in post-turn engine state`);
+      // Compare key game-significant fields
+      assertEquals(postChar.alive, sc.alive, `${sc.id} alive matches snapshot`);
+      assertEquals(postChar.position?.q, sc.position?.q, `${sc.id} position.q matches snapshot`);
+      assertEquals(postChar.position?.r, sc.position?.r, `${sc.id} position.r matches snapshot`);
+      if (sc.hp !== undefined) {
+        assertEquals(postChar.hp, sc.hp, `${sc.id} hp matches snapshot`);
+      }
     }
   }
 
@@ -655,8 +667,10 @@ async function test5() {
       `scene[${i}].effects is array`);
   }
 
-  console.log('\n[5d] Scene playback.timeMs matches frame timeMs');
-  for (let i = 0; i < Math.min(fakeRenderer.scenes.length, spies.allFrames.length); i++) {
+  console.log('\n[5d] Scene count matches frame count exactly');
+  assertEquals(fakeRenderer.scenes.length, spies.allFrames.length,
+    'renderer.scenes.length === allFrames.length');
+  for (let i = 0; i < spies.allFrames.length; i++) {
     assertEquals(fakeRenderer.scenes[i].playback.timeMs, spies.allFrames[i].timeMs,
       `scene[${i}].playback.timeMs === frame[${i}].timeMs`);
   }
@@ -715,11 +729,11 @@ async function test6() {
   fakeClock._advanceTime(timeline.durationMs + 100);
   await completePromise;
 
-  console.log('\n[6b] updatePlaybackFrame called with correct frames');
+  console.log('\n[6b] updatePlaybackFrame called for every emitted frame');
   const updateCalls = callLog.filter(c => c.method === 'updatePlaybackFrame');
-  assertGte(updateCalls.length, 1, 'updatePlaybackFrame called at least once');
-  // Verify each updatePlaybackFrame receives the emitted frame
-  for (let i = 0; i < Math.min(updateCalls.length, spies.allFrames.length); i++) {
+  assertEquals(updateCalls.length, spies.allFrames.length,
+    'updatePlaybackFrame count === allFrames count');
+  for (let i = 0; i < spies.allFrames.length; i++) {
     assertEquals(updateCalls[i].frame.timeMs, spies.allFrames[i].timeMs,
       `updateCall[${i}].timeMs === allFrames[${i}].timeMs`);
   }
