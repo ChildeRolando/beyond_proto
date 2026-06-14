@@ -83,7 +83,16 @@ export class SkillResolver {
         payload: { resource: 'rage', amount: effectiveCost.rage },
       });
     }
+
+    // Effect commands that produce attacks (for ON_HIT GAIN_RESOURCE subSpeed inheritance)
+    const ATTACK_EFFECT_CMDS = new Set([
+      'ATTACK_MELEE', 'ATTACK_PROJECTILE', 'ATTACK_AOE_SELF', 'ATTACK_AOE_PATH',
+      'ATTACK_AOE_TARGET', 'ATTACK_LINE', 'SPAWN_STATIONARY_AOE', 'WINDSTEP_SLASH',
+      'REACTIVE_ARMOR', 'METEOR_DROP',
+    ]);
+
     let consumeAftershockMarked = false;
+    let lastAttackSubSpeed = null;
     for (const eff of skill.effects) {
       // Skip CONSUME_RESOURCE when 引刀 makes 居合斩 cost 0
       if (eff.cmd === 'CONSUME_RESOURCE' && hasIndraBlade) continue;
@@ -91,6 +100,20 @@ export class SkillResolver {
       if (eff.cmd === 'CONSUME_RESOURCE' && hasAftershock) continue;
       const result = this._translateEffect(eff, actor, targetPos, skill, sid);
       if (!result) continue;
+
+      // ON_HIT GAIN_RESOURCE without explicit subSpeed inherits from nearest attack
+      if (eff.cmd === 'GAIN_RESOURCE' && eff.condition === 'ON_HIT' && eff.subSpeed === undefined && lastAttackSubSpeed !== null) {
+        if (Array.isArray(result)) {
+          for (const r of result) r.subSpeed = lastAttackSubSpeed;
+        } else {
+          result.subSpeed = lastAttackSubSpeed;
+        }
+      }
+
+      // Track attack subSpeed for ON_HIT GAIN_RESOURCE inheritance
+      if (ATTACK_EFFECT_CMDS.has(eff.cmd)) {
+        lastAttackSubSpeed = eff.subSpeed ?? null;
+      }
 
       const markAftershock = (cmd) => {
         if (

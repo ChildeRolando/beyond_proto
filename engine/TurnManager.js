@@ -41,6 +41,7 @@ export class TurnManager {
   #pendingFlags = new Map(); // entityId → { pendingQi, ... }
   #jumpReturns = new Map();  // entityId → { q, r } for end-of-turn jump return
   #lastHitByActor = new Map(); // actorId → boolean (did their last attack hit?)
+  #hitBySequenceId = new Map(); // sequenceId → boolean (action-bound hit tracking for ON_HIT rewards)
   #shieldHitEntities = new Set(); // entityIds whose shield was hit this turn
   #hitEntities = new Set();       // entityIds hit by any damage contact this turn (for 盛怒 cancel)
   #submittedChars = new Set();   // charIds that submitted this turn
@@ -135,6 +136,8 @@ export class TurnManager {
     this.#canceledSequences.clear();
     this.#projectileAttackers.clear();
     this.#usedActionIds.clear();
+    this.#lastHitByActor.clear();
+    this.#hitBySequenceId.clear();
     // Snapshot pre-turn cooldown state so new cooldowns don't tick this turn
     this.#cooldownSnapshot = this.#skillCooldowns ? this.#skillCooldowns.serialize() : null;
     this.#logger?.setTurn(this.#turnNumber);
@@ -241,11 +244,15 @@ export class TurnManager {
         );
 
         for (const r of results.hits) {
-          if (r.hit) this.#lastHitByActor.set(r.ownerId, true);
+          if (r.hit) {
+            this.#lastHitByActor.set(r.ownerId, true);
+            if (r.actionId) this.#hitBySequenceId.set(r.actionId, true);
+          }
         }
         for (const r of results.interceptions) {
           if (r.intercepted && r.interceptorId) {
             this.#lastHitByActor.set(r.interceptorId, true);
+            if (r.actionId) this.#hitBySequenceId.set(r.actionId, true);
           }
         }
 
@@ -406,6 +413,7 @@ export class TurnManager {
           entry.hitProjectile = true;
           resultByAction.set(c.actionId, entry);
           this.#lastHitByActor.set(c.ownerId, true);
+          if (c.actionId) this.#hitBySequenceId.set(c.actionId, true);
         }
 
         // Finalize pending attack records from projectile results.
@@ -420,9 +428,11 @@ export class TurnManager {
               if (result.killed) rec.killed = true;
               if (result.damage) rec.damage = result.damage;
               this.#lastHitByActor.set(rec.actorId, result.hit);
+              this.#hitBySequenceId.set(rec.actionId, result.hit);
             } else {
               rec.result = 'miss';
               this.#lastHitByActor.set(rec.actorId, false);
+              this.#hitBySequenceId.set(rec.actionId, false);
             }
           } else {
             if (this.#lastHitByActor.has(rec.actorId)) {
@@ -787,7 +797,14 @@ export class TurnManager {
   _execGainResource(cmd) {
     let { resource, amount, condition } = cmd.payload;
     if (condition === 'ON_HIT') {
-      if (!this.#lastHitByActor.get(cmd.actorId)) return; // no hit, no gain
+      // Priority 1: action-bound check by sequenceId
+      const seqHit = this.#hitBySequenceId.get(cmd.sequenceId);
+      if (seqHit !== undefined) {
+        if (!seqHit) return; // action-specific hit recorded as miss, no gain
+      } else {
+        // Priority 2: fallback to actor-level (legacy / non-action-bound commands)
+        if (!this.#lastHitByActor.get(cmd.actorId)) return;
+      }
     }
     if (amount === 'RELOAD') {
       const loaded = this.#resourceSystem.reloadFromBackpack(cmd.actorId);
@@ -1108,6 +1125,8 @@ export class TurnManager {
       }
     }
     this.#lastHitByActor.set(cmd.actorId, hit);
+    const aoeActionId1 = cmd.actionId || cmd.sequenceId;
+    if (aoeActionId1) this.#hitBySequenceId.set(aoeActionId1, hit);
     if (hit) this._handleOnHitGain(cmd);
   }
 
@@ -1179,6 +1198,8 @@ export class TurnManager {
       }
     }
     this.#lastHitByActor.set(cmd.actorId, hit);
+    const aoeActionId2 = cmd.actionId || cmd.sequenceId;
+    if (aoeActionId2) this.#hitBySequenceId.set(aoeActionId2, hit);
     if (hit) this._handleOnHitGain(cmd);
   }
 
@@ -1285,6 +1306,8 @@ export class TurnManager {
     // Remove the buff and mark for hit tracking
     this.#buffManager.removeByType(cmd.actorId, 'METEOR_ASCENDING');
     this.#lastHitByActor.set(cmd.actorId, hit);
+    const meteorActionId = cmd.actionId || cmd.sequenceId;
+    if (meteorActionId) this.#hitBySequenceId.set(meteorActionId, hit);
   }
 
   _execPass(cmd) {
@@ -1569,8 +1592,8 @@ export class TurnManager {
         // Resolve projectiles from speed-2 galaxy commands
         if (this.#projectileCalculator) {
           const projResults = this.#projectileCalculator.resolveStep(2, this.#registry, this.#damageCalculator, this.#buffManager, { rules: this._getRules() });
-          for (const r of projResults.hits) { if (r.hit) this.#lastHitByActor.set(r.ownerId, true); }
-          for (const r of projResults.interceptions) { if (r.intercepted && r.interceptorId) this.#lastHitByActor.set(r.interceptorId, true); }
+          for (const r of projResults.hits) { if (r.hit) { this.#lastHitByActor.set(r.ownerId, true); if (r.actionId) this.#hitBySequenceId.set(r.actionId, true); } }
+          for (const r of projResults.interceptions) { if (r.intercepted && r.interceptorId) { this.#lastHitByActor.set(r.interceptorId, true); if (r.actionId) this.#hitBySequenceId.set(r.actionId, true); } }
 
           // Dispatch ON_ATTACK_MISSED for galaxy projectile attackers.
           // Actor-level check is safe here: galaxy subturns are single-character,
@@ -1984,6 +2007,8 @@ export class TurnManager {
 
   _handleOnHitGain(cmd) {
     this.#lastHitByActor.set(cmd.actorId, true);
+    const actionId = cmd.actionId || cmd.sequenceId;
+    if (actionId) this.#hitBySequenceId.set(actionId, true);
   }
 
   _getForcedSkillId(characterId) {
@@ -2184,6 +2209,7 @@ export class TurnManager {
     this.#delayedCommands.length = 0;
     this.#pendingFlags.clear();
     this.#lastHitByActor.clear();
+    this.#hitBySequenceId.clear();
     this.#shieldHitEntities.clear();
     this.#submittedChars.clear();
     this.#resourceFailed.clear();
@@ -2202,6 +2228,7 @@ export class TurnManager {
       pendingFlags: [...this.#pendingFlags.entries()].map(([id, flags]) => [id, { ...flags }]),
       jumpReturns: [...this.#jumpReturns.entries()].map(([id, pos]) => [id, { ...pos }]),
       lastHitByActor: [...this.#lastHitByActor.entries()],
+      hitBySequenceId: [...this.#hitBySequenceId.entries()],
       shieldHitEntities: [...this.#shieldHitEntities],
       submittedChars: [...this.#submittedChars],
       resourceFailed: [...this.#resourceFailed],
@@ -2221,6 +2248,8 @@ export class TurnManager {
     for (const [id, pos] of data.jumpReturns || []) this.#jumpReturns.set(id, { ...pos });
     this.#lastHitByActor.clear();
     for (const [id, hit] of data.lastHitByActor || []) this.#lastHitByActor.set(id, hit);
+    this.#hitBySequenceId.clear();
+    for (const [id, hit] of data.hitBySequenceId || []) this.#hitBySequenceId.set(id, hit);
     this.#shieldHitEntities = new Set(data.shieldHitEntities || []);
     this.#submittedChars = new Set(data.submittedChars || []);
     this.#resourceFailed = new Set(data.resourceFailed || []);
