@@ -500,8 +500,10 @@ async function test8() {
     renderer.render(sceneStore.getScene());
 
     console.log('\n[8d] Renderer dispatched visual effects from real engine events');
-    const total = visualEffects.calls.drawImpactEffect.length + visualEffects.calls.drawSlashArc.length;
-    assertGte(total, 0, 'visual effects dispatched (at least arc/stroke for projectile)');
+    const totalVE = visualEffects.calls.drawImpactEffect.length + visualEffects.calls.drawSlashArc.length;
+    const totalCtx = ctx.__counters.arc + ctx.__counters.fillText + ctx.__counters.stroke;
+    // At minimum, projectile rendering calls arc/stroke on canvas
+    assert(totalVE >= 1 || totalCtx > 0, 'visual effects or canvas draws dispatched');
 
     console.log('\n[8e] renderBoard NOT called on real engine resolution');
     assertRenderBoardNotCalled(renderer);
@@ -564,6 +566,10 @@ function test9() {
 
   console.log('\n[9f] scene.effects consumed by renderer (dispatch verified)');
   assert(Array.isArray(scene.effects), 'scene.effects is array');
+  // Verify renderer actually processed the effects (canvas draw calls from projectile)
+  const ctxCounters = renderer.context.__counters;
+  const totalCtxCalls = ctxCounters.arc + ctxCounters.fillText + ctxCounters.stroke;
+  assertGte(totalCtxCalls, 1, 'renderer made draw calls from scene effects');
 
   console.log('\n[9g] renderBoard NOT called during skill animation');
   assertRenderBoardNotCalled(renderer);
