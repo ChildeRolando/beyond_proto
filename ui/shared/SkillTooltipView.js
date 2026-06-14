@@ -78,15 +78,32 @@ function highlightTooltipText(text) {
 }
 
 export function renderSkillTooltipCard(skill, desc = '', options = {}) {
+  const isPassive = skill.isTrait || false;
   const parsed = parseSkillTooltipDesc(skill, desc || skill.desc || '');
   const typeLabel = [skill.class, skill.type].filter(Boolean).join(' / ') || '技能';
-  const costLabel = resourceCostLabel(skill, parsed.cost);
+  const costLabel = isPassive ? '' : resourceCostLabel(skill, parsed.cost);
   const cooldownStatus = cooldownStatusLabel(options.cdRemaining, parsed.cd);
   const remainingUses = displayValue(options.usesRemaining, skill.maxUses ? String(skill.maxUses) : '∞');
   const icon = skill.icon
     ? `<img src="${escapeHTML(skill.icon)}" alt="${escapeHTML(skill.name)}">`
     : `<span>${escapeHTML((skill.name || '?').slice(0, 1))}</span>`;
   const inlineClass = options.inline ? ' skill-tooltip-card--inline' : '';
+
+  // Passive skills: no speed/CD/cost/range display
+  const metaSection = isPassive
+    ? '<div class="skill-tooltip-meta"><span>被动特质</span></div>'
+    : `<div class="skill-tooltip-meta">
+          <span>速度 ${escapeHTML(parsed.speed)}</span>
+          <strong>${escapeHTML(costLabel)}</strong>
+        </div>`;
+
+  const statGrid = isPassive
+    ? ''
+    : `<div class="skill-tooltip-stat-grid">
+        <span><b>CD状况</b>${escapeHTML(cooldownStatus)}</span>
+        <span><b>剩余发动次数</b>${escapeHTML(remainingUses)}</span>
+      </div>`;
+
   return `
     <div class="skill-tooltip-card${inlineClass} ${skillClassKey(skill.class)}">
       <div class="skill-tooltip-header">
@@ -95,17 +112,11 @@ export function renderSkillTooltipCard(skill, desc = '', options = {}) {
           <div class="skill-tooltip-kicker">${escapeHTML(typeLabel)}</div>
           <div class="skill-tooltip-title">${escapeHTML(parsed.title)}</div>
         </div>
-        <div class="skill-tooltip-meta">
-          <span>速度 ${escapeHTML(parsed.speed)}</span>
-          <strong>${escapeHTML(costLabel)}</strong>
-        </div>
+        ${metaSection}
       </div>
       <div class="skill-tooltip-rule"></div>
       <div class="skill-tooltip-body">${highlightTooltipText(parsed.body)}</div>
-      <div class="skill-tooltip-stat-grid">
-        <span><b>CD状况</b>${escapeHTML(cooldownStatus)}</span>
-        <span><b>剩余发动次数</b>${escapeHTML(remainingUses)}</span>
-      </div>
+      ${statGrid}
     </div>`;
 }
 

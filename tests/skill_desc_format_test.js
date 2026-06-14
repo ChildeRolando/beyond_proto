@@ -1,5 +1,7 @@
 // skill_desc_format_test.js
 // Verify all skill descriptions follow the normalized display-card format.
+// Passive skills (isTrait: true) use a 2-line format (name + body, no metadata).
+// Active skills use the 4-line format (name, separator, speed/CD/cost, body).
 // Run: node tests/skill_desc_format_test.js
 
 import { SKILLS } from '../engine/SkillData.js';
@@ -26,7 +28,12 @@ function test(name, fn) {
 }
 
 const allSkillIds = Object.keys(SKILLS);
-console.log(`Testing ${allSkillIds.length} skills...\n`);
+const passiveIds = allSkillIds.filter(id => SKILLS[id].isTrait);
+// Active skills that go through normalizeSkillDesc (desc contains \n)
+const normalizedActiveIds = allSkillIds.filter(id =>
+  !SKILLS[id].isTrait && typeof SKILLS[id].desc === 'string' && SKILLS[id].desc.includes('\n')
+);
+console.log(`Testing ${allSkillIds.length} skills (${passiveIds.length} passive, ${normalizedActiveIds.length} normalized active)...\n`);
 
 // -- Test 1: All skills have a desc ----------------------------------
 test('All skills have desc', () => {
@@ -37,19 +44,26 @@ test('All skills have desc', () => {
   }
 });
 
-// -- Test 2: desc contains exactly 4 lines -------------------------------
-test('desc has exactly 4 lines', () => {
-  for (const id of allSkillIds) {
+// -- Test 2: desc has correct number of lines -------------------------------
+test('Active: 4 lines, Passive: 2 lines', () => {
+  for (const id of normalizedActiveIds) {
     const skill = SKILLS[id];
     const lines = skill.desc.split('\n');
     assert(lines.length === 4,
-      `${id}: expected 4 lines, got ${lines.length}: "${skill.desc}"`);
+      `${id}: active skill expected 4 lines, got ${lines.length}: "${skill.desc}"`);
+  }
+  for (const id of passiveIds) {
+    const skill = SKILLS[id];
+    const lines = skill.desc.split('\n');
+    assert(lines.length === 2,
+      `${id}: passive skill expected 2 lines, got ${lines.length}: "${skill.desc}"`);
   }
 });
 
-// -- Test 3: line 1 is the skill name ------------------------------------
+// -- Test 3: line 1 is the skill name (normalized skills only) ----------
 test('line 1 is skill name', () => {
-  for (const id of allSkillIds) {
+  const idsToCheck = new Set([...normalizedActiveIds, ...passiveIds]);
+  for (const id of idsToCheck) {
     const skill = SKILLS[id];
     const lines = skill.desc.split('\n');
     assert(lines[0] === skill.name,
@@ -57,29 +71,39 @@ test('line 1 is skill name', () => {
   }
 });
 
-// -- Test 4: line 2 is the separator -------------------------------------
-test('line 2 is separator', () => {
-  for (const id of allSkillIds) {
+// -- Test 4: active skills have separator, passive do not ---------------
+test('Active have separator, passive do not', () => {
+  for (const id of normalizedActiveIds) {
     const skill = SKILLS[id];
     const lines = skill.desc.split('\n');
     assert(lines[1] === '——————————————',
-      `${id}: line 2 should be separator, got "${lines[1]}"`);
+      `${id}: active skill line 2 should be separator, got "${lines[1]}"`);
+  }
+  for (const id of passiveIds) {
+    const skill = SKILLS[id];
+    assert(!skill.desc.includes('——————————————'),
+      `${id}: passive skill should not have separator`);
   }
 });
 
-// -- Test 5: line 3 contains speed/CD/cost headers -----------------------
-test('line 3 contains 速度, CD, cost headers', () => {
-  for (const id of allSkillIds) {
+// -- Test 5: active skills have speed/CD/cost line, passive do not -------
+test('Active have speed/CD/cost metadata, passive do not', () => {
+  for (const id of normalizedActiveIds) {
     const skill = SKILLS[id];
     const lines = skill.desc.split('\n');
     assert(/^速度\s+\S+\s+CD\s+\S+\s+cost\s+\S+/.test(lines[2]),
-      `${id}: line 3 should contain speed/CD/cost metadata: "${lines[2]}"`);
+      `${id}: active skill line 3 should contain speed/CD/cost: "${lines[2]}"`);
+  }
+  for (const id of passiveIds) {
+    const skill = SKILLS[id];
+    assert(!/速度\s*\S+\s+CD\s*\S+\s+cost\s*\S+/.test(skill.desc),
+      `${id}: passive skill should not have speed/CD/cost line`);
   }
 });
 
-// -- Test 5b: metadata uses 0 instead of 无 ----------------------------
-test('metadata uses 0 instead of 无', () => {
-  for (const id of allSkillIds) {
+// -- Test 5b: metadata uses 0 instead of 无 (active only) ---------------
+test('Active metadata uses 0 instead of 无', () => {
+  for (const id of normalizedActiveIds) {
     const skill = SKILLS[id];
     const metadata = skill.desc.split('\n')[2] || '';
     assert(!/CD\s+无/.test(metadata),
@@ -89,14 +113,29 @@ test('metadata uses 0 instead of 无', () => {
   }
 });
 
-// -- Test 6: natural description contains no structured stat labels ------
-test('description has no structured stat labels', () => {
-  for (const id of allSkillIds) {
+// -- Test 6: passive descriptions contain no structured stat labels ----
+test('Passive body has no structured stat labels', () => {
+  for (const id of passiveIds) {
     const skill = SKILLS[id];
     const lines = skill.desc.split('\n');
-    const body = lines[3] || '';
-    assert(!/(技能概念|游戏作用|范围|威力|速度|费用)：/.test(body),
-      `${id}: description still contains structured labels: "${body}"`);
+    const body = lines[lines.length - 1] || '';
+    assert(!/(范围：自身|威力：无|速度：\d+|费用：无|费用：\d+)/.test(body),
+      `${id}: passive body still contains active-skill labels: "${body}"`);
+    assert(!body.includes('施法范围'), `${id}: passive body contains "施法范围"`);
+    assert(!body.includes('技能概念'), `${id}: passive body contains "技能概念"`);
+    assert(!body.includes('游戏作用'), `${id}: passive body contains "游戏作用"`);
+  }
+});
+
+// -- Test 6b: passive skills have no active-skill field text -------------
+test('Passive skills: no active-skill field text', () => {
+  for (const id of passiveIds) {
+    const skill = SKILLS[id];
+    assert(!skill.desc.includes('范围：自身'), `${id}: contains "范围：自身"`);
+    assert(!skill.desc.includes('威力：无'), `${id}: contains "威力：无"`);
+    assert(!skill.desc.includes('速度：'), `${id}: contains "速度："`);
+    assert(!skill.desc.includes('费用：无'), `${id}: contains "费用：无"`);
+    assert(!skill.desc.includes('施法范围'), `${id}: contains "施法范围"`);
   }
 });
 
@@ -109,13 +148,14 @@ test('No "不造成直接威力" disclaimer', () => {
   }
 });
 
-// -- Test 8: cost only appears in metadata line ------------------------
-test('cost only appears in metadata line', () => {
-  for (const id of allSkillIds) {
+// -- Test 8: cost appears in metadata line (normalized active only) -----
+test('cost appears in metadata line', () => {
+  for (const id of normalizedActiveIds) {
     const skill = SKILLS[id];
     const lines = skill.desc.split('\n');
-    assert(lines.filter(line => /\bcost\b/i.test(line)).length === 1,
-      `${id}: cost should appear exactly once in metadata line: "${skill.desc}"`);
+    const metaLine = lines[2] || '';
+    assert(/\bcost\b/i.test(metaLine),
+      `${id}: cost should appear in metadata line: "${metaLine}"`);
   }
 });
 
@@ -151,11 +191,12 @@ test('No placeholders (待补充/TODO/未知)', () => {
   }
 });
 
-// -- Test 12: Infinite-range skills say 施法范围为无限 --------------------
-test('Infinite-range skills say 施法范围为无限', () => {
-  for (const id of allSkillIds) {
+// -- Test 12: Infinite-range skills say 施法范围为无限 (active only) ----
+test('Infinite-range active skills say 施法范围为无限', () => {
+  for (const id of normalizedActiveIds) {
     const skill = SKILLS[id];
-    const body = skill.desc.split('\n')[3] || '';
+    const lines = skill.desc.split('\n');
+    const body = lines[lines.length - 1] || '';
     if (skill.targeting?.range === 99) {
       assert(body.includes('施法范围为无限'),
         `${id}: infinite-range skill body should say "施法范围为无限": "${body}"`);
@@ -167,7 +208,8 @@ test('Infinite-range skills say 施法范围为无限', () => {
 test('No English field names outside metadata', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
-    const body = skill.desc.split('\n')[3] || '';
+    const lines = skill.desc.split('\n');
+    const body = lines[lines.length - 1] || '';
     assert(!body.includes('cost:'), `${id}: description uses "cost:"`);
     assert(!body.includes('power:'), `${id}: description uses "power:"`);
     assert(!body.includes('speed:'), `${id}: description uses "speed:"`);
@@ -175,7 +217,7 @@ test('No English field names outside metadata', () => {
   }
 });
 
-// -- Test 14: No 威力｜速度｜费用 old-format prefix in desc ----------
+// -- Test 14: No old 威力｜速度｜费用 prefix in desc ----------
 test('No old 威力｜速度｜费用 prefix in desc', () => {
   for (const id of allSkillIds) {
     const skill = SKILLS[id];
@@ -187,7 +229,7 @@ test('No old 威力｜速度｜费用 prefix in desc', () => {
 
 // -- Summary --------------------------------------------------------
 console.log('\n═══════════════════════════════════════════');
-console.log(`Total skills: ${allSkillIds.length}`);
+console.log(`Total skills: ${allSkillIds.length} (${normalizedActiveIds.length} active, ${passiveIds.length} passive)`);
 console.log(`PASSED: ${totalPassed}`);
 console.log(`FAILED: ${totalFailed}`);
 if (totalFailed > 0) {

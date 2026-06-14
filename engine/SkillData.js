@@ -736,7 +736,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '呼吸法：奇数回合吸(盛怒+1怒/距-1)，偶数回合呼(距+1/盛怒-1怒最低0)。只影响盛怒，不影响命中回怒。' },
     ],
-    desc: '技能概念：吉米被动呼吸法，回合交替切换攻防状态，只影响盛怒。\n游戏作用：奇数回合进入"吸"状态（盛怒额外获得1怒气，攻击距离-1）；偶数回合进入"呼"状态（攻击距离+1，盛怒少获得1怒气最低0）。不影响命中回怒或其他怒气来源。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：吉米被动呼吸法，回合交替切换攻防状态，只影响盛怒。\n游戏作用：奇数回合进入"吸"状态（盛怒额外获得1怒气，攻击距离-1）；偶数回合进入"呼"状态（攻击距离+1，盛怒少获得1怒气最低0）。不影响命中回怒或其他怒气来源。',
   },
   trait_jimmy_marrow: {
     id: 'trait_jimmy_marrow', name: '易经洗髓酒', class: '战士', type: '特质',
@@ -744,7 +744,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '易经洗髓酒：回合结束时若怒气达标(5/6/7/8/9)自动扣除怒气并获得永久强化' },
     ],
-    desc: '技能概念：吉米被动，回合结束时自动消耗怒气突破洗髓层数。\n游戏作用：回合结束时若怒气达标（5/6/7/8/9），自动扣除怒气并获得永久强化（依次为怒+1/攻击距离+1/移动视为灵巧/怒+1/威力+100）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：吉米被动，回合结束时自动消耗怒气突破洗髓层数。\n游戏作用：回合结束时若怒气达标（5/6/7/8/9），自动扣除怒气并获得永久强化（依次为怒+1/攻击距离+1/移动视为灵巧/怒+1/威力+100）。',
   },
   trait_gunfighter_finesse: {
     id: 'trait_gunfighter_finesse', name: '灵巧', icon: 'assets/skill-icons/shooter/shooter_roll.webp', class: '射手', type: '特质',
@@ -752,7 +752,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '灵巧：每两回合获得一个灵巧行动点，可提交一个额外cost0行动' },
     ],
-    desc: '技能概念：每两回合获得一个灵巧行动点。\n游戏作用：每两回合获得一个灵巧行动点，可额外提交一个费用为0的行动，不占用主行动点数。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：每两回合获得一个灵巧行动点。\n游戏作用：每两回合获得一个灵巧行动点，可额外提交一个费用为0的行动，不占用主行动点数。',
   },
   trait_gunfighter_strong: {
     id: 'trait_gunfighter_strong', name: '强者', icon: 'assets/skill-icons/shooter/shooter_attack.webp', class: '射手', type: '特质',
@@ -760,7 +760,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '强者：携带这个被动的人是一个强者' },
     ],
-    desc: '技能概念：枪侠被动特质"强者"，无实际战斗效果。\n游戏作用：仅作为被动特质标记存在，无战斗数值影响。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：枪侠被动特质"强者"，无实际战斗效果。\n游戏作用：仅作为被动特质标记存在，无战斗数值影响。',
   },
   trait_yan_death_wind: {
     id: 'trait_yan_death_wind', name: '死亡如风', icon: 'assets/skill-icons/shooter/shooter_reload.webp', class: '射手', type: '特质',
@@ -768,7 +768,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '死亡如风：对手攻击落空时自动装填' },
     ],
-    desc: '技能概念：对手攻击落空时自动装填弹药。\n游戏作用：每当对手发起攻击但未命中时，获得1子弹并立即执行一次上膛（不占用行动）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：对手攻击落空时自动装填弹药。\n游戏作用：每当对手发起攻击但未命中时，获得1子弹并立即执行一次上膛（不占用行动）。',
   },
   trait_helldiver_laser_weapon: {
     id: 'trait_helldiver_laser_weapon', name: '激光武器', icon: 'assets/skill-icons/shooter/shooter_aim.webp', class: '射手', type: '特质',
@@ -776,7 +776,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '激光武器：每回合结束背包弹药+1，无上限' },
     ],
-    desc: '技能概念：每回合自动获得背包弹药。\n游戏作用：每回合结束时背包弹药+1，无弹药上限。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：每回合自动获得背包弹药。\n游戏作用：每回合结束时背包弹药+1，无弹药上限。',
   },
   trait_helldiver_priority_ready: {
     id: 'trait_helldiver_priority_ready', name: '优先战备', icon: 'assets/skill-icons/shooter/shooter_bell.webp', class: '射手', type: '特质',
@@ -784,7 +784,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '优先战备：呼叫技能延迟-1回合，本回合即结算' },
     ],
-    desc: '技能概念：呼叫类技能延迟减少。\n游戏作用：呼叫类技能（轰炸、补给）延迟-1回合，即本回合提交后当回合立即结算。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：呼叫类技能延迟减少。\n游戏作用：呼叫类技能（轰炸、补给）延迟-1回合，即本回合提交后当回合立即结算。',
   },
   trait_helldiver_fast_ready: {
     id: 'trait_helldiver_fast_ready', name: '快速战备', icon: 'assets/skill-icons/shooter/shooter_gun_dance.webp', class: '射手', type: '特质',
@@ -792,7 +792,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '快速战备：呼叫技能+50技能急速' },
     ],
-    desc: '技能概念：呼叫类技能冷却缩短。\n游戏作用：呼叫技能+50技能急速，冷却时间从6回合缩短为4回合。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：呼叫类技能冷却缩短。\n游戏作用：呼叫技能+50技能急速，冷却时间从6回合缩短为4回合。',
   },
   trait_helldiver_speed_draw: {
     id: 'trait_helldiver_speed_draw', name: '全凭手速', icon: 'assets/skill-icons/shooter/shooter_hook.webp', class: '射手', type: '特质',
@@ -800,7 +800,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '全凭手速：呼叫行动视为灵巧行动，每回合无限灵巧呼叫点' },
     ],
-    desc: '技能概念：呼叫行动视为灵巧行动。\n游戏作用：呼叫类技能视为灵巧行动，每回合可使用无限个灵巧呼叫行动点。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：呼叫行动视为灵巧行动。\n游戏作用：呼叫类技能视为灵巧行动，每回合可使用无限个灵巧呼叫行动点。',
   },
   trait_mirror_slippery: {
     id: 'trait_mirror_slippery', name: '脚底抹油', class: '法师', type: '特质',
@@ -808,7 +808,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '脚底抹油：次元之门不占用行动点（机制占位）' },
     ],
-    desc: '技能概念：次元之门不占用行动点。\n游戏作用：使用次元之门时不消耗行动点数（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：次元之门不占用行动点。\n游戏作用：使用次元之门时不消耗行动点数（机制暂未实装）。',
   },
   trait_mirror_dimension_child: {
     id: 'trait_mirror_dimension_child', name: '次元之子', class: '法师', type: '特质',
@@ -816,7 +816,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '次元之子：独处于次元时获得次元token（机制占位）' },
     ],
-    desc: '技能概念：独处于次元时获得次元token。\n游戏作用：角色独自存在于次元中时获得次元token（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：独处于次元时获得次元token。\n游戏作用：角色独自存在于次元中时获得次元token（机制暂未实装）。',
   },
   trait_mirror_dimension_lord: {
     id: 'trait_mirror_dimension_lord', name: '次元之主', class: '法师', type: '特质',
@@ -824,7 +824,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '次元之主：积累token后解锁次元系永久强化（机制占位）' },
     ],
-    desc: '技能概念：积累token解锁次元系永久强化。\n游戏作用：积累次元token后解锁次元系永久强化（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：积累token解锁次元系永久强化。\n游戏作用：积累次元token后解锁次元系永久强化（机制暂未实装）。',
   },
   trait_mirror_phase_sling: {
     id: 'trait_mirror_phase_sling', name: '相位弹弓', class: '法师', type: '特质',
@@ -832,7 +832,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '相位弹弓：技能穿过次元门后加速并提高威力（机制占位）' },
     ],
-    desc: '技能概念：技能穿过次元门后加速并提高威力。\n游戏作用：技能弹体穿过次元门后获得加速和威力提升（机制暂未实装）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：技能穿过次元门后加速并提高威力。\n游戏作用：技能弹体穿过次元门后获得加速和威力提升（机制暂未实装）。',
   },
   trait_duelist_minds_eye: {
     id: 'trait_duelist_minds_eye', name: '心眼', class: '战士', type: '特质',
@@ -840,7 +840,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '心眼：敌人总有2个方向生成弱点，弱点方向击中+1怒/逐风步CD-1' },
     ],
-    desc: '技能概念：识破敌人弱点以获得战斗优势。\n游戏作用：所有敌人随机2个方向有弱点标记；弱点方向击中回复1怒且逐风步CD-1；命中后弱点刷新。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：识破敌人弱点以获得战斗优势。\n游戏作用：所有敌人随机2个方向有弱点标记；弱点方向击中回复1怒且逐风步CD-1；命中后弱点刷新。',
   },
   trait_placeholder_adapt: {
     id: 'trait_placeholder_adapt', name: '预留特质', class: '法师', type: '特质',
@@ -848,7 +848,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '预留特质（机制占位）' },
     ],
-    desc: '技能概念：占位预留特质，暂无实际效果。\n游戏作用：机制占位，供未来角色使用。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：占位预留特质，暂无实际效果。\n游戏作用：机制占位，供未来角色使用。',
   },
 };
 
@@ -903,6 +903,18 @@ function cleanupNaturalText(text) {
 }
 
 function normalizeSkillDesc(skill) {
+  // Passive traits: keep only name + clean body, no active-skill metadata
+  if (skill.isTrait) {
+    const parts = skill.desc
+      .split('\n')
+      .map(part => part.trim()
+        .replace(/^(技能概念|游戏作用)：/u, '')
+        .replace(/[。；;]+$/u, ''))
+      .filter(Boolean);
+    const body = parts.map(trimSentence).join('；') + '。';
+    return [skill.name, body].join('\n');
+  }
+
   const parts = skill.desc
     .split('\n')
     .map(part => part.trim()
