@@ -355,13 +355,8 @@ export class BuffManager {
         break;
 
       case 'JIMMY_BREATH_IN':
-        // Odd turns: rage gain +1, attack range -1
-        this.registerHook(buffId, HookName.ON_RESOURCE_GAIN, (ctx) => {
-          if (ctx.entityId === entityId && ctx.resource === 'rage') {
-            return { ...ctx, amount: ctx.amount + 1 };
-          }
-          return ctx;
-        });
+        // Odd turns: 盛怒 warrior_rage rage gain +1 (applied in TurnManager pendingRage settlement),
+        // attack range -1. No longer affects ON_HIT or other rage gains via global hook.
         this.registerHook(buffId, HookName.ON_RANGE_CALCULATE, (ctx) => {
           if (ctx.entityId === entityId) return { ...ctx, range: Math.max(1, (ctx.range || 1) - 1) };
           return ctx;
@@ -369,13 +364,8 @@ export class BuffManager {
         break;
 
       case 'JIMMY_BREATH_OUT':
-        // Even turns: attack range +1, rage gain -1
-        this.registerHook(buffId, HookName.ON_RESOURCE_GAIN, (ctx) => {
-          if (ctx.entityId === entityId && ctx.resource === 'rage') {
-            return { ...ctx, amount: Math.max(0, ctx.amount - 1) };
-          }
-          return ctx;
-        });
+        // Even turns: attack range +1, 盛怒 warrior_rage rage gain -1 (applied in TurnManager
+        // pendingRage settlement). No longer affects ON_HIT or other rage gains via global hook.
         this.registerHook(buffId, HookName.ON_RANGE_CALCULATE, (ctx) => {
           if (ctx.entityId === entityId) return { ...ctx, range: (ctx.range || 1) + 1 };
           return ctx;

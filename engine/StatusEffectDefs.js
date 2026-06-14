@@ -207,14 +207,14 @@ export const STATUS_DEFS = {
   JIMMY_BREATH_IN: {
     id: 'JIMMY_BREATH_IN',
     name: '吸',
-    desc: '奇数回合：怒获得+1，攻击距离-1',
+    desc: '奇数回合：盛怒额外+1怒，攻击距离-1（不影响命中回怒）',
     duration: -1,
     blocking: false,
   },
   JIMMY_BREATH_OUT: {
     id: 'JIMMY_BREATH_OUT',
     name: '呼',
-    desc: '偶数回合：攻击距离+1，怒获得-1',
+    desc: '偶数回合：攻击距离+1，盛怒-1怒最低0（不影响命中回怒）',
     duration: -1,
     blocking: false,
   },

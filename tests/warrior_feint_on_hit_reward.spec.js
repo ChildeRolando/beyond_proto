@@ -1,10 +1,11 @@
 // warrior_feint ON_HIT reward regression tests
 // Verifies: GAIN_RESOURCE ON_HIT is action-bound, subSpeed-aligned,
 // and not contaminated by stale actor-level hit state.
+// Breathing interaction with ON_HIT is tested in jimmy_breathing_rage_rule.spec.js.
 // Run: node tests/warrior_feint_on_hit_reward.spec.js
 
 import { GameEngine } from '../engine/GameEngine.js';
-import { getDefaultLoadout, getDefaultRoleLoadout } from '../engine/RoleData.js';
+import { getDefaultLoadout } from '../engine/RoleData.js';
 
 let passed = 0;
 let failed = 0;
@@ -19,11 +20,9 @@ function check(name, condition, detail = '') {
   }
 }
 
-/** Create engine with optional Jimmy role. targetClass = opponent. */
+/** Create engine with plain warrior (no Jimmy) vs mage target. */
 function initWarriorTest(opts = {}) {
   const engine = new GameEngine();
-  const p1Role = opts.jimmy ? 'warrior_jimmy' : null;
-  const p1RoleLoadout = opts.jimmy ? ['trait_jimmy_breathing'] : [];
   const ids = engine.initBattle({
     seed: 42,
     p1Pos: opts.p1Pos || { q: 0, r: -2 },
@@ -32,9 +31,9 @@ function initWarriorTest(opts = {}) {
       {
         playerId: 'player1',
         class: '战士',
-        roleId: p1Role,
+        roleId: null,
         loadoutSkillIds: getDefaultLoadout('战士'),
-        roleLoadoutSkillIds: p1RoleLoadout,
+        roleLoadoutSkillIds: [],
       },
       {
         playerId: 'player2',
@@ -48,31 +47,22 @@ function initWarriorTest(opts = {}) {
   return { engine, warriorId: ids.player1Id, targetId: ids.player2Id };
 }
 
-/** Submit both actions and execute one turn. */
 async function doTurn(engine, wAction, tAction) {
   if (wAction) engine.submitAction(wAction.id, wAction.skill, wAction.target || null);
   if (tAction) engine.submitAction(tAction.id, tAction.skill, tAction.target || null);
   await engine.executeTurn();
 }
 
-/** Get rage for an entity. */
 function rage(engine, id) {
   return engine.resourceSystem.getRage(id);
-}
-
-/** Check if entity has a buff. */
-function hasBuff(engine, id, type) {
-  return engine.buffManager.hasStatus(id, type);
 }
 
 // ================================================================
 console.log('\n=== Test A: warrior_feint miss → no rage gain ===');
 {
-  // Place warrior far enough that after feint dash, melee range check fails.
-  // Jimmy at (0,-3), mage at (0,0). Target hex (0,1) is within range 1 of start.
-  // After dash-away + dash-toward, warrior ends at ~(0,-2); dist to (0,1) = 3 > range 1 → miss.
+  // Position warrior so feint target is out of melee range after dash.
   const { engine, warriorId: w, targetId: t } = initWarriorTest({
-    p1Pos: { q: 0, r: -3 }, p2Pos: { q: 0, r: 0 },
+    p1Pos: { q: 0, r: -2 }, p2Pos: { q: 0, r: 2 },
   });
 
   // Build rage: warrior_rage gives 2 rage
@@ -80,202 +70,146 @@ console.log('\n=== Test A: warrior_feint miss → no rage gain ===');
     { id: w, skill: 'warrior_rage', target: null },
     { id: t, skill: 'mage_gather', target: null }
   );
-  const rageAfterBuild = rage(engine, w);
-  check('rage after warrior_rage', rageAfterBuild === 2, `rage=${rageAfterBuild}`);
+  check('rage after warrior_rage', rage(engine, w) === 2, `rage=${rage(engine, w)}`);
 
-  // warrior_feint costs 1 rage, targets hex (0,1) — empty, far from landing pos
+  // feint targeting a hex within range 1 but no character there
   await doTurn(engine,
-    { id: w, skill: 'warrior_feint', target: { q: 0, r: 1 } },
+    { id: w, skill: 'warrior_feint', target: { q: 0, r: -1 } },
     { id: t, skill: 'mage_gather', target: null }
   );
-  const rageAfterFeint = rage(engine, w);
-  // Should be 1 (2 - 1 cost + 0 gain). If bug present would be 2+ (erroneous ON_HIT gain).
-  check('feint miss: no rage gain', rageAfterFeint === 1,
-    `rage=${rageAfterFeint} (expected 1: 2 build - 1 cost + 0 miss)`);
+  const finalRage = rage(engine, w);
+  // 2 (built) - 1 (cost) + 0 (miss) = 1
+  check('feint miss: no rage gain', finalRage === 1,
+    `rage=${finalRage} (expected 1: 2 build - 1 cost + 0 miss)`);
 }
 
 // ================================================================
-console.log('\n=== Test B: warrior_feint miss + JIMMY_BREATH_IN → no rage +2 ===');
+console.log('\n=== Test B: warrior_feint miss + no stale actor-hit contamination ===');
 {
-  // Turn 1 = odd → breath IN. feint should miss (positioned to fail range check).
-  const { engine, warriorId: w, targetId: t } = initWarriorTest({
-    jimmy: true, p1Pos: { q: 0, r: -3 }, p2Pos: { q: 0, r: 0 },
-  });
-  check('turn 1 breath-in active', hasBuff(engine, w, 'JIMMY_BREATH_IN'));
-
-  // Build rage
-  await doTurn(engine,
-    { id: w, skill: 'warrior_rage', target: null },
-    { id: t, skill: 'mage_gather', target: null }
-  );
-  // warrior_rage base 2 + breath-in +1 = 3
-  const rageAfterBuild = rage(engine, w);
-  check('rage after warrior_rage with breath-in', rageAfterBuild === 3, `rage=${rageAfterBuild}`);
-
-  // feint miss — target empty hex (0,1), melee out of range after dash
-  await doTurn(engine,
-    { id: w, skill: 'warrior_feint', target: { q: 0, r: 1 } },
-    { id: t, skill: 'mage_gather', target: null }
-  );
-  const rageAfterFeint = rage(engine, w);
-  // 3 (built) - 1 (cost) + 0 (miss) = 2. Breath-in should NOT amplify a miss.
-  check('feint miss + breath-in: no rage gain', rageAfterFeint === 2,
-    `rage=${rageAfterFeint} (expected 2: 3 build - 1 cost + 0 miss)`);
-}
-
-// ================================================================
-console.log('\n=== Test C: warrior_feint hit + JIMMY_BREATH_IN → rage +2 ===');
-{
-  // Turn 1 odd → breath IN. Place warrior adjacent to mage so feint hits.
-  // Use direct resource add so feint executes on turn 1 (breath-in active),
-  // not turn 2 (which would toggle to breath-out).
-  const { engine, warriorId: w, targetId: t } = initWarriorTest({
-    jimmy: true, p1Pos: { q: 0, r: 0 }, p2Pos: { q: 0, r: 1 },
-  });
-  check('turn 1 breath-in active', hasBuff(engine, w, 'JIMMY_BREATH_IN'));
-
-  // Set initial rage directly (bypasses hooks, avoids needing a build turn)
-  engine.resourceSystem.add(w, 'rage', 3);
-  check('initial rage set', rage(engine, w) === 3, `rage=${rage(engine, w)}`);
-
-  // feint hit on turn 1 (breath-in still active)
-  const targetPos = engine.registry.getPosition(t);
-  await doTurn(engine,
-    { id: w, skill: 'warrior_feint', target: targetPos },
-    { id: t, skill: 'mage_gather', target: null }
-  );
-  const rageAfterFeint = rage(engine, w);
-  // 3 (initial) - 1 (cost) + (1 base + 1 breath-in) = 4
-  check('feint hit + breath-in: rage +2', rageAfterFeint === 4,
-    `rage=${rageAfterFeint} (expected 4: 3 start - 1 cost + 2 gain)`);
-}
-
-// ================================================================
-console.log('\n=== Test D: warrior_feint hit + JIMMY_BREATH_OUT → rage gain reduced ===');
-{
-  // Need even turn for breath OUT. Turn 1 = build rage, turn 2 = feint.
-  const { engine, warriorId: w, targetId: t } = initWarriorTest({
-    jimmy: true, p1Pos: { q: 0, r: 0 }, p2Pos: { q: 0, r: 1 },
-  });
-  check('turn 1 breath-in active', hasBuff(engine, w, 'JIMMY_BREATH_IN'));
-
-  // Turn 1: build rage
-  await doTurn(engine,
-    { id: w, skill: 'warrior_rage', target: null },
-    { id: t, skill: 'mage_gather', target: null }
-  );
-  // warrior_rage base 2 + breath-in +1 = 3
-  const rageAfterBuild = rage(engine, w);
-  check('turn1 rage after build', rageAfterBuild === 3, `rage=${rageAfterBuild}`);
-
-  // Turn 2: breath should toggle to OUT
-  check('turn 2 breath-out active', hasBuff(engine, w, 'JIMMY_BREATH_OUT'));
-
-  // feint hit
-  const targetPos = engine.registry.getPosition(t);
-  await doTurn(engine,
-    { id: w, skill: 'warrior_feint', target: targetPos },
-    { id: t, skill: 'mage_gather', target: null }
-  );
-  const rageAfterFeint = rage(engine, w);
-  // 3 (built) - 1 (cost) + max(0, 1 base - 1 breath-out) = 3 + 0 = 2
-  check('feint hit + breath-out: rage gain reduced to 0', rageAfterFeint === 2,
-    `rage=${rageAfterFeint} (expected 2: 3 build - 1 cost + 0 gain)`);
-}
-
-// ================================================================
-console.log('\n=== Test E: warrior_feint rage gain log order ===');
-{
-  // Verify GAIN_RESOURCE log does NOT appear before attack resolution.
+  // Verify that a previous-turn hit does NOT contaminate next turn's ON_HIT check.
   const { engine, warriorId: w, targetId: t } = initWarriorTest({
     p1Pos: { q: 0, r: 0 }, p2Pos: { q: 0, r: 1 },
   });
 
-  // Build rage first
+  // Turn 1: slash hits (sets #lastHitByActor to true)
+  const targetPos1 = engine.registry.getPosition(t);
   await doTurn(engine,
-    { id: w, skill: 'warrior_rage', target: null },
+    { id: w, skill: 'warrior_slash', target: targetPos1 },
     { id: t, skill: 'mage_gather', target: null }
   );
+  const rageAfterHit = rage(engine, w);
+  check('slash hit: gained rage', rageAfterHit === 1, `rage=${rageAfterHit}`);
 
-  // Submit feint and capture log
+  // Turn 2: feint miss. Verify old #lastHitByActor doesn't contaminate ON_HIT.
+  await doTurn(engine,
+    { id: w, skill: 'warrior_feint', target: { q: -1, r: 0 } },
+    { id: t, skill: 'mage_gather', target: null }
+  );
+  // 1 (from slash) - 1 (cost) + 0 (miss) = 0
+  check('feint miss: not contaminated by previous hit',
+    rage(engine, w) === 0,
+    `rage=${rage(engine, w)} (expected 0: 1 - 1 cost + 0 miss)`);
+}
+
+// ================================================================
+console.log('\n=== Test C: warrior_feint hit → rage +1 ===');
+{
+  const { engine, warriorId: w, targetId: t } = initWarriorTest({
+    p1Pos: { q: 0, r: 0 }, p2Pos: { q: 0, r: 1 },
+  });
+
+  // Set initial rage (feint costs 1)
+  engine.resourceSystem.add(w, 'rage', 2);
+  check('initial rage set', rage(engine, w) === 2);
+
   const targetPos = engine.registry.getPosition(t);
   await doTurn(engine,
     { id: w, skill: 'warrior_feint', target: targetPos },
     { id: t, skill: 'mage_gather', target: null }
   );
 
-  // Check logger entries — rage gain ("获得 怒气") must appear after projectile/attack
+  const finalRage = rage(engine, w);
+  // 2 (initial) - 1 (cost) + 1 (ON_HIT) = 2
+  check('feint hit: rage +1', finalRage === 2,
+    `rage=${finalRage} (expected 2: 2 - 1 cost + 1 hit)`);
+}
+
+// ================================================================
+console.log('\n=== Test D: warrior_feint rage gain log after attack ===');
+{
+  const { engine, warriorId: w, targetId: t } = initWarriorTest({
+    p1Pos: { q: 0, r: 0 }, p2Pos: { q: 0, r: 1 },
+  });
+
+  engine.resourceSystem.add(w, 'rage', 2);
+  const targetPos = engine.registry.getPosition(t);
+  await doTurn(engine,
+    { id: w, skill: 'warrior_feint', target: targetPos },
+    { id: t, skill: 'mage_gather', target: null }
+  );
+
+  // Check logger — rage gain must appear after attack execution
   const entries = engine.logger?.getEntries?.() || [];
   const texts = entries.map(e => e.message || '');
-  let projectileIdx = -1, rageGainIdx = -1;
+  let attackIdx = -1, rageGainIdx = -1;
   for (let i = 0; i < texts.length; i++) {
-    if (texts[i].includes('发射弹体') || texts[i].includes('斩击')) projectileIdx = i;
+    if (texts[i].includes('发射弹体') || texts[i].includes('斩击')) attackIdx = i;
     if (texts[i].includes('怒气') && texts[i].includes('+') && !texts[i].includes('消耗')) {
-      // Only track the first "gain" in this turn's feint log
       if (rageGainIdx === -1 && i > 0) rageGainIdx = i;
     }
   }
-  // The rage gain from ON_HIT should be after the attack action
-  // (projectile creation / melee execution)
-  if (projectileIdx >= 0 && rageGainIdx >= 0) {
-    check('rage gain log after attack log', rageGainIdx > projectileIdx,
-      `projectile@${projectileIdx}, rageGain@${rageGainIdx}`);
+  if (attackIdx >= 0 && rageGainIdx >= 0) {
+    check('rage gain log after attack log', rageGainIdx > attackIdx,
+      `attack@${attackIdx}, rageGain@${rageGainIdx}`);
   } else {
-    check('rage gain log after attack log', true, 'marker not found, skip strict order check');
+    check('rage gain log after attack log', true, 'markers not found, skip strict check');
   }
 }
 
 // ================================================================
-console.log('\n=== Test F: warrior_slash hit → rage +1 ===');
+console.log('\n=== Test E: warrior_slash hit → rage +1 (regression) ===');
 {
-  // Regression: normal warrior_slash ON_HIT should still work.
   const { engine, warriorId: w, targetId: t } = initWarriorTest({
     p1Pos: { q: 0, r: 0 }, p2Pos: { q: 0, r: 1 },
   });
 
-  // Build rage
   await doTurn(engine,
     { id: w, skill: 'warrior_rage', target: null },
     { id: t, skill: 'mage_gather', target: null }
   );
   check('rage after build', rage(engine, w) === 2);
 
-  // warrior_slash hit (no cost, just hit and gain)
   const targetPos = engine.registry.getPosition(t);
   await doTurn(engine,
     { id: w, skill: 'warrior_slash', target: targetPos },
     { id: t, skill: 'mage_gather', target: null }
   );
-  const rageAfter = rage(engine, w);
-  // 2 (built) + 1 (ON_HIT gain) = 3. Slash has no rage cost.
-  check('slash hit: rage +1', rageAfter === 3,
-    `rage=${rageAfter} (expected 3: 2 build + 1 hit gain)`);
+
+  check('slash hit: rage +1', rage(engine, w) === 3,
+    `rage=${rage(engine, w)} (expected 3: 2 build + 1 hit)`);
 }
 
 // ================================================================
-console.log('\n=== Test G: warrior_slash miss → no rage gain ===');
+console.log('\n=== Test F: warrior_slash miss → no rage gain (regression) ===');
 {
-  // Place warrior far away. Slash targets empty hex → melee out of range → miss.
   const { engine, warriorId: w, targetId: t } = initWarriorTest({
     p1Pos: { q: 0, r: -2 }, p2Pos: { q: 0, r: 2 },
   });
 
-  // Build rage
   await doTurn(engine,
     { id: w, skill: 'warrior_rage', target: null },
     { id: t, skill: 'mage_gather', target: null }
   );
   check('rage after build', rage(engine, w) === 2);
 
-  // slash targets a hex within range 1 but far from any character
+  // slash targeting empty hex with no one in range
   await doTurn(engine,
     { id: w, skill: 'warrior_slash', target: { q: 0, r: -1 } },
     { id: t, skill: 'mage_gather', target: null }
   );
-  const rageAfter = rage(engine, w);
-  // 2 (built) + 0 (miss) = 2
-  check('slash miss: no rage gain', rageAfter === 2,
-    `rage=${rageAfter} (expected 2: 2 build + 0 miss)`);
+
+  check('slash miss: no rage gain', rage(engine, w) === 2,
+    `rage=${rage(engine, w)} (expected 2: 2 build + 0 miss)`);
 }
 
 // ================================================================

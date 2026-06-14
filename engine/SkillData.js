@@ -734,9 +734,9 @@ export const SKILLS = {
     id: 'trait_jimmy_breathing', name: '呼吸法', class: '战士', type: '特质',
     isTrait: true, cost: {}, speed: 3, targeting: { shape: 'SELF' },
     effects: [
-      { cmd: 'PASS', placeholderMessage: '呼吸法：奇数回合吸(怒+1/距-1)，偶数回合呼(距+1/怒-1)' },
+      { cmd: 'PASS', placeholderMessage: '呼吸法：奇数回合吸(盛怒+1怒/距-1)，偶数回合呼(距+1/盛怒-1怒最低0)。只影响盛怒，不影响命中回怒。' },
     ],
-    desc: '技能概念：吉米被动呼吸法，回合交替切换攻防状态。\n游戏作用：奇数回合进入"吸"状态（怒气获得+1，攻击距离-1）；偶数回合进入"呼"状态（攻击距离+1，怒气获得-1）。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
+    desc: '技能概念：吉米被动呼吸法，回合交替切换攻防状态，只影响盛怒。\n游戏作用：奇数回合进入"吸"状态（盛怒额外获得1怒气，攻击距离-1）；偶数回合进入"呼"状态（攻击距离+1，盛怒少获得1怒气最低0）。不影响命中回怒或其他怒气来源。此技能为被动特质。\n范围：自身；威力：无；速度：3；费用：无',
   },
   trait_jimmy_marrow: {
     id: 'trait_jimmy_marrow', name: '易经洗髓酒', class: '战士', type: '特质',

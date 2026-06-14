@@ -1655,7 +1655,10 @@ export class TurnManager {
         }
       }
 
-      // 盛怒 resolution: pendingRage → if not hit this turn, gain 2 rage; if hit, cancel
+      // 盛怒 resolution: pendingRage → if not hit this turn, gain 2 rage; if hit, cancel.
+      // Jimmy breathing (JIMMY_BREATH_IN / JIMMY_BREATH_OUT) only affects 盛怒,
+      // NOT ON_HIT or other rage gains. Applied here before ON_RESOURCE_GAIN dispatch
+      // so other hooks (COST_SEALED, etc.) still see the final amount.
       if (flags.pendingRage) {
         const wasHit = this.#hitEntities.has(entityId);
         if (!wasHit) {
@@ -1664,16 +1667,28 @@ export class TurnManager {
           if (this.#eventRecorder && srcActionId) {
             this.#eventRecorder.setActionContext(srcActionId, entityId, srcSkillId, null);
           }
+          let baseAmount = 2;
+          // Jimmy breathing: only modifies 盛怒 / pendingRage, not ON_HIT or other rage sources
+          if (this.#buffManager.hasStatus(entityId, 'JIMMY_BREATH_IN')) {
+            baseAmount += 1;
+          } else if (this.#buffManager.hasStatus(entityId, 'JIMMY_BREATH_OUT')) {
+            baseAmount = Math.max(0, baseAmount - 1);
+          }
           const ctx = this.#buffManager.dispatch(HookName.ON_RESOURCE_GAIN, {
-            entityId, resource: 'rage', amount: 2,
+            entityId, resource: 'rage', amount: baseAmount,
           });
-          const finalAmount = ctx?.amount ?? 2;
-          this.#resourceSystem.add(entityId, 'rage', finalAmount);
-          this.#resourceSystem.recordCostGain(entityId, 'rage', finalAmount);
+          const finalAmount = ctx?.amount ?? baseAmount;
+          if (finalAmount > 0) {
+            this.#resourceSystem.add(entityId, 'rage', finalAmount);
+            this.#resourceSystem.recordCostGain(entityId, 'rage', finalAmount);
+            this.#logger?.log(`🔥 盛怒成功 +${finalAmount}怒`, 'rage');
+          } else {
+            // Breath-out reduced to 0 — still "successful" but no effective gain
+            this.#logger?.log('🔥 盛怒成功（呼吸法·呼抵扣）', 'sh');
+          }
           if (this.#eventRecorder && srcActionId) {
             this.#eventRecorder.setActionContext(null, null, null, null);
           }
-          this.#logger?.log(`🔥 盛怒成功 +${finalAmount}怒`, 'rage');
         } else {
           this.#logger?.log('🔥 盛怒被打断，未获怒气', 'sh');
         }
