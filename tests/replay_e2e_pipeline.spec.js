@@ -128,29 +128,6 @@ function makeProjectileScenario() {
   };
 }
 
-function makeNoProjectileScenario() {
-  return {
-    mode: 'duel',
-    teams: [
-      { teamId: 'player1', ownerId: 'player1', control: 'human', name: 'player1' },
-      { teamId: 'player2', ownerId: 'player2', control: 'human', name: 'player2' },
-    ],
-    rules: { friendlyFire: false },
-    combatants: [
-      {
-        id: 'warrior_a', teamId: 'player1', ownerId: 'player1', control: 'human',
-        class: '战士', roleLoadoutSkillIds: [], loadoutSkillIds: ['warrior_rage'],
-        position: { q: 0, r: 0 }, resources: { rage: 3 },
-      },
-      {
-        id: 'warrior_b', teamId: 'player2', ownerId: 'player2', control: 'human',
-        class: '战士', roleLoadoutSkillIds: [], loadoutSkillIds: ['warrior_rage'],
-        position: { q: 2, r: 0 }, resources: { rage: 3 },
-      },
-    ],
-  };
-}
-
 // ── Test harness ──
 
 function createTestBSC(options = {}) {
@@ -276,6 +253,9 @@ function createTestBSC(options = {}) {
     renderer, timelinePanel, battleSceneStore, playbackRuntime,
     buildTurnResolutionCalls, playTurnResolutionCalls,
     playCalls, skipCalls, allFrames, turnResolutionBuilder, clock: clk,
+    // Expose playTurnResolution so zero-duration tests can drive it directly
+    // without going through real engine + executeLocalTurn.
+    playTurnResolution,
   };
 
   return { bsc, spies };
@@ -436,49 +416,74 @@ async function test1() {
 }
 
 // ═══════════════════════════════════════════
-// Test 2: No zero-duration deadlock
+// Test 2: True zero-duration deadlock
 // ═══════════════════════════════════════════
 
-console.log('\n=== Test 2: No zero-duration deadlock ===');
+console.log('\n=== Test 2: True zero-duration deadlock ===');
 
 async function test2() {
-  const { bsc, spies } = createTestBSC({ scenario: makeNoProjectileScenario() });
+  // Use any scenario — we bypass executeLocalTurn and drive playTurnResolution directly
+  // with a hand-crafted empty TurnResolution that produces ZERO clips.
+  const { bsc, spies } = createTestBSC({ scenario: makeProjectileScenario() });
 
-  bsc.submitAction('warrior_a', 'warrior_rage', { q: 0, r: 0, self: true });
-  bsc.submitAction('warrior_b', 'warrior_rage', { q: 2, r: 0, self: true });
+  // Build an empty TurnResolution that will compile to zero clips.
+  const emptyResolution = {
+    schemaVersion: 2,
+    turnNumber: 1,
+    initialSnapshot: null,
+    finalSnapshot: null,
+    phases: [
+      {
+        id: 'phase-empty',
+        phaseKind: 'speed',
+        speed: 3,
+        commandCount: 0,
+        beforeSnapshot: null,
+        afterSnapshot: null,
+        events: [],
+        summary: '',
+        actionCount: 0,
+        actions: [],
+      },
+    ],
+  };
 
-  const startTime = Date.now();
-  const result = await bsc.executeLocalTurn();
-  const elapsed = Date.now() - startTime;
+  // Verify the resolution truly produces zero-duration timeline
+  const timeline = compilePresentationTimeline(emptyResolution);
+  assertEquals(timeline.durationMs, 0, '[2a] timeline.durationMs === 0');
+  assertEquals(timeline.clips.length, 0, '[2b] timeline has zero clips');
 
-  console.log('\n[2a] executeLocalTurn resolves successfully');
-  assert(result.success, 'executeLocalTurn success');
+  // Drive playTurnResolution directly — the exact same function wired into BSC
+  const pStart = Date.now();
+  await spies.playTurnResolution({ resolution: emptyResolution, finalSnapshot: null });
+  const pElapsed = Date.now() - pStart;
 
-  console.log('\n[2b] Resolves quickly (no real-time animation wait)');
-  assert(elapsed < 3000, `resolved in ${elapsed}ms (expected < 3000ms)`);
+  console.log('\n[2c] playTurnResolution resolves (no hang, no deadlock)');
+  assert(pElapsed < 1000, `resolved in ${pElapsed}ms (expected < 1000ms)`);
 
-  console.log('\n[2c] Input lock is false after resolution');
-  assertEquals(bsc.isResolutionPlaybackActive(), false, 'not locked');
+  console.log('\n[2d] playbackRuntime.play was NOT called (zero-duration branch)');
+  assertEquals(spies.playCalls.length, 0, 'play was NOT called');
 
-  console.log('\n[2d] timelinePanel.markComplete was called');
+  console.log('\n[2e] timelinePanel.markComplete was called with completion text');
   const markCompleteCalls = spies.timelinePanel.callLog.filter(c => c.method === 'markComplete');
   assertGte(markCompleteCalls.length, 1, 'markComplete called');
+  assertEquals(markCompleteCalls[0].text, '回放完成', 'markComplete text is 回放完成');
 
-  console.log('\n[2e] Non-projectile turn: timeline resolves without deadlock');
-  const resolution = spies.playTurnResolutionCalls[0]?.resolution;
-  const timeline = compilePresentationTimeline(resolution);
-  // Timeline may have non-zero duration from non-projectile clips (gather, etc.).
-  // The key assertion: pipeline completes without deadlock regardless of duration.
-  assert(!!timeline, 'timeline is valid');
-  assertGte(timeline.durationMs, 0, 'timeline duration is non-negative');
+  console.log('\n[2f] No frames emitted (zero-duration)');
+  assertEquals(spies.allFrames.length, 0, 'zero frames emitted');
 
-  console.log('\n[2f] Pipeline completed (no deadlock, no hang)');
-  // Frames may be emitted if the compiler produces clips from resource events
-  assert(Array.isArray(spies.allFrames), 'allFrames is array');
+  console.log('\n[2g] battleSceneStore.setPlaybackFrame(null) was called');
+  // The playTurnResolution function calls battleSceneStore.setPlaybackFrame(null)
+  // before checking durationMs <= 0. Verify no active playback frame remains.
+  const scene = spies.battleSceneStore.getScene();
+  assertEquals(scene.mode, 'live', 'scene mode is live (not playback)');
+  assertEquals(scene.effects.length, 0, 'scene has no effects');
 
-  console.log('\n[2g] CombatLogStore still has entries (committed turn)');
-  const entries = bsc.combatLogStore?.getEntries?.() || [];
-  assertGte(entries.length, 1, 'combatLogStore has entries after zero-duration turn');
+  console.log('\n[2h] renderBoard NOT called');
+  assertEquals(spies.renderer.renderBoardCalls.length, 0, 'renderBoard call count = 0');
+
+  console.log('\n[2i] Input lock is not held after zero-duration resolution');
+  assertEquals(bsc.isResolutionPlaybackActive(), false, 'input lock false');
 }
 
 // ═══════════════════════════════════════════
