@@ -197,6 +197,10 @@ export class BattleCanvasRenderer {
       }
     }
 
+    // Build character lookup for defensive roleId fallback
+    const charById = new Map();
+    for (const c of characters) charById.set(c.id, c);
+
     // Draw entities: characters first, then gates/formations
     for (const e of entities) {
       if (e.alive === false) continue;
@@ -217,7 +221,9 @@ export class BattleCanvasRenderer {
         ctx.stroke();
 
         // Portrait or label (scene-safe: onLoad does NOT call renderBoard)
-        const portrait = this.getCharacterPortraitImageForScene(e);
+        // Defensive merge: prefer entity fields, fall back to character for roleId
+        const renderChar = e.roleId ? e : { ...charById.get(e.id), ...e };
+        const portrait = this.getCharacterPortraitImageForScene(renderChar);
         if (portrait && portrait.complete && portrait.naturalWidth > 0) {
           const portraitSize = 32;
           ctx.save?.();

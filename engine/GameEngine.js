@@ -294,6 +294,7 @@ export class GameEngine {
         id: e.id, type: e.type, name: e.name, class: e.class,
         position: { ...e.position }, alive: e.alive, ownerId: e.ownerId,
         teamId: getTeamId(e), control: e.control || 'human',
+        roleId: e.roleId || null,
       });
     }
 
