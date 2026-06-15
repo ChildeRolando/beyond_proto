@@ -3,6 +3,7 @@
 // Does NOT import main.js, GameEngine, NetworkManager, or canvas modules.
 
 import { SKILLS } from '../../engine/SkillData.js';
+import { getEffectiveSkillCost } from '../../engine/EffectiveSkillCost.js';
 import {
   escapeHTML,
   hideSkillTooltip,
@@ -42,14 +43,13 @@ export function renderTraitHTML(char) {
 }
 
 export function skillCostLabel(skill, char) {
-  let total = Object.values(skill.cost || {}).reduce((sum, v) => sum + v, 0);
-  if (skill.id === 'role_jimmy_marrow_wine' && char) {
-    const costs = [3, 4, 4, 5, 5];
-    const buffs = char.buffs || [];
-    const marrow = buffs.find(b => b.statusType === 'JIMMY_MARROW');
-    const layer = marrow?.data?.layer || 0;
-    total = layer < costs.length ? costs[layer] : costs[costs.length - 1];
+  const effective = getEffectiveSkillCost(skill.id, char);
+  if (effective) {
+    const total = Object.values(effective.cost).reduce((sum, v) => sum + v, 0);
+    return effective.free ? 'C0' : `C${total}`;
   }
+  // Default: raw skill.cost
+  const total = Object.values(skill.cost || {}).reduce((sum, v) => sum + v, 0);
   return `C${total}`;
 }
 
@@ -150,14 +150,8 @@ function renderActionDock(ctx) {
   const pageSkills = allSkills.slice(page * ctx.skillsPerPage, (page + 1) * ctx.skillsPerPage);
 
   function canAfford(skill) {
-    let cost = { ...(skill.cost || {}) };
-    if (skill.id === 'role_jimmy_marrow_wine') {
-      const costs = [3, 4, 4, 5, 5];
-      const buffs = actor.buffs || [];
-      const marrow = buffs.find(b => b.statusType === 'JIMMY_MARROW');
-      const layer = marrow?.data?.layer || 0;
-      cost = { rage: layer < costs.length ? costs[layer] : costs[costs.length - 1] };
-    }
+    const effective = getEffectiveSkillCost(skill.id, actor);
+    const cost = effective ? { ...effective.cost } : { ...(skill.cost || {}) };
     const pending = h.getPendingResourceGains(actor.id);
     for (const [res, amount] of Object.entries(cost)) {
       const available = (actor.resources?.[res] || 0) + (pending[res] || 0);

@@ -268,6 +268,9 @@ export class ResolutionEventRecorder {
       if (!this.#enabled || !this.#currentPhase) return;
       // hp is not a legal resource in this game — reject
       if (data.resource === 'hp') return;
+      // Look up character position so compileResourceChanged can produce gather clip
+      const char = this.#registry?.get(data.entityId);
+      const targetPos = char?.position ? { q: char.position.q, r: char.position.r } : null;
       this.record({
         id: nextEventId(),
         eventType: ResolutionEventType.RESOURCE_CHANGED,
@@ -275,6 +278,7 @@ export class ResolutionEventRecorder {
         actorId: data.entityId,
         skillId: this.#actionContext?.skillId || null,
         subjectId: data.entityId,
+        targetPos,
         resource: data.resource,
         delta: data.delta ?? null,
         oldValue: data.old ?? null,
