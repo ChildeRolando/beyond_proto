@@ -371,13 +371,13 @@ export const SKILLS = {
   },
 
   warrior_pressure: {
-    id: 'warrior_pressure', name: '压迫', icon: 'assets/skill-icons/warrior/warrior_lock.webp', class: '战士', type: '特殊',
-    cost: {}, speed: 1, cooldown: 3, targeting: { shape: 'HEX', range: 1, filter: 'ENEMY_CHARACTER' },
+    id: 'warrior_pressure', name: '压迫', icon: 'assets/skill-icons/warrior/warrior_pressure.webp', class: '战士', type: '特殊',
+    cost: {}, speed: 1, cooldown: 3, targeting: { shape: 'HEX', range: 99, filter: 'ENEMY_CHARACTER' },
     effects: [
       { cmd: 'MOVE_TOWARD_TARGET', distance: 1 },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'TARGET_USED_RESOURCE_ACTION' },
     ],
-    desc: '技能概念：压迫敌方目标并向其移动。\n游戏作用：向目标方向移动1格；若目标本回合使用了资源获取类行动（集气/盛怒/翻滚），自身获得1怒气。\n范围：1；威力：无；速度：1；CD：3；费用：0',
+    desc: '技能概念：选择无限范围内一个敌方目标，向其迫近1格，施加心理压力。\n游戏作用：向目标方向移动1格；若目标本回合使用了资源获取类行动（集气/盛怒/翻滚），自身获得1怒气。\n目标范围：无限；迫近距离：1；威力：无；速度：1；CD：3；费用：0',
   },
 
   warrior_lock: {

@@ -119,6 +119,9 @@
 ### warrior_hook — 无情铁手
 **prompt:** A extending chain-hook or clawed gauntlet reaching out to grab, chain links pulling a distant target toward center, brutal pulling grasp, iron hook with taut chain, dark iron and crimson palette, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast
 
+### warrior_pressure — 压迫
+**prompt:** A dominant forward-advancing warrior silhouette radiating oppressive pressure waves that push against a smaller recoiling figure, weight of presence forcing backward, heavy gravity-distortion rings emanating from the advancing figure, oppressive advance, dark violet and deep magenta palette, game skill icon, flat vector style, minimalist, dark fantasy theme, bold silhouette, high contrast, no circular frame, centered composition, black background
+
 ### warrior_lock — 杀意锁定
 **prompt:** A crosshair reticle locking onto a frozen figure silhouette, chains wrapping around the target's limbs, immobilizing killing-intent stare visualized, crosshair + chains + rooted figure, crimson and dark violet palette, game skill icon, flat vector style, minimalist, circular frame, dark fantasy theme, bold silhouette, high contrast
 

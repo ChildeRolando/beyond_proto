@@ -1,9 +1,10 @@
-// warrior_pressure tests — 压迫
+// warrior_pressure tests — 压迫 (range=99, ENEMY_CHARACTER filter, move 1 toward)
 // Run: node tests/warrior_pressure.spec.js
 
 import { GameEngine } from '../engine/GameEngine.js';
-import { getDefaultLoadout } from '../engine/RoleData.js';
+import { SKILLS } from '../engine/SkillData.js';
 import { hexDistance } from '../engine/HexMath.js';
+import { BattleSessionController } from '../session/BattleSessionController.js';
 
 let passed = 0;
 let failed = 0;
@@ -13,160 +14,228 @@ function check(name, condition, detail = '') {
   else { failed++; console.error(`  \x1b[31mFAIL\x1b[0m ${name}${detail ? ' - ' + detail : ''}`); }
 }
 
-function initTest(opts = {}) {
+const W_8 = ['warrior_rage','warrior_move','warrior_slash','warrior_dash','warrior_sheathe','warrior_pressure','warrior_feint','warrior_lock'];
+const M_8 = ['mage_gather','mage_blast','mage_jump','mage_teleport','mage_qi_siphon','mage_small_blast','mage_small_qi_blast','mage_burst'];
+
+function initEngine(opts = {}) {
   const engine = new GameEngine();
+  const wPos = opts.wPos || { q: 0, r: -2 };
+  const mPos = opts.mPos || { q: 0, r: 1 };
   const ids = engine.initBattle({
-    seed: 99,
-    p1Pos: opts.wPos || { q: 0, r: -2 },
-    p2Pos: opts.mPos || { q: 0, r: 0 },
+    seed: opts.seed ?? 99,
+    p1Pos: wPos,
+    p2Pos: mPos,
     players: [
-      { playerId: 'p1', class: '战士', roleId: null, loadoutSkillIds: getDefaultLoadout('战士'), roleLoadoutSkillIds: [] },
-      { playerId: 'p2', class: '法师', roleId: null, loadoutSkillIds: getDefaultLoadout('法师'), roleLoadoutSkillIds: [] },
+      { playerId: 'p1', class: '战士', roleId: null, loadoutSkillIds: W_8, roleLoadoutSkillIds: [] },
+      { playerId: 'p2', class: opts.mageClass || '法师', roleId: null,
+        loadoutSkillIds: opts.mageSkills || M_8, roleLoadoutSkillIds: [] },
     ],
   });
-  return { engine, warriorId: ids.player1Id, mageId: ids.player2Id };
+  return { engine, wId: ids.player1Id, mId: ids.player2Id };
 }
 
-async function doTurn(engine, wAction, mAction) {
-  if (wAction) engine.submitAction(wAction.id, wAction.skill, wAction.target || null);
-  if (mAction) engine.submitAction(mAction.id, mAction.skill, mAction.target || null);
+async function doTurn(engine, a1, a2) {
+  if (a1) engine.submitAction(a1.id, a1.skill, a1.target || null);
+  if (a2) engine.submitAction(a2.id, a2.skill, a2.target || null);
   await engine.executeTurn();
 }
 
-function rage(engine, id) { return engine.resourceSystem.getRage(id); }
-function qi(engine, id) { return engine.resourceSystem.getQi(id); }
+function rage(engine, id) { return engine.resourceSystem.get(id, 'rage'); }
 
 // ================================================================
-console.log('\n=== Test A: pressure vs mage_gather → rage +1 ===');
+console.log('\n=== Test A: warrior_pressure targeting.range is 99 (not 1) ===');
 {
-  const { engine, warriorId: w, mageId: m } = initTest({ wPos: { q: 0, r: -1 }, mPos: { q: 0, r: 0 } });
-  engine.resourceSystem.add(w, 'rage', 1);
-  check('initial rage 1', rage(engine, w) === 1);
-
-  // mage uses mage_gather (resource action), warrior uses pressure
-  await doTurn(engine,
-    { id: w, skill: 'warrior_pressure', target: { q: 0, r: 0 } },
-    { id: m, skill: 'mage_gather', target: null }
-  );
-  // pressure cost 0, +1 if target used resource action → net +1
-  check('pressure vs mage_gather: rage +1', rage(engine, w) === 2, `rage=${rage(engine, w)}`);
+  const skill = SKILLS['warrior_pressure'];
+  check('range = 99', skill.targeting.range === 99, `range=${skill.targeting.range}`);
+  check('filter = ENEMY_CHARACTER', skill.targeting.filter === 'ENEMY_CHARACTER');
+  check('type = 特殊', skill.type === '特殊');
+  check('MOVE_TOWARD_TARGET distance = 1', skill.effects.some(e => e.cmd === 'MOVE_TOWARD_TARGET' && e.distance === 1));
 }
 
-console.log('\n=== Test B: pressure vs warrior_rage → rage +1 ===');
+console.log('\n=== Test B: far target — both submit, warrior moves 1 step ===');
 {
-  const { engine, warriorId: w, mageId: m } = initTest({ wPos: { q: 0, r: -1 }, mPos: { q: 0, r: 0 } });
-  // Change mage to warrior for this test — use initTest with double warrior
-  // Actually, just test with the available mage: mage_gather is the resource action
-  // Test B covers warrior_rage target — but we need 2 warriors. Let's adapt.
-  engine.resourceSystem.add(w, 'rage', 0);
-  await doTurn(engine,
-    { id: w, skill: 'warrior_pressure', target: { q: 0, r: 0 } },
-    { id: m, skill: 'mage_gather', target: null }
-  );
-  // mage_gather is resourceAction → rage +1
-  check('pressure vs resource action (mage_gather): rage +1', rage(engine, w) === 1, `rage=${rage(engine, w)}`);
+  const { engine, wId, mId } = initEngine({ wPos: { q: -3, r: 3 }, mPos: { q: 3, r: -3 } });
+  const dist = hexDistance(-3, 3, 3, -3);
+  check('distance >> 1', dist > 1, `dist=${dist}`);
+
+  engine.submitAction(wId, 'warrior_pressure', { q: 3, r: -3 });
+  engine.submitAction(mId, 'mage_gather', null);
+  await engine.executeTurn();
+
+  const wPos = engine.registry.getPosition(wId);
+  const newDist = hexDistance(wPos.q, wPos.r, 3, -3);
+  check('moved 1 step closer (not teleported)', newDist === dist - 1,
+    `dist before=${dist}, after=${newDist}, wPos=(${wPos.q},${wPos.r})`);
 }
 
-console.log('\n=== Test C: pressure vs normal attack → no rage ===');
+console.log('\n=== Test B2: engine.submitAction with far enemy succeeds ===');
 {
-  const { engine, warriorId: w, mageId: m } = initTest({ wPos: { q: 0, r: -1 }, mPos: { q: 1, r: 0 } });
-  // Position mage at (1,0), warrior at (0,-1)
-  // mage_blast targets random — but we need mage in range of pressure (range 1)
-  // Reposition: warrior at (0,0) adjacent to mage
-  engine.resourceSystem.set(m, 'qi', 3);
-  engine.resourceSystem.add(w, 'rage', 1);
-
-  await doTurn(engine,
-    { id: w, skill: 'warrior_pressure', target: { q: 1, r: 0 } },
-    null  // mage doesn't use resource action; we skip mage turn
-  );
-  // Wait, pressure needs the target to have done an action. If mage submits nothing, target has no submitted skill.
-  // So pressure won't give rage. Let's test with mage attack.
-  // But mage_blast needs target hex — let's use a different approach
+  const { engine, wId } = initEngine({ wPos: { q: -3, r: 3 }, mPos: { q: 3, r: -3 } });
+  const r = engine.submitAction(wId, 'warrior_pressure', { q: 3, r: -3 });
+  check('submitAction succeeds at far distance', r.success === true, r.success ? '' : JSON.stringify(r));
 }
 
-// For the next tests, let's use a clean pattern
-console.log('\n=== Test D: pressure vs shooter_roll → rage +1 ===');
+console.log('\n=== Test C: pressure moves only 1 step toward far target (not teleport) ===');
 {
-  // Use initTest with shooter as mage replacement
+  const { engine, wId, mId } = initEngine({ wPos: { q: 0, r: -4 }, mPos: { q: 0, r: 4 } });
+  const distBefore = hexDistance(0, -4, 0, 4);
+  engine.submitAction(wId, 'warrior_pressure', { q: 0, r: 4 });
+  engine.submitAction(mId, 'mage_gather', null);
+  await engine.executeTurn();
+  const wPos = engine.registry.getPosition(wId);
+  const distAfter = hexDistance(wPos.q, wPos.r, 0, 4);
+  check('moved exactly 1 step toward target', distAfter === distBefore - 1,
+    `before=${distBefore}, after=${distAfter}, pos=(${wPos.q},${wPos.r})`);
+}
+
+console.log('\n=== Test D: far target using mage_gather → rage +1 ===');
+{
+  const { engine, wId, mId } = initEngine({ wPos: { q: -3, r: 3 }, mPos: { q: 3, r: -3 } });
+  await doTurn(engine,
+    { id: wId, skill: 'warrior_pressure', target: { q: 3, r: -3 } },
+    { id: mId, skill: 'mage_gather', target: null }
+  );
+  check('far target resource action → rage +1', rage(engine, wId) === 1, `rage=${rage(engine, wId)}`);
+}
+
+console.log('\n=== Test E: far target using normal attack → no rage ===');
+{
+  const { engine, wId, mId } = initEngine({ wPos: { q: 0, r: -3 }, mPos: { q: 0, r: 3 } });
+  engine.resourceSystem.set(mId, 'qi', 2);
+  await doTurn(engine,
+    { id: wId, skill: 'warrior_pressure', target: { q: 0, r: 3 } },
+    { id: mId, skill: 'mage_blast', target: { q: 0, r: -3 } }
+  );
+  check('far target normal attack → no rage', rage(engine, wId) === 0, `rage=${rage(engine, wId)}`);
+}
+
+console.log('\n=== Test F: empty hex rejected by engine ===');
+{
+  const { engine, wId } = initEngine();
+  const r = engine.submitAction(wId, 'warrior_pressure', { q: -1, r: 1 });
+  check('empty hex rejected', r.success === false, JSON.stringify(r));
+  check('error is target_not_found', r.error === 'target_not_found', `error=${r.error}`);
+}
+
+console.log('\n=== Test G: friendly target rejected by engine ===');
+{
   const engine = new GameEngine();
   const ids = engine.initBattle({
-    seed: 50,
-    p1Pos: { q: 0, r: -1 },
-    p2Pos: { q: 0, r: 0 },
+    seed: 77,
+    p1Pos: { q: 0, r: -2 },
+    p2Pos: { q: 0, r: 1 },
     players: [
-      { playerId: 'p1', class: '战士', roleId: null, loadoutSkillIds: getDefaultLoadout('战士'), roleLoadoutSkillIds: [] },
-      { playerId: 'p2', class: '射手', roleId: null, loadoutSkillIds: getDefaultLoadout('射手'), roleLoadoutSkillIds: [] },
+      { playerId: 'p1', class: '战士', roleId: null, loadoutSkillIds: W_8, roleLoadoutSkillIds: [] },
+      { playerId: 'p1', class: '战士', roleId: null, loadoutSkillIds: W_8, roleLoadoutSkillIds: [] },
     ],
   });
-  engine.resourceSystem.add(ids.player1Id, 'rage', 1);
-  engine.resourceSystem.add(ids.player2Id, 'ammo', 3);
-  engine.resourceSystem.addBackpackAmmo(ids.player2Id, 3);
-
-  await doTurn(engine,
-    { id: ids.player1Id, skill: 'warrior_pressure', target: { q: 0, r: 0 } },
-    { id: ids.player2Id, skill: 'shooter_roll', target: { q: -1, r: 1 } }
-  );
-  check('pressure vs shooter_roll: rage +1', rage(engine, ids.player1Id) === 2, `rage=${rage(engine, ids.player1Id)}`);
+  const chars = [...engine.registry.characters()];
+  check('two chars exist', chars.length === 2, `count=${chars.length}`);
+  const w1 = chars[0].id;
+  const w2 = chars[1].id;
+  const r = engine.submitAction(w1, 'warrior_pressure', engine.registry.getPosition(w2));
+  check('friendly target rejected', r.success === false, JSON.stringify(r));
+  check('error is target_not_enemy', r.error === 'target_not_enemy', `error=${r.error}`);
 }
 
-console.log('\n=== Test E: pressure vs normal move → no rage ===');
+console.log('\n=== Test H: pressure cooldown = 3 ===');
 {
-  const { engine, warriorId: w, mageId: m } = initTest({ wPos: { q: 0, r: -1 }, mPos: { q: 0, r: 0 } });
-  engine.resourceSystem.add(w, 'rage', 1);
-  engine.resourceSystem.set(m, 'qi', 2);
-
+  const { engine, wId, mId } = initEngine({ wPos: { q: 0, r: -1 }, mPos: { q: 0, r: 0 } });
   await doTurn(engine,
-    { id: w, skill: 'warrior_pressure', target: { q: 0, r: 0 } },
-    { id: m, skill: 'mage_teleport', target: { q: 1, r: 0 } }
+    { id: wId, skill: 'warrior_pressure', target: { q: 0, r: 0 } },
+    { id: mId, skill: 'mage_gather', target: null }
   );
-  // mage_teleport is movement, NOT resourceAction → no rage
-  check('pressure vs normal move: no rage', rage(engine, w) === 1, `rage=${rage(engine, w)}`);
+  const cd = engine.skillCooldowns.getRemaining(wId, 'warrior_pressure');
+  check('cooldown = 3', cd === 3, `cd=${cd}`);
 }
 
-console.log('\n=== Test F: pressure moves one step toward target ===');
+console.log('\n=== Test I: pressure rage gain NOT affected by Jimmy breathing ===');
 {
-  const { engine, warriorId: w, mageId: m } = initTest({ wPos: { q: 0, r: -2 }, mPos: { q: 0, r: 0 } });
-  const wPosBefore = engine.registry.getPosition(w);
-  engine.resourceSystem.add(w, 'rage', 1);
-
+  const { engine, wId, mId } = initEngine({ wPos: { q: 0, r: -1 }, mPos: { q: 0, r: 0 } });
   await doTurn(engine,
-    { id: w, skill: 'warrior_pressure', target: { q: 0, r: 0 } },
-    { id: m, skill: 'mage_gather', target: null }
+    { id: wId, skill: 'warrior_pressure', target: { q: 0, r: 0 } },
+    { id: mId, skill: 'mage_gather', target: null }
   );
-  const wPosAfter = engine.registry.getPosition(w);
+  check('rage gain is exactly 1 (not from breathing)', rage(engine, wId) === 1,
+    `rage=${rage(engine, wId)}`);
+}
+
+console.log('\n=== Test J: pressure moves toward target AND gains rage ===');
+{
+  const { engine, wId, mId } = initEngine({ wPos: { q: 0, r: -2 }, mPos: { q: 0, r: 0 } });
+  const wPosBefore = { ...engine.registry.getPosition(wId) };
   const distBefore = hexDistance(wPosBefore.q, wPosBefore.r, 0, 0);
+  await doTurn(engine,
+    { id: wId, skill: 'warrior_pressure', target: { q: 0, r: 0 } },
+    { id: mId, skill: 'mage_gather', target: null }
+  );
+  const wPosAfter = engine.registry.getPosition(wId);
   const distAfter = hexDistance(wPosAfter.q, wPosAfter.r, 0, 0);
-  check('pressure moved closer to target', distAfter < distBefore,
-    `before dist=${distBefore}, after dist=${distAfter}, pos=(${wPosAfter.q},${wPosAfter.r})`);
+  check('moved 1 step toward target', distAfter === distBefore - 1,
+    `before=${distBefore}, after=${distAfter}, from=(${wPosBefore.q},${wPosBefore.r}) to=(${wPosAfter.q},${wPosAfter.r})`);
+  check('rage gained', rage(engine, wId) === 1, `rage=${rage(engine, wId)}`);
 }
 
-console.log('\n=== Test G: pressure cooldown 3 ===');
+// ================================================================
+// UI validTargets tests via BattleSessionController
+// ================================================================
+console.log('\n=== Test K: UI validTargets — far enemy appears, empty hex excluded ===');
 {
-  const { engine, warriorId: w, mageId: m } = initTest({ wPos: { q: 0, r: -1 }, mPos: { q: 0, r: 0 } });
-  engine.resourceSystem.add(w, 'rage', 1);
+  const callbacks = { renderAll() {}, setSubmitStatus() {}, setRoute() {}, isPveMode: () => false, getNetworkManager: () => null };
+  const session = new BattleSessionController(callbacks);
+  session.initGame('战士', '法师', 88, [
+    { playerId: 'player1', class: '战士', roleId: null, loadoutSkillIds: W_8, roleLoadoutSkillIds: [] },
+    { playerId: 'player2', class: '法师', roleId: null, loadoutSkillIds: M_8, roleLoadoutSkillIds: [] },
+  ]);
+  const wId = session.characterIds[0];
+  const mId = session.characterIds[1];
+  {
+    const oldW = session.engine.registry.getPosition(wId);
+    const oldM = session.engine.registry.getPosition(mId);
+    session.engine.registry.updatePosition(wId, oldW.q, oldW.r, -3, 3);
+    session.engine.registry.updatePosition(mId, oldM.q, oldM.r, 3, -3);
+  }
+  const dist = hexDistance(-3, 3, 3, -3);
+  check('setup: distance >> 1', dist > 1, `dist=${dist}`);
 
-  await doTurn(engine,
-    { id: w, skill: 'warrior_pressure', target: { q: 0, r: 0 } },
-    { id: m, skill: 'mage_gather', target: null }
-  );
-  const cd = engine.skillCooldowns.getRemaining(w, 'warrior_pressure');
-  check('pressure cooldown remaining = 3', cd === 3, `cd=${cd}`);
+  session.selectSkill(wId, 'warrior_pressure');
+  const targets = session.validTargets;
+
+  const hasMagePos = targets.some(t => t.q === 3 && t.r === -3);
+  check('UI validTargets includes far enemy', hasMagePos);
+
+  const emptyHexInRange = targets.some(t => t.q === 0 && t.r === 0);
+  check('UI validTargets excludes empty hex', !emptyHexInRange);
+
+  const hasSelf = targets.some(t => t.q === -3 && t.r === 3);
+  check('UI validTargets excludes self position', !hasSelf);
+
+  let allHaveEnemy = true;
+  for (const t of targets) {
+    const charsAt = session.engine.registry.getAt(t.q, t.r, 'real');
+    const hasEnemy = charsAt.some(c => c.alive !== false && c.ownerId !== 'player1');
+    if (!hasEnemy) { allHaveEnemy = false; break; }
+  }
+  check('all validTargets contain enemy character', allHaveEnemy, `target count=${targets.length}`);
 }
 
-console.log('\n=== Test H: pressure rage gain NOT affected by Jimmy breathing ===');
+console.log('\n=== Test L: UI validTargets — nearby enemy works too ===');
 {
-  // Jimmy breathing should NOT modify pressure's rage gain (it only affects 盛怒)
-  // Force pressure rage gain via didUseResourceAction — verify amount is exactly 1
-  const { engine, warriorId: w, mageId: m } = initTest({ wPos: { q: 0, r: -1 }, mPos: { q: 0, r: 0 } });
-  engine.resourceSystem.add(w, 'rage', 0);
+  const callbacks = { renderAll() {}, setSubmitStatus() {}, setRoute() {}, isPveMode: () => false, getNetworkManager: () => null };
+  const session = new BattleSessionController(callbacks);
+  session.initGame('战士', '法师', 89, [
+    { playerId: 'player1', class: '战士', roleId: null, loadoutSkillIds: W_8, roleLoadoutSkillIds: [] },
+    { playerId: 'player2', class: '法师', roleId: null, loadoutSkillIds: M_8, roleLoadoutSkillIds: [] },
+  ]);
+  const wId = session.characterIds[0];
+  const mId = session.characterIds[1];
 
-  await doTurn(engine,
-    { id: w, skill: 'warrior_pressure', target: { q: 0, r: 0 } },
-    { id: m, skill: 'mage_gather', target: null }
-  );
-  check('pressure rage gain is exactly 1 (not affected by breathing)',
-    rage(engine, w) === 1, `rage=${rage(engine, w)}`);
+  session.selectSkill(wId, 'warrior_pressure');
+  const targets = session.validTargets;
+
+  const mPos = session.engine.registry.getPosition(mId);
+  const hasMage = targets.some(t => t.q === mPos.q && t.r === mPos.r);
+  check('UI validTargets includes adjacent enemy', hasMage);
 }
 
 // ================================================================

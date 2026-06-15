@@ -568,6 +568,17 @@ export class BattleSessionController {
           this.validTargets.push({ q, r });
         }
       }
+
+      // Post-filter: ENEMY_CHARACTER — only include hexes with an enemy character
+      if (skill.targeting.filter === 'ENEMY_CHARACTER') {
+        const casterOwner = this.engine.getCharacterOwner(charId);
+        this.validTargets = this.validTargets.filter(({ q, r }) => {
+          const charsAtPos = this.engine.registry.getAt(q, r, 'real');
+          return charsAtPos.some(c =>
+            c.alive !== false && this.engine.getCharacterOwner(c.id) !== casterOwner
+          );
+        });
+      }
     }
 
     this._callbacks.renderAll();

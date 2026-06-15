@@ -73,6 +73,17 @@ export class SkillResolver {
 
     const sid = seqId();
 
+    // Validate targeting filter
+    if (skill.targeting?.filter === 'ENEMY_CHARACTER') {
+      if (!targetPos) return { success: false, error: 'target_required' };
+      const charsAtTarget = this.registry.getAt(targetPos.q, targetPos.r, 'real');
+      const aliveChars = charsAtTarget.filter(c => c.alive !== false);
+      if (aliveChars.length === 0) return { success: false, error: 'target_not_found' };
+      const actorOwner = actor.ownerId;
+      const hasEnemy = aliveChars.some(c => c.ownerId !== actorOwner);
+      if (!hasEnemy) return { success: false, error: 'target_not_enemy' };
+    }
+
     // Resolve target entity from targetPos for conditional effects
     let targetEntityId = null;
     if (targetPos) {
