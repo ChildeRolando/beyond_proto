@@ -31,6 +31,11 @@
   <button class="mode-btn" id="btn-pve" style="display:none;">PVE 模式</button>
   <button class="mode-btn" id="btn-tutorial">新手教学</button>
   <div id="room-setup">
+    <div id="p2p-submode-select" style="display:none">
+      <div class="info">联机对战</div>
+      <button class="mode-btn" id="btn-p2p-quick-mode">快速模式</button>
+      <button class="mode-btn" id="btn-p2p-draft-mode">征召模式</button>
+    </div>
     <div id="room-host-section" style="display:none">
       <input type="text" id="server-addr-input-host" placeholder="信令服务器地址" autocomplete="off" style="width:200px;padding:6px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:12px;text-align:center;">
       <button class="btn-host" id="btn-create-room">创建房间</button>
@@ -82,6 +87,7 @@
   <div class="config-right-sidebar">
     <div class="config-role-detail-card" id="role-detail"></div>
     <div class="config-team-status" id="team-status"></div>
+    <div class="config-team-status" id="quick-mode-skill-preview" style="display:none"></div>
   </div>
   <div class="config-bottom-dock">
     <div class="config-dock-header">

@@ -304,7 +304,10 @@ export function createAppRuntime() {
         startModeActions.startLegacyPveConfig();
       },
       onStartP2PDuel() {
-        startModeActions.startP2PConfig(GameMode.P2P_DUEL, '联机对战');
+        startModeActions.startP2PConfig(GameMode.P2P_DUEL, '联机对战', 'draft');
+      },
+      onSelectP2PSubMode(subMode) {
+        configSession.setP2PSubMode(subMode);
       },
       onStartP2PCoop() {
         alert('联机合作开发中');
@@ -455,6 +458,12 @@ export function createAppRuntime() {
     getPlaybackRuntime: () => playbackRuntime,
     routeController,
     routeNetworkMessage: (payload) => handleNetworkMessage(payload),
+    startP2PConfigForTest: (subMode = 'draft') => {
+      configSession.resetPlayerConfigs();
+      configSession.setConfigMode(GameMode.P2P_DUEL);
+      configSession.setP2PSubMode(subMode);
+      configSession.showConfigScreen(GameMode.P2P_DUEL);
+    },
     returnToStart,
     renderAll: () => battleRender.renderAll(),
   });

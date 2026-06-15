@@ -108,7 +108,11 @@ export class NetworkSessionController {
     if (!this.hasNetwork() || !this.getMyPlayerId()) return;
     const cfg = this._ctx.configSession.getConfigPlayers()[this.getMyPlayerId()];
     if (!cfg) return;
-    this._networkManager.sendMessage({ type: 'CONFIG_UPDATE', config: { ...cfg } });
+    this._networkManager.sendMessage({
+      type: 'CONFIG_UPDATE',
+      p2pSubMode: this._ctx.configSession.getP2PSubMode?.() || 'draft',
+      config: { ...cfg },
+    });
   }
 
   sendConfigLock() {
@@ -125,7 +129,12 @@ export class NetworkSessionController {
     if (!players.player1.locked || !players.player2.locked) return;
     const seed = Date.now();
     const configs = this._ctx.configSession.getBattlePlayerConfigs();
-    this._networkManager.sendMessage({ type: 'BATTLE_START', seed, players: configs });
+    this._networkManager.sendMessage({
+      type: 'BATTLE_START',
+      seed,
+      p2pSubMode: this._ctx.configSession.getP2PSubMode?.() || 'draft',
+      players: configs,
+    });
     this._ctx.callbacks.startBattleFromConfigs(seed, configs);
   }
 

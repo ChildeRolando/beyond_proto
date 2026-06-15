@@ -25,11 +25,12 @@ export function createStartModeActions({
     configSession.showConfigScreen('pve');
   }
 
-  function startP2PConfig(mode, headerText) {
+  function startP2PConfig(mode, headerText, subMode = 'draft') {
     getNetworkSession()?.disconnect();
     const configSession = getConfigSession();
     configSession.resetPlayerConfigs();
     configSession.setConfigMode(mode);
+    configSession.setP2PSubMode(subMode);
     battleRender.setBattleHeader(headerText, 'p2p', true);
   }
 

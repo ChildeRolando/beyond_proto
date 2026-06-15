@@ -95,6 +95,8 @@ test('P2P lobby opens and back resets', async ({ page }) => {
   await page.goto('/');
   await page.locator('#btn-p2p-duel').click();
   await expect(page.locator('#room-setup')).toBeVisible();
+  await expect(page.locator('#p2p-submode-select')).toBeVisible();
+  await page.locator('#btn-p2p-draft-mode').click();
   await expect(page.locator('#room-host-section')).toBeVisible();
   await expect(page.locator('#room-join-section')).toBeVisible();
   await expect(page.locator('#room-code-text')).not.toBeVisible();
@@ -110,6 +112,7 @@ test('P2P lobby opens and back resets', async ({ page }) => {
 test('P2P join validates room code', async ({ page }) => {
   await page.goto('/');
   await page.locator('#btn-p2p-duel').click();
+  await page.locator('#btn-p2p-draft-mode').click();
   await page.locator('#room-code-input').fill('AB');
   await page.locator('#btn-join-room').click();
   await expect(page.locator('#room-error')).toContainText('请输入4位房间码');

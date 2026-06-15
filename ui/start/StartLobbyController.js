@@ -16,15 +16,22 @@ function hideTutorial() {
 
 function showRoomSetup() {
   document.getElementById('room-setup').style.display = 'flex';
-  document.getElementById('room-host-section').style.display = 'block';
-  document.getElementById('room-join-section').style.display = 'block';
+  document.getElementById('p2p-submode-select').style.display = 'flex';
+  document.getElementById('room-host-section').style.display = 'none';
+  document.getElementById('room-join-section').style.display = 'none';
   document.getElementById('room-code-text').style.display = 'none';
   document.getElementById('room-error').textContent = '';
   document.getElementById('p2p-class-pick').style.display = 'none';
 }
 
+function showConnectionChoices() {
+  document.getElementById('room-host-section').style.display = 'block';
+  document.getElementById('room-join-section').style.display = 'block';
+}
+
 function hideRoomSetup() {
   document.getElementById('room-setup').style.display = 'none';
+  document.getElementById('p2p-submode-select').style.display = 'none';
   document.getElementById('room-code-text').style.display = 'none';
   document.getElementById('room-error').textContent = '';
 }
@@ -86,6 +93,16 @@ export function initStartLobbyController(ctx) {
     showRoomSetup();
     resetConnectionUI(ctx.defaultAddr);
     ctx.callbacks.onStartP2PDuel?.();
+  });
+
+  document.getElementById('btn-p2p-quick-mode')?.addEventListener('click', () => {
+    ctx.callbacks.onSelectP2PSubMode?.('quick');
+    showConnectionChoices();
+  });
+
+  document.getElementById('btn-p2p-draft-mode')?.addEventListener('click', () => {
+    ctx.callbacks.onSelectP2PSubMode?.('draft');
+    showConnectionChoices();
   });
 
   document.getElementById('btn-p2p-coop').addEventListener('click', () => {

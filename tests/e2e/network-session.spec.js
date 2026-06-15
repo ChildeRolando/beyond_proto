@@ -22,6 +22,8 @@ async function enterP2PLobby(page) {
   await page.goto('/');
   await page.locator('#btn-p2p-duel').click();
   await expect(page.locator('#room-setup')).toBeVisible();
+  await page.locator('#btn-p2p-draft-mode').click();
+  await expect(page.locator('#room-host-section')).toBeVisible();
   await expect(page.locator('#room-error')).toHaveText('');
 }
 

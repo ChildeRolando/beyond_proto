@@ -12,7 +12,7 @@ import {
   validateLoadout,
   validateRoleLoadout,
 } from '../../engine/RoleData.js';
-import { GameMode, normalizeConfigMode } from '../../app/GameModes.js';
+import { GameMode, normalizeConfigMode, isP2PMode } from '../../app/GameModes.js';
 import {
   escapeHTML,
   hideSkillTooltip,
@@ -100,6 +100,25 @@ function renderTeamStatus(ctx) {
   `;
 }
 
+function renderQuickModePreview(ctx) {
+  const el = document.getElementById('quick-mode-skill-preview');
+  if (!el) return;
+  const rows = ['player1', 'player2'].map(pid => {
+    const cfg = ctx.configPlayers[pid];
+    const ids = ctx.quickModeLoadouts?.[cfg.class] || [];
+    const skills = ids.map(id => SKILLS[id]).filter(Boolean);
+    return `
+      <div class="quick-mode-preview-row">
+        <h3>${pid === 'player1' ? 'P1' : 'P2'} · ${escapeHTML(cfg.class)} 核心技能</h3>
+        <div class="quick-mode-skill-list">
+          ${skills.map(skill => `<span class="quick-mode-skill-pill" data-skill="${escapeHTML(skill.id)}">${escapeHTML(skill.name)}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+  el.innerHTML = `<h3>核心技能组预览</h3>${rows}`;
+}
+
 function renderLoadout(ctx) {
   const cfg = ctx.cfg;
   const validation = validateLoadout(cfg.class, cfg.loadoutSkillIds);
@@ -150,6 +169,7 @@ function renderConfigFooter(ctx) {
   const cfg = ctx.cfg;
   const p1 = ctx.configPlayers.player1;
   const p2 = ctx.configPlayers.player2;
+  const quickMode = isP2PMode(mode) && ctx.p2pSubMode === 'quick';
   if (ctx.legacyPveMode) {
     document.getElementById('config-ready-status').textContent =
       `英雄1 ${p1.locked ? '已锁定' : '配置中'} / 英雄2 ${p2.locked ? '已锁定' : '配置中'}`;
@@ -182,6 +202,13 @@ function renderConfigFooter(ctx) {
   const lockBtn = document.getElementById('btn-config-lock');
   lockBtn.style.display = ctx.editable ? '' : 'none';
   lockBtn.textContent = cfg.locked ? '修改配置' : '锁定配置';
+  if (quickMode) {
+    lockBtn.disabled = false;
+    const startBtn = document.getElementById('btn-config-start');
+    startBtn.style.display = 'none';
+    startBtn.disabled = true;
+    return;
+  }
   const ownClassOk = validateLoadout(cfg.class, cfg.loadoutSkillIds).ok && cfg.loadoutSkillIds.length === LOADOUT_SIZE;
   const ownRoleOk = validateRoleLoadout(cfg.roleId, cfg.roleLoadoutSkillIds || []).ok && (cfg.roleLoadoutSkillIds || []).length === ROLE_LOADOUT_SIZE;
   lockBtn.disabled = !(ownClassOk && ownRoleOk);
@@ -227,12 +254,13 @@ function wireConfigEvents(ctx) {
 
 export function renderConfigScreenView(ctx) {
   const mode = normalizeConfigMode(ctx.configMode);
+  const quickMode = isP2PMode(mode) && ctx.p2pSubMode === 'quick';
   document.getElementById('config-mode-label').textContent =
     ctx.legacyPveMode ? 'PVE 模式' :
     mode === GameMode.LOCAL_DUEL ? '本地对战' :
     mode === GameMode.LOCAL_COOP ? '本地合作' :
     mode === GameMode.LOCAL_SOLO ? '本地单人' :
-    mode === GameMode.P2P_DUEL ? `联机对战 ${ctx.roomCode}` :
+    mode === GameMode.P2P_DUEL ? `联机对战 · ${quickMode ? '快速模式' : '征召模式'} ${ctx.roomCode}` :
     '联机合作（开发中）';
   document.getElementById('config-player-switch').style.display = (mode === GameMode.P2P_DUEL || mode === GameMode.P2P_COOP) ? 'none' : 'flex';
   document.querySelectorAll('#config-player-switch button').forEach((btn, index) => {
@@ -249,11 +277,25 @@ export function renderConfigScreenView(ctx) {
     `<button class="config-class-tab ${ctx.cfg.class === cls ? 'active' : ''}" data-class="${cls}"${(!ctx.editable || ctx.cfg.locked) ? ' disabled' : ''}>${cls}</button>`
   ).join('');
 
-  renderRoleList(ctx);
-  renderRoleHero(ctx.role, ctx);
-  renderRoleDetail(ctx.role);
+  document.getElementById('config-role-list').style.display = quickMode ? 'none' : '';
+  document.getElementById('config-hero-stage').style.display = quickMode ? 'none' : '';
+  document.getElementById('role-detail').style.display = quickMode ? 'none' : '';
+  document.getElementById('quick-mode-skill-preview').style.display = quickMode ? '' : 'none';
+  document.querySelector('.config-bottom-dock').classList.toggle('quick-mode', quickMode);
+  document.getElementById('loadout-slots').style.display = quickMode ? 'none' : 'flex';
+  document.getElementById('role-loadout-slots').style.display = quickMode ? 'none' : 'flex';
+  document.getElementById('config-skill-drawer').style.display = quickMode ? 'none' : '';
+  document.getElementById('btn-toggle-loadout').style.display = quickMode ? 'none' : '';
+  if (quickMode) {
+    document.getElementById('loadout-count').textContent = '固定核心技能组';
+    renderQuickModePreview(ctx);
+  } else {
+    renderRoleList(ctx);
+    renderRoleHero(ctx.role, ctx);
+    renderRoleDetail(ctx.role);
+  }
   renderTeamStatus(ctx);
-  renderLoadout(ctx);
+  if (!quickMode) renderLoadout(ctx);
   renderConfigFooter(ctx);
   wireConfigEvents(ctx);
 }

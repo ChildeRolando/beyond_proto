@@ -23,6 +23,7 @@ export function createNetworkMessageRouter(ctx) {
     } else if (payload.type === 'CONFIG_UPDATE') {
       const cfg = payload.config;
       if (cfg?.playerId && cfg.playerId !== networkSession.getMyPlayerId()) {
+        if (payload.p2pSubMode) configSession.setP2PSubMode?.(payload.p2pSubMode, { sync: false });
         configSession.applyRemoteConfig(cfg);
         renderConfigScreen();
         networkSession.maybeStartP2PBattle();
@@ -37,12 +38,16 @@ export function createNetworkMessageRouter(ctx) {
     } else if (payload.type === 'BATTLE_START') {
       if (getCurrentRoute() === 'battle' && battleSession.battleActive) return;
       if (Array.isArray(payload.players)) {
+        if (payload.p2pSubMode) configSession.setP2PSubMode?.(payload.p2pSubMode, { sync: false });
         for (const cfg of payload.players) {
           if (cfg?.playerId) configSession.applyRemoteConfig(cfg);
         }
+        const configs = payload.p2pSubMode === 'quick'
+          ? payload.players.map(cfg => ({ ...cfg }))
+          : payload.players.map((cfg, idx) => configSession.normalizeForPlayer(cfg, idx === 0 ? 'player1' : 'player2'));
         startBattleFromConfigs(
           payload.seed || Date.now(),
-          payload.players.map((cfg, idx) => configSession.normalizeForPlayer(cfg, idx === 0 ? 'player1' : 'player2'))
+          configs
         );
       }
     }

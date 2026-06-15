@@ -11,6 +11,7 @@ import {
   isCoopMode,
   isP2PMode,
 } from '../app/GameModes.js';
+import { QUICK_MODE_LOADOUTS, createQuickModePlayers } from '../engine/QuickModePreset.js';
 
 export class ConfigSessionController {
   constructor(ctx) {
@@ -38,6 +39,7 @@ export class ConfigSessionController {
     this._selectedPoolSkillId = null;
     this._selectedPoolType = null;
     this._legacyPveMode = false;
+    this._p2pSubMode = null;
     this._battleConfigs = null;
     this._configPlayers = {
       player1: this._makeDefaultConfig('player1', '法师'),
@@ -63,9 +65,46 @@ export class ConfigSessionController {
     }, playerId);
   }
 
+  _makeQuickConfig(playerId, className, locked = false) {
+    const loadout = QUICK_MODE_LOADOUTS[className];
+    if (!loadout) throw new Error(`Unknown quick mode class: ${className}`);
+    return {
+      playerId,
+      class: className,
+      roleId: null,
+      loadoutSkillIds: [...loadout],
+      roleLoadoutSkillIds: [],
+      locked: Boolean(locked),
+      quickMode: true,
+    };
+  }
+
   // ─── State getters ───
 
   getConfigMode() { return this._configMode; }
+  getP2PSubMode() { return this._p2pSubMode; }
+  setP2PSubMode(subMode, options = {}) {
+    if (subMode !== 'quick' && subMode !== 'draft' && subMode !== null) {
+      throw new Error(`Unknown P2P submode: ${subMode}`);
+    }
+    this._p2pSubMode = subMode;
+    if (subMode === 'quick') {
+      this._configPlayers.player1 = this._makeQuickConfig('player1', this._configPlayers.player1.class, this._configPlayers.player1.locked);
+      this._configPlayers.player2 = this._makeQuickConfig('player2', this._configPlayers.player2.class, this._configPlayers.player2.locked);
+      this._hoverRoleId = null;
+      this._selectedPoolSkillId = null;
+      this._selectedPoolType = null;
+    } else if (subMode === 'draft') {
+      for (const pid of ['player1', 'player2']) {
+        const cfg = this._configPlayers[pid];
+        if (!cfg.roleId || cfg.quickMode) {
+          this._configPlayers[pid] = this._makeDefaultConfig(pid, cfg.class);
+        }
+      }
+    }
+    this.renderConfigScreen();
+    if (options.sync !== false) this._ctx.sendConfigUpdate();
+  }
   isLegacyPveMode() { return this._legacyPveMode; }
   setConfigMode(mode) { this._configMode = normalizeConfigMode(mode); }
   getCurrentConfigPlayer() { return this._currentConfigPlayer; }
@@ -122,6 +161,8 @@ export class ConfigSessionController {
     if (this._legacyPveMode) {
       const index = this._pveHeroSlots.findIndex(slot => slot.playerId === this._currentConfigPlayer);
       if (index >= 0) this._pveHeroSlots[index] = this._makeDefaultConfig(this._currentConfigPlayer, className);
+    } else if (this._p2pSubMode === 'quick' && isP2PMode(this._configMode)) {
+      this._configPlayers[this._currentConfigPlayer] = this._makeQuickConfig(this._currentConfigPlayer, className, cfg.locked);
     } else {
       this._configPlayers[this._currentConfigPlayer] = this._makeDefaultConfig(this._currentConfigPlayer, className);
     }
@@ -199,6 +240,7 @@ export class ConfigSessionController {
     const incomingMode = mode || this._configMode || GameMode.LOCAL_DUEL;
     this._legacyPveMode = incomingMode === 'pve';
     this._configMode = this._legacyPveMode ? 'pve' : normalizeConfigMode(incomingMode);
+    if (!isP2PMode(this._configMode)) this._p2pSubMode = null;
     this._ctx.battleSession.resetForConfigScreen();
     if (this._legacyPveMode) {
       this._currentConfigPlayer = 'hero_1';
@@ -226,6 +268,14 @@ export class ConfigSessionController {
   toggleLockCurrent() {
     const cfg = this.activeConfig();
     if (!this.isConfigEditable(cfg.playerId)) return;
+    if (this._p2pSubMode === 'quick' && isP2PMode(this._configMode)) {
+      if (!QUICK_MODE_LOADOUTS[cfg.class]) return;
+      cfg.locked = !cfg.locked;
+      this.renderConfigScreen();
+      this._ctx.sendConfigLock();
+      this._ctx.maybeStartP2PBattle();
+      return;
+    }
     const { validateLoadout, validateRoleLoadout, LOADOUT_SIZE, ROLE_LOADOUT_SIZE } = this._ctx;
     const ownClassOk = validateLoadout(cfg.class, cfg.loadoutSkillIds).ok && cfg.loadoutSkillIds.length === LOADOUT_SIZE;
     const ownRoleOk = validateRoleLoadout(cfg.roleId, cfg.roleLoadoutSkillIds || []).ok && (cfg.roleLoadoutSkillIds || []).length === ROLE_LOADOUT_SIZE;
@@ -249,6 +299,16 @@ export class ConfigSessionController {
   // ─── Player config for battle ───
 
   getBattlePlayerConfigs() {
+    if (this._p2pSubMode === 'quick' && isP2PMode(this._configMode)) {
+      const players = createQuickModePlayers({
+        player1Class: this._configPlayers.player1.class,
+        player2Class: this._configPlayers.player2.class,
+      });
+      return players.map(player => ({
+        ...player,
+        locked: Boolean(this._configPlayers[player.playerId]?.locked || player.locked),
+      }));
+    }
     const cloneCfg = (c) => ({
       playerId: c.playerId, class: c.class, roleId: c.roleId,
       loadoutSkillIds: [...c.loadoutSkillIds],
@@ -275,7 +335,11 @@ export class ConfigSessionController {
 
   applyRemoteConfig(cfg) {
     if (cfg?.playerId) {
-      this._configPlayers[cfg.playerId] = this.normalizeForPlayer(cfg, cfg.playerId);
+      if (cfg.quickMode || (this._p2pSubMode === 'quick' && isP2PMode(this._configMode))) {
+        this._configPlayers[cfg.playerId] = this._makeQuickConfig(cfg.playerId, cfg.class, cfg.locked);
+      } else {
+        this._configPlayers[cfg.playerId] = this.normalizeForPlayer(cfg, cfg.playerId);
+      }
     }
   }
 
@@ -293,6 +357,7 @@ export class ConfigSessionController {
 
   resetPlayerConfigs(p1Class, p2Class) {
     this._legacyPveMode = false;
+    this._p2pSubMode = null;
     this._configPlayers.player1 = this._makeDefaultConfig('player1', p1Class || this._configPlayers.player1.class);
     this._configPlayers.player2 = this._makeDefaultConfig('player2', p2Class || this._configPlayers.player2.class);
     this._pveHeroSlots = [
@@ -318,6 +383,8 @@ export class ConfigSessionController {
       classes: CLASSES, cfg, role,
       configMode: mode,
       legacyPveMode: this._legacyPveMode,
+      p2pSubMode: this._p2pSubMode,
+      quickModeLoadouts: QUICK_MODE_LOADOUTS,
       roomCode: nm?.roomCode || '',
       currentConfigPlayer: this._currentConfigPlayer,
       configPlayers: viewConfigPlayers,

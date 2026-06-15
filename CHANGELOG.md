@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-16 - P2P 快速模式与征召模式
+
+- 联机对战入口新增子模式选择：`快速模式` 与 `征召模式`。
+- 新增 `engine/QuickModePreset.js`，集中定义法师、战士、射手快速模式核心技能组，并生成兼容 battle init 的 locked quick players。
+- 快速模式配置只保留职业选择、核心技能预览和 lock/ready；不使用角色、角色技能带入或 trait。
+- 征召模式保留原 P2P 角色选择、技能选配、配置同步和 battle start 流程。
+- P2P `CONFIG_UPDATE` / `BATTLE_START` 消息携带 `p2pSubMode`，快速模式同步完整生成后的 players 配置，避免两端推断不一致。
+- 新增 quick mode preset/session/network/e2e 覆盖，并更新旧 P2P lobby e2e 测试经由征召模式进入原 host/join 表单。
+
 ## 2026-06-14 - Task 8.1: 架构边界测试
 
 - 新增 `tests/architecture/playback_architecture_boundary.spec.js`（1491 assertions, 7 组），验证：

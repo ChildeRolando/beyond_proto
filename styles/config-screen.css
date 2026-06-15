@@ -337,6 +337,25 @@
 .config-cta-btn.primary:hover { background: #d4b076; box-shadow: 0 0 18px var(--cfg-glow-gold); transform: translateY(-1px); }
 .config-cta-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
 
+.quick-mode-preview-row {
+  padding: 10px 0;
+  border-top: 1px solid var(--cfg-border-soft);
+}
+.quick-mode-preview-row:first-of-type { border-top: 0; }
+.quick-mode-skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.quick-mode-skill-pill {
+  padding: 5px 8px;
+  border: 1px solid var(--cfg-border-soft);
+  border-radius: 4px;
+  background: rgba(18,27,36,0.9);
+  color: var(--cfg-text);
+  font-size: 12px;
+}
+
 @media (max-width: 1050px) {
   #config-screen {
     grid-template-columns: 220px minmax(300px, 1fr);

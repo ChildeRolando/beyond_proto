@@ -11,16 +11,19 @@ export function installRuntimeTestHooks({
   getPlaybackRuntime,
   routeController,
   routeNetworkMessage,
+  startP2PConfigForTest,
   returnToStart,
   renderAll,
 }) {
   window.__testHooks = window.__testHooks || {};
   window.__testHooks.renderAll = renderAll || null;
   window.__testHooks.routeNetworkMessage = (payload) => routeNetworkMessage(payload);
+  window.__testHooks.startP2PConfigForTest = (subMode) => startP2PConfigForTest?.(subMode);
   window.__testHooks.getConfigSnapshot = () => {
     const configSession = getConfigSession();
     return {
       mode: configSession.getConfigMode(),
+      p2pSubMode: configSession.getP2PSubMode?.() || null,
       currentPlayer: configSession.getCurrentConfigPlayer(),
       players: structuredClone(configSession.getConfigPlayers()),
       battleConfigs: structuredClone(configSession.getBattleConfigs()),
