@@ -1,6 +1,7 @@
 // Effective skill cost helper — mirrors SkillResolver cost logic.
 // Used by UI (BattlePanelsView) and engine (SkillResolver) to avoid rule fork.
 // Returns { cost: { resource: amount }, free: boolean }
+import { SKILLS } from './SkillData.js';
 
 export function getEffectiveSkillCost(skillId, actorState) {
   const buffs = actorState?.buffs || [];
@@ -33,6 +34,14 @@ export function getEffectiveSkillCost(skillId, actorState) {
     const layer = marrow?.data?.layer || 0;
     const rageCost = layer < costs.length ? costs[layer] : 0;
     return { cost: rageCost > 0 ? { rage: rageCost } : {}, free: rageCost === 0 };
+  }
+
+  // PREDATORY_STEP_READY: next movement skill is free
+  if (hasBuff('PREDATORY_STEP_READY')) {
+    const skill = SKILLS[skillId];
+    if (skill && skill.type === '移动') {
+      return { cost: {}, free: true, reason: 'PREDATORY_STEP_READY' };
+    }
   }
 
   // Default: no dynamic cost modification

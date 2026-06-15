@@ -61,6 +61,7 @@ export class ActionPointSystem {
     const isMarrowWine = skillId === 'role_jimmy_marrow_wine';
 
     const hasMarrowMove = this.#buffManager?.hasStatus(character.id, 'JIMMY_MARROW_MOVE') || false;
+    const hasPredatoryStep = this.#buffManager?.hasStatus(character.id, 'PREDATORY_STEP_READY') || false;
     const hasGunfighter = character?.roleLoadoutSkillIds?.includes('trait_gunfighter_finesse') || false;
 
     const isCallIn = skillId === 'role_helldiver_supply_drop' || skillId === 'role_helldiver_bombardment';
@@ -71,9 +72,18 @@ export class ActionPointSystem {
       return { ok: true, slot: 'finesse' };
     }
 
+    // PREDATORY_STEP_READY makes getEffectiveSkillCost return 0,
+    // so totalCost will be 0. This falls through to finesse checks below
+    // or main action.
+
     // Jimmy marrow move: movement and 易经洗髓酒 use finesse slot before main
     if (isMovement && hasMarrowMove && state.finesse.used < state.finesse.total && totalCost === 0) {
       return { ok: true, slot: 'finesse' };
+    }
+    // PREDATORY_STEP_READY: movement skill can use finesse even without trait
+    if (isMovement && hasPredatoryStep && state.finesse.total === 0) {
+      // Finesse total is 0 but PREDATORY_STEP_READY grants a virtual finesse slot
+      return { ok: true, slot: 'predatory_step' };
     }
     // 易经洗髓酒 with JIMMY_MARROW_MOVE: always uses finesse, cost is paid via CONSUME_RESOURCE
     if (isMarrowWine && hasMarrowMove && state.finesse.used < state.finesse.total) {
@@ -106,6 +116,9 @@ export class ActionPointSystem {
     else if (result.slot === 'main_reassign') {
       used.finesseUsed += 1;
       used.mainSkillCost = skillCostTotal(skillId);
+    } else if (result.slot === 'predatory_step') {
+      // PREDATORY_STEP_READY grants a virtual finesse slot; doesn't consume main
+      // Don't increment mainUsed or finesseUsed (it's a one-time override)
     } else {
       used.mainUsed += 1;
       used.mainSkillCost = skillCostTotal(skillId);

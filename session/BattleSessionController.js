@@ -518,7 +518,7 @@ export class BattleSessionController {
     const origin = this.getPreviewOrigin(charId, skillId) || char.position;
 
     const shape = skill.targeting.shape;
-    const range = skill.type === '移动'
+    let range = skill.type === '移动'
       ? this.engine.getEffectiveMoveRange(charId, skill.targeting.range ?? 99)
       : this.engine.getEffectiveRange(charId, skill.targeting.range ?? 99);
 
@@ -527,10 +527,43 @@ export class BattleSessionController {
     } else if (shape === 'AOE_SELF') {
       this.hoverEffectArea = this._callbacks.computeEffectArea(skill, origin, origin, range);
     } else if (shape === 'HEX' || shape === 'DIRECTION' || shape === 'FAN') {
+      // HUNTED range bonus: movement skills get +1 when moving toward hunted target
+      const isMovement = skill.type === '移动';
+      const isBlinkStrike = skillId === 'warrior_blink_strike';
+
       for (let q = -3; q <= 3; q++) {
         for (let r = -3; r <= 3; r++) {
           if (!isOnBoard(q, r)) continue;
-          const dist = hexDistance(origin.q, origin.r, q, r);
+          let dist = hexDistance(origin.q, origin.r, q, r);
+
+          // HUNTED move bonus for movement skills
+          if (isMovement) {
+            const huntedBonus = this.engine.getHuntedMoveBonus(charId, origin, { q, r });
+            if (huntedBonus > 0 && dist <= range + 1) {
+              // Allow hex if it's within base range OR at range+1 and toward hunted
+              this.validTargets.push({ q, r });
+              continue;
+            }
+          }
+
+          // blink_strike HUNTED exception: ignore range for HUNTED targets
+          if (isBlinkStrike && dist > range) {
+            // Check if hex contains a character with HUNTED from this caster
+            const atPos = [...this.engine.registry.characters()].filter(c =>
+              c.alive !== false && c.position.q === q && c.position.r === r
+            );
+            const hasHunted = atPos.some(c => {
+              const huntedBuffs = this.engine.buffManager.getActiveBuffs(c.id).filter(
+                b => b.statusType === 'HUNTED' && b.data?.hunterId === charId
+              );
+              return huntedBuffs.length > 0;
+            });
+            if (hasHunted) {
+              this.validTargets.push({ q, r });
+              continue;
+            }
+          }
+
           if (dist > range) continue;
           this.validTargets.push({ q, r });
         }

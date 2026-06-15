@@ -73,6 +73,16 @@ export class SkillResolver {
 
     const sid = seqId();
 
+    // Resolve target entity from targetPos for conditional effects
+    let targetEntityId = null;
+    if (targetPos) {
+      const allChars = [...this.registry.characters()];
+      const atTarget = allChars.find(
+        c => c.position?.q === targetPos.q && c.position?.r === targetPos.r && c.alive !== false
+      );
+      if (atTarget) targetEntityId = atTarget.id;
+    }
+
     // Translate effects to commands; prepend CONSUME_RESOURCE for dynamic-cost skills
     const commands = [];
     if (skillId === 'role_jimmy_marrow_wine' && effectiveCost.rage > 0) {
@@ -98,7 +108,7 @@ export class SkillResolver {
       if (eff.cmd === 'CONSUME_RESOURCE' && hasIndraBlade) continue;
       // Skip CONSUME_RESOURCE when 余波 makes 小气功波 cost 0
       if (eff.cmd === 'CONSUME_RESOURCE' && hasAftershock) continue;
-      const result = this._translateEffect(eff, actor, targetPos, skill, sid);
+      const result = this._translateEffect(eff, actor, targetPos, skill, sid, targetEntityId);
       if (!result) continue;
 
       // ON_HIT GAIN_RESOURCE without explicit subSpeed inherits from nearest attack
@@ -179,7 +189,7 @@ export class SkillResolver {
   }
 
   // --- Effect translation ---
-  _translateEffect(eff, actor, targetPos, skill, sequenceId) {
+  _translateEffect(eff, actor, targetPos, skill, sequenceId, targetEntityId = null) {
     const base = {
       id: cmdId(),
       actorId: actor.id,
@@ -193,7 +203,10 @@ export class SkillResolver {
     switch (eff.cmd) {
       case 'GAIN_RESOURCE':
         return { ...base, type: CmdType.GAIN_RESOURCE,
-          payload: { resource: eff.resource, amount: eff.amount, condition: eff.condition || null } };
+          payload: { resource: eff.resource, amount: eff.amount,
+            condition: eff.condition || null,
+            targetEntityId: eff.condition === 'TARGET_USED_RESOURCE_ACTION' || eff.condition === 'ON_HIT_TARGET_USED_RESOURCE_ACTION'
+              ? (eff.targetEntityId || targetEntityId) : null } };
 
       case 'CONSUME_RESOURCE':
         return { ...base, type: CmdType.CONSUME_RESOURCE,
@@ -224,6 +237,15 @@ export class SkillResolver {
         return { ...base, type: CmdType.MOVE_DASH,
           targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null,
           payload: { direction: eff.direction, distance: eff.distance } };
+
+      case 'MOVE_TOWARD_TARGET': {
+        // Move one hex toward the target entity. Used by warrior_pressure.
+        // targetEntityId is resolved from the target hex selection.
+        const distance = eff.distance || 1;
+        return { ...base, type: CmdType.MOVE_TOWARD_TARGET,
+          targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null,
+          payload: { distance, targetEntityId: targetEntityId || null } };
+      }
 
       case 'ATTACK_MELEE':
         return { ...base, type: CmdType.ATTACK_MELEE,
@@ -288,6 +310,8 @@ export class SkillResolver {
 
       case 'APPLY_STATUS': {
         const resolvedData = { ...(eff.data || {}) };
+        // Resolve symbolic references in data
+        if (resolvedData.casterId === 'ACTOR_ID') resolvedData.casterId = actor.id;
         if (resolvedData.direction === 'TOWARD_TARGET' && targetPos) {
           const line = hexLine(actor.position.q, actor.position.r, targetPos.q, targetPos.r);
           if (line.length >= 2) {

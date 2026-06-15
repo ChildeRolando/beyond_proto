@@ -246,6 +246,27 @@ export const STATUS_DEFS = {
     duration: 1,
     blocking: false,
   },
+  MARKED_BY_KILLING_INTENT: {
+    id: 'MARKED_BY_KILLING_INTENT',
+    name: '杀意标记',
+    desc: '被杀意锁定。下回合若使用移动技能，锁定者下一次移动类行动免费且视为灵巧；若不移动，获得被追猎。',
+    duration: 1,
+    blocking: false,
+  },
+  PREDATORY_STEP_READY: {
+    id: 'PREDATORY_STEP_READY',
+    name: '追猎步伐',
+    desc: '下一次移动类行动免费且视为灵巧。',
+    duration: -1,       // removed after one use
+    blocking: false,
+  },
+  HUNTED: {
+    id: 'HUNTED',
+    name: '被追猎',
+    desc: '锁定者朝你使用移动类能力时移动力+1。',
+    duration: -1,       // permanent until cleared
+    blocking: false,
+  },
 };
 
 // Get default duration for a status type

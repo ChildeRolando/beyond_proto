@@ -21,7 +21,7 @@ import {
   getRoleTraits,
 } from './RoleData.js';
 import { STATUS_DEFS } from './StatusEffectDefs.js';
-import { isOnBoard, hexCenter } from './HexMath.js';
+import { isOnBoard, hexCenter, hexDistance } from './HexMath.js';
 import { SkillCooldowns } from './SkillCooldowns.js';
 import { normalizeBattleScenario } from './BattleScenario.js';
 import { getAliveTeamIds, getTeamId } from './TeamResolver.js';
@@ -362,6 +362,36 @@ export class GameEngine {
 
   getForcedSkillId(characterId) {
     return this.turnManager._getForcedSkillId(characterId);
+  }
+
+  /**
+   * HUNTED move bonus: returns 1 if hunter is moving toward a character marked
+   * with HUNTED (where hunterId matches the moving actor). Returns 0 otherwise.
+   * @param {string} hunterId - The character performing the movement
+   * @param {{q:number, r:number}} fromPos - Start position
+   * @param {{q:number, r:number}} toPos - Target hex to check
+   * @returns {number} 1 if bonus applies, 0 otherwise
+   */
+  getHuntedMoveBonus(hunterId, fromPos, toPos) {
+    // Find all characters with HUNTED from this hunter
+    const huntedTargets = [...this.registry.characters()].filter(c => {
+      if (c.alive === false) return false;
+      const huntedBuffs = this.buffManager.getActiveBuffs(c.id).filter(
+        b => b.statusType === 'HUNTED' && b.data?.hunterId === hunterId
+      );
+      return huntedBuffs.length > 0;
+    });
+
+    if (huntedTargets.length === 0) return 0;
+
+    const originDist = Math.min(...huntedTargets.map(t =>
+      hexDistance(fromPos.q, fromPos.r, t.position.q, t.position.r)
+    ));
+    const targetDist = Math.min(...huntedTargets.map(t =>
+      hexDistance(toPos.q, toPos.r, t.position.q, t.position.r)
+    ));
+    // Bonus applies when moving toward (closer to) the hunted target
+    return targetDist < originDist ? 1 : 0;
   }
 
   getSkillsForClass(className) {

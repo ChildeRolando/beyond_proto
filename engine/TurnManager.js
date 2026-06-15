@@ -4,6 +4,7 @@ import { hexDistance, hexLine, hexNeighbors, hexSpiral, isOnBoard } from './HexM
 import { HookName } from './BuffHooks.js';
 import { STATUS_DEFS } from './StatusEffectDefs.js';
 import { SKILLS } from './SkillData.js';
+import { isResourceAction, isMovementSkill } from './SkillTags.js';
 import { getDefaultRoleLoadout } from './RoleData.js';
 import { canAffectCharacter, getAliveTeamIds } from './TeamResolver.js';
 import { ResolutionEventRecorder } from './resolution/ResolutionEventRecorder.js';
@@ -45,6 +46,8 @@ export class TurnManager {
   #shieldHitEntities = new Set(); // entityIds whose shield was hit this turn
   #hitEntities = new Set();       // entityIds hit by any damage contact this turn (for 盛怒 cancel)
   #submittedChars = new Set();   // charIds that submitted this turn
+  #submittedSkillMap = new Map(); // actorId → { skillId, targetPos, targetEntityId }
+  #submittedSkillSnapshot = new Map(); // frozen copy for querying during execution
   #resourceFailed = new Set();  // sequenceIds whose resource cost check failed at exec time
   #canceledSequences = new Set(); // sequenceIds canceled by interruption/reaction effects
   #projectileAttackers = new Set(); // actorIds that fired projectiles this speed tier
@@ -138,6 +141,9 @@ export class TurnManager {
     this.#usedActionIds.clear();
     this.#lastHitByActor.clear();
     this.#hitBySequenceId.clear();
+    // Snapshot submitted skills for querying during execution (TARGET_USED_RESOURCE_ACTION etc.)
+    this.#submittedSkillSnapshot = new Map(this.#submittedSkillMap);
+    this.#submittedSkillMap.clear();
     // Snapshot pre-turn cooldown state so new cooldowns don't tick this turn
     this.#cooldownSnapshot = this.#skillCooldowns ? this.#skillCooldowns.serialize() : null;
     this.#logger?.setTurn(this.#turnNumber);
@@ -199,12 +205,12 @@ export class TurnManager {
       // 悬剑落剑 at speed 2 (runs before commands)
       if (spd === 2) { this._resolveSwordHangingDrop(); }
 
-      // Separate ON_HIT GAIN_RESOURCE — defer until after projectiles resolve
-      // so #lastHitByActor reflects projectile/melee body-contact results.
+      // Separate ON_HIT / ON_HIT_TARGET_USED_RESOURCE_ACTION GAIN_RESOURCE — defer
+      // until after projectiles resolve so hit state reflects body-contact results.
       const deferredGains = [];
       for (const cmd of cmds) {
         if (this.#phase === TurnPhase.BATTLE_END) break;
-        if (cmd.type === CmdType.GAIN_RESOURCE && cmd.payload.condition === 'ON_HIT') {
+        if (cmd.type === CmdType.GAIN_RESOURCE && (cmd.payload.condition === 'ON_HIT' || cmd.payload.condition === 'ON_HIT_TARGET_USED_RESOURCE_ACTION')) {
           deferredGains.push(cmd);
           continue;
         }
@@ -629,6 +635,9 @@ export class TurnManager {
         case CmdType.MOVE_DASH:
           this._execMoveDash(cmd);
           break;
+        case CmdType.MOVE_TOWARD_TARGET:
+          this._execMoveTowardTarget(cmd);
+          break;
         case CmdType.ATTACK_MELEE:
           this._execAttackMelee(cmd);
           break;
@@ -712,8 +721,24 @@ export class TurnManager {
         if (execSkill?.cooldown) {
           const actor = this.#registry.get(cmd.actorId);
           if (actor) {
-            const haste = this._getSkillHaste(actor, cmd.skillId);
-            this.#skillCooldowns.startCooldown(cmd.actorId, cmd.skillId, execSkill.cooldown, haste);
+            // Skip cooldown for warrior_blink_strike against HUNTED target
+            let skipCd = false;
+            if (cmd.skillId === 'warrior_blink_strike') {
+              const targetId = this.getSubmittedTargetId(cmd.actorId);
+              if (targetId) {
+                const huntedBuffs = this.#buffManager.getActiveBuffs(targetId).filter(
+                  b => b.statusType === 'HUNTED' && b.data?.hunterId === cmd.actorId
+                );
+                if (huntedBuffs.length > 0) {
+                  skipCd = true;
+                  this.#logger?.log(`${actor?.name || cmd.actorId} 冷血追命 vs 被追猎目标，不进入冷却`, 's');
+                }
+              }
+            }
+            if (!skipCd) {
+              const haste = this._getSkillHaste(actor, cmd.skillId);
+              this.#skillCooldowns.startCooldown(cmd.actorId, cmd.skillId, execSkill.cooldown, haste);
+            }
           }
         }
         this.#skillCooldowns.consumeUse(cmd.actorId, cmd.skillId);
@@ -795,7 +820,7 @@ export class TurnManager {
 
   // --- Individual command executors ---
   _execGainResource(cmd) {
-    let { resource, amount, condition } = cmd.payload;
+    let { resource, amount, condition, targetEntityId } = cmd.payload;
     if (condition === 'ON_HIT') {
       // Priority 1: action-bound check by sequenceId
       const seqHit = this.#hitBySequenceId.get(cmd.sequenceId);
@@ -805,6 +830,17 @@ export class TurnManager {
         // Priority 2: fallback to actor-level (legacy / non-action-bound commands)
         if (!this.#lastHitByActor.get(cmd.actorId)) return;
       }
+    }
+    if (condition === 'TARGET_USED_RESOURCE_ACTION') {
+      if (!targetEntityId || !this.didUseResourceAction(targetEntityId)) return;
+    }
+    if (condition === 'ON_HIT_TARGET_USED_RESOURCE_ACTION') {
+      // Must have hit (projectile body-contact or melee)
+      const seqHit = this.#hitBySequenceId.get(cmd.sequenceId);
+      const hit = seqHit !== undefined ? seqHit : this.#lastHitByActor.get(cmd.actorId);
+      if (!hit) return;
+      // Must target a character that used a resource action this turn
+      if (!targetEntityId || !this.didUseResourceAction(targetEntityId)) return;
     }
     if (amount === 'RELOAD') {
       const loaded = this.#resourceSystem.reloadFromBackpack(cmd.actorId);
@@ -925,6 +961,43 @@ export class TurnManager {
 
     this.#registry.updatePosition(cmd.actorId, fromQ, fromR, curQ, curR);
     this.#eventBus.emit(EvtType.MOVEMENT_COMPLETE, { entityId: cmd.actorId, from: { q: fromQ, r: fromR }, to: { q: curQ, r: curR } });
+  }
+
+  /** Move one step toward a target entity. Used by warrior_pressure. */
+  _execMoveTowardTarget(cmd) {
+    const actor = this.#registry.get(cmd.actorId);
+    if (!actor) return;
+    const targetEntityId = cmd.payload.targetEntityId;
+    if (!targetEntityId) return;
+    const target = this.#registry.get(targetEntityId);
+    if (!target || target.alive === false) return;
+
+    const fromQ = actor.position.q, fromR = actor.position.r;
+    const toQ = target.position.q, toR = target.position.r;
+    const dist = hexDistance(fromQ, fromR, toQ, toR);
+
+    // If already adjacent (dist=1), move into target's hex
+    if (dist <= 1) {
+      if (!isOnBoard(toQ, toR)) return;
+      this.#registry.updatePosition(cmd.actorId, fromQ, fromR, toQ, toR);
+      this.#eventBus.emit(EvtType.MOVEMENT_COMPLETE, { entityId: cmd.actorId, from: { q: fromQ, r: fromR }, to: { q: toQ, r: toR } });
+      return;
+    }
+
+    // Find a hex adjacent to current position that reduces distance to target
+    const line = hexLine(fromQ, fromR, toQ, toR);
+    if (line.length < 2) {
+      this.#logger?.log(`${actor?.name || cmd.actorId} 压迫移动受阻`, 'warn');
+      return;
+    }
+    const stepQ = line[1][0], stepR = line[1][1];
+    if (!isOnBoard(stepQ, stepR)) {
+      this.#logger?.log(`${actor?.name || cmd.actorId} 压迫移动受阻`, 'warn');
+      return;
+    }
+
+    this.#registry.updatePosition(cmd.actorId, fromQ, fromR, stepQ, stepR);
+    this.#eventBus.emit(EvtType.MOVEMENT_COMPLETE, { entityId: cmd.actorId, from: { q: fromQ, r: fromR }, to: { q: stepQ, r: stepR } });
   }
 
   _execAttackMelee(cmd) {
@@ -1579,7 +1652,7 @@ export class TurnManager {
           const effectiveSpeed = Math.min(cmd.subSpeed ?? result.sequence.totalSpeed, 2);
 
           if (effectiveSpeed === 2) {
-            if (cmd.type === CmdType.GAIN_RESOURCE && cmd.payload.condition === 'ON_HIT') {
+            if (cmd.type === CmdType.GAIN_RESOURCE && (cmd.payload.condition === 'ON_HIT' || cmd.payload.condition === 'ON_HIT_TARGET_USED_RESOURCE_ACTION')) {
               deferredGains.push(cmd);
             } else {
               this._executeCommand(cmd);
@@ -1712,7 +1785,51 @@ export class TurnManager {
     }
     this.#jumpReturns.clear();
 
+    // Resolve MARKED_BY_KILLING_INTENT — check if the marked target used a movement
+    // skill this turn, then apply PREDATORY_STEP_READY or HUNTED accordingly.
+    this._resolveMarkedByKillingIntent();
+
     this.#pendingFlags.clear();
+  }
+
+  /** Resolve MARKED_BY_KILLING_INTENT: check target's submitted skill type,
+   *  apply PREDATORY_STEP_READY to caster or HUNTED to target. */
+  _resolveMarkedByKillingIntent() {
+    for (const char of this.#registry.characters()) {
+      if (char.alive === false) continue;
+      const marks = this.#buffManager.getActiveBuffs(char.id).filter(
+        b => b.statusType === 'MARKED_BY_KILLING_INTENT' && b.appliedTurn < this.#turnNumber
+      );
+      for (const mark of marks) {
+        const casterId = mark.data?.casterId;
+        if (!casterId) continue;
+        const caster = this.#registry.get(casterId);
+        if (!caster || caster.alive === false) {
+          this.#buffManager.remove(mark.id);
+          continue;
+        }
+
+        if (this.didUseMovementAction(char.id)) {
+          // Target used a movement skill → caster gets PREDATORY_STEP_READY
+          // Remove old PREDATORY_STEP_READY first so it doesn't stack
+          this.#buffManager.removeByType(casterId, 'PREDATORY_STEP_READY');
+          this.#buffManager.apply(casterId, 'PREDATORY_STEP_READY', -1, casterId);
+          this.#logger?.log(`${caster.name || casterId} 获得追猎步伐（${char.name || char.id}使用了移动技能）`, 's');
+        } else {
+          // Target did NOT use a movement skill → target gets HUNTED
+          // Remove old HUNTED from this caster first, then apply new one
+          const huntedBuffs = this.#buffManager.getActiveBuffs(char.id).filter(
+            b => b.statusType === 'HUNTED' && b.data?.hunterId === casterId
+          );
+          for (const hb of huntedBuffs) this.#buffManager.remove(hb.id);
+          this.#buffManager.apply(char.id, 'HUNTED', -1, casterId, { hunterId: casterId });
+          this.#logger?.log(`${char.name || char.id} 获得被追猎（猎人：${caster.name || casterId}）`, 's');
+        }
+
+        // Remove the mark regardless of outcome
+        this.#buffManager.remove(mark.id);
+      }
+    }
   }
 
   _processDelayedCommands() {
@@ -2079,6 +2196,10 @@ export class TurnManager {
     if (actionPoint && (actionPoint.slot === 'finesse' || actionPoint.slot === 'main_reassign')) {
       this.#buffManager.removeByType(actor.id, 'FINESSE_READY');
     }
+    // Remove PREDATORY_STEP_READY after successful movement submission (free + finesse)
+    if (actionPoint && actionPoint.slot === 'predatory_step') {
+      this.#buffManager.removeByType(actor.id, 'PREDATORY_STEP_READY');
+    }
 
     // Set current turn for buff timing checks
     this.#buffManager.setCurrentTurn(this.#turnNumber);
@@ -2117,6 +2238,21 @@ export class TurnManager {
 
     this.#commandQueue.enqueueSequence(finalSequence);
     this.#submittedChars.add(characterId);
+
+    // Record submitted skill for resource-action / movement classification queries
+    let targetEntityId = null;
+    if (targetPos) {
+      const entities = this.#registry.charactersAt?.(targetPos.q, targetPos.r);
+      if (Array.isArray(entities) && entities.length > 0 && entities[0]?.id) {
+        targetEntityId = entities[0].id;
+      } else {
+        const allChars = [...this.#registry.characters()];
+        const atTarget = allChars.find(c => c.position?.q === targetPos.q && c.position?.r === targetPos.r && c.alive !== false);
+        if (atTarget) targetEntityId = atTarget.id;
+      }
+    }
+    this.#submittedSkillMap.set(characterId, { skillId, targetPos, targetEntityId });
+
     return { success: true, sequence: finalSequence, actionPoint };
   }
 
@@ -2217,6 +2353,34 @@ export class TurnManager {
     }
   }
 
+  // --- Submitted-skill query helpers ---
+  getSubmittedSkillId(actorId) {
+    // Check live map first (before executeTurn starts), then snapshot (during executeTurn)
+    return this.#submittedSkillMap.get(actorId)?.skillId
+      || this.#submittedSkillSnapshot.get(actorId)?.skillId
+      || null;
+  }
+
+  didUseResourceAction(actorId) {
+    const entry = this.#submittedSkillMap.get(actorId) || this.#submittedSkillSnapshot.get(actorId);
+    const skillId = entry?.skillId;
+    if (!skillId) return false;
+    return isResourceAction(skillId);
+  }
+
+  didUseMovementAction(actorId) {
+    const entry = this.#submittedSkillMap.get(actorId) || this.#submittedSkillSnapshot.get(actorId);
+    const skillId = entry?.skillId;
+    if (!skillId) return false;
+    return isMovementSkill(skillId);
+  }
+
+  /** Returns the target entity id the actor submitted their action against, if any. */
+  getSubmittedTargetId(actorId) {
+    const entry = this.#submittedSkillMap.get(actorId) || this.#submittedSkillSnapshot.get(actorId);
+    return entry?.targetEntityId || null;
+  }
+
   reset() {
     this.#turnNumber = 1;
     this.#phase = TurnPhase.PLAN;
@@ -2225,6 +2389,8 @@ export class TurnManager {
     this.#pendingFlags.clear();
     this.#lastHitByActor.clear();
     this.#hitBySequenceId.clear();
+    this.#submittedSkillMap.clear();
+    this.#submittedSkillSnapshot.clear();
     this.#shieldHitEntities.clear();
     this.#submittedChars.clear();
     this.#resourceFailed.clear();
@@ -2244,6 +2410,8 @@ export class TurnManager {
       jumpReturns: [...this.#jumpReturns.entries()].map(([id, pos]) => [id, { ...pos }]),
       lastHitByActor: [...this.#lastHitByActor.entries()],
       hitBySequenceId: [...this.#hitBySequenceId.entries()],
+      submittedSkillMap: [...this.#submittedSkillMap.entries()].map(([id, v]) => [id, { ...v }]),
+      submittedSkillSnapshot: [...this.#submittedSkillSnapshot.entries()].map(([id, v]) => [id, { ...v }]),
       shieldHitEntities: [...this.#shieldHitEntities],
       submittedChars: [...this.#submittedChars],
       resourceFailed: [...this.#resourceFailed],
@@ -2265,6 +2433,10 @@ export class TurnManager {
     for (const [id, hit] of data.lastHitByActor || []) this.#lastHitByActor.set(id, hit);
     this.#hitBySequenceId.clear();
     for (const [id, hit] of data.hitBySequenceId || []) this.#hitBySequenceId.set(id, hit);
+    this.#submittedSkillMap.clear();
+    for (const [id, v] of data.submittedSkillMap || []) this.#submittedSkillMap.set(id, { ...v });
+    this.#submittedSkillSnapshot.clear();
+    for (const [id, v] of data.submittedSkillSnapshot || []) this.#submittedSkillSnapshot.set(id, { ...v });
     this.#shieldHitEntities = new Set(data.shieldHitEntities || []);
     this.#submittedChars = new Set(data.submittedChars || []);
     this.#resourceFailed = new Set(data.resourceFailed || []);

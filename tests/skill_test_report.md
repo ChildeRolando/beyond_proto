@@ -168,8 +168,8 @@
 
 ### warrior_lock — 杀意锁定
 
-✅ 杀意锁定状态应用(目标定身)
-✅ 锁定目标无法移动 — mage@(0,-2) — not moved
+✅ 杀意锁定施加杀意标记
+✅ 目标未移动获得被追猎
 
 ### warrior_blink_strike — 冷血追命
 

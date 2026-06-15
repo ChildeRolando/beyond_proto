@@ -649,18 +649,17 @@ async function testWarriorSkills() {
     result('无情铁手禁锢目标', rooted, `has IMMOBILIZED: ${rooted}`);
   }
 
-  // --- warrior_lock: 杀意锁定 ---
+  // --- warrior_lock: 杀意锁定 (reworked) ---
   h2('warrior_lock — 杀意锁定');
   {
     const { e, m, w } = freshEngine();
     await runTurns(e, m, w, 2, 'mage_gather', 'warrior_rage');
-    // T3: lock mage (needs 3 rage, has 4)
+    // T3: lock mage (cost 0, range 99, applies MARKED_BY_KILLING_INTENT)
     await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_lock', target: { q:0, r:-2 } });
-    result('杀意锁定状态应用(目标定身)', e.buffManager.hasStatus(m, 'LOCKED'));
-    // Try to move away
-    await doTurn(e, { id: m, skill: 'mage_teleport', target: { q:1, r:0 } }, { id: w, skill: 'warrior_rage' });
-    const mPos = e.registry.getPosition(m);
-    result('锁定目标无法移动', mPos.q === 0 && mPos.r === -2, `mage@(${mPos.q},${mPos.r}) — not moved`);
+    result('杀意锁定施加杀意标记', e.buffManager.hasStatus(m, 'MARKED_BY_KILLING_INTENT'));
+    // Next turn: mage does NOT use movement → target gets HUNTED
+    await doTurn(e, { id: m, skill: 'mage_gather' }, { id: w, skill: 'warrior_rage' });
+    result('目标未移动获得被追猎', e.buffManager.hasStatus(m, 'HUNTED'));
   }
 
   // --- warrior_blink_strike: 冷血追命 ---

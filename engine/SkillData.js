@@ -7,7 +7,7 @@ export const SKILLS = {
   // =========================================================================
   mage_gather: {
     id: 'mage_gather', name: '集气护盾', icon: 'assets/skill-icons/mage/mage_gather.webp', class: '法师', type: '蓄气',
-    cost: {}, speed: 3, targeting: { shape: 'SELF' },
+    cost: {}, speed: 3, targeting: { shape: 'SELF' }, resourceAction: true,
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SHIELD_ACTIVE', target: 'SELF' },
       { cmd: 'SET_FLAG', flag: 'pendingQi', value: true, target: 'SELF' },
@@ -135,12 +135,12 @@ export const SKILLS = {
 
   mage_qi_siphon: {
     id: 'mage_qi_siphon', name: '引气针', icon: 'assets/skill-icons/mage/mage_qi_siphon.webp', class: '法师', type: '攻击',
-    cost: {}, speed: 1, cooldown: 3, targeting: { shape: 'HEX', range: 99 },
+    cost: {}, speed: 4, cooldown: 3, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'ATTACK_PROJECTILE', power: 0, flags: ['ARMOR_PIERCE', 'COST_SEAL'] },
-      { cmd: 'GAIN_RESOURCE', resource: 'qi', amount: 1, condition: 'ON_HIT' },
+      { cmd: 'GAIN_RESOURCE', resource: 'qi', amount: 1, condition: 'ON_HIT_TARGET_USED_RESOURCE_ACTION' },
     ],
-    desc: '技能概念：发射一枚引气针，命中后封住目标经脉并为自己引气。\n游戏作用：生成直线飞行弹体，无限射程；命中后目标本回合无法获得资源，自身获得1气。\n范围：无限；威力：0；速度：1；CD：3；费用：0',
+    desc: '技能概念：发射一枚引气针，命中后封住目标经脉；若目标使用资源获取类行动则为自己引气。\n游戏作用：生成直线飞行弹体，无限射程；命中后目标本回合无法获得资源；若目标本回合使用了资源获取类行动（集气/盛怒/翻滚），自身获得1气。\n范围：无限；威力：0；速度：1；CD：3；费用：0',
   },
 
   mage_jump: {
@@ -278,7 +278,7 @@ export const SKILLS = {
   // =========================================================================
   warrior_rage: {
     id: 'warrior_rage', name: '盛怒', icon: 'assets/skill-icons/warrior/warrior_rage.webp', class: '战士', type: '蓄气',
-    cost: {}, speed: 3, targeting: { shape: 'SELF' },
+    cost: {}, speed: 3, targeting: { shape: 'SELF' }, resourceAction: true,
     effects: [
       { cmd: 'SET_FLAG', flag: 'pendingRage', value: true, target: 'SELF' },
     ],
@@ -370,14 +370,23 @@ export const SKILLS = {
     desc: '技能概念：将扇形区域内的敌人拉向自己。\n游戏作用：将前方扇形3范围内敌人拉到自身身前一格。\n范围：扇形3；威力：无；速度：2；费用：怒气2',
   },
 
+  warrior_pressure: {
+    id: 'warrior_pressure', name: '压迫', icon: 'assets/skill-icons/warrior/warrior_lock.webp', class: '战士', type: '特殊',
+    cost: {}, speed: 1, cooldown: 3, targeting: { shape: 'HEX', range: 1, filter: 'ENEMY_CHARACTER' },
+    effects: [
+      { cmd: 'MOVE_TOWARD_TARGET', distance: 1 },
+      { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'TARGET_USED_RESOURCE_ACTION' },
+    ],
+    desc: '技能概念：压迫敌方目标并向其移动。\n游戏作用：向目标方向移动1格；若目标本回合使用了资源获取类行动（集气/盛怒/翻滚），自身获得1怒气。\n范围：1；威力：无；速度：1；CD：3；费用：0',
+  },
+
   warrior_lock: {
     id: 'warrior_lock', name: '杀意锁定', icon: 'assets/skill-icons/warrior/warrior_lock.webp', class: '战士', type: '特殊',
-    cost: { rage: 2 }, speed: 1, targeting: { shape: 'HEX', range: 6 },
+    cost: {}, speed: 4, targeting: { shape: 'HEX', range: 99 },
     effects: [
-      { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 2 },
-      { cmd: 'APPLY_STATUS', status: 'LOCKED', target: 'TARGET', duration: -1 },
+      { cmd: 'APPLY_STATUS', status: 'MARKED_BY_KILLING_INTENT', target: 'TARGET', duration: 1, data: { casterId: 'ACTOR_ID' } },
     ],
-    desc: '技能概念：锁定目标使其无法移动和穿越次元。\n游戏作用：对6范围内目标施加锁定状态（永久）；锁定期间目标定身且禁止穿越次元；被击中后锁定移除。\n范围：6；威力：无；速度：1；费用：怒气2',
+    desc: '技能概念：锁定目标，根据其下回合行动产生不同效果。下回合若使用移动技能→锁定者获得追猎步伐(下一次移动免费+灵巧)；若不移动→目标获得被追猎(永久，锁定者对其移动力+1)。\n游戏作用：标记敌方目标；下回合根据目标是否使用移动技能产生分支效果。\n范围：无限；威力：无；速度：1；费用：0',
   },
 
   warrior_blink_strike: {
@@ -389,7 +398,7 @@ export const SKILLS = {
       { cmd: 'ATTACK_MELEE', power: 100, range: 1, origin: 'NEW_POS' },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '技能概念：瞬间闪现到目标背后进行斩击。\n游戏作用：传送至5范围内目标背后位置，然后进行近战斩击；命中时获得1点怒气。\n范围：5；威力：100；速度：1；费用：怒气3',
+    desc: '技能概念：瞬间闪现到目标背后进行斩击。对被追猎目标使用时无视距离且不进入冷却。\n游戏作用：传送至5范围内目标背后位置，然后进行近战斩击；命中时获得1点怒气。对被追猎目标无视距离限制且不消耗冷却。\n范围：5（对被追猎目标无视距离）；威力：100；速度：1；CD：6；费用：怒气3',
   },
 
   warrior_flash: {
@@ -475,7 +484,7 @@ export const SKILLS = {
 
   shooter_roll: {
     id: 'shooter_roll', name: '翻滚', icon: 'assets/skill-icons/shooter/shooter_roll.webp', class: '射手', type: '移动',
-    cost: {}, speed: 3, targeting: { shape: 'HEX', range: 2 },
+    cost: {}, speed: 3, targeting: { shape: 'HEX', range: 2 }, resourceAction: true,
     effects: [
       { cmd: 'MOVE_TELEPORT', target: 'TARGET_POS' },
       { cmd: 'COLLECT_CASINGS', area: 'ADJACENT' },
@@ -971,8 +980,8 @@ export const SKILLS_BY_CLASS = {
   ],
   '战士': [
     'warrior_rage', 'warrior_move', 'warrior_slash', 'warrior_dash',
-    'warrior_sheathe', 'warrior_feint', 'warrior_swallow', 'warrior_iaido',
-    'warrior_hook', 'warrior_lock', 'warrior_blink_strike', 'warrior_flash',
+    'warrior_sheathe', 'warrior_pressure', 'warrior_feint', 'warrior_iaido',
+    'warrior_lock', 'warrior_blink_strike', 'warrior_swallow', 'warrior_hook', 'warrior_flash',
     'warrior_meteor', 'warrior_formation_break',
     'warrior_meteor_resolve',
     'warrior_realm_sweep', 'warrior_dimension_slash',
