@@ -47,8 +47,8 @@ export class TurnManager {
   #shieldHitEntities = new Set(); // entityIds whose shield was hit this turn
   #hitEntities = new Set();       // entityIds hit by any damage contact this turn (for 盛怒 cancel)
   #submittedChars = new Set();   // charIds that submitted this turn
-  #submittedSkillMap = new Map(); // actorId → { skillId, targetPos, targetEntityId }
-  #submittedSkillSnapshot = new Map(); // frozen copy for querying during execution
+  #submittedActionMap = new Map(); // actorId → Array<{ skillId, targetPos, targetEntityId, actionSlot }>
+  #submittedActionSnapshot = new Map(); // frozen copy for querying during execution
   #resourceFailed = new Set();  // sequenceIds whose resource cost check failed at exec time
   #canceledSequences = new Set(); // sequenceIds canceled by interruption/reaction effects
   #projectileAttackers = new Set(); // actorIds that fired projectiles this speed tier
@@ -144,8 +144,12 @@ export class TurnManager {
     this.#hitBySequenceId.clear();
     this.#hitTargetBySequenceId.clear();
     // Snapshot submitted skills for querying during execution (TARGET_USED_RESOURCE_ACTION etc.)
-    this.#submittedSkillSnapshot = new Map(this.#submittedSkillMap);
-    this.#submittedSkillMap.clear();
+    // Deep-clone the arrays so mutation after snapshot doesn't affect queries
+    this.#submittedActionSnapshot = new Map();
+    for (const [actorId, list] of this.#submittedActionMap) {
+      this.#submittedActionSnapshot.set(actorId, [...list]);
+    }
+    this.#submittedActionMap.clear();
     // Snapshot pre-turn cooldown state so new cooldowns don't tick this turn
     this.#cooldownSnapshot = this.#skillCooldowns ? this.#skillCooldowns.serialize() : null;
     this.#logger?.setTurn(this.#turnNumber);
@@ -479,6 +483,11 @@ export class TurnManager {
       this.#pendingAttackRecords = [];
       this.#projectileAttackers.clear();
 
+      // Clean up SHEATHED buffs that were flagged for deferred removal during
+      // command execution. We delay removal until after projectile resolution so
+      // that reactive armor / simultaneous collisions resolve correctly.
+      this.#buffManager.removePendingSheathed();
+
       // Now execute deferred ON_HIT GAIN_RESOURCE commands
       for (const cmd of deferredGains) {
         if (this.#phase === TurnPhase.BATTLE_END) break;
@@ -805,7 +814,20 @@ export class TurnManager {
 
   _processDeathWindReloads(ctx) {
     if (ctx._deathWindReloads) {
-      for (const entityId of ctx._deathWindReloads) {
+      // Dedup by actionId so one multi-projectile miss only triggers once
+      const seenActionIds = new Set();
+      for (const entry of ctx._deathWindReloads) {
+        const { entityId, attackerId, actionId } = entry;
+        // Self-attack miss should not trigger (only enemy attack misses count)
+        const yanChar = this.#registry.get(entityId);
+        const attacker = this.#registry.get(attackerId);
+        if (!yanChar || !attacker) continue;
+        if (!this._canAttackAffect(yanChar, attacker, 'enemyOnly')) continue;
+        // Dedup per actionId (same action producing multiple missed projectiles)
+        if (actionId) {
+          if (seenActionIds.has(actionId)) continue;
+          seenActionIds.add(actionId);
+        }
         this.#resourceSystem.addBackpackAmmo(entityId, 1);
         const loaded = this.#resourceSystem.reloadFromBackpack(entityId);
         if (loaded > 0) {
@@ -870,7 +892,12 @@ export class TurnManager {
       if (cmd.payload.resource === 'ammo') {
         // consumeAllAmmo handles both the check and the consumption
         const current = this.#resourceSystem.getAmmo(cmd.actorId);
-        if (current <= 0) return;
+        if (current <= 0) {
+          const actor = this.#registry.get(cmd.actorId);
+          this.#logger?.log(`${actor?.name || cmd.actorId} 没有弹药，丧钟发动失败`, 'warn');
+          this.#resourceFailed.add(cmd.sequenceId);
+          return;
+        }
         amount = this.#resourceSystem.consumeAllAmmo(cmd.actorId);
         if (!this.#pendingFlags.has(cmd.actorId)) this.#pendingFlags.set(cmd.actorId, {});
         this.#pendingFlags.get(cmd.actorId).consumedAmmo = amount;
@@ -878,7 +905,10 @@ export class TurnManager {
       } else {
         amount = this.#resourceSystem.get(cmd.actorId, cmd.payload.resource);
       }
-      if (amount <= 0) return;
+      if (amount <= 0) {
+        this.#resourceFailed.add(cmd.sequenceId);
+        return;
+      }
     }
     // Re-check affordability at execution time (resources may have changed from damage)
     const cost = { [cmd.payload.resource]: amount };
@@ -1283,18 +1313,25 @@ export class TurnManager {
   _execApplyStatus(cmd) {
     const actor = this.#registry.get(cmd.actorId);
     const targetRef = cmd.payload.targetRef || 'SELF';
-    let targetId = cmd.actorId;
+    let targetId = null;
 
-    if (targetRef === 'TARGET' && cmd.targetPos) {
-      const entities = this.#registry.getAt(cmd.targetPos.q, cmd.targetPos.r);
-      const targetChar = entities.find(e =>
-        e.type === 'CHARACTER' &&
-        e.alive !== false &&
-        this._canAttackAffect(actor, e)
-      );
-      if (targetChar) targetId = targetChar.id;
-    } else if (targetRef !== 'SELF') {
-      targetId = cmd.targetIds?.[0] || cmd.actorId;
+    if (targetRef === 'SELF') {
+      targetId = cmd.actorId;
+    } else if (targetRef === 'TARGET') {
+      if (cmd.targetPos) {
+        const entities = this.#registry.getAt(cmd.targetPos.q, cmd.targetPos.r);
+        const targetChar = entities.find(e =>
+          e.type === 'CHARACTER' &&
+          e.alive !== false &&
+          this._canAttackAffect(actor, e)
+        );
+        if (targetChar) targetId = targetChar.id;
+      }
+      // Do NOT fallback to self — if no valid target, status is not applied
+      if (!targetId) return;
+    } else {
+      targetId = cmd.targetIds?.[0] || null;
+      if (!targetId) return;
     }
 
     // Resolve placeholder values in data (TARGET_Q → actual q, TARGET_R → actual r)
@@ -1334,10 +1371,17 @@ export class TurnManager {
   _execDelayedSkill(cmd) {
     const pending = this.#pendingFlags.get(cmd.actorId) || {};
     const consumedAmmo = pending.consumedAmmo || 0;
+    // Save target info for homing resolution next turn
+    const targetEntityId = this.getSubmittedTargetId(cmd.actorId);
     this.#delayedCommands.push({
       ...cmd,
       resolveTurn: this.#turnNumber + (cmd.payload.resolveInTurns || 1),
-      payload: { ...cmd.payload, consumedAmmo },
+      payload: {
+        ...cmd.payload,
+        consumedAmmo,
+        targetEntityId: cmd.payload.targetEntityId || targetEntityId || null,
+        targetPos: cmd.targetPos || null,
+      },
     });
     if (pending.consumedAmmo) delete pending.consumedAmmo;
   }
@@ -1799,6 +1843,13 @@ export class TurnManager {
     // skill this turn, then apply PREDATORY_STEP_READY or HUNTED accordingly.
     this._resolveMarkedByKillingIntent();
 
+    // Remove COST_SEALED at end of turn — it only affects current-turn resource gains,
+    // not next turn. Using explicit removal instead of duration tick to avoid the
+    // +1 turn persistence from appliedTurn === turnNumber skip in tickDurations.
+    for (const c of this.#registry.characters()) {
+      this.#buffManager.removeByType(c.id, 'COST_SEALED');
+    }
+
     this.#pendingFlags.clear();
   }
 
@@ -1848,9 +1899,23 @@ export class TurnManager {
       if (cmd.type === CmdType.DELAYED_SKILL && cmd.payload.skillId && this.#skillResolver) {
         const actor = this.#registry.get(cmd.actorId);
         if (actor && actor.alive !== false) {
-          const repeatCount = cmd.payload.consumedAmmo || 1;
+          // For shooter_bell: repeatCount = consumed ammo (each ammo = 1 shot).
+          // For other delayed skills (e.g., bombardment): always 1 invocation.
+          const repeatCount = cmd.payload.consumedAmmo != null && cmd.payload.consumedAmmo > 0
+            ? cmd.payload.consumedAmmo
+            : 1;
+          // Resolve target position: if we have a targetEntityId, track their current position
+          let targetPos = cmd.targetPos;
+          if (cmd.payload.targetEntityId) {
+            const target = this.#registry.get(cmd.payload.targetEntityId);
+            if (target && target.alive !== false) {
+              targetPos = target.position;
+            }
+            // If target is dead/missing, fall through with original targetPos
+          }
+          if (!targetPos) continue;
           const result = this.#skillResolver.resolveMultiCast(
-            cmd.payload.skillId, cmd.actorId, cmd.targetPos, repeatCount
+            cmd.payload.skillId, cmd.actorId, targetPos, repeatCount
           );
           if (result.success) {
             for (const subCmd of result.sequence.commands) {
@@ -2261,7 +2326,9 @@ export class TurnManager {
         if (atTarget) targetEntityId = atTarget.id;
       }
     }
-    this.#submittedSkillMap.set(characterId, { skillId, targetPos, targetEntityId });
+    const list = this.#submittedActionMap.get(characterId) || [];
+    list.push({ skillId, targetPos, targetEntityId, actionSlot: actionPoint?.slot || 'main' });
+    this.#submittedActionMap.set(characterId, list);
 
     return { success: true, sequence: finalSequence, actionPoint };
   }
@@ -2364,31 +2431,33 @@ export class TurnManager {
   }
 
   // --- Submitted-skill query helpers ---
+  _getSubmittedActions(actorId) {
+    return this.#submittedActionMap.get(actorId)
+      || this.#submittedActionSnapshot.get(actorId)
+      || [];
+  }
+
   getSubmittedSkillId(actorId) {
-    // Check live map first (before executeTurn starts), then snapshot (during executeTurn)
-    return this.#submittedSkillMap.get(actorId)?.skillId
-      || this.#submittedSkillSnapshot.get(actorId)?.skillId
-      || null;
+    const list = this._getSubmittedActions(actorId);
+    // Return the last submitted skill (typically the main action)
+    return list.length > 0 ? list[list.length - 1].skillId : null;
   }
 
   didUseResourceAction(actorId) {
-    const entry = this.#submittedSkillMap.get(actorId) || this.#submittedSkillSnapshot.get(actorId);
-    const skillId = entry?.skillId;
-    if (!skillId) return false;
-    return isResourceAction(skillId);
+    return this._getSubmittedActions(actorId).some(a => isResourceAction(a.skillId));
   }
 
   didUseMovementAction(actorId) {
-    const entry = this.#submittedSkillMap.get(actorId) || this.#submittedSkillSnapshot.get(actorId);
-    const skillId = entry?.skillId;
-    if (!skillId) return false;
-    return isMovementSkill(skillId);
+    return this._getSubmittedActions(actorId).some(a => isMovementSkill(a.skillId));
   }
 
   /** Returns the target entity id the actor submitted their action against, if any. */
   getSubmittedTargetId(actorId) {
-    const entry = this.#submittedSkillMap.get(actorId) || this.#submittedSkillSnapshot.get(actorId);
-    return entry?.targetEntityId || null;
+    const list = this._getSubmittedActions(actorId);
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i].targetEntityId) return list[i].targetEntityId;
+    }
+    return null;
   }
 
   reset() {
@@ -2400,8 +2469,8 @@ export class TurnManager {
     this.#lastHitByActor.clear();
     this.#hitBySequenceId.clear();
     this.#hitTargetBySequenceId.clear();
-    this.#submittedSkillMap.clear();
-    this.#submittedSkillSnapshot.clear();
+    this.#submittedActionMap.clear();
+    this.#submittedActionSnapshot.clear();
     this.#shieldHitEntities.clear();
     this.#submittedChars.clear();
     this.#resourceFailed.clear();
@@ -2422,8 +2491,8 @@ export class TurnManager {
       lastHitByActor: [...this.#lastHitByActor.entries()],
       hitBySequenceId: [...this.#hitBySequenceId.entries()],
       hitTargetBySequenceId: [...this.#hitTargetBySequenceId.entries()],
-      submittedSkillMap: [...this.#submittedSkillMap.entries()].map(([id, v]) => [id, { ...v }]),
-      submittedSkillSnapshot: [...this.#submittedSkillSnapshot.entries()].map(([id, v]) => [id, { ...v }]),
+      submittedActionMap: [...this.#submittedActionMap.entries()].map(([id, list]) => [id, list.map(v => ({ ...v }))]),
+      submittedActionSnapshot: [...this.#submittedActionSnapshot.entries()].map(([id, list]) => [id, list.map(v => ({ ...v }))]),
       shieldHitEntities: [...this.#shieldHitEntities],
       submittedChars: [...this.#submittedChars],
       resourceFailed: [...this.#resourceFailed],
@@ -2447,10 +2516,10 @@ export class TurnManager {
     for (const [id, hit] of data.hitBySequenceId || []) this.#hitBySequenceId.set(id, hit);
     this.#hitTargetBySequenceId.clear();
     for (const [id, targetId] of data.hitTargetBySequenceId || []) this.#hitTargetBySequenceId.set(id, targetId);
-    this.#submittedSkillMap.clear();
-    for (const [id, v] of data.submittedSkillMap || []) this.#submittedSkillMap.set(id, { ...v });
-    this.#submittedSkillSnapshot.clear();
-    for (const [id, v] of data.submittedSkillSnapshot || []) this.#submittedSkillSnapshot.set(id, { ...v });
+    this.#submittedActionMap.clear();
+    for (const [id, list] of data.submittedActionMap || []) this.#submittedActionMap.set(id, list.map(v => ({ ...v })));
+    this.#submittedActionSnapshot.clear();
+    for (const [id, list] of data.submittedActionSnapshot || []) this.#submittedActionSnapshot.set(id, list.map(v => ({ ...v })));
     this.#shieldHitEntities = new Set(data.shieldHitEntities || []);
     this.#submittedChars = new Set(data.submittedChars || []);
     this.#resourceFailed = new Set(data.resourceFailed || []);

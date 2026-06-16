@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-06-17 - 修复8个核心bug（4类底层问题）
+
+### A. 灵巧行动多行动记录 (压迫/杀意/死亡如风)
+- `TurnManager.#submittedSkillMap` 改为 `#submittedActionMap`，存储数组而非单值
+- `didUseResourceAction` / `didUseMovementAction` 使用 `.some()` 存在逻辑
+- `getSubmittedSkillId` / `getSubmittedTargetId` 适配数组查询
+
+### B. 丧钟双轨触发与0弹药bug
+- `BELL_PENDING` 的 `forcedSkillId` 改为 `null`（仅占位PASS），实际射击仅走 `DELAYED_SKILL`
+- `_execConsumeResource` 在 ammo=0 时正确标记 sequence 失败
+- `_execDelayedSkill` 保存 `targetEntityId` 和 `targetPos` 用于追踪
+- `_processDelayedCommands` 读取目标当前位置实现追踪，非ammo延迟技能默认 repeatCount=1
+
+### C. 资源获得统一走 ResourceGain hook (引气针封脉)
+- `ResourceSystem.recordCostGain` / `drainTurnCostGains` / `COST_SEALED` hook 新增 `backpackAmmo`
+- `addBackpackAmmo` 自动记录 `recordCostGain`
+- `COST_SEALED` 在 `_resolveEndOfTurnEffects` 末尾显式移除，不再依赖 duration tick
+
+### D. 状态目标与碰撞顺序 (空枪赌/反应装甲/纳刀)
+- `_execApplyStatus` 对 `targetRef === 'TARGET'` 不再 fallback 到 self
+- `role_yan_empty_gun` 添加 `filter: 'ENEMY_CHARACTER'` targeting
+- `YAN_DEATH_WIND` hook 记录 attacker/actionId；`_processDeathWindReloads` 添加敌我检查和 action 去重
+- `SHEATHED` 改为延迟移除（`pendingSheathRemoval` flag），在 speed tier 弹体结算后统一清理
+- `BuffManager.removePendingSheathed()` 新增方法
+- 静止弹体先 `_checkCollisions` 再 `_checkBodyContactAt`（碰撞优先于体接触）
+- 银河远征 provider 添加 10s timeout，避免永久挂起
+
+### 测试
+- skill_test.js: 212 passed
+- role_loadout_test.js: 55 passed
+- role_mechanics_test.js: 38 passed
+- ai_controller_test.js: 8 passed
+
 ## 2026-06-16 - 技能描述正文与元数据分层
 
 - 重新清理 `engine/SkillData.js`，将所有技能 `desc` 收窄为单行效果描述，不再保留范围/威力/速度/费用/CD 等结构化尾巴。

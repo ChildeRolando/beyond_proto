@@ -152,15 +152,18 @@ export class ProjectileCalculator {
       }
     }
 
-    // Stationary projectiles: check body contact at their hex, then expire
+    // Stationary projectiles: check collisions with other projectiles FIRST,
+    // then body contact. This ensures reactive armor / stationary AOE projectiles
+    // collide with incoming melee projectiles before hitting characters.
     const stationaryProjs = this.#projectiles.filter(
       p => p.alive && p.flags.includes('STATIONARY') && p.speed === speedTier
     );
+    this._checkCollisions();
     for (const proj of stationaryProjs) {
+      if (!proj.alive) continue; // destroyed by collision
       const [q, r] = proj.path[proj.stepIndex];
       this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager, options);
     }
-    this._checkCollisions();
     for (const proj of stationaryProjs) {
       if (proj.alive) {
         proj.alive = false;

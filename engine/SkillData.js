@@ -731,7 +731,7 @@ export const SKILLS = {
   },
   role_yan_empty_gun: {
     id: 'role_yan_empty_gun', name: '我赌你的枪里没有子弹', icon: 'assets/skill-icons/role/role_yan_empty_gun.webp', class: '射手', type: '角色',
-    cost: {}, speed: 3, targeting: { shape: 'HEX', range: 6 }, maxUses: 1,
+    cost: {}, speed: 3, targeting: { shape: 'HEX', range: 6, filter: 'ENEMY_CHARACTER' }, maxUses: 1,
     effects: [
       { cmd: 'APPLY_STATUS', status: 'YAN_EMPTY_GUN', target: 'TARGET', duration: 1 },
     ],
