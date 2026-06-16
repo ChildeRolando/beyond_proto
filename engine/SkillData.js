@@ -135,7 +135,7 @@ export const SKILLS = {
 
   mage_qi_siphon: {
     id: 'mage_qi_siphon', name: '引气针', icon: 'assets/skill-icons/mage/mage_qi_siphon.webp', class: '法师', type: '攻击',
-    cost: {}, speed: 4, cooldown: 3, targeting: { shape: 'HEX', range: 99 },
+    cost: {}, speed: 1, cooldown: 3, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'ATTACK_PROJECTILE', power: 0, flags: ['ARMOR_PIERCE', 'COST_SEAL'] },
       { cmd: 'GAIN_RESOURCE', resource: 'qi', amount: 1, condition: 'ON_HIT_TARGET_USED_RESOURCE_ACTION' },

@@ -43,6 +43,7 @@ export class TurnManager {
   #jumpReturns = new Map();  // entityId → { q, r } for end-of-turn jump return
   #lastHitByActor = new Map(); // actorId → boolean (did their last attack hit?)
   #hitBySequenceId = new Map(); // sequenceId → boolean (action-bound hit tracking for ON_HIT rewards)
+  #hitTargetBySequenceId = new Map(); // sequenceId → actual targetId hit by projectile body-contact
   #shieldHitEntities = new Set(); // entityIds whose shield was hit this turn
   #hitEntities = new Set();       // entityIds hit by any damage contact this turn (for 盛怒 cancel)
   #submittedChars = new Set();   // charIds that submitted this turn
@@ -141,6 +142,7 @@ export class TurnManager {
     this.#usedActionIds.clear();
     this.#lastHitByActor.clear();
     this.#hitBySequenceId.clear();
+    this.#hitTargetBySequenceId.clear();
     // Snapshot submitted skills for querying during execution (TARGET_USED_RESOURCE_ACTION etc.)
     this.#submittedSkillSnapshot = new Map(this.#submittedSkillMap);
     this.#submittedSkillMap.clear();
@@ -253,6 +255,7 @@ export class TurnManager {
           if (r.hit) {
             this.#lastHitByActor.set(r.ownerId, true);
             if (r.actionId) this.#hitBySequenceId.set(r.actionId, true);
+            if (r.actionId && r.targetId) this.#hitTargetBySequenceId.set(r.actionId, r.targetId);
           }
         }
         for (const r of results.interceptions) {
@@ -840,7 +843,8 @@ export class TurnManager {
       const hit = seqHit !== undefined ? seqHit : this.#lastHitByActor.get(cmd.actorId);
       if (!hit) return;
       // Must target a character that used a resource action this turn
-      if (!targetEntityId || !this.didUseResourceAction(targetEntityId)) return;
+      const actualTargetId = this.#hitTargetBySequenceId.get(cmd.sequenceId) || targetEntityId;
+      if (!actualTargetId || !this.didUseResourceAction(actualTargetId)) return;
     }
     if (amount === 'RELOAD') {
       const loaded = this.#resourceSystem.reloadFromBackpack(cmd.actorId);
@@ -1665,7 +1669,13 @@ export class TurnManager {
         // Resolve projectiles from speed-2 galaxy commands
         if (this.#projectileCalculator) {
           const projResults = this.#projectileCalculator.resolveStep(2, this.#registry, this.#damageCalculator, this.#buffManager, { rules: this._getRules() });
-          for (const r of projResults.hits) { if (r.hit) { this.#lastHitByActor.set(r.ownerId, true); if (r.actionId) this.#hitBySequenceId.set(r.actionId, true); } }
+          for (const r of projResults.hits) {
+            if (r.hit) {
+              this.#lastHitByActor.set(r.ownerId, true);
+              if (r.actionId) this.#hitBySequenceId.set(r.actionId, true);
+              if (r.actionId && r.targetId) this.#hitTargetBySequenceId.set(r.actionId, r.targetId);
+            }
+          }
           for (const r of projResults.interceptions) { if (r.intercepted && r.interceptorId) { this.#lastHitByActor.set(r.interceptorId, true); if (r.actionId) this.#hitBySequenceId.set(r.actionId, true); } }
 
           // Dispatch ON_ATTACK_MISSED for galaxy projectile attackers.
@@ -2389,6 +2399,7 @@ export class TurnManager {
     this.#pendingFlags.clear();
     this.#lastHitByActor.clear();
     this.#hitBySequenceId.clear();
+    this.#hitTargetBySequenceId.clear();
     this.#submittedSkillMap.clear();
     this.#submittedSkillSnapshot.clear();
     this.#shieldHitEntities.clear();
@@ -2410,6 +2421,7 @@ export class TurnManager {
       jumpReturns: [...this.#jumpReturns.entries()].map(([id, pos]) => [id, { ...pos }]),
       lastHitByActor: [...this.#lastHitByActor.entries()],
       hitBySequenceId: [...this.#hitBySequenceId.entries()],
+      hitTargetBySequenceId: [...this.#hitTargetBySequenceId.entries()],
       submittedSkillMap: [...this.#submittedSkillMap.entries()].map(([id, v]) => [id, { ...v }]),
       submittedSkillSnapshot: [...this.#submittedSkillSnapshot.entries()].map(([id, v]) => [id, { ...v }]),
       shieldHitEntities: [...this.#shieldHitEntities],
@@ -2433,6 +2445,8 @@ export class TurnManager {
     for (const [id, hit] of data.lastHitByActor || []) this.#lastHitByActor.set(id, hit);
     this.#hitBySequenceId.clear();
     for (const [id, hit] of data.hitBySequenceId || []) this.#hitBySequenceId.set(id, hit);
+    this.#hitTargetBySequenceId.clear();
+    for (const [id, targetId] of data.hitTargetBySequenceId || []) this.#hitTargetBySequenceId.set(id, targetId);
     this.#submittedSkillMap.clear();
     for (const [id, v] of data.submittedSkillMap || []) this.#submittedSkillMap.set(id, { ...v });
     this.#submittedSkillSnapshot.clear();

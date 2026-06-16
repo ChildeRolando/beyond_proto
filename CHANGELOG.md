@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-06-16 - 验收修复：引气针命中目标与 P2P turn gating
+
+- `引气针` 速度从 4 修正为 1，与技能描述一致。
+- `ON_HIT_TARGET_USED_RESOURCE_ACTION` 条件收益现在使用 projectile 实际命中的 `targetId`，修复射向远端格但在路径中命中 `盛怒` 目标时不加气的问题。
+- `NetworkManager` 对 `TURN_ACTION` / `TURN_READY` 增加 `turnNumber` gating：旧回合消息丢弃，未来回合消息排队到 `clearTurn()` 后处理，并防止 `onReady` 重入导致慢一回合同步。
+- 新增路径 body-contact 引气针回归和 P2P turnNumber 排队/丢弃回归测试。
+
 ## 2026-06-16 - 重开局冷却重置与 P2P 房间模式锁定
 
 - `GameEngine.reset()` 现在清空 `skillCooldowns`，避免对局结束后重新开始继承上一局技能 CD 和 limited-use 剩余次数。

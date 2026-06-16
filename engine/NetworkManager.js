@@ -17,6 +17,9 @@ export class NetworkManager {
   #myReady = false;
   #remoteReady = false;
   #turnNumber = 1;
+  #futureActionsByTurn = new Map();
+  #futureReadyByTurn = new Set();
+  #executingTurn = false;
 
   // Heartbeat
   #pingInterval = null;
@@ -84,6 +87,7 @@ export class NetworkManager {
     this.#remoteActions = [];
     this.#myReady = false;
     this.#remoteReady = false;
+    this.#drainQueuedMessagesForCurrentTurn();
   }
 
   sendClassPick(playerClass, battleSeed = 0) {
@@ -116,6 +120,9 @@ export class NetworkManager {
     this.#remoteActions = [];
     this.#myReady = false;
     this.#remoteReady = false;
+    this.#futureActionsByTurn.clear();
+    this.#futureReadyByTurn.clear();
+    this.#executingTurn = false;
   }
 
   // --- WebSocket ---
@@ -185,19 +192,11 @@ export class NetworkManager {
         const { payload } = msg;
         switch (payload.type) {
           case 'TURN_ACTION':
-            const remoteAction = {
-              charId: payload.charId,
-              skillId: payload.skillId,
-              targetPos: payload.targetPos,
-            };
-            this.#remoteActions.push(remoteAction);
-            this.#callbacks.onRemoteSubmitted?.(remoteAction);
+            this.#handleTurnAction(payload);
             break;
 
           case 'TURN_READY':
-            this.#remoteReady = true;
-            this.#callbacks.onRemoteReady?.();
-            this.#checkBothReady();
+            this.#handleTurnReady(payload);
             break;
 
           case 'CLASS_PICK':
@@ -225,9 +224,62 @@ export class NetworkManager {
     }
   }
 
-  #checkBothReady() {
-    if (this.#myReady && this.#remoteReady) {
-      this.#callbacks.onReady?.();
+  #handleTurnAction(payload) {
+    const turnNumber = payload.turnNumber ?? this.#turnNumber;
+    if (turnNumber < this.#turnNumber) return;
+    if (turnNumber > this.#turnNumber) {
+      const queued = this.#futureActionsByTurn.get(turnNumber) || [];
+      queued.push(payload);
+      this.#futureActionsByTurn.set(turnNumber, queued);
+      return;
+    }
+    this.#processCurrentTurnAction(payload);
+  }
+
+  #handleTurnReady(payload) {
+    const turnNumber = payload.turnNumber ?? this.#turnNumber;
+    if (turnNumber < this.#turnNumber) return;
+    if (turnNumber > this.#turnNumber) {
+      this.#futureReadyByTurn.add(turnNumber);
+      return;
+    }
+    this.#processCurrentTurnReady();
+  }
+
+  #processCurrentTurnAction(payload) {
+    const remoteAction = {
+      turnNumber: payload.turnNumber ?? this.#turnNumber,
+      charId: payload.charId,
+      skillId: payload.skillId,
+      targetPos: payload.targetPos,
+    };
+    this.#remoteActions.push(remoteAction);
+    this.#callbacks.onRemoteSubmitted?.(remoteAction);
+  }
+
+  #processCurrentTurnReady() {
+    if (this.#remoteReady) return;
+    this.#remoteReady = true;
+    this.#callbacks.onRemoteReady?.();
+    this.#checkBothReady();
+  }
+
+  #drainQueuedMessagesForCurrentTurn() {
+    const actions = this.#futureActionsByTurn.get(this.#turnNumber) || [];
+    this.#futureActionsByTurn.delete(this.#turnNumber);
+    for (const payload of actions) this.#processCurrentTurnAction(payload);
+    if (this.#futureReadyByTurn.delete(this.#turnNumber)) {
+      this.#processCurrentTurnReady();
+    }
+  }
+
+  async #checkBothReady() {
+    if (!this.#myReady || !this.#remoteReady || this.#executingTurn) return;
+    this.#executingTurn = true;
+    try {
+      await this.#callbacks.onReady?.();
+    } finally {
+      this.#executingTurn = false;
     }
   }
 

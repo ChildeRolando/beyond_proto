@@ -95,11 +95,36 @@ console.log('\n=== Test B: qi_siphon vs shooter_roll → caster qi +1 ===');
   engine.resourceSystem.addBackpackAmmo(s, 5);
 
   await doTurn(engine,
-    { id: m, skill: 'mage_qi_siphon', target: { q: 0, r: 1 } },
+    { id: m, skill: 'mage_qi_siphon', target: { q: 1, r: 0 } },
     { id: s, skill: 'shooter_roll', target: { q: 1, r: 0 } }
   );
   check('qi_siphon vs shooter_roll: caster qi +1',
     qi(engine, m) === 1, `qi=${qi(engine, m)}`);
+}
+
+console.log('\n=== Test B2: qi_siphon body-contact hit uses actual targetId for qi gain ===');
+{
+  const engine = new GameEngine();
+  const ids = engine.initBattle({
+    seed: 2202,
+    p1Pos: { q: 1, r: -2 },
+    p2Pos: { q: 1, r: 0 },
+    players: [
+      { playerId: 'p1', class: '法师', roleId: null, loadoutSkillIds: M_8, roleLoadoutSkillIds: [] },
+      { playerId: 'p2', class: '战士', roleId: null, loadoutSkillIds: W_8, roleLoadoutSkillIds: [] },
+    ],
+  });
+  const m = ids.player1Id, w = ids.player2Id;
+
+  await doTurn(engine,
+    { id: m, skill: 'mage_qi_siphon', target: { q: 1, r: 2 } },
+    { id: w, skill: 'warrior_rage', target: null }
+  );
+
+  check('qi_siphon path hit vs warrior_rage: caster qi +1',
+    qi(engine, m) === 1, `qi=${qi(engine, m)}`);
+  check('qi_siphon path hit applies COST_SEALED to actual hit target',
+    engine.buffManager.hasStatus(w, 'COST_SEALED'), `cost sealed applied`);
 }
 
 console.log('\n=== Test C: qi_siphon vs normal attack → target sealed, caster NO qi ===');
@@ -196,6 +221,12 @@ console.log('\n=== Test G: qi_siphon power 0 does not deal damage ===');
   // Actually ARMOR_PIERCE converts all damage to armor-piercing, but power is 0
   check('qi_siphon power 0: target not damaged', hpAfter === hpBefore || hpAfter === undefined,
     `HP before=${hpBefore}, after=${hpAfter}`);
+}
+
+console.log('\n=== Test H: qi_siphon data speed matches desc ===');
+{
+  const { SKILLS } = await import('../engine/SkillData.js');
+  check('qi_siphon speed = 1', SKILLS.mage_qi_siphon.speed === 1, `speed=${SKILLS.mage_qi_siphon.speed}`);
 }
 
 // ================================================================
