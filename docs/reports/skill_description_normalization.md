@@ -11,8 +11,7 @@ Before rewriting descriptions, `tests/skill_desc_format_test.js` was created and
 - **Total skills**: 82
 - **Format test assertions failed**: 229
 - All 82 skills: failed the 3-line format check
-- All 82 skills: failed "技能概念：" prefix check
-- All 82 skills: failed "游戏作用：" prefix check
+- All 82 skills: failed the old concept/effect prefix checks
 - All 82 skills: failed "威力｜速度｜费用：" prefix check
 - 2 skills: contained English word "cost"
 
@@ -21,14 +20,14 @@ Before rewriting descriptions, `tests/skill_desc_format_test.js` was created and
 All skill descriptions follow this exact 3-line format:
 
 ```
-技能概念：<one-sentence summary of what the skill is>
-游戏作用：<factual combat utility, restrictions, triggers, durations, special rules>
-威力｜速度｜费用：威力：<value or dynamic>；速度：<speed>；费用：<resource cost>
+<one-sentence summary of the skill effect>
+<factual combat utility, restrictions, triggers, durations, special rules>
+<range/speed/cost metadata>
 ```
 
 ### Rules enforced:
 1. Three lines separated by `\n` only
-2. Line labels: `技能概念：`, `游戏作用：`, `威力｜速度｜费用：`
+2. Line structure: short effect summary, factual effect detail, metadata line
 3. No English words ("cost", "power", "speed")
 4. No old ` | cost` format separators
 5. No placeholders (`待补充`, `TODO`, `未知`)

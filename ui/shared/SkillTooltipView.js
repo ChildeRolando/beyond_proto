@@ -60,14 +60,19 @@ function cooldownStatusLabel(remaining, base) {
 
 function parseSkillTooltipDesc(skill, desc = '') {
   const lines = String(desc).split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  const title = lines[0] && !/^—+$/.test(lines[0]) ? lines[0] : skill.name;
-  const metaIndex = lines.findIndex(line => /速度\s*\S+/i.test(line) && /CD\s*\S+/i.test(line) && /cost\s*\S+/i.test(line));
+  const title = skill.name || lines[0] || '';
+  const metaIndex = lines.findIndex(line =>
+    /速度\s*[：:;；]?\s*\S+/i.test(line) ||
+    /(?:CD|冷却)\s*[：:;；]?\s*\S+/i.test(line) ||
+    /(?:费用|cost)\s*[：:;；]?\s*\S+/i.test(line)
+  );
   const metaLine = metaIndex >= 0 ? lines[metaIndex] : '';
-  const speed = metaLine.match(/速度\s*([^\s]+)/)?.[1] || String(skill.speed ?? '-');
-  const cd = metaLine.match(/CD\s*([^\s]+)/i)?.[1] || String(skill.cooldown ?? '0');
-  const cost = metaLine.match(/cost\s*(.+)$/i)?.[1]?.trim() || fallbackCostText(skill);
-  const bodyStart = metaIndex >= 0 ? metaIndex + 1 : 1;
-  const body = lines.slice(bodyStart).filter(line => !/^—+$/.test(line)).join(' ') || desc || skill.name;
+  const speed = metaLine.match(/速度\s*[：:;；]?\s*([^；;\s]+)/i)?.[1] || String(skill.speed ?? '-');
+  const cd = metaLine.match(/(?:CD|冷却)\s*[：:;；]?\s*([^；;\s]+)/i)?.[1] || String(skill.cooldown ?? '0');
+  const cost =
+    metaLine.match(/(?:费用|cost)\s*[：:;；]?\s*(.+)$/i)?.[1]?.trim() ||
+    fallbackCostText(skill);
+  const body = lines.filter(line => !/^—+$/.test(line)).join(' ') || skill.name;
   return { title, speed, cd, cost, body };
 }
 

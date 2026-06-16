@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-06-16 - 技能文案去概念化与 tooltip 标题修正
+
+- 删除 `engine/SkillData.js` 中所有技能描述里的概念前缀和效果标签，只保留实际效果与原有数值元数据。
+- `ui/shared/SkillTooltipView.js` 现在始终使用 `skill.name` 作为 tooltip 标题，并保留完整效果正文，不再把 desc 第一行误当成标题。
+- 更新相关回归测试，覆盖技能描述清理、tooltip 标题/正文分离，以及被动技能描述格式。
+- 运行 `npm test` 通过。
+
 ## 2026-06-16 - Resolution v2 旧测试迁移与动作归属补全
 
 - 新增 `ResolutionFinalizer`，在最终 resolution 输出阶段跨 phase 收集 `action_declared` metadata，补全 EOT / delayed events 缺失的 actor/skill 归属。

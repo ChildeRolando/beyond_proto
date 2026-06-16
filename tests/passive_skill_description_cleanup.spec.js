@@ -52,10 +52,10 @@ for (const skill of traits) {
 }
 
 // ═══════════════════════════════════════════
-console.log('\n=== Passive skills: desc is exactly 2 lines (name + body) ===');
+console.log('\n=== Passive skills: desc is exactly 1 line (effect body only) ===');
 for (const skill of traits) {
   const lines = skill.desc.split('\n').filter(l => l.trim());
-  check(`${skill.id}: 2 lines (name + body)`, lines.length === 2,
+  check(`${skill.id}: 1 line (body only)`, lines.length === 1,
     `got ${lines.length}: "${skill.desc.substring(0, 80)}..."`);
 }
 
