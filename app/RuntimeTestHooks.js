@@ -2,7 +2,7 @@
 // Extracted from AppRuntime to keep the composition root small.
 
 import { renderTurnLog } from '../engine/resolution/ResolutionLogRenderer.js';
-import { buildActionSummaries } from '../engine/resolution/ResolutionActionSummarizer.js';
+import { finalizeResolutionForDisplay } from '../engine/resolution/ResolutionFinalizer.js';
 
 export function installRuntimeTestHooks({
   getConfigSession,
@@ -576,21 +576,15 @@ export function installRuntimeTestHooks({
       // Clear submitted state so UI renders correctly for next turn
       battleSession.localSubmittedSet.clear();
 
-      // Capture post-execution snapshots for each phase and build canonical action summaries
+      // Capture post-execution snapshot and finalize display metadata across all phases.
       const finalSnapshot = engine.createSnapshot();
-      const charactersView = { characters: (finalSnapshot.registry?.entities || []).filter(e => e.type === 'CHARACTER') };
-      for (const phase of phases) {
-        phase.afterSnapshot = finalSnapshot;
-        phase.actions = buildActionSummaries(phase, charactersView);
-      }
-
-      const resolution = {
+      const resolution = finalizeResolutionForDisplay({
         schemaVersion: 2,
         turnNumber: engine.turnManager.turnNumber - 1, // turn was already incremented
         phases: phases.filter(p => p.events.length > 0),
         initialSnapshot: null,
         finalSnapshot,
-      };
+      }, finalSnapshot);
 
       // Store and append to CombatLogStore so append-only tests work
       battleSession.lastTurnResolution = structuredClone(resolution);

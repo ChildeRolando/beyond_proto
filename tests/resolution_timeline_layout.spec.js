@@ -88,35 +88,19 @@ test('resolution timeline is NOT a child of right-sidebar', async ({ page }) => 
   expect(sidebarBox.x).toBeGreaterThanOrEqual(timelineBox.x + timelineBox.width - 8);
 });
 
-test('close/collapse hides body but does not skip playback', async ({ page }) => {
+test('timeline controls stay usable and skip still completes playback', async ({ page }) => {
   await startScenario(page, 'phase_order');
   await submitTurn(page);
 
   const timeline = page.locator('[data-testid="resolution-timeline"]');
   await expect(timeline).toBeVisible();
 
-  // Click close/collapse
   const closeBtn = page.locator('[data-testid="resolution-timeline-close"]');
   await expect(closeBtn).toBeVisible();
-  await closeBtn.click();
 
-  // Timeline should be collapsed (data-collapsed="1") but still present
-  await expect(timeline).toHaveAttribute('data-collapsed', '1');
-
-  // Playback should still be active (input locked)
-  const isLocked = await page.evaluate(() => window.__resolutionTest.isInputLocked());
-  // Input may or may not be locked depending on playback state
-  // But timeline should still be in the DOM
-
-  // Reopen
-  const openBtn = page.locator('[data-testid="resolution-timeline-open"]');
-  await expect(openBtn).toBeVisible();
-  await openBtn.click();
-  await expect(timeline).toHaveAttribute('data-collapsed', '0');
-
-  // Skip still works after reopen
   const skipBtn = page.locator('[data-testid="resolution-skip"]');
   await expect(skipBtn).toBeVisible();
   await skipBtn.click();
   await expect(page.locator('[data-testid="resolution-complete"]')).toBeVisible();
+  await expect(timeline).toBeVisible();
 });

@@ -44,28 +44,33 @@ function targetDisplayName(event, charById) {
  * @param {Map} charById — Map of character id → character for target name resolution
  * @returns {object} canonical ActionSummary (for Timeline)
  */
-export function summarizeOne(actionId, events = [], actor = null, skill = null, charById = new Map()) {
+export function summarizeOne(actionId, events = [], actor = null, skill = null, charById = new Map(), actionMeta = null) {
   const actionDeclared = events.find(e => e.eventType === 'action_declared');
+  const meta = actionMeta || null;
 
   // Stable actor metadata: prefer viewState actor, fall back to action_declared fields,
   // then event actorId. This survives battle-end / death / snapshot restore.
-  const actorId = actionDeclared?.actorId || events[0]?.actorId || null;
+  const actorId = actionDeclared?.actorId || events[0]?.actorId || meta?.actorId || null;
   const actorName = actor?.name
     || actionDeclared?.actorName
+    || meta?.actorName
     || actorId
     || '未知角色';
   const ownerId = actor?.ownerId
     || actionDeclared?.actorOwnerId
+    || meta?.actorOwnerId
     || null;
   const actorClass = actor?.class
     || actionDeclared?.actorClass
+    || meta?.actorClass
     || null;
   const actorRoleId = actor?.roleId
     || actionDeclared?.actorRoleId
+    || meta?.actorRoleId
     || null;
 
-  const skillId = actionDeclared?.skillId || events[0]?.skillId || null;
-  const skillDisplayName = skill?.name || getSkillName(skillId);
+  const skillId = actionDeclared?.skillId || events[0]?.skillId || meta?.skillId || null;
+  const skillDisplayName = skill?.name || meta?.skillName || getSkillName(skillId);
   const effectLines = [];
   const effectLineKinds = [];
 
@@ -215,8 +220,9 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
  * @param {object} viewState — { characters[] }
  * @returns {Array} canonical ActionSummary[]
  */
-export function buildActionSummaries(phase, viewState) {
+export function buildActionSummaries(phase, viewState, options = {}) {
   const charById = new Map((viewState?.characters || []).map(char => [char.id, char]));
+  const actionMetaById = options.actionMetaById || new Map();
   const actionMap = new Map();
 
   // Group canonical events by actionId. Events without actionId (e.g. projectile
@@ -224,11 +230,12 @@ export function buildActionSummaries(phase, viewState) {
   for (const event of phase.events || []) {
     if (!event.actionId) continue;
     const actionId = event.actionId;
+    const meta = actionMetaById.get(actionId) || null;
     if (!actionMap.has(actionId)) {
       actionMap.set(actionId, {
         actionId,
-        actorId: event.actorId || null,
-        skillId: event.skillId || null,
+        actorId: event.actorId || meta?.actorId || null,
+        skillId: event.skillId || meta?.skillId || null,
         events: [],
       });
     }
@@ -239,6 +246,6 @@ export function buildActionSummaries(phase, viewState) {
   return [...actionMap.values()].map(action => {
     const actor = action.actorId ? charById.get(action.actorId) || null : null;
     const skill = action.skillId ? SKILLS[action.skillId] || null : null;
-    return summarizeOne(action.actionId, action.events, actor, skill, charById);
+    return summarizeOne(action.actionId, action.events, actor, skill, charById, actionMetaById.get(action.actionId) || null);
   });
 }

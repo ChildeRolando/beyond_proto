@@ -96,39 +96,31 @@ test('Test 2: attack targeting empty hex — timeline correctly shows miss', asy
     window.__resolutionTest.submitAction('enemy_slow', 'mage_blast', { q: 0, r: 0 });
   });
 
-  const resolution = await page.evaluate(() => window.__resolutionTest.buildPreviewResolution());
+  const executed = await page.evaluate(() => window.__resolutionTest.executeRealTurnAndGetResolution());
+  const resolution = executed?.resolution;
 
   // Miss is now recorded as action_failed (canonical), not legacy type 'attack'
-  const enemyAttack = (resolution.phases || [])
-    .flatMap(p => p.events || [])
-    .find(e => e.actorId === 'enemy_slow' && (e.eventType === 'action_failed' || e.eventType === 'character_moved' || e.eventType === 'damage_applied'));
   // The enemy's attack misses — check action_failed exists
   const enemyMiss = (resolution.phases || [])
     .flatMap(p => p.events || [])
-    .find(e => e.actorId === 'enemy_slow' && e.eventType === 'action_failed');
+    .find(e => e.actorId === 'enemy_slow' && e.skillId === 'mage_blast' && e.eventType === 'action_failed');
   expect(enemyMiss).toBeTruthy();
-  expect(enemyMiss.result).toBe('miss');
+  expect(enemyMiss.reason || enemyMiss.result).toBe('miss');
 
-  // Play resolution
-  await page.evaluate(() => window.__resolutionTest.playCurrentResolution());
-  await page.waitForFunction(() => window.__resolutionTest.getTimelineState().activeSpeed === 1);
-
-  const phase1 = page.locator('[data-testid="resolution-phase-speed-1"]');
-  await expect(phase1).toBeVisible();
-  await expect(phase1).toContainText(/挥空|miss|技能发动失败|结算中/i);
+  const missAction = (resolution.phases || [])
+    .flatMap(p => p.actions || [])
+    .find(a => a.actionId === enemyMiss.actionId);
+  expect(missAction).toBeTruthy();
+  expect(missAction.result).toBe('miss');
+  expect(missAction.summaryText).toMatch(/挥空/);
 
   // Hero alive after miss
   const heroAfter = await page.evaluate(() => window.__resolutionTest.getUnit('hero_fast'));
   expect(heroAfter.alive).toBe(true);
 
-  // Final resolution check
-  await page.waitForFunction(() => window.__resolutionTest.getTimelineState().playbackStatus === 'complete');
-  const finalResolution = await page.evaluate(() => window.__resolutionTest.getResolution());
-  const finalMiss = (finalResolution?.phases || [])
-    .flatMap(p => p.events || [])
-    .find(e => e.actorId === 'enemy_slow' && e.eventType === 'action_failed');
-  expect(finalMiss).toBeTruthy();
-  expect(finalMiss.result).toBe('miss');
+  const canonicalLog = await page.evaluate(() => window.__resolutionTest.getCanonicalLog());
+  const missLog = canonicalLog.find(e => e.actionId === enemyMiss.actionId && /挥空/.test(e.text));
+  expect(missLog).toBeTruthy();
 });
 
 // ─── Test 3: same-actor multi-attack — one hit + one miss, per-event results ───

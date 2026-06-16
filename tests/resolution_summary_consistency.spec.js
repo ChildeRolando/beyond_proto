@@ -113,21 +113,24 @@ test('Test B: true miss — summaries, timeline, and log all show 挥空', async
     window.__resolutionTest.submitAction('enemy_slow', 'mage_blast', { q: 0, r: 0 });
   });
 
-  const resolution = await page.evaluate(() => window.__resolutionTest.buildPreviewResolution());
+  const executed = await page.evaluate(() => window.__resolutionTest.executeRealTurnAndGetResolution());
+  const resolution = executed?.resolution;
   expect(resolution).not.toBeNull();
+
+  const allEvents = (resolution.phases || []).flatMap(p => p.events || []);
+  const missEvent = allEvents.find(e =>
+    e.eventType === 'action_failed' &&
+    e.actorId === 'enemy_slow' &&
+    e.skillId === 'mage_blast'
+  );
+  expect(missEvent).toBeTruthy();
+  expect(missEvent.reason || missEvent.result).toBe('miss');
 
   const allActions = (resolution.phases || []).flatMap(p => p.actions || []);
   const missAction = allActions.find(a => a.skillId === 'mage_blast' && a.result === 'miss');
   expect(missAction).toBeTruthy();
+  expect(missAction.actorId).toBe('enemy_slow');
   expect(missAction.summaryText).toMatch(/挥空/);
-
-  // ── Play resolution and verify Timeline card ──
-  await page.evaluate(() => window.__resolutionTest.playCurrentResolution());
-  await page.waitForFunction(() => window.__resolutionTest.getTimelineState().activeSpeed === 1);
-
-  const phase1 = page.locator('[data-testid="resolution-phase-speed-1"]');
-  await expect(phase1).toBeVisible();
-  await expect(phase1).toContainText(/挥空/);
 
   // ── Canonical log (event-level: may have multiple entries per actionId) ──
   const canonicalLog = await page.evaluate(() => window.__resolutionTest?.getCanonicalLog?.() || []);

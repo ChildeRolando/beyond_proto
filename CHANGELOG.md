@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-16 - Resolution v2 旧测试迁移与动作归属补全
+
+- 新增 `ResolutionFinalizer`，在最终 resolution 输出阶段跨 phase 收集 `action_declared` metadata，补全 EOT / delayed events 缺失的 actor/skill 归属。
+- `mage_gather` 回合末 `qi +1` 现在归属到原动作 summary，canonical event type 保持 `resource_changed`，不回退 keyframes / animEvents / animStep / subT / renderBoard 旧协议。
+- `RuntimeTestHooks.executeRealTurnAndGetResolution()` 改为同一 finalizer 输出，并保留 `buildPreviewResolution()` preview-only、不写入 `CombatLogStore` 的边界。
+- 迁移 resolution/timeline/log summary 旧测试到 playback v2 合约：true miss 断言 resolution/log 数据，timeline 接受快速完成的 terminal state，不再硬等旧 `activeSpeed` 中间状态。
+- 新增 finalizer 动作 metadata 回归，并验证旧 11 个 unexpected failure 相关测试组与完整 Playwright suite 通过。
+
 ## 2026-06-16 - 验收修复：引气针命中目标与 P2P turn gating
 
 - `引气针` 速度从 4 修正为 1，与技能描述一致。

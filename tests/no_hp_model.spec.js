@@ -365,7 +365,7 @@ test('Test 7: mage gather produces qi gain in log and resolution', async ({ page
   // ── Assert: Timeline has an action card showing qi gain (EOT phase) ──
   const allActions = (resolution.phases || []).flatMap(p => p.actions || []);
   const gatherGainAction = allActions.find(a =>
-    a.skillId === 'mage_gather' && /获得.*气/.test(a.summaryText)
+    a.skillId === 'mage_gather' && (/气 \+1/.test(a.summaryText) || /获得.*气/.test(a.summaryText))
   );
   expect(gatherGainAction).toBeTruthy();
 });

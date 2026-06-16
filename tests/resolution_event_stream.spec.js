@@ -163,12 +163,10 @@ test('Test 4: CombatLogStore accumulates entries across turns', async ({ page })
     window.__resolutionTest.submitAction('enemy_slow', 'mage_blast', { q: 0, r: 1 });
   });
 
-  // Execute via buildCurrentTurnResolution (sets lastTurnResolution, appends to CombatLogStore)
-  const resolution1 = await page.evaluate(async () => {
-    const res = await window.__resolutionTest.buildPreviewResolution();
-    return res;
+  const result1 = await page.evaluate(async () => {
+    return await window.__resolutionTest.executeRealTurnAndGetResolution();
   });
-  expect(resolution1).not.toBeNull();
+  expect(result1?.resolution).not.toBeNull();
 
   const logAfter1 = await page.evaluate(() => window.__resolutionTest.getCanonicalLog());
   expect(logAfter1.length).toBeGreaterThan(0);
@@ -179,9 +177,10 @@ test('Test 4: CombatLogStore accumulates entries across turns', async ({ page })
     window.__resolutionTest.submitAction('enemy_slow', 'mage_blast', { q: 0, r: 0 });
   });
 
-  await page.evaluate(async () => {
-    await window.__resolutionTest.buildPreviewResolution();
+  const result2 = await page.evaluate(async () => {
+    return await window.__resolutionTest.executeRealTurnAndGetResolution();
   });
+  expect(result2?.resolution).not.toBeNull();
 
   const logAfter2 = await page.evaluate(() => window.__resolutionTest.getCanonicalLog());
 

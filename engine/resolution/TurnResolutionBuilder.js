@@ -1,5 +1,6 @@
 import { GameEngine } from '../GameEngine.js';
 import { buildActionSummaries } from './ResolutionActionSummarizer.js';
+import { finalizeResolutionForDisplay } from './ResolutionFinalizer.js';
 
 /**
  * Extract a { characters } view from a snapshot for buildActionSummaries.
@@ -69,17 +70,7 @@ function createResolutionRecorder({
     finalize({ initialSnapshot, finalSnapshot }) {
       resolution.initialSnapshot = initialSnapshot || null;
       resolution.finalSnapshot = finalSnapshot || null;
-      resolution.phases = resolution.phases.filter(phase => phase.events.length > 0);
-      for (const phase of resolution.phases) {
-        if (!Array.isArray(phase.actions) || phase.actions.length === 0) {
-          const charView = charactersFromSnapshot(phase.afterSnapshot);
-          phase.actions = buildActionSummaries(phase, charView);
-        }
-        phase.actionCount = phase.actions.length;
-        const speedLabel = phase.speed != null ? `Speed ${phase.speed}` : 'End of Turn';
-        phase.summary = `${speedLabel}: ${phase.actionCount} action${phase.actionCount === 1 ? '' : 's'}`;
-      }
-      return structuredClone(resolution);
+      return structuredClone(finalizeResolutionForDisplay(resolution, finalSnapshot));
     },
   };
 }

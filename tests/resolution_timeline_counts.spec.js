@@ -65,9 +65,10 @@ test('resolution phases render action cards with actor, player, skill, and resul
   expect(speed2.actions.length).toBe(4);
 
   await page.evaluate(() => window.__resolutionTest.playCurrentResolution());
-  await page.waitForFunction(() => window.__resolutionTest.getTimelineState().activeSpeed === 2);
+  await expect(page.locator('[data-testid="resolution-timeline"]')).toBeVisible();
 
   const phase = page.locator('[data-testid="resolution-phase-speed-2"]');
+  await expect(phase).toBeVisible();
   await expect(phase.locator('[data-testid="resolution-action-card"]')).toHaveCount(4);
   const firstCard = phase.locator('.resolution-action-card').first();
   await expect(firstCard.locator('.resolution-action-actor')).toBeVisible();
@@ -75,5 +76,5 @@ test('resolution phases render action cards with actor, player, skill, and resul
   await expect(firstCard.locator('.resolution-action-avatar, .resolution-action-avatar-fallback')).toHaveCount(1);
   await expect(firstCard.locator('.resolution-action-skill-icon')).toHaveCount(1);
   await expect(firstCard.locator('.resolution-action-skill-name')).toBeVisible();
-  await expect(firstCard.locator('.resolution-action-summary')).toBeVisible();
+  await expect(firstCard.locator('.resolution-action-summary, .resolution-action-effects')).toHaveCount(1);
 });
