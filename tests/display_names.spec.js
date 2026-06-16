@@ -33,7 +33,7 @@ console.log('\n=== Part 1: getSkillName ===');
 console.log('\n[1a] known skills return Chinese names');
 assertEquals(getSkillName('mage_gather'), '集气护盾', 'mage_gather → 集气护盾');
 assertEquals(getSkillName('warrior_rage'), '盛怒', 'warrior_rage → 盛怒');
-assertEquals(getSkillName('warrior_slash'), '普通斩', 'warrior_slash → 普通斩');
+assertEquals(getSkillName('warrior_slash'), '斩击', 'warrior_slash → 斩击');
 assertEquals(getSkillName('mage_blast'), '气功波', 'mage_blast → 气功波');
 assertEquals(getSkillName('warrior_feint'), '退寸进尺', 'warrior_feint → 退寸进尺');
 

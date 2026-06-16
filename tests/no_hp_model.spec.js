@@ -144,7 +144,7 @@ test('Test 2: tutorial level 2 kill — no hp log, character_died present', asyn
   const declares = canonicalLog.filter(e => e.type === 'declare');
   expect(declares.length).toBeGreaterThanOrEqual(1);
   // The action declaration must reference the slash (skillId or skillName)
-  const slashDeclare = declares.find(e => /普通斩|warrior_slash/.test(e.text));
+  const slashDeclare = declares.find(e => /斩击|warrior_slash/.test(e.text));
   expect(slashDeclare).toBeTruthy();
 });
 

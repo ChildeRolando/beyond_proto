@@ -1293,6 +1293,7 @@ export class TurnManager {
         this._canAttackAffect(actor, e)
       );
       if (targetChar) targetId = targetChar.id;
+      else return;
     } else if (targetRef !== 'SELF') {
       targetId = cmd.targetIds?.[0] || cmd.actorId;
     }

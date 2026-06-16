@@ -467,3 +467,9 @@
 - Added playback locking, skip handling, and visible timeline state hooks for Playwright coverage.
 - Added deterministic resolution timeline tests, including a safe move-before-attack miss scenario.
 - Logged projectile misses so safe-move scenarios surface stable miss text in the combat log.
+
+## 2026-06-17 - 技能描述文案修正
+
+- 修正 `SkillData.js` 中技能效果描述文本，保留用户校准后的文案。
+- 同步提交本次技能名称与 `warrior_lock` 速度调整。
+- 修复目标型状态在目标离开原格后错误回退施加给施法者的问题。

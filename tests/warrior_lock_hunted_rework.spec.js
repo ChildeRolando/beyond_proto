@@ -96,7 +96,7 @@ console.log('\n=== Test C: target does NOT move → gets permanent HUNTED ===');
   check('HUNTED has hunterId = warriorId', huntedBuffs.length > 0 && huntedBuffs[0].data?.hunterId === w);
 }
 
-console.log('\n=== Test D: mark does NOT resolve on same turn it was applied ===');
+console.log('\n=== Test D: same-speed target movement does not self-mark caster ===');
 {
   const { engine, warriorId: w, mageId: m } = initTest({ seed: 4 });
   engine.resourceSystem.set(m, 'qi', 2);
@@ -105,9 +105,10 @@ console.log('\n=== Test D: mark does NOT resolve on same turn it was applied ===
     { id: w, skill: 'warrior_lock', target: { q: 0, r: 1 } },
     { id: m, skill: 'mage_teleport', target: { q: 1, r: 0 } }
   );
-  // Mark was applied this turn, mage moved this turn — but mark resolves at end of NEXT turn
-  // So mark should still be present (it was applied this turn, not expired yet)
-  check('mark still present after same-turn application', engine.buffManager.hasStatus(m, 'MARKED_BY_KILLING_INTENT'));
+  // With warrior_lock at speed 1, same-speed movement can leave the selected hex
+  // before the status command resolves. The status must not fall back to caster.
+  check('target has no stale mark after leaving selected hex', !engine.buffManager.hasStatus(m, 'MARKED_BY_KILLING_INTENT'));
+  check('caster is not self-marked when target leaves', !engine.buffManager.hasStatus(w, 'MARKED_BY_KILLING_INTENT'));
 }
 
 console.log('\n=== Test E: PREDATORY_STEP_READY makes movement skill free ===');

@@ -71,7 +71,7 @@ test('Test 1: warrior_slash kills training dummy — timeline shows hit/kill not
 
   // ── Assert timeline card ──
   const actionCards = page.locator('[data-testid="resolution-action-card"]');
-  const slashCard = actionCards.filter({ hasText: '普通斩' });
+  const slashCard = actionCards.filter({ hasText: '斩击' });
   await expect(slashCard).toBeVisible();
   await expect(slashCard).not.toContainText('挥空');
   await expect(slashCard).toContainText(/命中|击杀/);

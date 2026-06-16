@@ -12,7 +12,7 @@ export const SKILLS = {
       { cmd: 'APPLY_STATUS', status: 'SHIELD_ACTIVE', target: 'SELF' },
       { cmd: 'SET_FLAG', flag: 'pendingQi', value: true, target: 'SELF' },
     ],
-    desc: '自身获得护盾状态；若本回合未受到有效伤害，回合结束时获得气。',
+    desc: '自身获得护盾状态；若本回合未受到攻击，回合结束时获得1气。',
   },
 
   mage_blast: {
@@ -22,7 +22,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 1 },
       { cmd: 'ATTACK_PROJECTILE', power: 100 },
     ],
-    desc: '生成直线飞行弹体，射程无限，用于远距离打击目标。',
+    desc: '生成直线飞行弹体，威力100。',
   },
 
   mage_small_blast: {
@@ -32,7 +32,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'ATTACK_PROJECTILE', power: 100 },
     ],
-    desc: '生成直线飞行弹体，射程5格。',
+    desc: '生成直线飞行弹体，威力100。',
   },
 
   mage_bigblast: {
@@ -42,7 +42,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'ATTACK_PROJECTILE', power: 300 },
     ],
-    desc: '生成直线飞行弹体，射程无限。',
+    desc: '生成直线飞行弹体，威力300。',
   },
 
   mage_burst: {
@@ -60,7 +60,7 @@ export const SKILLS = {
       { cmd: 'ATTACK_PROJECTILE', power: 50 },
       { cmd: 'ATTACK_PROJECTILE', power: 50 },
     ],
-    desc: '生成9枚直线飞行弹体，依次向目标方向飞行。',
+    desc: '生成9枚直线飞行弹体，威力50，依次向目标方向飞行。',
   },
 
   mage_small_qi_blast: {
@@ -70,7 +70,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 1 },
       { cmd: 'ATTACK_PROJECTILE', power: 50 },
     ],
-    desc: '支付cost时获得2层[余波]；[余波]使下次小气功波cost=0并消耗一层。',
+    desc: '生成直线飞行弹体，威力50，支付cost发动时获得两层[余波]:下次释放小气功波时cost=0并消耗一层。',
   },
 
   mage_realm_sweep: {
@@ -80,7 +80,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 7 },
       { cmd: 'SPAWN_STATIONARY_AOE', power: 700, radius: 2 },
     ],
-    desc: '自身半径2内生成静止AOE弹体，对范围内所有敌人造成伤害。',
+    desc: '对目标范围内所有敌人造成威力700伤害。',
   },
 
   mage_buddha_palm: {
@@ -90,7 +90,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
       { cmd: 'SPAWN_STATIONARY_AOE', power: 300, radius: 1, includeCenter: true },
     ],
-    desc: '目标点及相邻6格各生成1个静止弹体（共7个）。',
+    desc: '对目标范围内所有敌人造成威力300伤害。',
   },
 
   mage_teleport: {
@@ -101,7 +101,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 1 },
       { cmd: 'MOVE_TELEPORT', target: 'TARGET_POS' },
     ],
-    desc: '传送至3格范围内未被敌人占据的位置。',
+    desc: '传送至3格范围内位置。',
   },
 
   mage_reactive: {
@@ -110,7 +110,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'SPAWN_STATIONARY_AOE', power: 'SHIELD_CURRENT', radius: 1, includeCenter: true },
     ],
-    desc: '自身及半径1内生成7个静止弹体，每个弹体威力等于当前护盾值。',
+    desc: '引爆自身护盾，对自身半径1范围造成威力等于当前护盾值伤害。',
   },
 
   mage_shield_repair: {
@@ -150,7 +150,7 @@ export const SKILLS = {
       { cmd: 'SET_FLAG', flag: 'jumpReturn', value: true, target: 'SELF' },
       { cmd: 'MOVE_TELEPORT', range: 1 },
     ],
-    desc: '瞬移至1格内位置；回合结束时自动返回移动前位置。',
+    desc: '瞬移至目标位置；回合结束时自动返回移动前位置。',
   },
 
   mage_sword_flight: {
@@ -160,7 +160,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'APPLY_STATUS', status: 'SWORD_FLIGHT', target: 'SELF', duration: -1, data: { direction: 'TOWARD_TARGET', remaining: 2, swordPower: 300, swordEnergy: 300 } },
     ],
-    desc: '向目标方向持续移动2回合（永久状态）；撞击敌人造成300伤害（无视减伤）；剑体可吸收200伤害后被摧毁。',
+    desc: '向目标方向移动2格，每回合重复此效果；撞击敌人造成300伤害（无视减伤）；飞剑吸收300伤害后被摧毁。',
   },
 
   mage_dimension_gate: {
@@ -170,7 +170,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'CREATE_GATE', target: 'TARGET_POS', orientation: 'HORIZONTAL' },
     ],
-    desc: '目标格创建水平方向次元之门；一名角色穿越后门关闭。',
+    desc: '在目标位置创建次元之门；能吸收所有飞行道具；一名角色穿越后门关闭。',
   },
 
   mage_breath_small: {
@@ -180,7 +180,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'GAIN_RESOURCE', resource: 'qi', amount: 5 },
     ],
-    desc: '消耗3气，获得5气，净增2气。',
+    desc: '获得5气。',
   },
 
   mage_breath_big: {
@@ -190,7 +190,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
       { cmd: 'GAIN_RESOURCE', resource: 'qi', amount: 8 },
     ],
-    desc: '消耗5气，获得8气，净增3气。',
+    desc: '获得8气。',
   },
 
   mage_breath_tide: {
@@ -200,7 +200,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
       { cmd: 'APPLY_STATUS', status: 'BREATH_TIDE', target: 'SELF', duration: -1 },
     ],
-    desc: '获得永久气海潮汐状态（BREATH_TIDE）；此后所有气获得量翻倍。',
+    desc: '获得永久[气海潮汐]状态:此后所有气获得量翻倍。',
   },
 
   mage_lion_roar: {
@@ -210,7 +210,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'SPAWN_STATIONARY_AOE', power: 300, radius: 1 },
     ],
-    desc: '自身周围半径1格（不含中心）生成静止AOE弹体。',
+    desc: '对目标范围内所有敌人造成威力300伤害。',
   },
 
   mage_double_cast: {
@@ -250,7 +250,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 5 },
       { cmd: 'GALAXY_SUBTURN', repeatCount: 3 },
     ],
-    desc: '获得3个额外子回合；所有子回合与本回合在同一结算阶段按顺序依次结算。',
+    desc: '获得3个额外子回合；所有子回合与本行动在同一结算阶段按顺序依次结算。',
   },
 
   mage_formation: {
@@ -260,7 +260,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 3 },
       { cmd: 'CREATE_FORMATION', energy: 300, talismans: [] },
     ],
-    desc: '目标格及半径1格设为阵法区域；阵法能量300，吸收范围内友方受到的伤害；阵眼被击中时阵法破灭。',
+    desc: '目标格及半径1格设为阵法区域；阵法能量300，敌方攻击进入范围内会被阵法能量抵消，攻击威力:阵法能量=1:1。',
   },
 
   mage_dimension_slash: {
@@ -270,7 +270,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'qi', amount: 10 },
       { cmd: 'ATTACK_LINE', power: 1000 },
     ],
-    desc: '生成直线攻击，对路径上所有单位造成伤害；可在次元中生效。',
+    desc: '生成直线攻击，对路径上所有单位造成伤害；可对次元中单位生效。',
   },
 
   // =========================================================================
@@ -282,7 +282,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'SET_FLAG', flag: 'pendingRage', value: true, target: 'SELF' },
     ],
-    desc: '获得2点怒气；设置本回合已使用怒气标记，本回合不能再使用攻击技能。',
+    desc: '获得怒气上升状态；若本回合未受到攻击，回合结束时获得2怒气。',
   },
 
   warrior_move: {
@@ -291,17 +291,17 @@ export const SKILLS = {
     effects: [
       { cmd: 'MOVE_WALK', target: 'TARGET_POS' },
     ],
-    desc: '移动至1格内相邻位置（可走斜线）。',
+    desc: '移动至目标位置。',
   },
 
   warrior_slash: {
-    id: 'warrior_slash', name: '普通斩', icon: 'assets/skill-icons/warrior/warrior_slash.webp', class: '战士', type: '攻击',
+    id: 'warrior_slash', name: '斩击', icon: 'assets/skill-icons/warrior/warrior_slash.webp', class: '战士', type: '攻击',
     cost: {}, speed: 1, targeting: { shape: 'HEX', range: 1 },
     effects: [
       { cmd: 'ATTACK_MELEE', power: 100, range: 1 },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '对1格范围内目标造成近战伤害；命中时获得1点怒气。',
+    desc: '对目标斩出一道剑气，威力100；命中时获得1点怒气。',
   },
 
   warrior_dash: {
@@ -312,7 +312,7 @@ export const SKILLS = {
       { cmd: 'WINDSTEP_SLASH', power: 100, radius: 1 },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '位移至目标相邻格；终点半径1内自动斩击（优先角色，其次弹体）；命中时获得1点怒气。',
+    desc: '位移至目标位置；对终点半径1内敌方单位自动索敌进行一次威力100的斩击（优先角色，其次弹体）；命中时获得1点怒气。',
   },
 
   warrior_sheathe: {
@@ -321,7 +321,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SHEATHED', target: 'SELF' },
     ],
-    desc: '获得纳刀状态；自动反击进入范围的弹体或敌人，反击威力300。',
+    desc: '获得纳刀状态；自动反击进入范围的弹体，反击威力300。在成功斩破弹体后获得buff[引刀]：立即刷新居合斩cd，下一次居合斩cost = 0。持续到下一回合结束。',
   },
 
   warrior_feint: {
@@ -334,7 +334,7 @@ export const SKILLS = {
       { cmd: 'ATTACK_MELEE', power: 100, range: 1, origin: 'NEW_POS', subSpeed: 0 },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '先背离目标退1格，再向目标方向冲2格，最后在新位置近战斩击；命中时获得1点怒气。',
+    desc: '先在2速阶段背离目标退1格，再0速阶段向目标方向冲2格并斩击路径上的敌人，威力100；命中时获得1点怒气。',
   },
 
   warrior_swallow: {
@@ -346,7 +346,7 @@ export const SKILLS = {
       { cmd: 'MOVE_DASH', direction: 'AWAY_FROM_TARGET', distance: 1 },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '对目标造成近战伤害后自动后跳1格；命中时获得1点怒气。',
+    desc: '斩击目标并后跳1格，威力100；命中时获得1点怒气。',
   },
 
   warrior_iaido: {
@@ -357,7 +357,7 @@ export const SKILLS = {
       { cmd: 'ATTACK_MELEE', power: 100, range: 4 },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '若处于纳刀状态则消耗纳刀状态，范围扩展至2格且费用变为0；否则范围1格。命中时获得1点怒气。',
+    desc: '斩击目标敌人，威力100。命中时获得1点怒气。',
   },
 
   warrior_hook: {
@@ -367,7 +367,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 2 },
       { cmd: 'MOVE_PULL', target: 'FAN_AREA' },
     ],
-    desc: '将前方扇形3格范围内敌人拉向自身；扇形宽度随距离递增（第1排1格宽，第2排2格宽，第3排3格宽）。',
+    desc: '将前方扇形范围内所有敌人拉到自身身前。',
   },
 
   warrior_pressure: {
@@ -382,11 +382,11 @@ export const SKILLS = {
 
   warrior_lock: {
     id: 'warrior_lock', name: '杀意锁定', icon: 'assets/skill-icons/warrior/warrior_lock.webp', class: '战士', type: '特殊',
-    cost: {}, speed: 4, targeting: { shape: 'HEX', range: 99 },
+    cost: {}, speed: 1, targeting: { shape: 'HEX', range: 99 },
     effects: [
       { cmd: 'APPLY_STATUS', status: 'MARKED_BY_KILLING_INTENT', target: 'TARGET', duration: 1, data: { casterId: 'ACTOR_ID' } },
     ],
-    desc: '对6格内目标施加锁定状态（永久）；锁定期间目标定身且禁止穿越次元；被击中后锁定移除。',
+    desc: '标记目标 1 回合。如果目标下回合移动，自身下一次移动类行动[免费化][灵巧化]；如果目标不移动，目标获得永久buff[被追猎]：朝着这个目标使用移动类行动时移动力+1。',
   },
 
   warrior_blink_strike: {
@@ -398,7 +398,7 @@ export const SKILLS = {
       { cmd: 'ATTACK_MELEE', power: 100, range: 1, origin: 'NEW_POS' },
       { cmd: 'GAIN_RESOURCE', resource: 'rage', amount: 1, condition: 'ON_HIT' },
     ],
-    desc: '传送至5格内目标背后位置，然后进行近战斩击；命中时获得1点怒气。',
+    desc: '传送至目标背后位置，然后进行斩击，威力100；命中时获得1点怒气。对[被追猎]的目标使用冷血追命，不会使其进入cd，且无视范围限制。',
   },
 
   warrior_flash: {
@@ -419,7 +419,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 7 },
       { cmd: 'APPLY_STATUS', status: 'METEOR_ASCENDING', target: 'SELF', duration: 1, data: { targetQ: 'TARGET_Q', targetR: 'TARGET_R' } },
     ],
-    desc: '获得陨星升空状态（持续1回合，升空期间无敌）；下回合自动在目标格坠落并造成AOE伤害。',
+    desc: '获得陨星升空状态（持续1回合，升空期间无敌）；下回合2速阶段在目标范围中心坠落并对范围内所有敌人造成威力500伤害。',
   },
 
   warrior_meteor_resolve: {
@@ -428,7 +428,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'METEOR_DROP' },
     ],
-    desc: '在陨星标记位置坠落，对半径1格内敌人造成500伤害。此技能由系统自动执行，不可主动选择。',
+    desc: '在陨星标记位置坠落，对范围内所有敌人造成500伤害。此技能由系统自动执行，不可主动选择。',
   },
 
   warrior_formation_break: {
@@ -447,7 +447,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 7 },
       { cmd: 'SPAWN_STATIONARY_AOE', power: 700, radius: 2 },
     ],
-    desc: '自身半径2内生成静止AOE弹体，对范围内所有敌人造成伤害。',
+    desc: '对目标范围内所有敌人造成威力700伤害。',
   },
 
   warrior_dimension_slash: {
@@ -457,7 +457,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'rage', amount: 10 },
       { cmd: 'ATTACK_LINE', power: 1000 },
     ],
-    desc: '生成直线攻击，对路径上所有单位造成伤害；可在次元中生效。',
+    desc: '对目标范围内所有敌人造成威力1000伤害。',
   },
 
   // =========================================================================
@@ -470,7 +470,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 1 },
       { cmd: 'ATTACK_PROJECTILE', power: 100, flags: ['CASING_DROP'] },
     ],
-    desc: '生成直线飞行弹体，射程6格；弹壳掉落在自身周围。',
+    desc: '向目标方向射击，威力100；掉落1弹壳在自身位置。',
   },
 
   shooter_reload: {
@@ -479,7 +479,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'RELOAD_AMMO' },
     ],
-    desc: '将背包中的弹药填充至当前弹药槽（当前弹药上限6）；填充量取决于背包弹药数量。',
+    desc: '将背包中的弹药尽可能填充至弹匣；填充量取决于背包弹药数量。',
   },
 
   shooter_roll: {
@@ -489,7 +489,7 @@ export const SKILLS = {
       { cmd: 'MOVE_TELEPORT', target: 'TARGET_POS' },
       { cmd: 'COLLECT_CASINGS', area: 'ADJACENT' },
     ],
-    desc: '传送至2格范围内位置；自动捡起新位置周围相邻格的弹壳。',
+    desc: '移动到目标位置；自动捡起新位置周围相邻格的弹壳。',
   },
 
   shooter_bell: {
@@ -500,7 +500,7 @@ export const SKILLS = {
       { cmd: 'DELAYED_SKILL', resolveInTurns: 1, skillId: 'shooter_bell_resolve' },
       { cmd: 'APPLY_STATUS', status: 'BELL_PENDING', target: 'SELF', duration: 1 },
     ],
-    desc: '消耗当前所有弹药；获得丧钟待发状态（持续1回合）；下回合自动对目标射出必中弹体，弹体数量取决于消耗的弹药量。',
+    desc: '消耗当前所有弹药；获得丧钟待发状态（持续1回合）；下回合2速阶段对目标倾泻所有子弹，单发威力100；掉落等量弹壳在自身位置。',
   },
 
   shooter_aim: {
@@ -509,7 +509,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SPEED_BOOST', target: 'SELF', duration: 1 },
     ],
-    desc: '获得速度提升状态（持续1回合）；下回合速度+1。',
+    desc: '获得速度提升状态（持续1回合）：行动速度+1。',
   },
 
   shooter_predict: {
@@ -518,7 +518,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'APPLY_STATUS', status: 'SURE_HIT', target: 'TARGET', duration: 1 },
     ],
-    desc: '对6格内目标施加必中标记（持续1回合）；下回合对该目标的攻击必定命中。',
+    desc: '对目标施加必中标记（持续1回合）：对该目标的攻击必定命中。',
   },
 
   shooter_hook: {
@@ -529,7 +529,7 @@ export const SKILLS = {
       { cmd: 'MOVE_GRAPNEL' },
       { cmd: 'COLLECT_CASINGS', area: 'PATH' },
     ],
-    desc: '钩锁拉向5格内目标位置；沿路径收集弹壳。',
+    desc: '释放钩锁将自身拉向目标位置；并沿路径收集弹壳。',
   },
 
   shooter_slow_shot: {
@@ -540,7 +540,7 @@ export const SKILLS = {
       { cmd: 'ATTACK_PROJECTILE', power: 100, flags: ['CASING_DROP'] },
       { cmd: 'APPLY_STATUS', status: 'ROOTED', target: 'TARGET', duration: 2 },
     ],
-    desc: '生成直线飞行弹体，射程6格；命中后对目标施加定身状态（持续2回合）；弹壳掉落。',
+    desc: '向目标方向射出定身子弹，威力100；命中后对目标施加定身状态（持续2回合）；掉落1弹壳在自身位置。',
   },
 
   shooter_armor_pierce: {
@@ -550,7 +550,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 2 },
       { cmd: 'ATTACK_PROJECTILE', power: 100, flags: ['CASING_DROP', 'ARMOR_PIERCE'] },
     ],
-    desc: '生成直线飞行弹体，射程6格；弹体具有穿甲效果（穿透护盾、格挡、防御阵符）；弹壳掉落。',
+    desc: '向目标方向射出穿甲子弹，威力100；弹体具有穿甲效果（穿透护盾、格挡、防御阵符）；掉落1弹壳在自身位置。',
   },
 
   shooter_cover_fire: {
@@ -573,7 +573,7 @@ export const SKILLS = {
       { cmd: 'SPAWN_STATIONARY_AOE', power: 100, radius: 2, dropCasing: true },
       { cmd: 'SPAWN_STATIONARY_AOE', power: 100, radius: 2, dropCasing: true },
     ],
-    desc: '自身半径2格内连续生成4波静止AOE弹体，每波掉落1个弹壳。',
+    desc: '对范围内连续扫射，造成威力100伤害4次，每波扫射掉落1个弹壳在自身位置。',
   },
 
   shooter_bell_resolve: {
@@ -592,7 +592,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 6 },
       { cmd: 'ATTACK_PROJECTILE', power: 1000, flags: ['ARMOR_PIERCE', 'CASING_DROP'] },
     ],
-    desc: '生成直线飞行弹体，射程10格；具备穿甲效果，可在次元中造成伤害；弹壳掉落。',
+    desc: '向目标方向射击，威力1000；具备穿甲效果，可对次元中的单位造成伤害；1弹壳掉落在自身位置。',
   },
 
   shooter_iaido: {
@@ -602,7 +602,7 @@ export const SKILLS = {
       { cmd: 'CONSUME_RESOURCE', resource: 'ammo', amount: 2 },
       { cmd: 'ATTACK_PROJECTILE', power: 100, flags: ['CASING_DROP'] },
     ],
-    desc: '生成直线飞行弹体，射程6格；弹壳掉落。',
+    desc: '向目标方向快速射击，威力100；1弹壳掉落在自身位置。',
   },
 
     // =========================================================================
@@ -702,7 +702,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'PASS', placeholderMessage: '灵巧行动是枪侠被动特质，不作为主动技能提交' },
     ],
-    desc: '每回合主行动后可额外提交一个费用为0的行动。此技能为被动特质标记，不可主动选择。',
+    desc: '每回合可额外提交一个费用为0的行动。',
   },
   role_helldiver_supply_drop: {
     id: 'role_helldiver_supply_drop', name: '呼叫补给', icon: 'assets/skill-icons/role/role_helldiver_supply_drop.webp', class: '射手', type: '角色',
@@ -710,7 +710,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'DROP_SUPPLY_CRATE' },
     ],
-    desc: '目标格空投降落补给箱；角色移至该格可拾取，背包弹药+3。冷却6回合。',
+    desc: '标记目标位置以呼叫一次空投补给；角色拾取后背包弹药+3。',
   },
   role_helldiver_bombardment: {
     id: 'role_helldiver_bombardment', name: '呼叫轰炸', icon: 'assets/skill-icons/role/role_helldiver_supply_drop.webp', class: '射手', type: '角色',
@@ -719,10 +719,10 @@ export const SKILLS = {
       { cmd: 'DELAYED_SKILL', resolveInTurns: 1, skillId: 'role_helldiver_bombardment_resolve' },
       { cmd: 'APPLY_STATUS', status: 'BOMBARDMENT_PENDING', target: 'SELF', duration: 1 },
     ],
-    desc: '标记目标位置并获得轰炸待发状态（持续1回合）；下回合自动发射弹体。冷却6回合。',
+    desc: '标记目标位置以呼叫一次轰炸支援；下回合自动轰炸目标位置，威力100。',
   },
   role_helldiver_bombardment_resolve: {
-    id: 'role_helldiver_bombardment_resolve', name: '轰炸·弹', class: '射手', type: '角色',
+    id: 'role_helldiver_bombardment_resolve', name: '轰炸', class: '射手', type: '角色',
     cost: {}, speed: 1, targeting: { shape: 'HEX', range: 6 }, hidden: true,
     effects: [
       { cmd: 'ATTACK_PROJECTILE', power: 100 },
@@ -735,7 +735,7 @@ export const SKILLS = {
     effects: [
       { cmd: 'APPLY_STATUS', status: 'YAN_EMPTY_GUN', target: 'TARGET', duration: 1 },
     ],
-    desc: '对6格内目标施加标记状态（持续至本回合结束）；若本回合目标未发起攻击，则剥夺其全部资源。每场战斗仅限使用1次。',
+    desc: '对目标施加标记状态（持续至本回合结束）；若本回合目标未发起攻击，则移除其全部资源。每场战斗仅限使用1次。',
   },
 
   // === Passive trait skills (selectable in loadout, auto-applied in battle) ===

@@ -84,7 +84,7 @@ test('Test 2: timeline is concise, log has detailed event-level entries', async 
   await page.waitForFunction(() => window.__tutorialTest?.getState?.()?.levelComplete === true);
 
   // ── Timeline is concise (action-level summary) ──
-  const slashCard = page.locator('[data-testid="resolution-action-card"]').filter({ hasText: '普通斩' });
+  const slashCard = page.locator('[data-testid="resolution-action-card"]').filter({ hasText: '斩击' });
   await expect(slashCard).toBeVisible();
   const cardText = await slashCard.textContent();
   // Timeline card is short — a single action summary, not detailed event dump

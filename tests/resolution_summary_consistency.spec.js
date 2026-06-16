@@ -67,7 +67,7 @@ test('Test A: tutorial level 2 kill — summaries, timeline, and log all show �
   expect(slashAction.killed || slashAction.result === 'kill').toBe(true);
 
   // ── Assert Timeline card shows 击杀 ──
-  const slashCard = page.locator('[data-testid="resolution-action-card"]').filter({ hasText: '普通斩' });
+  const slashCard = page.locator('[data-testid="resolution-action-card"]').filter({ hasText: '斩击' });
   await expect(slashCard).toBeVisible();
   await expect(slashCard).toContainText(/击杀|命中/);
 
