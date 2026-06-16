@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-06-16 - 技能描述正文与元数据分层
+
+- 重新清理 `engine/SkillData.js`，将所有技能 `desc` 收窄为单行效果描述，不再保留范围/威力/速度/费用/CD 等结构化尾巴。
+- `ui/shared/SkillTooltipView.js` 新增 `normalizeSkillDescriptionBody`，tooltip 正文会防御性过滤旧 meta 行，标题仍固定使用 `skill.name`。
+- 更新技能描述格式回归与 tooltip 回归，覆盖单行 effect-only 文案和专门元数据区域。
+- `npm test` 通过。
+
 ## 2026-06-16 - 技能文案去概念化与 tooltip 标题修正
 
 - 删除 `engine/SkillData.js` 中所有技能描述里的概念前缀和效果标签，只保留实际效果与原有数值元数据。

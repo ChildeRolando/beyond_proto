@@ -12,7 +12,7 @@ Before rewriting descriptions, `tests/skill_desc_format_test.js` was created and
 - **Format test assertions failed**: 229
 - All 82 skills: failed the 3-line format check
 - All 82 skills: failed the old concept/effect prefix checks
-- All 82 skills: failed "威力｜速度｜费用：" prefix check
+- All 82 skills: failed the structured meta prefix check
 - 2 skills: contained English word "cost"
 
 ## Format Standard

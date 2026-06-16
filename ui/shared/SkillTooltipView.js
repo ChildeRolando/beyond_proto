@@ -58,21 +58,24 @@ function cooldownStatusLabel(remaining, base) {
   return `${remainingText}/${baseText}回合`;
 }
 
+export function normalizeSkillDescriptionBody(skill, desc = '') {
+  const metaLinePattern = /^(范围|施法范围|作用范围|威力|速度|费用|cost|CD|冷却)\s*[：:]/i;
+  return String(desc)
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .filter(line => line !== skill.name)
+    .filter(line => !/^—+$/.test(line))
+    .filter(line => !metaLinePattern.test(line))
+    .join(' ');
+}
+
 function parseSkillTooltipDesc(skill, desc = '') {
-  const lines = String(desc).split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  const title = skill.name || lines[0] || '';
-  const metaIndex = lines.findIndex(line =>
-    /速度\s*[：:;；]?\s*\S+/i.test(line) ||
-    /(?:CD|冷却)\s*[：:;；]?\s*\S+/i.test(line) ||
-    /(?:费用|cost)\s*[：:;；]?\s*\S+/i.test(line)
-  );
-  const metaLine = metaIndex >= 0 ? lines[metaIndex] : '';
-  const speed = metaLine.match(/速度\s*[：:;；]?\s*([^；;\s]+)/i)?.[1] || String(skill.speed ?? '-');
-  const cd = metaLine.match(/(?:CD|冷却)\s*[：:;；]?\s*([^；;\s]+)/i)?.[1] || String(skill.cooldown ?? '0');
-  const cost =
-    metaLine.match(/(?:费用|cost)\s*[：:;；]?\s*(.+)$/i)?.[1]?.trim() ||
-    fallbackCostText(skill);
-  const body = lines.filter(line => !/^—+$/.test(line)).join(' ') || skill.name;
+  const title = skill.name || '';
+  const speed = String(skill.speed ?? '-');
+  const cd = String(skill.cooldown ?? '0');
+  const cost = fallbackCostText(skill);
+  const body = normalizeSkillDescriptionBody(skill, desc) || skill.name;
   return { title, speed, cd, cost, body };
 }
 
