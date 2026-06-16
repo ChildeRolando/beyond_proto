@@ -74,8 +74,8 @@ console.log('\n=== Test A (fixed): qi_siphon vs warrior_rage → caster qi +1 ==
   );
   check('qi_siphon: caster qi +1 (target used warrior_rage)',
     qi(engine, m) === 1, `qi=${qi(engine, m)}`);
-  check('qi_siphon: target has COST_SEALED',
-    engine.buffManager.hasStatus(w, 'COST_SEALED'), `cost sealed applied`);
+  check('qi_siphon: COST_SEALED removed after turn',
+    !engine.buffManager.hasStatus(w, 'COST_SEALED'), `cost seal should be turn-scoped`);
 }
 
 console.log('\n=== Test B: qi_siphon vs shooter_roll → caster qi +1 ===');
@@ -123,8 +123,8 @@ console.log('\n=== Test B2: qi_siphon body-contact hit uses actual targetId for 
 
   check('qi_siphon path hit vs warrior_rage: caster qi +1',
     qi(engine, m) === 1, `qi=${qi(engine, m)}`);
-  check('qi_siphon path hit applies COST_SEALED to actual hit target',
-    engine.buffManager.hasStatus(w, 'COST_SEALED'), `cost sealed applied`);
+  check('qi_siphon path hit COST_SEALED is turn-scoped',
+    !engine.buffManager.hasStatus(w, 'COST_SEALED'), `cost seal should be removed after turn`);
 }
 
 console.log('\n=== Test C: qi_siphon vs normal attack → target sealed, caster NO qi ===');
@@ -147,8 +147,8 @@ console.log('\n=== Test C: qi_siphon vs normal attack → target sealed, caster 
   );
   check('qi_siphon vs normal attack: caster NO qi',
     qi(engine, m) === 0, `qi=${qi(engine, m)}`);
-  check('qi_siphon vs normal attack: target has COST_SEALED',
-    engine.buffManager.hasStatus(w, 'COST_SEALED'));
+  check('qi_siphon vs normal attack: COST_SEALED removed after turn',
+    !engine.buffManager.hasStatus(w, 'COST_SEALED'));
 }
 
 console.log('\n=== Test D: qi_siphon cooldown 3 ===');

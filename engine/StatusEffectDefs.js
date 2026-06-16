@@ -130,7 +130,6 @@ export const STATUS_DEFS = {
     desc: '下回合自动射出储存的全部弹药（UI提示用；DELAYED_SKILL 实际触发）',
     duration: 1,
     blocking: false,
-    forcedSkillId: null,  // null = forced pass; actual shots fire via DELAYED_SKILL
   },
   BOMBARDMENT_PENDING: {
     id: 'BOMBARDMENT_PENDING',

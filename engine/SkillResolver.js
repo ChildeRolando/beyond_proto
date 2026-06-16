@@ -70,6 +70,16 @@ export class SkillResolver {
         }
       }
     }
+    if (!opts.skipCostCheck) {
+      for (const eff of skill.effects || []) {
+        if (eff.cmd !== 'CONSUME_RESOURCE' || eff.amount !== 'ALL') continue;
+        const available = this.resourceSystem.get(actorId, eff.resource);
+        const pending = opts.pendingResources?.[eff.resource] || 0;
+        if ((available + pending) <= 0) {
+          return { success: false, error: 'insufficient_resources' };
+        }
+      }
+    }
 
     const sid = seqId();
 
@@ -412,7 +422,13 @@ export class SkillResolver {
       case 'SPAWN_STATIONARY_AOE':
         return { ...base, type: CmdType.SPAWN_STATIONARY_AOE,
           targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null,
-          payload: { power: eff.power, radius: eff.radius, dropCasing: eff.dropCasing || false, includeCenter: eff.includeCenter || false } };
+          payload: {
+            power: eff.power,
+            radius: eff.radius,
+            dropCasing: eff.dropCasing || false,
+            includeCenter: eff.includeCenter || false,
+            flags: eff.flags || [],
+          } };
 
       case 'BREAK_FORMATION':
         return { ...base, type: CmdType.BREAK_FORMATION,

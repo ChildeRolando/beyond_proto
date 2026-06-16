@@ -75,10 +75,10 @@ export class GameEngine {
 
     this.turnManager.setGalaxyProvider(async (actorId) => {
       if (this._galaxyQueue.length > 0) return this._galaxyQueue.shift();
-      return Promise.race([
-        new Promise(resolve => { this._galaxyResolver = resolve; }),
-        new Promise(resolve => setTimeout(() => resolve(null), 10000)),
-      ]);
+      if (this._rules?.enableGalaxyInteractive === true) {
+        return new Promise(resolve => { this._galaxyResolver = resolve; });
+      }
+      return null;
     });
   }
 

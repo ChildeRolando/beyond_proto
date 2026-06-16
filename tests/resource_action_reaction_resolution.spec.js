@@ -102,7 +102,7 @@ console.log('\n=== Integration: qi_siphon + pressure interaction ===');
   );
   check('qi_siphon + warrior_rage: caster qi +1',
     engine.resourceSystem.get(m, 'qi') === 1, `qi=${engine.resourceSystem.get(m, 'qi')}`);
-  check('target COST_SEALED', engine.buffManager.hasStatus(w, 'COST_SEALED'));
+  check('target COST_SEALED removed after turn', !engine.buffManager.hasStatus(w, 'COST_SEALED'));
 }
 
 console.log('\n=== Integration: turnManager query helpers ===');

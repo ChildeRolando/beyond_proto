@@ -52,6 +52,7 @@ export class TurnManager {
   #resourceFailed = new Set();  // sequenceIds whose resource cost check failed at exec time
   #canceledSequences = new Set(); // sequenceIds canceled by interruption/reaction effects
   #projectileAttackers = new Set(); // actorIds that fired projectiles this speed tier
+  #deathWindProcessedMissActionIds = new Set(); // per-turn `${yanId}:${actionId}` de-dup
   #pendingAttackRecords = [];        // internal attack records for hit/miss finalization (not in resolution)
   #lastActionContext = null;          // saved action context for projectile damage attribution
   #usedActionIds = new Set();         // actionIds that have started cooldown/used this turn
@@ -139,6 +140,7 @@ export class TurnManager {
     this.#resourceFailed.clear();
     this.#canceledSequences.clear();
     this.#projectileAttackers.clear();
+    this.#deathWindProcessedMissActionIds.clear();
     this.#usedActionIds.clear();
     this.#lastHitByActor.clear();
     this.#hitBySequenceId.clear();
@@ -190,9 +192,10 @@ export class TurnManager {
     }
     this.#speedGroups = groups;
 
-    // Process delayed commands from previous turns before speed-tier loop
-    // (so created projectiles are resolved during this turn's projectile steps)
-    this._processDelayedCommands();
+    // Process delayed commands without a speed binding before speed-tier loop.
+    // Speed-bound delayed skills expand inside their tier, after faster movement
+    // has resolved, so targeting can observe current positions.
+    this._processDelayedCommands(null);
 
     // --- RESOLVE: Execute by speed tier 3→2→1→0 ---
     for (const spd of [4, 3, 2, 1, 0]) {
@@ -210,6 +213,8 @@ export class TurnManager {
       }
       // 悬剑落剑 at speed 2 (runs before commands)
       if (spd === 2) { this._resolveSwordHangingDrop(); }
+
+      this._processDelayedCommands(spd);
 
       // Separate ON_HIT / ON_HIT_TARGET_USED_RESOURCE_ACTION GAIN_RESOURCE — defer
       // until after projectiles resolve so hit state reflects body-contact results.
@@ -469,6 +474,7 @@ export class TurnManager {
         const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, {
           attackerId: rec.actorId,
           actionId: rec.actionId,
+          skillId: rec.skillId,
         });
         this._processDeathWindReloads(missCtx);
 
@@ -546,7 +552,7 @@ export class TurnManager {
       this.#eventRecorder.setActionContext(null, null, null, null);
       this.#lastActionContext = null;
     }
-    this._processDelayedCommands();
+    this._processDelayedCommands(null);
     this._resolveEndOfTurnEffects();
 
     // Close the end_of_turn phase
@@ -765,7 +771,11 @@ export class TurnManager {
     // Dispatch ON_ATTACK_MISSED for immediate attacks that missed
     // and record canonical action_failed for the resolution event stream.
     if (this._isImmediateAttack(cmd) && !this.#lastHitByActor.get(cmd.actorId)) {
-      const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, { attackerId: cmd.actorId });
+      const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, {
+        attackerId: cmd.actorId,
+        actionId: cmd.actionId || cmd.sequenceId || cmd.id || null,
+        skillId: cmd.skillId || null,
+      });
       this._processDeathWindReloads(missCtx);
       // Record canonical action_failed (deferred attacks are handled by #pendingAttackRecords)
       if (this.#eventRecorder) {
@@ -814,8 +824,6 @@ export class TurnManager {
 
   _processDeathWindReloads(ctx) {
     if (ctx._deathWindReloads) {
-      // Dedup by actionId so one multi-projectile miss only triggers once
-      const seenActionIds = new Set();
       for (const entry of ctx._deathWindReloads) {
         const { entityId, attackerId, actionId } = entry;
         // Self-attack miss should not trigger (only enemy attack misses count)
@@ -823,13 +831,11 @@ export class TurnManager {
         const attacker = this.#registry.get(attackerId);
         if (!yanChar || !attacker) continue;
         if (!this._canAttackAffect(yanChar, attacker, 'enemyOnly')) continue;
-        // Dedup per actionId (same action producing multiple missed projectiles)
-        if (actionId) {
-          if (seenActionIds.has(actionId)) continue;
-          seenActionIds.add(actionId);
-        }
-        this.#resourceSystem.addBackpackAmmo(entityId, 1);
-        const loaded = this.#resourceSystem.reloadFromBackpack(entityId);
+        const key = `${entityId}:${actionId || `${attackerId}:unknown`}`;
+        if (this.#deathWindProcessedMissActionIds.has(key)) continue;
+        this.#deathWindProcessedMissActionIds.add(key);
+        const gained = this._gainResource(entityId, 'backpackAmmo', 1);
+        const loaded = gained > 0 ? this.#resourceSystem.reloadFromBackpack(entityId) : 0;
         if (loaded > 0) {
           this.#logger?.log(`死亡如风：获得1弹 + 自动装填 +${loaded}弹`, 's');
         } else {
@@ -837,6 +843,26 @@ export class TurnManager {
         }
       }
     }
+  }
+
+  _gainResource(entityId, resource, amount) {
+    if (amount === 'RELOAD') {
+      const loaded = this.#resourceSystem.reloadFromBackpack(entityId);
+      this.#logger?.log(`装填 +${loaded}弹`, 's');
+      return loaded;
+    }
+    const ctx = this.#buffManager.dispatch(HookName.ON_RESOURCE_GAIN, {
+      entityId, resource, amount,
+    });
+    const finalAmount = ctx?.amount ?? amount;
+    if (finalAmount <= 0) return 0;
+    if (resource === 'backpackAmmo') {
+      this.#resourceSystem.addBackpackAmmo(entityId, finalAmount);
+    } else {
+      this.#resourceSystem.add(entityId, resource, finalAmount);
+      this.#resourceSystem.recordCostGain(entityId, resource, finalAmount);
+    }
+    return finalAmount;
   }
 
   _shouldCancelAttackByYan(cmd) {
@@ -869,21 +895,15 @@ export class TurnManager {
       if (!actualTargetId || !this.didUseResourceAction(actualTargetId)) return;
     }
     if (amount === 'RELOAD') {
-      const loaded = this.#resourceSystem.reloadFromBackpack(cmd.actorId);
-      this.#logger?.log(`装填 +${loaded}弹`, 's');
+      this._gainResource(cmd.actorId, resource, amount);
       return;
     }
-    const ctx = this.#buffManager.dispatch(HookName.ON_RESOURCE_GAIN, {
-      entityId: cmd.actorId, resource, amount,
-    });
-    const finalAmount = ctx?.amount ?? amount;
     if (resource === 'backpackAmmo') {
-      this.#resourceSystem.addBackpackAmmo(cmd.actorId, finalAmount);
-      this.#logger?.log(`背包弹药 +${finalAmount}`, 's');
+      const gained = this._gainResource(cmd.actorId, resource, amount);
+      if (gained > 0) this.#logger?.log(`背包弹药 +${gained}`, 's');
       return;
     }
-    this.#resourceSystem.add(cmd.actorId, resource, finalAmount);
-    this.#resourceSystem.recordCostGain(cmd.actorId, resource, finalAmount);
+    this._gainResource(cmd.actorId, resource, amount);
   }
 
   _execConsumeResource(cmd) {
@@ -1267,8 +1287,9 @@ export class TurnManager {
     for (const [hq, hr] of hexes) {
       if (this.#projectileCalculator) {
         const actionId = cmd.actionId || cmd.sequenceId || null;
+        const flags = ['STATIONARY', ...(cmd.payload.flags || [])];
         const proj = this.#projectileCalculator.createProjectile(
-          cmd.actorId, hq, hr, hq, hr, power, speed, ['STATIONARY'], actionId
+          cmd.actorId, hq, hr, hq, hr, power, speed, flags, actionId
         );
         if (proj && this.#eventRecorder) {
           this.#eventRecorder.recordProjectileCreated(
@@ -1379,6 +1400,7 @@ export class TurnManager {
       payload: {
         ...cmd.payload,
         consumedAmmo,
+        resolveSpeed: cmd.payload.resolveSpeed ?? SKILLS[cmd.payload.skillId]?.speed ?? null,
         targetEntityId: cmd.payload.targetEntityId || targetEntityId || null,
         targetPos: cmd.targetPos || null,
       },
@@ -1473,9 +1495,10 @@ export class TurnManager {
       const wildCollected = this.#projectileCalculator.collectWildBullets(actor.position.q, actor.position.r, area);
       const total = collected + wildCollected;
       if (total > 0) {
-        this.#resourceSystem.addBackpackAmmo(cmd.actorId, total);
+        const gained = this._gainResource(cmd.actorId, 'backpackAmmo', total);
         if (collected > 0) this.#logger?.log(`捡起弹壳 +${collected}`, 's');
         if (wildCollected > 0) this.#logger?.log(`捡起野生子弹 +${wildCollected}`, 's');
+        if (gained <= 0) this.#logger?.log('封脉：弹药获得被阻止', 's');
       }
     }
   }
@@ -1561,9 +1584,10 @@ export class TurnManager {
     const wildCollected = this.#projectileCalculator?.collectWildBulletsAlongPath(path) || 0;
     const total = collected + wildCollected;
     if (total > 0) {
-      this.#resourceSystem.addBackpackAmmo(cmd.actorId, total);
+      const gained = this._gainResource(cmd.actorId, 'backpackAmmo', total);
       if (collected > 0) this.#logger?.log(`钩锁途中捡起弹壳 +${collected}`, 's');
       if (wildCollected > 0) this.#logger?.log(`钩锁途中捡起野生子弹 +${wildCollected}`, 's');
+      if (gained <= 0) this.#logger?.log('封脉：弹药获得被阻止', 's');
     }
     this.#registry.updatePosition(cmd.actorId, fromQ, fromR, cmd.targetPos.q, cmd.targetPos.r);
   }
@@ -1727,7 +1751,11 @@ export class TurnManager {
           // so same-actor multi-attack attribution is not applicable.
           for (const attackerId of this.#projectileAttackers) {
             if (!this.#lastHitByActor.get(attackerId)) {
-              const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, { attackerId });
+              const missCtx = this.#buffManager.dispatch(HookName.ON_ATTACK_MISSED, {
+                attackerId,
+                actionId: null,
+                skillId: null,
+              });
               this._processDeathWindReloads(missCtx);
             }
           }
@@ -1766,11 +1794,7 @@ export class TurnManager {
           if (this.#eventRecorder && srcActionId) {
             this.#eventRecorder.setActionContext(srcActionId, entityId, srcSkillId, null);
           }
-          const ctx = this.#buffManager.dispatch(HookName.ON_RESOURCE_GAIN, {
-            entityId, resource: 'qi', amount: 1,
-          });
-          const finalAmount = ctx?.amount ?? 1;
-          this.#resourceSystem.add(entityId, 'qi', finalAmount);
+          const finalAmount = this._gainResource(entityId, 'qi', 1);
           // Clear context again after recording
           if (this.#eventRecorder && srcActionId) {
             this.#eventRecorder.setActionContext(null, null, null, null);
@@ -1801,13 +1825,8 @@ export class TurnManager {
           } else if (this.#buffManager.hasStatus(entityId, 'JIMMY_BREATH_OUT')) {
             baseAmount = Math.max(0, baseAmount - 1);
           }
-          const ctx = this.#buffManager.dispatch(HookName.ON_RESOURCE_GAIN, {
-            entityId, resource: 'rage', amount: baseAmount,
-          });
-          const finalAmount = ctx?.amount ?? baseAmount;
+          const finalAmount = this._gainResource(entityId, 'rage', baseAmount);
           if (finalAmount > 0) {
-            this.#resourceSystem.add(entityId, 'rage', finalAmount);
-            this.#resourceSystem.recordCostGain(entityId, 'rage', finalAmount);
             this.#logger?.log(`🔥 盛怒成功 +${finalAmount}怒`, 'rage');
           } else {
             // Breath-out reduced to 0 — still "successful" but no effective gain
@@ -1842,13 +1861,6 @@ export class TurnManager {
     // Resolve MARKED_BY_KILLING_INTENT — check if the marked target used a movement
     // skill this turn, then apply PREDATORY_STEP_READY or HUNTED accordingly.
     this._resolveMarkedByKillingIntent();
-
-    // Remove COST_SEALED at end of turn — it only affects current-turn resource gains,
-    // not next turn. Using explicit removal instead of duration tick to avoid the
-    // +1 turn persistence from appliedTurn === turnNumber skip in tickDurations.
-    for (const c of this.#registry.characters()) {
-      this.#buffManager.removeByType(c.id, 'COST_SEALED');
-    }
 
     this.#pendingFlags.clear();
   }
@@ -1893,8 +1905,13 @@ export class TurnManager {
     }
   }
 
-  _processDelayedCommands() {
-    const toProcess = this.#delayedCommands.filter(c => c.resolveTurn === this.#turnNumber);
+  _processDelayedCommands(speedTier = null) {
+    const toProcess = this.#delayedCommands.filter(c => {
+      if (c.resolveTurn !== this.#turnNumber) return false;
+      const resolveSpeed = c.payload?.resolveSpeed;
+      if (speedTier === null) return resolveSpeed === undefined || resolveSpeed === null;
+      return resolveSpeed === speedTier;
+    });
     for (const cmd of toProcess) {
       if (cmd.type === CmdType.DELAYED_SKILL && cmd.payload.skillId && this.#skillResolver) {
         const actor = this.#registry.get(cmd.actorId);
@@ -1919,6 +1936,10 @@ export class TurnManager {
           );
           if (result.success) {
             for (const subCmd of result.sequence.commands) {
+              subCmd.actionId = subCmd.actionId || result.sequence.id;
+              if (subCmd.subSpeed === null || subCmd.subSpeed === undefined) {
+                subCmd.subSpeed = cmd.payload.resolveSpeed ?? result.sequence.totalSpeed;
+              }
               this._executeCommand(subCmd);
             }
           }
@@ -1927,11 +1948,18 @@ export class TurnManager {
         this._executeCommand(cmd);
       }
     }
-    this.#delayedCommands = this.#delayedCommands.filter(c => c.resolveTurn !== this.#turnNumber);
+    const processed = new Set(toProcess.map(c => c.id));
+    this.#delayedCommands = this.#delayedCommands.filter(c => !processed.has(c.id));
   }
 
   _cleanup() {
     this._resolveRoleCleanupEffects();
+    // COST_SEALED is turn-scoped. Keep it through role cleanup so same-turn
+    // cleanup gains are blocked, then remove before duration ticking would
+    // preserve it for an extra turn.
+    for (const c of this.#registry.characters()) {
+      this.#buffManager.removeByType(c.id, 'COST_SEALED');
+    }
     // Tick buff durations
     this.#buffManager.tickDurations(this.#turnNumber);
     this._clearEndOfTurnRoleStatuses();
@@ -1959,7 +1987,7 @@ export class TurnManager {
     for (const e of this.#registry.characters()) {
       if (e.alive === false) continue;
       if (e.roleId === 'shooter_helldiver' && this._hasTraitInLoadout(e, 'trait_helldiver_laser_weapon')) {
-        this.#resourceSystem.addBackpackAmmo(e.id, 1);
+        this._gainResource(e.id, 'backpackAmmo', 1);
         this.#logger?.log('绝地潜兵激光武器蓄能 背包+1', 's');
       }
     }
@@ -2222,7 +2250,7 @@ export class TurnManager {
     const buffs = this.#buffManager.getActiveBuffs(characterId);
     for (const buff of buffs) {
       const def = STATUS_DEFS[buff.statusType];
-      if (def?.forcedSkillId !== undefined) return def.forcedSkillId;
+      if (def?.forcedSkillId !== undefined && def?.forcedSkillId !== null) return def.forcedSkillId;
     }
     return undefined;
   }
@@ -2477,6 +2505,7 @@ export class TurnManager {
     this.#canceledSequences.clear();
     this.#jumpReturns.clear();
     this.#speedGroups = null;
+    this.#deathWindProcessedMissActionIds.clear();
     this.#actionPointSystem?.resetTurn();
     this.#commandQueue.clearAll();
   }

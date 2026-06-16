@@ -506,3 +506,13 @@
 - 修正 `SkillData.js` 中技能效果描述文本，保留用户校准后的文案。
 - 同步提交本次技能名称与 `warrior_lock` 速度调整。
 - 修复目标型状态在目标离开原格后错误回退施加给施法者的问题。
+
+## 2026-06-17 - 返工修复丧钟、死亡如风、封脉、银河远征、反应装甲
+
+- 修复 `shooter_bell` 0 弹提交、forced action、延迟展开速度与目标追踪问题；丧钟消耗 N 弹后在下回合 2 速脱手发射 N 发。
+- 统一 TurnManager 资源获得入口，让翻滚/钩锁/死亡如风/清理被动等备弹获得经过 `ON_RESOURCE_GAIN`，并保持 `COST_SEALED` 为本回合有效。
+- 修复死亡如风按敌方 missed action 去重触发，避免同一 action 多 projectile miss 重复装填。
+- 银河远征默认无 queued action 时立即跳过，不再用 10 秒 timeout 阻塞 `executeTurn`。
+- 为反应装甲 projectile 标记 `REACTIVE_ARMOR`，限定其先纳刀拦截/弹体碰撞再 body contact，避免污染普通 stationary AOE 顺序。
+- 新增 `tests/selected_task_regression.spec.js` 覆盖本次优先修复项，并同步封脉 turn-scoped 相关旧断言。
+- 验证通过：`node tests/selected_task_regression.spec.js`、`node tests/mage_qi_siphon_rework.spec.js`、`node tests/warrior_pressure.spec.js`、`node tests/role_mechanics_test.js`、`npm test`、`npm run test:e2e`。

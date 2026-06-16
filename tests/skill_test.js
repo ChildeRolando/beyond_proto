@@ -944,8 +944,8 @@ async function testShooterSkills() {
     result('丧钟消耗全部弹药', pool.ammo === 0, `ammo=${pool.ammo}`);
     result('BELL_PENDING applied', eng.buffManager.hasStatus(s, 'BELL_PENDING'));
 
-    // T2: forced bell_resolve fires all stored shots
-    await doTurn(eng, null, { id: w, skill: 'warrior_rage' });
+    // T2: bell_resolve is a delayed off-hand effect; shooter still submits a normal action.
+    await doTurn(eng, { id: s, skill: 'shooter_reload' }, { id: w, skill: 'warrior_rage' });
     const wResources = eng.resourceSystem.getAll(w);
     result('丧钟·响命中', wResources.rage < 2, `rage=${wResources.rage}`);
   }

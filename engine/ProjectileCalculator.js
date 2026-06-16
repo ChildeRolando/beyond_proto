@@ -136,6 +136,10 @@ export class ProjectileCalculator {
       // --- Check crossing collisions BEFORE body contact (melee-melee swaps annihilate) ---
       this._checkCrossings();
 
+      // REACTIVE_ARMOR must collide with melee/projectiles before melee body
+      // contact can damage the armor owner in the same hex.
+      this._checkCollisions({ requireReactiveArmor: true });
+
       // --- Body contact for projectiles that survived crossing check ---
       for (const proj of active) {
         if (!proj.alive) continue;
@@ -152,19 +156,47 @@ export class ProjectileCalculator {
       }
     }
 
-    // Stationary projectiles: check collisions with other projectiles FIRST,
-    // then body contact. This ensures reactive armor / stationary AOE projectiles
-    // collide with incoming melee projectiles before hitting characters.
+    // Stationary projectiles normally preserve body-contact-first behavior.
+    // REACTIVE_ARMOR is special: sheathe may intercept it, then it collides
+    // with melee/projectiles, then it may body-contact surviving characters.
     const stationaryProjs = this.#projectiles.filter(
       p => p.alive && p.flags.includes('STATIONARY') && p.speed === speedTier
     );
+    const reactiveProjs = stationaryProjs.filter(p => p.flags.includes('REACTIVE_ARMOR'));
+    const normalStationaryProjs = stationaryProjs.filter(p => !p.flags.includes('REACTIVE_ARMOR'));
+
+    for (const proj of normalStationaryProjs) {
+      if (!proj.alive) continue;
+      const [q, r] = proj.path[proj.stepIndex];
+      this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager, options);
+      if (proj.alive) proj.alive = false;
+    }
+    reactiveProjs.sort((a, b) => {
+      const [aq, ar] = a.path[a.stepIndex];
+      const [bq, br] = b.path[b.stepIndex];
+      const aOnSheathed = registry.characters().some(e =>
+        e.alive !== false && e.position.q === aq && e.position.r === ar &&
+        buffManager.hasStatus?.(e.id, 'SHEATHED')
+      );
+      const bOnSheathed = registry.characters().some(e =>
+        e.alive !== false && e.position.q === bq && e.position.r === br &&
+        buffManager.hasStatus?.(e.id, 'SHEATHED')
+      );
+      return Number(bOnSheathed) - Number(aOnSheathed);
+    });
+
+    for (const proj of reactiveProjs) {
+      if (!proj.alive) continue;
+      const [q, r] = proj.path[proj.stepIndex];
+      this._checkInterceptionAt(proj, q, r, registry, buffManager);
+    }
     this._checkCollisions();
-    for (const proj of stationaryProjs) {
+    for (const proj of reactiveProjs) {
       if (!proj.alive) continue; // destroyed by collision
       const [q, r] = proj.path[proj.stepIndex];
       this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager, options);
     }
-    for (const proj of stationaryProjs) {
+    for (const proj of reactiveProjs) {
       if (proj.alive) {
         proj.alive = false;
       }
@@ -183,7 +215,7 @@ export class ProjectileCalculator {
   }
 
   // Internal: check projectiles sharing same hex → power annihilation
-  _checkCollisions() {
+  _checkCollisions(options = {}) {
     const destroyed = new Set();
     const byHex = new Map();
 
@@ -205,6 +237,11 @@ export class ProjectileCalculator {
         for (let j = i + 1; j < projs.length; j++) {
           if (!projs[j].alive || destroyed.has(projs[j].id)) continue;
           if (projs[i].ownerId === projs[j].ownerId) continue;
+          if (options.requireReactiveArmor &&
+              !projs[i].flags.includes('REACTIVE_ARMOR') &&
+              !projs[j].flags.includes('REACTIVE_ARMOR')) {
+            continue;
+          }
 
           const strong = projs[i], weak = projs[j];
           const strongMelee = strong.flags.includes('MELEE');
@@ -328,47 +365,7 @@ export class ProjectileCalculator {
   // Check buff interception and body contact for a projectile at a specific hex
   _checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager, options = {}) {
     // Check buff interception at this hex
-    let intercepted = false;
-    for (const entity of registry.characters()) {
-      if (entity.alive === false || entity.id === proj.ownerId) continue;
-      const dist = hexDistance(entity.position.q, entity.position.r, q, r);
-
-      const ctx = buffManager.dispatch(HookName.ON_PROJECTILE_ENTER_RANGE, {
-        entityId: entity.id,
-        projectileId: proj.id,
-        projectileQ: q, projectileR: r,
-        projectilePower: proj.power,
-        projectileOwnerId: proj.ownerId,
-        distance: dist,
-        intercepted: false,
-        interceptPower: 0,
-      });
-
-      if (ctx?.intercepted) {
-        const ip = ctx.interceptPower || 300;
-        this.#lastInterceptions.push({
-          projectileId: proj.id, interceptorId: entity.id,
-          intercepted: true, interceptPower: ip, projectilePower: proj.power,
-        });
-
-        if (ip >= proj.power) {
-          proj.alive = false;
-          // 纳刀斩破弹体 → 获得引刀（刷新居合斩CD，下次居合斩cost=0）
-          buffManager.apply(entity.id, 'INDRA_BLADE', 2, entity.id);
-          const ownerName = registry.get(proj.ownerId)?.name || proj.ownerId;
-          const meleeTag = proj.flags.includes('MELEE') ? '斩击' : '弹体';
-          this.#logger?.log(`${entity.name || entity.id} ⚔ 拦截(${ownerName})！威${ip}斩破${meleeTag}威${proj.power} → 引刀`, 'rg');
-          return;
-        } else {
-          proj.power -= ip;
-          const meleeTag = proj.flags.includes('MELEE') ? '斩击' : '弹体';
-          this.#logger?.log(`${entity.name || entity.id} ⚔ 拦截削弱！${meleeTag}降至威${proj.power}`, 'rg');
-        }
-        intercepted = true;
-        break;
-      }
-    }
-    if (intercepted || !proj.alive) return;
+    if (this._checkInterceptionAt(proj, q, r, registry, buffManager)) return;
 
     // Check body contact at this hex
     const entities = registry.getAt(q, r);
@@ -455,6 +452,50 @@ export class ProjectileCalculator {
       isMelee: proj.flags.includes('MELEE') || false,
       flags: [...proj.flags],
     });
+  }
+
+  _checkInterceptionAt(proj, q, r, registry, buffManager) {
+    let intercepted = false;
+    for (const entity of registry.characters()) {
+      if (entity.alive === false || entity.id === proj.ownerId) continue;
+      const dist = hexDistance(entity.position.q, entity.position.r, q, r);
+
+      const ctx = buffManager.dispatch(HookName.ON_PROJECTILE_ENTER_RANGE, {
+        entityId: entity.id,
+        projectileId: proj.id,
+        projectileQ: q, projectileR: r,
+        projectilePower: proj.power,
+        projectileOwnerId: proj.ownerId,
+        distance: dist,
+        intercepted: false,
+        interceptPower: 0,
+      });
+
+      if (ctx?.intercepted) {
+        const ip = ctx.interceptPower || 300;
+        this.#lastInterceptions.push({
+          projectileId: proj.id, interceptorId: entity.id,
+          intercepted: true, interceptPower: ip, projectilePower: proj.power,
+        });
+
+        if (ip >= proj.power) {
+          proj.alive = false;
+          // 纳刀斩破弹体 → 获得引刀（刷新居合斩CD，下次居合斩cost=0）
+          buffManager.apply(entity.id, 'INDRA_BLADE', 2, entity.id);
+          const ownerName = registry.get(proj.ownerId)?.name || proj.ownerId;
+          const meleeTag = proj.flags.includes('MELEE') ? '斩击' : '弹体';
+          this.#logger?.log(`${entity.name || entity.id} ⚔ 拦截(${ownerName})！威${ip}斩破${meleeTag}威${proj.power} → 引刀`, 'rg');
+          return true;
+        } else {
+          proj.power -= ip;
+          const meleeTag = proj.flags.includes('MELEE') ? '斩击' : '弹体';
+          this.#logger?.log(`${entity.name || entity.id} ⚔ 拦截削弱！${meleeTag}降至威${proj.power}`, 'rg');
+        }
+        intercepted = true;
+        break;
+      }
+    }
+    return intercepted || !proj.alive;
   }
 
   // Melee intercept: check if a projectile at (q,r) can be destroyed by melee

@@ -108,7 +108,7 @@ export const SKILLS = {
     id: 'mage_reactive', name: '反应装甲', icon: 'assets/skill-icons/mage/mage_reactive.webp', class: '法师', type: '特殊',
     cost: {}, speed: 1, targeting: { shape: 'SELF' },
     effects: [
-      { cmd: 'SPAWN_STATIONARY_AOE', power: 'SHIELD_CURRENT', radius: 1, includeCenter: true },
+      { cmd: 'SPAWN_STATIONARY_AOE', power: 'SHIELD_CURRENT', radius: 1, includeCenter: true, flags: ['REACTIVE_ARMOR'] },
     ],
     desc: '引爆自身护盾，对自身半径1范围造成威力等于当前护盾值伤害。',
   },
