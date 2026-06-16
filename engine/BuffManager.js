@@ -93,6 +93,23 @@ export class BuffManager {
     }
   }
 
+  // Remove all SHEATHED buffs flagged for deferred removal (called after
+  // projectile resolution in each speed tier so reactive armor resolves correctly).
+  removePendingSheathed() {
+    for (const [entityId, buffIds] of this.#buffsByEntity) {
+      const toRemove = [];
+      for (const id of buffIds) {
+        const inst = this.#buffs.get(id);
+        if (inst?.statusType === 'SHEATHED' && inst.data?.pendingSheathRemoval) {
+          toRemove.push(id);
+        }
+      }
+      for (const id of toRemove) {
+        this.remove(id);
+      }
+    }
+  }
+
   // ── Stack API ──
 
   addStack(entityId, statusType, amount = 1, maxStacks = Infinity, duration = -1, sourceId = null) {
@@ -270,12 +287,15 @@ export class BuffManager {
           instance.data.interceptUsed = true;
           return { ...ctx, intercepted: true, interceptPower: 300 };
         });
-        // End sheathe on own attack (not on status apply, pass, or resource commands)
+        // End sheathe on own attack — but defer removal until after projectile resolution
+        // so reactive armor / simultaneous projectile collisions resolve correctly.
+        // Only flag for pending removal; actual removal happens in TurnManager after
+        // projectiles are resolved for the speed tier.
         this.registerHook(buffId, HookName.ON_AFTER_ACTION, (ctx) => {
           if (ctx.entityId === entityId && ctx.command) {
             const t = ctx.command.type;
             if (t !== CmdType.APPLY_STATUS && t !== CmdType.PASS && t !== CmdType.CONSUME_RESOURCE && t !== CmdType.GAIN_RESOURCE) {
-              this.remove(buffId);
+              instance.data.pendingSheathRemoval = true;
             }
           }
           return ctx;
@@ -374,7 +394,7 @@ export class BuffManager {
 
       case 'COST_SEALED':
         this.registerHook(buffId, HookName.ON_RESOURCE_GAIN, (ctx) => {
-          if (ctx.entityId === entityId && (ctx.resource === 'qi' || ctx.resource === 'rage' || ctx.resource === 'ammo')) {
+          if (ctx.entityId === entityId && (ctx.resource === 'qi' || ctx.resource === 'rage' || ctx.resource === 'ammo' || ctx.resource === 'backpackAmmo')) {
             return { ...ctx, amount: 0 };
           }
           return ctx;
@@ -402,7 +422,7 @@ export class BuffManager {
       case 'YAN_DEATH_WIND':
         this.registerHook(buffId, HookName.ON_ATTACK_MISSED, (ctx) => {
           if (!ctx._deathWindReloads) ctx._deathWindReloads = [];
-          ctx._deathWindReloads.push(entityId);
+          ctx._deathWindReloads.push({ entityId, attackerId: ctx.attackerId, actionId: ctx.actionId });
           return ctx;
         });
         break;

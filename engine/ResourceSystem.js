@@ -145,6 +145,7 @@ export class ResourceSystem {
     if (!pool) return 0;
     const old = pool.backpackAmmo || 0;
     pool.backpackAmmo = (pool.backpackAmmo || 0) + amount;
+    this.recordCostGain(entityId, 'backpackAmmo', amount);
     this.#eventBus.emit(EvtType.RESOURCE_CHANGED, { entityId, resource: 'backpackAmmo', old, new: pool.backpackAmmo, delta: amount });
     return pool.backpackAmmo;
   }
@@ -182,31 +183,33 @@ export class ResourceSystem {
   // --- Turn cost-gain tracking (for 引气针 retroactive drain) ---
   recordCostGain(entityId, resource, amount) {
     if (amount <= 0) return;
-    const costResources = ['qi', 'rage', 'ammo'];
+    const costResources = ['qi', 'rage', 'ammo', 'backpackAmmo'];
     if (!costResources.includes(resource)) return;
     if (!this.#turnCostGains.has(entityId)) {
-      this.#turnCostGains.set(entityId, { qi: 0, rage: 0, ammo: 0 });
+      this.#turnCostGains.set(entityId, { qi: 0, rage: 0, ammo: 0, backpackAmmo: 0 });
     }
     const gains = this.#turnCostGains.get(entityId);
-    gains[resource] += amount;
+    gains[resource] = (gains[resource] || 0) + amount;
   }
 
   getTurnCostGains(entityId) {
-    return this.#turnCostGains.get(entityId) || { qi: 0, rage: 0, ammo: 0 };
+    return this.#turnCostGains.get(entityId) || { qi: 0, rage: 0, ammo: 0, backpackAmmo: 0 };
   }
 
   // Drain all cost resources gained this turn (retroactive undo for 引气针)
   drainTurnCostGains(entityId) {
     const gains = this.#turnCostGains.get(entityId);
-    if (!gains) return { qi: 0, rage: 0, ammo: 0 };
+    if (!gains) return { qi: 0, rage: 0, ammo: 0, backpackAmmo: 0 };
     const drained = {};
-    for (const res of ['qi', 'rage', 'ammo']) {
+    for (const res of ['qi', 'rage', 'ammo', 'backpackAmmo']) {
       if (gains[res] > 0) {
         const current = this.get(entityId, res);
         const toDrain = Math.min(gains[res], current);
-        this.set(entityId, res, current - toDrain);
+        if (toDrain > 0) {
+          this.set(entityId, res, current - toDrain);
+          this.#eventBus.emit(EvtType.RESOURCE_CHANGED, { entityId, resource: res, old: current, new: current - toDrain, delta: -toDrain });
+        }
         drained[res] = toDrain;
-        this.#eventBus.emit(EvtType.RESOURCE_CHANGED, { entityId, resource: res, old: current, new: current - toDrain, delta: -toDrain });
       } else {
         drained[res] = 0;
       }
