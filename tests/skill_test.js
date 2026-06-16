@@ -499,9 +499,10 @@ async function testWarriorSkills() {
 
   {
     const { e, m, w } = freshEngine({ magePos: { q:0, r:0 }, warriorPos: { q:0, r:1 } });
-    // T1: mage uses reactive (no active shield), warrior slashes at range 1
+    // T1: reactive armor uses current shield as AOE hitbox power.
+    // Power 300 reactive armor destroys power 100 slash before body contact.
     await doTurn(e, { id: m, skill: 'mage_reactive' }, { id: w, skill: 'warrior_slash', target: { q:0, r:0 } });
-    result('斩击无盾直接击杀', isDead(e, m), `mage dead=${isDead(e, m)}`);
+    result('反应装甲湮灭斩击并击杀战士', isAlive(e, m) && isDead(e, w), `mage dead=${isDead(e, m)}, warrior dead=${isDead(e, w)}`);
   }
 
   // --- warrior_slash: 普通斩 ---
@@ -523,9 +524,9 @@ async function testWarriorSkills() {
 
   {
     const { e, m, w } = freshEngine({ magePos: { q:0, r:0 }, warriorPos: { q:0, r:1 } });
-    // T1: No shield, no movement — slash directly kills
+    // T1: reactive armor has 300 shield power by default and wins against slash.
     await doTurn(e, { id: m, skill: 'mage_reactive' }, { id: w, skill: 'warrior_slash', target: { q:0, r:0 } });
-    result('无防御斩击直接击杀', isDead(e, m), `mage dead=${isDead(e, m)}`);
+    result('反应装甲先与斩击比威力', isAlive(e, m) && isDead(e, w), `mage dead=${isDead(e, m)}, warrior dead=${isDead(e, w)}`);
   }
 
   // --- warrior_dash: 踏前斩 ---

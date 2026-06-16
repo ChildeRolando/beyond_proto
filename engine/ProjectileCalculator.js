@@ -80,8 +80,9 @@ export class ProjectileCalculator {
     this.#lastInterceptions = [];
     this.#lastHits = [];
     this.#lastCollisions = [];
-    const active = this.#projectiles.filter(p => p.alive && p.speed === speedTier);
-    if (active.length === 0) return { interceptions: [], hits: [] };
+    const tierProjectiles = this.#projectiles.filter(p => p.alive && p.speed === speedTier);
+    if (tierProjectiles.length === 0) return { interceptions: [], hits: [] };
+    const active = tierProjectiles.filter(p => !p.flags.includes('STATIONARY'));
 
     // Advance all projectiles one step at a time, checking cross-collisions after each step.
     // The outer loop runs until all projectiles reach their destinations (or are destroyed).
@@ -93,6 +94,11 @@ export class ProjectileCalculator {
     }
 
     for (let s = 0; s < maxSteps; s++) {
+      // Newly created melee/projectile entities can start inside a stationary
+      // AOE hitbox. Resolve that power comparison before any body contact or
+      // movement so hitboxes cannot be bypassed by same-tier melee.
+      this._checkCollisions({ speedTier });
+
       // --- SURE_HIT homing: extend paths for projectiles that reached destination without hitting ---
       for (const proj of active) {
         if (!proj.alive) continue;
@@ -136,9 +142,7 @@ export class ProjectileCalculator {
       // --- Check crossing collisions BEFORE body contact (melee-melee swaps annihilate) ---
       this._checkCrossings();
 
-      // REACTIVE_ARMOR must collide with melee/projectiles before melee body
-      // contact can damage the armor owner in the same hex.
-      this._checkCollisions({ requireReactiveArmor: true });
+      this._checkCollisions({ speedTier });
 
       // --- Body contact for projectiles that survived crossing check ---
       for (const proj of active) {
@@ -147,31 +151,16 @@ export class ProjectileCalculator {
         this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager, options);
       }
 
-      // --- Same-hex collisions AFTER body contact (melee hits target before stationary collision) ---
-      this._checkCollisions();
-
       // Remove dead projectiles from active set
       for (let i = active.length - 1; i >= 0; i--) {
         if (!active[i].alive) active.splice(i, 1);
       }
     }
 
-    // Stationary projectiles normally preserve body-contact-first behavior.
-    // REACTIVE_ARMOR is special: sheathe may intercept it, then it collides
-    // with melee/projectiles, then it may body-contact surviving characters.
     const stationaryProjs = this.#projectiles.filter(
       p => p.alive && p.flags.includes('STATIONARY') && p.speed === speedTier
     );
-    const reactiveProjs = stationaryProjs.filter(p => p.flags.includes('REACTIVE_ARMOR'));
-    const normalStationaryProjs = stationaryProjs.filter(p => !p.flags.includes('REACTIVE_ARMOR'));
-
-    for (const proj of normalStationaryProjs) {
-      if (!proj.alive) continue;
-      const [q, r] = proj.path[proj.stepIndex];
-      this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager, options);
-      if (proj.alive) proj.alive = false;
-    }
-    reactiveProjs.sort((a, b) => {
+    stationaryProjs.sort((a, b) => {
       const [aq, ar] = a.path[a.stepIndex];
       const [bq, br] = b.path[b.stepIndex];
       const aOnSheathed = registry.characters().some(e =>
@@ -185,18 +174,19 @@ export class ProjectileCalculator {
       return Number(bOnSheathed) - Number(aOnSheathed);
     });
 
-    for (const proj of reactiveProjs) {
+    this._checkCollisions({ speedTier });
+    for (const proj of stationaryProjs) {
       if (!proj.alive) continue;
       const [q, r] = proj.path[proj.stepIndex];
       this._checkInterceptionAt(proj, q, r, registry, buffManager);
     }
-    this._checkCollisions();
-    for (const proj of reactiveProjs) {
+    this._checkCollisions({ speedTier });
+    for (const proj of stationaryProjs) {
       if (!proj.alive) continue; // destroyed by collision
       const [q, r] = proj.path[proj.stepIndex];
-      this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager, options);
+      this._checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager, { ...options, skipInterception: true });
     }
-    for (const proj of reactiveProjs) {
+    for (const proj of stationaryProjs) {
       if (proj.alive) {
         proj.alive = false;
       }
@@ -221,6 +211,7 @@ export class ProjectileCalculator {
 
     for (const proj of this.#projectiles) {
       if (!proj.alive || destroyed.has(proj.id)) continue;
+      if (options.speedTier !== undefined && proj.speed !== options.speedTier) continue;
       const [q, r] = proj.path[proj.stepIndex];
       const key = `${q},${r}`;
       if (!byHex.has(key)) byHex.set(key, []);
@@ -237,11 +228,6 @@ export class ProjectileCalculator {
         for (let j = i + 1; j < projs.length; j++) {
           if (!projs[j].alive || destroyed.has(projs[j].id)) continue;
           if (projs[i].ownerId === projs[j].ownerId) continue;
-          if (options.requireReactiveArmor &&
-              !projs[i].flags.includes('REACTIVE_ARMOR') &&
-              !projs[j].flags.includes('REACTIVE_ARMOR')) {
-            continue;
-          }
 
           const strong = projs[i], weak = projs[j];
           const strongMelee = strong.flags.includes('MELEE');
@@ -365,7 +351,7 @@ export class ProjectileCalculator {
   // Check buff interception and body contact for a projectile at a specific hex
   _checkBodyContactAt(proj, q, r, registry, damageCalculator, buffManager, options = {}) {
     // Check buff interception at this hex
-    if (this._checkInterceptionAt(proj, q, r, registry, buffManager)) return;
+    if (!options.skipInterception && this._checkInterceptionAt(proj, q, r, registry, buffManager)) return;
 
     // Check body contact at this hex
     const entities = registry.getAt(q, r);

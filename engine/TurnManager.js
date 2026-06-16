@@ -801,10 +801,7 @@ export class TurnManager {
     // Only attacks whose result is known at execution time.
     // ATTACK_MELEE / WINDSTEP_SLASH create projectiles for body-contact
     // resolution — they are deferred, not immediate.
-    return [
-      CmdType.ATTACK_AOE_SELF,
-      CmdType.ATTACK_AOE_PATH,
-    ].includes(cmd.type);
+    return false;
   }
 
   /** Create a lightweight pending attack record for deferred hit/miss finalization. */
@@ -1219,42 +1216,31 @@ export class TurnManager {
       this.#resourceSystem.setShield(cmd.actorId, 0);
     }
 
-    let hit = false;
     const q = actor.position.q, r = actor.position.r;
-    for (const e of this.#registry.entities()) {
-      if (e.type !== 'CHARACTER' || e.id === cmd.actorId || e.alive === false) continue;
-      if (!this._canAttackAffect(actor, e)) continue;
-      if (hexDistance(q, r, e.position.q, e.position.r) <= (cmd.payload.radius || 1)) {
-        let targetPower = power;
-        // Check sheathe/block interception per target (same hook as projectile system)
-        const ctx = this.#buffManager.dispatch(HookName.ON_PROJECTILE_ENTER_RANGE, {
-          entityId: e.id,
-          projectileId: null,
-          projectileQ: e.position.q, projectileR: e.position.r,
-          projectilePower: power,
-          projectileOwnerId: cmd.actorId,
-          distance: 0,
-          intercepted: false,
-          interceptPower: 0,
-        });
-        if (ctx?.intercepted) {
-          const ip = ctx.interceptPower || 300;
-          if (ip >= targetPower) {
-            this.#logger?.log(`⚔ 纳刀拦截！威${ip}斩破AOE威${targetPower}`, 'rg');
-            hit = true; // interception breaks sheathe, counts as "hit"
-            continue;
-          }
-          targetPower -= ip;
-          this.#logger?.log(`⚔ 纳刀削弱！AOE降至威${targetPower}`, 'rg');
-        }
-        const result = this.#damageCalculator.resolve(cmd.actorId, e.id, targetPower);
-        if (result.killed || result.finalDamage > 0) hit = true;
+    const radius = cmd.payload.radius || 1;
+    const includeCenter = cmd.payload.includeCenter || false;
+    const speed = cmd.subSpeed ?? cmd.speed ?? 1;
+    const actionId = cmd.actionId || cmd.sequenceId || null;
+    let hexes = hexSpiral(q, r, radius);
+    if (!includeCenter) {
+      hexes = hexes.filter(([hq, hr]) => !(hq === q && hr === r));
+    }
+
+    for (const [hq, hr] of hexes) {
+      if (!this.#projectileCalculator) continue;
+      const flags = ['STATIONARY', 'AOE_HITBOX', ...(cmd.payload.flags || [])];
+      const proj = this.#projectileCalculator.createProjectile(
+        cmd.actorId, hq, hr, hq, hr, power, speed, flags, actionId
+      );
+      if (proj && this.#eventRecorder) {
+        this.#eventRecorder.recordProjectileCreated(
+          proj.id, cmd.actorId, cmd.skillId, actionId,
+          { q: hq, r: hr }, { q: hq, r: hr }, power, speed,
+          { path: proj.path, flags: proj.flags, speed }
+        );
       }
     }
-    this.#lastHitByActor.set(cmd.actorId, hit);
-    const aoeActionId1 = cmd.actionId || cmd.sequenceId;
-    if (aoeActionId1) this.#hitBySequenceId.set(aoeActionId1, hit);
-    if (hit) this._handleOnHitGain(cmd);
+    this.#logger?.log(`${actor?.name || cmd.actorId} 生成范围冲击 威${power} 半径${radius}`, 'rg');
   }
 
   _execSpawnStationaryAoe(cmd) {
@@ -1267,7 +1253,7 @@ export class TurnManager {
     let power = typeof cmd.payload.power === 'number'
       ? this.#buffManager.getEffectivePower(cmd.actorId, cmd.payload.power)
       : cmd.payload.power;
-    const speed = cmd.speed || cmd.subSpeed || 1;
+    const speed = cmd.subSpeed ?? cmd.speed ?? 1;
     const includeCenter = cmd.payload.includeCenter || false;
 
     if (power === 'SHIELD_CURRENT') {
@@ -1287,7 +1273,7 @@ export class TurnManager {
     for (const [hq, hr] of hexes) {
       if (this.#projectileCalculator) {
         const actionId = cmd.actionId || cmd.sequenceId || null;
-        const flags = ['STATIONARY', ...(cmd.payload.flags || [])];
+        const flags = ['STATIONARY', 'AOE_HITBOX', ...(cmd.payload.flags || [])];
         const proj = this.#projectileCalculator.createProjectile(
           cmd.actorId, hq, hr, hq, hr, power, speed, flags, actionId
         );
@@ -1301,6 +1287,7 @@ export class TurnManager {
       }
     }
 
+    this.#logger?.log(`${actor?.name || cmd.actorId} 生成范围冲击 威${power} 半径${radius}`, 'rg');
   }
 
   _execAttackAoePath(cmd) {
@@ -1310,25 +1297,27 @@ export class TurnManager {
     const fromQ = actor.position.q, fromR = actor.position.r;
     const toQ = cmd.targetPos.q, toR = cmd.targetPos.r;
 
-    // Hit all enemies along the path
     const path = hexLine(fromQ, fromR, toQ, toR);
-    let hit = false;
+    const power = typeof cmd.payload.power === 'number'
+      ? this.#buffManager.getEffectivePower(cmd.actorId, cmd.payload.power)
+      : cmd.payload.power;
+    const speed = cmd.subSpeed ?? cmd.speed ?? 1;
+    const actionId = cmd.actionId || cmd.sequenceId || null;
     for (const [pq, pr] of path) {
-      const entities = this.#registry.getAt(pq, pr);
-      for (const e of entities) {
-        if (e.type !== 'CHARACTER' || e.id === cmd.actorId || e.alive === false) continue;
-        if (!this._canAttackAffect(actor, e)) continue;
-        const effectivePower = typeof cmd.payload.power === 'number'
-          ? this.#buffManager.getEffectivePower(cmd.actorId, cmd.payload.power)
-          : cmd.payload.power;
-        const result = this.#damageCalculator.resolve(cmd.actorId, e.id, effectivePower);
-        if (result.killed || result.finalDamage > 0) hit = true;
+      if (!this.#projectileCalculator) continue;
+      const flags = ['STATIONARY', 'AOE_HITBOX', ...(cmd.payload.flags || [])];
+      const proj = this.#projectileCalculator.createProjectile(
+        cmd.actorId, pq, pr, pq, pr, power, speed, flags, actionId
+      );
+      if (proj && this.#eventRecorder) {
+        this.#eventRecorder.recordProjectileCreated(
+          proj.id, cmd.actorId, cmd.skillId, actionId,
+          { q: pq, r: pr }, { q: pq, r: pr }, power, speed,
+          { path: proj.path, flags: proj.flags, speed }
+        );
       }
     }
-    this.#lastHitByActor.set(cmd.actorId, hit);
-    const aoeActionId2 = cmd.actionId || cmd.sequenceId;
-    if (aoeActionId2) this.#hitBySequenceId.set(aoeActionId2, hit);
-    if (hit) this._handleOnHitGain(cmd);
+    this.#logger?.log(`${actor?.name || cmd.actorId} 生成路径冲击 威${power}`, 'rg');
   }
 
   _execApplyStatus(cmd) {

@@ -280,12 +280,17 @@ export class SkillResolver {
 
       case 'ATTACK_AOE_SELF':
         return { ...base, type: CmdType.ATTACK_AOE_SELF,
-          payload: { power: eff.power, radius: eff.radius } };
+          payload: {
+            power: eff.power,
+            radius: eff.radius,
+            includeCenter: eff.includeCenter || false,
+            flags: eff.flags || [],
+          } };
 
       case 'ATTACK_AOE_PATH':
         return { ...base, type: CmdType.ATTACK_AOE_PATH,
           targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null,
-          payload: { power: eff.power } };
+          payload: { power: eff.power, flags: eff.flags || [] } };
 
       case 'ATTACK_AOE_TARGET':
         return { ...base, type: CmdType.ATTACK_AOE_TARGET,

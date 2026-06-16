@@ -127,14 +127,14 @@
 ### warrior_move — 移动
 
 ✅ 移动1格 — pos=(0,1)
-✅ 斩击无盾直接击杀 — mage dead=true
+✅ 反应装甲湮灭斩击并击杀战士 — mage dead=false, warrior dead=true
 
 ### warrior_slash — 普通斩
 
 ✅ 斩击命中护盾(法师存活) — mage alive=true
 ✅ 命中+1怒(吸收也计命中) — rage=1
 ✅ 斩击目标已传送(挥空) — mage alive=true
-✅ 无防御斩击直接击杀 — mage dead=true
+✅ 反应装甲先与斩击比威力 — mage dead=false, warrior dead=true
 
 ### warrior_dash — 踏前斩
 

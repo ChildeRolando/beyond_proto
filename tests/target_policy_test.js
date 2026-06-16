@@ -92,8 +92,12 @@ console.log('=== Target Policy Tests ===\n');
   engine.turnManager._executeCommand({
     type: CmdType.ATTACK_AOE_SELF,
     actorId: 'hero_1',
+    speed: 1,
     payload: { power: 100, radius: 1 },
   });
+  engine.projectileCalculator.resolveStep(
+    1, engine.registry, engine.damageCalculator, engine.buffManager, { rules: engine.getRules() }
+  );
 
   check('self-centered AOE friendlyFire=false damages enemies but not allies',
     alive(engine, 'hero_2') === true && alive(engine, 'enemy_1') === false,
@@ -110,9 +114,13 @@ console.log('=== Target Policy Tests ===\n');
   engine.turnManager._executeCommand({
     type: CmdType.ATTACK_AOE_PATH,
     actorId: 'hero_2',
+    speed: 1,
     targetPos: { q: 0, r: 2 },
     payload: { power: 100 },
   });
+  engine.projectileCalculator.resolveStep(
+    1, engine.registry, engine.damageCalculator, engine.buffManager, { rules: engine.getRules() }
+  );
 
   check('path AOE friendlyFire=false damages enemies but not allies',
     alive(engine, 'hero_1') === true && alive(engine, 'enemy_1') === false,
