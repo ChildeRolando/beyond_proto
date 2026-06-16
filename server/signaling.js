@@ -76,7 +76,8 @@ function parseFrames(buffer) {
 }
 
 // --- Room management ---
-const rooms = new Map(); // roomCode -> { host: socket, peer: socket|null, createdAt: number }
+const PROTOCOL_VERSION = 2;
+const rooms = new Map(); // roomCode -> { host, peer, roomMode, protocolVersion, createdAt }
 
 function generateRoomCode() {
   let code;
@@ -116,17 +117,35 @@ function handleMessage(socket, msg) {
 
   switch (data.type) {
     case 'CREATE_ROOM': {
+      if (!data.roomMode || data.protocolVersion !== PROTOCOL_VERSION) {
+        send(socket, { type: 'CREATE_ERROR', reason: 'protocol_mismatch', protocolVersion: PROTOCOL_VERSION });
+        return;
+      }
       const code = generateRoomCode();
-      rooms.set(code, { host: socket, peer: null, createdAt: Date.now() });
+      rooms.set(code, {
+        host: socket,
+        peer: null,
+        roomMode: data.roomMode,
+        protocolVersion: data.protocolVersion,
+        createdAt: Date.now(),
+      });
       sockets.set(socket, { roomCode: code, role: 'host', buffer: Buffer.alloc(0) });
-      send(socket, { type: 'ROOM_CREATED', roomCode: code });
-      console.log(`[room] ${code} created`);
+      send(socket, { type: 'ROOM_CREATED', roomCode: code, roomMode: data.roomMode, protocolVersion: data.protocolVersion });
+      console.log(`[room] ${code} created (${data.roomMode})`);
       break;
     }
     case 'JOIN_ROOM': {
+      if (!data.expectedRoomMode || data.protocolVersion !== PROTOCOL_VERSION) {
+        send(socket, { type: 'JOIN_ERROR', reason: 'protocol_mismatch', protocolVersion: PROTOCOL_VERSION });
+        return;
+      }
       const room = rooms.get(data.roomCode);
       if (!room) {
         send(socket, { type: 'JOIN_ERROR', reason: 'room_not_found' });
+        return;
+      }
+      if (room.roomMode !== data.expectedRoomMode) {
+        send(socket, { type: 'JOIN_ERROR', reason: 'mode_mismatch', roomMode: room.roomMode });
         return;
       }
       if (room.peer) {
@@ -135,9 +154,9 @@ function handleMessage(socket, msg) {
       }
       room.peer = socket;
       sockets.set(socket, { roomCode: data.roomCode, role: 'peer', buffer: Buffer.alloc(0) });
-      send(room.host, { type: 'PEER_JOINED' });
-      send(socket, { type: 'JOIN_SUCCESS', playerId: 'player2' });
-      console.log(`[room] ${data.roomCode} joined`);
+      send(room.host, { type: 'PEER_JOINED', roomMode: room.roomMode });
+      send(socket, { type: 'JOIN_SUCCESS', playerId: 'player2', roomMode: room.roomMode, protocolVersion: room.protocolVersion });
+      console.log(`[room] ${data.roomCode} joined (${room.roomMode})`);
       break;
     }
     case 'RELAY': {

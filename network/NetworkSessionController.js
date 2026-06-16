@@ -4,7 +4,7 @@
 // Does NOT import main.js or AppRuntime.
 
 import { NetworkManager } from '../engine/NetworkManager.js';
-import { GameMode } from '../app/GameModes.js';
+import { GameMode, p2pSubModeFromRoomMode } from '../app/GameModes.js';
 
 export class NetworkSessionController {
   constructor(ctx) {
@@ -17,9 +17,11 @@ export class NetworkSessionController {
     this.pendingMyClass = null;
     this.pendingRemoteRematchClass = null;
     this.opponentReadyForRematch = false;
+    this._lockedRoomMode = null;
   }
 
   getNetworkManager() { return this._networkManager; }
+  getLockedRoomMode() { return this._lockedRoomMode; }
   hasNetwork() { return this._networkManager && this._networkManager.mode !== 'local'; }
   getMyPlayerId() { return this._networkManager?.myPlayerId || null; }
 
@@ -30,6 +32,7 @@ export class NetworkSessionController {
     this.pendingMyClass = null;
     this.pendingRemoteRematchClass = null;
     this.opponentReadyForRematch = false;
+    this._lockedRoomMode = null;
   }
 
   startP2PGame() {
@@ -44,7 +47,10 @@ export class NetworkSessionController {
     this._ctx.callbacks.setModeBadge?.(`联机 ${this._networkManager.roomCode || ''}`, 'online');
     this._ctx.callbacks.setConnectionIndicator?.(true);
     this._ctx.callbacks.hideLobbyControls?.();
-    this._ctx.configSession.showConfigScreen(GameMode.P2P_DUEL);
+    const roomMode = this._lockedRoomMode || this._networkManager.lockedRoomMode || GameMode.P2P_DRAFT;
+    const subMode = p2pSubModeFromRoomMode(roomMode);
+    this._ctx.configSession.setP2PSubMode?.(subMode, { sync: false });
+    this._ctx.configSession.showConfigScreen(roomMode);
   }
 
   _resolveSignalingUrl(serverAddr) {
@@ -55,8 +61,9 @@ export class NetworkSessionController {
     return { isNgrok, signalingUrl: url };
   }
 
-  async createRoom({ serverAddr, ui }) {
+  async createRoom({ serverAddr, ui, roomMode = GameMode.P2P_DRAFT }) {
     const { signalingUrl } = this._resolveSignalingUrl(serverAddr);
+    this._lockedRoomMode = roomMode;
     const nm = new NetworkManager({
       onStatusChange: (s) => {
         if (s.roomCode) { ui.showRoomCode(s.roomCode); ui.updateHostStatus('connecting', '等待对手加入...'); }
@@ -74,14 +81,16 @@ export class NetworkSessionController {
       onMessage: (payload) => this._ctx.callbacks.handleNetworkMessage(payload),
     }, signalingUrl);
     this._networkManager = nm;
-    try { await nm.createRoom(); } catch (e) {
+    try { await nm.createRoom(roomMode); } catch (e) {
       ui.setRoomError('连接服务器失败'); ui.updateHostStatus('disconnected', '连接失败');
       this._networkManager = null;
+      this._lockedRoomMode = null;
     }
   }
 
-  async joinRoom({ roomCode, serverAddr, ui }) {
+  async joinRoom({ roomCode, serverAddr, ui, expectedRoomMode = GameMode.P2P_DRAFT }) {
     const { signalingUrl } = this._resolveSignalingUrl(serverAddr);
+    this._lockedRoomMode = expectedRoomMode;
     const nm = new NetworkManager({
       onStatusChange: (s) => {
         if (s.status === 'connected') { ui.updateJoinStatus('connected', '已连接！'); this.startP2PGame(); }
@@ -98,9 +107,10 @@ export class NetworkSessionController {
       onMessage: (payload) => this._ctx.callbacks.handleNetworkMessage(payload),
     }, signalingUrl);
     this._networkManager = nm;
-    try { await nm.joinRoom(roomCode); } catch (e) {
+    try { await nm.joinRoom(roomCode, expectedRoomMode); } catch (e) {
       ui.setRoomError('连接服务器失败'); ui.updateJoinStatus('disconnected', '连接失败');
       this._networkManager = null;
+      this._lockedRoomMode = null;
     }
   }
 

@@ -68,6 +68,8 @@ function resetConnectionUI(defaultAddr) {
 // ─── Public API ───
 
 export function initStartLobbyController(ctx) {
+  let pendingRoomMode = null;
+
   document.getElementById('btn-local-duel').addEventListener('click', () => {
     ctx.callbacks.onStartLocalDuel();
   });
@@ -90,19 +92,26 @@ export function initStartLobbyController(ctx) {
   document.getElementById('btn-help-top').addEventListener('click', showTutorial);
 
   document.getElementById('btn-p2p-duel').addEventListener('click', () => {
+    pendingRoomMode = null;
     showRoomSetup();
     resetConnectionUI(ctx.defaultAddr);
     ctx.callbacks.onStartP2PDuel?.();
   });
 
   document.getElementById('btn-p2p-quick-mode')?.addEventListener('click', () => {
+    pendingRoomMode = 'p2p_quick';
     ctx.callbacks.onSelectP2PSubMode?.('quick');
     showConnectionChoices();
+    updateHostStatus('disconnected', '准备创建：联机快速');
+    updateJoinStatus('disconnected', '准备加入：联机快速');
   });
 
   document.getElementById('btn-p2p-draft-mode')?.addEventListener('click', () => {
+    pendingRoomMode = 'p2p_draft';
     ctx.callbacks.onSelectP2PSubMode?.('draft');
     showConnectionChoices();
+    updateHostStatus('disconnected', '准备创建：联机征召');
+    updateJoinStatus('disconnected', '准备加入：联机征召');
   });
 
   document.getElementById('btn-p2p-coop').addEventListener('click', () => {
@@ -117,6 +126,7 @@ export function initStartLobbyController(ctx) {
   }
 
   document.getElementById('btn-back-start').addEventListener('click', () => {
+    pendingRoomMode = null;
     ctx.callbacks.onBackStart();
     hideRoomSetup();
     resetConnectionUI(ctx.defaultAddr);
@@ -135,7 +145,7 @@ export function initStartLobbyController(ctx) {
       resetConnectionUI: () => resetConnectionUI(ctx.defaultAddr),
     };
     const serverAddr = document.getElementById('server-addr-input-host').value.trim() || ctx.defaultAddr;
-    ctx.callbacks.onCreateRoom({ serverAddr, ui });
+    ctx.callbacks.onCreateRoom({ serverAddr, ui, roomMode: pendingRoomMode || 'p2p_draft' });
   });
 
   document.getElementById('btn-join-room').addEventListener('click', async () => {
@@ -155,7 +165,7 @@ export function initStartLobbyController(ctx) {
       resetConnectionUI: () => resetConnectionUI(ctx.defaultAddr),
     };
     const serverAddr = document.getElementById('server-addr-input').value.trim() || ctx.defaultAddr;
-    ctx.callbacks.onJoinRoom({ roomCode: code, serverAddr, ui });
+    ctx.callbacks.onJoinRoom({ roomCode: code, serverAddr, ui, expectedRoomMode: pendingRoomMode || 'p2p_draft' });
   });
 
   return {
@@ -163,6 +173,7 @@ export function initStartLobbyController(ctx) {
     hideTutorial,
     showTutorial,
     resetTransientUi() {
+      pendingRoomMode = null;
       hideTutorial();
       hideRoomSetup();
       resetConnectionUI(ctx.defaultAddr);

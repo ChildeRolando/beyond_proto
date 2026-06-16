@@ -86,7 +86,7 @@ function renderTeamStatus(ctx) {
     `;
     return;
   }
-  const title = mode === GameMode.P2P_DUEL || mode === GameMode.P2P_COOP ? '联机队伍' : mode === GameMode.LOCAL_SOLO ? '单人对战' : mode === GameMode.LOCAL_COOP ? '本地合作' : '本地对战';
+  const title = isP2PMode(mode) ? '联机队伍' : mode === GameMode.LOCAL_SOLO ? '单人对战' : mode === GameMode.LOCAL_COOP ? '本地合作' : '本地对战';
   document.getElementById('team-status').innerHTML = `
     <h3>${title}</h3>
     <div class="config-team-row">
@@ -260,9 +260,9 @@ export function renderConfigScreenView(ctx) {
     mode === GameMode.LOCAL_DUEL ? '本地对战' :
     mode === GameMode.LOCAL_COOP ? '本地合作' :
     mode === GameMode.LOCAL_SOLO ? '本地单人' :
-    mode === GameMode.P2P_DUEL ? `联机对战 · ${quickMode ? '快速模式' : '征召模式'} ${ctx.roomCode}` :
+    isP2PMode(mode) ? `联机对战 · ${quickMode ? '快速模式' : '征召模式'} ${ctx.roomCode}` :
     '联机合作（开发中）';
-  document.getElementById('config-player-switch').style.display = (mode === GameMode.P2P_DUEL || mode === GameMode.P2P_COOP) ? 'none' : 'flex';
+  document.getElementById('config-player-switch').style.display = isP2PMode(mode) ? 'none' : 'flex';
   document.querySelectorAll('#config-player-switch button').forEach((btn, index) => {
     if (ctx.legacyPveMode) {
       btn.dataset.player = index === 0 ? 'hero_1' : 'hero_2';

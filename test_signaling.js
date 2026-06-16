@@ -4,6 +4,8 @@ import crypto from 'crypto';
 
 const WS_MAGIC = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const HOST = 'localhost', PORT = 8088;
+const PROTOCOL_VERSION = 2;
+const ROOM_MODE = 'p2p_draft';
 let passed = 0, failed = 0;
 
 function check(name, condition) {
@@ -79,18 +81,19 @@ async function test() {
   // Test 1: Create room
   console.log('[1] CREATE_ROOM');
   const host = await wsConnect();
-  send(host, { type: 'CREATE_ROOM' });
+  send(host, { type: 'CREATE_ROOM', roomMode: ROOM_MODE, protocolVersion: PROTOCOL_VERSION });
   let msgs = await waitMessages(host);
   check('Receives ROOM_CREATED', msgs.some(m => m.type === 'ROOM_CREATED'));
   const roomMsg = msgs.find(m => m.type === 'ROOM_CREATED');
   check('Has 4-char roomCode', roomMsg?.roomCode?.length === 4);
+  check('Returns roomMode', roomMsg?.roomMode === ROOM_MODE);
   const roomCode = roomMsg?.roomCode;
   console.log(`    roomCode: ${roomCode}`);
 
   // Test 2: Join invalid room
   console.log('[2] JOIN_ROOM (invalid code)');
   const badClient = await wsConnect();
-  send(badClient, { type: 'JOIN_ROOM', roomCode: 'XXXX' });
+  send(badClient, { type: 'JOIN_ROOM', roomCode: 'XXXX', expectedRoomMode: ROOM_MODE, protocolVersion: PROTOCOL_VERSION });
   msgs = await waitMessages(badClient);
   check('JOIN_ERROR for invalid room', msgs.some(m => m.type === 'JOIN_ERROR' && m.reason === 'room_not_found'));
   badClient.socket.destroy();
@@ -98,17 +101,18 @@ async function test() {
   // Test 3: Join valid room
   console.log('[3] JOIN_ROOM (valid code)');
   const client = await wsConnect();
-  send(client, { type: 'JOIN_ROOM', roomCode });
+  send(client, { type: 'JOIN_ROOM', roomCode, expectedRoomMode: ROOM_MODE, protocolVersion: PROTOCOL_VERSION });
   const clientMsgs = await waitMessages(client);
   check('Client gets JOIN_SUCCESS', clientMsgs.some(m => m.type === 'JOIN_SUCCESS'));
   check('Client is player2', clientMsgs.some(m => m.type === 'JOIN_SUCCESS' && m.playerId === 'player2'));
+  check('Client receives roomMode', clientMsgs.some(m => m.type === 'JOIN_SUCCESS' && m.roomMode === ROOM_MODE));
   const hostMsgs = await waitMessages(host);
   check('Host gets PEER_JOINED', hostMsgs.some(m => m.type === 'PEER_JOINED'));
 
   // Test 4: Room full
   console.log('[4] JOIN_ROOM (room full)');
   const third = await wsConnect();
-  send(third, { type: 'JOIN_ROOM', roomCode });
+  send(third, { type: 'JOIN_ROOM', roomCode, expectedRoomMode: ROOM_MODE, protocolVersion: PROTOCOL_VERSION });
   msgs = await waitMessages(third);
   check('Third client gets room_full', msgs.some(m => m.type === 'JOIN_ERROR' && m.reason === 'room_full'));
   third.socket.destroy();

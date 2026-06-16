@@ -3,6 +3,8 @@ export const GameMode = Object.freeze({
   LOCAL_COOP: 'local_coop',
   LOCAL_SOLO: 'local_solo',
   P2P_DUEL: 'p2p_duel',
+  P2P_QUICK: 'p2p_quick',
+  P2P_DRAFT: 'p2p_draft',
   P2P_COOP: 'p2p_coop',
 });
 
@@ -35,5 +37,15 @@ export function isCoopMode(mode) {
 export function isP2PMode(mode) {
   const normalized = normalizeConfigMode(mode);
   return normalized === GameMode.P2P_DUEL ||
+    normalized === GameMode.P2P_QUICK ||
+    normalized === GameMode.P2P_DRAFT ||
     normalized === GameMode.P2P_COOP;
+}
+
+export function roomModeFromP2PSubMode(subMode = 'draft') {
+  return subMode === 'quick' ? GameMode.P2P_QUICK : GameMode.P2P_DRAFT;
+}
+
+export function p2pSubModeFromRoomMode(roomMode) {
+  return roomMode === GameMode.P2P_QUICK ? 'quick' : 'draft';
 }

@@ -44,12 +44,12 @@ export function createStartModeActions({
     getNetworkSession()?.disconnect();
   }
 
-  function createRoom({ serverAddr, ui }) {
-    return getNetworkSession()?.createRoom({ serverAddr, ui });
+  function createRoom({ serverAddr, ui, roomMode }) {
+    return getNetworkSession()?.createRoom({ serverAddr, ui, roomMode });
   }
 
-  function joinRoom({ roomCode, serverAddr, ui }) {
-    return getNetworkSession()?.joinRoom({ roomCode, serverAddr, ui });
+  function joinRoom({ roomCode, serverAddr, ui, expectedRoomMode }) {
+    return getNetworkSession()?.joinRoom({ roomCode, serverAddr, ui, expectedRoomMode });
   }
 
   return {

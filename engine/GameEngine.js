@@ -482,6 +482,7 @@ export class GameEngine {
     this.resourceSystem.clear();
     this.actionPointSystem.resetTurn();
     this.buffManager.clear();
+    this.skillCooldowns.clear();
     this.projectileCalculator.reset();
     this.dimensionSystem.reset();
     this.formationSystem.reset();

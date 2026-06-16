@@ -315,11 +315,11 @@ export function createAppRuntime() {
       onBackStart() {
         networkSession?.disconnect();
       },
-      onCreateRoom({ serverAddr, ui }) {
-        return networkSession?.createRoom({ serverAddr, ui });
+      onCreateRoom({ serverAddr, ui, roomMode }) {
+        return networkSession?.createRoom({ serverAddr, ui, roomMode });
       },
-      onJoinRoom({ roomCode, serverAddr, ui }) {
-        return networkSession?.joinRoom({ roomCode, serverAddr, ui });
+      onJoinRoom({ roomCode, serverAddr, ui, expectedRoomMode }) {
+        return networkSession?.joinRoom({ roomCode, serverAddr, ui, expectedRoomMode });
       },
     },
   });

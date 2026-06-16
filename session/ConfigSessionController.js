@@ -244,7 +244,7 @@ export class ConfigSessionController {
     this._ctx.battleSession.resetForConfigScreen();
     if (this._legacyPveMode) {
       this._currentConfigPlayer = 'hero_1';
-    } else if (this._configMode === GameMode.P2P_DUEL || this._configMode === GameMode.P2P_COOP) {
+    } else if (isP2PMode(this._configMode)) {
       this._currentConfigPlayer = nm?.myPlayerId || 'player1';
     } else if (this._configMode === GameMode.LOCAL_SOLO || this._configMode === GameMode.LOCAL_COOP || this._configMode === GameMode.LOCAL_DUEL) {
       this._currentConfigPlayer = 'player1';
@@ -290,7 +290,7 @@ export class ConfigSessionController {
     const mode = normalizeConfigMode(this._configMode);
     if (this._legacyPveMode) return this._pveHeroSlots.every(slot => slot.locked);
     if (mode === GameMode.LOCAL_SOLO) return this._configPlayers.player1.locked;
-    if (mode === GameMode.LOCAL_DUEL || mode === GameMode.LOCAL_COOP || mode === GameMode.P2P_DUEL) {
+    if (mode === GameMode.LOCAL_DUEL || mode === GameMode.LOCAL_COOP || isP2PMode(mode)) {
       return this._configPlayers.player1.locked && this._configPlayers.player2.locked;
     }
     return false;
@@ -422,7 +422,7 @@ export class ConfigSessionController {
     const mode = normalizeConfigMode(this._configMode);
     if (this._legacyPveMode && !this._pveHeroSlots.some(slot => slot.playerId === playerId)) return;
     if (!this._legacyPveMode && mode === GameMode.LOCAL_SOLO && playerId !== 'player1') return;
-    if ((mode === GameMode.LOCAL_DUEL || mode === GameMode.P2P_DUEL) && !this._configPlayers[playerId]) return;
+    if ((mode === GameMode.LOCAL_DUEL || isP2PMode(mode)) && !this._configPlayers[playerId]) return;
     if (!this._legacyPveMode && mode === GameMode.LOCAL_COOP && !this._configPlayers[playerId]) return;
     this._currentConfigPlayer = playerId;
     this._hoverRoleId = null;

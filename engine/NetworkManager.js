@@ -1,5 +1,6 @@
 // WebSocket relay manager for P2P combat (server-relayed, no WebRTC)
 const DEFAULT_SIGNALING = 'ws://120.77.178.15:8088';
+export const NETWORK_PROTOCOL_VERSION = 2;
 
 export class NetworkManager {
   #ws = null;
@@ -8,6 +9,7 @@ export class NetworkManager {
   #myPlayerId = null;        // 'player1' | 'player2'
   #status = 'disconnected';  // 'disconnected' | 'connecting' | 'connected'
   #signalingUrl;
+  #lockedRoomMode = null;
 
   // Lockstep state
   #myActions = [];           // [{ charId, skillId, targetPos }]
@@ -32,26 +34,29 @@ export class NetworkManager {
   get myPlayerId() { return this.#myPlayerId; }
   get roomCode() { return this.#roomCode; }
   get status() { return this.#status; }
+  get lockedRoomMode() { return this.#lockedRoomMode; }
   get remoteSubmitted() { return this.#remoteReady; }
   get iSubmitted() { return this.#myReady; }
 
   // --- Public API ---
 
-  async createRoom() {
+  async createRoom(roomMode = 'p2p_draft') {
     this.#mode = 'host';
     this.#myPlayerId = 'player1';
+    this.#lockedRoomMode = roomMode;
     this.#setStatus('connecting');
     await this.#connectWS();
-    this.#sendWS({ type: 'CREATE_ROOM' });
+    this.#sendWS({ type: 'CREATE_ROOM', roomMode, protocolVersion: NETWORK_PROTOCOL_VERSION });
   }
 
-  async joinRoom(code) {
+  async joinRoom(code, expectedRoomMode = 'p2p_draft') {
     this.#mode = 'client';
     this.#myPlayerId = 'player2';
     this.#roomCode = code;
+    this.#lockedRoomMode = expectedRoomMode;
     this.#setStatus('connecting');
     await this.#connectWS();
-    this.#sendWS({ type: 'JOIN_ROOM', roomCode: code });
+    this.#sendWS({ type: 'JOIN_ROOM', roomCode: code, expectedRoomMode, protocolVersion: NETWORK_PROTOCOL_VERSION });
   }
 
   submitMyAction(charId, skillId, targetPos) {
@@ -104,6 +109,9 @@ export class NetworkManager {
     if (this.#ws) { try { this.#ws.close(); } catch (_) { /* ignore */ } this.#ws = null; }
     this.#setStatus('disconnected');
     this.#mode = 'local';
+    this.#roomCode = null;
+    this.#myPlayerId = null;
+    this.#lockedRoomMode = null;
     this.#myActions = [];
     this.#remoteActions = [];
     this.#myReady = false;
@@ -145,17 +153,19 @@ export class NetworkManager {
     switch (msg.type) {
       case 'ROOM_CREATED':
         this.#roomCode = msg.roomCode;
-        this.#callbacks.onStatusChange?.({ roomCode: this.#roomCode });
+        this.#lockedRoomMode = msg.roomMode || this.#lockedRoomMode;
+        this.#callbacks.onStatusChange?.({ roomCode: this.#roomCode, roomMode: this.#lockedRoomMode });
         break;
 
       case 'JOIN_SUCCESS':
         this.#myPlayerId = msg.playerId;
+        this.#lockedRoomMode = msg.roomMode || this.#lockedRoomMode;
         this.#setStatus('connected');
         this.#startHeartbeat();
         break;
 
       case 'JOIN_ERROR':
-        this.#callbacks.onStatusChange?.({ error: msg.reason === 'room_full' ? '房间已满' : '房间不存在' });
+        this.#callbacks.onStatusChange?.({ error: this.#formatJoinError(msg.reason), reason: msg.reason, roomMode: msg.roomMode || null });
         this.disconnect();
         break;
 
@@ -219,6 +229,13 @@ export class NetworkManager {
     if (this.#myReady && this.#remoteReady) {
       this.#callbacks.onReady?.();
     }
+  }
+
+  #formatJoinError(reason) {
+    if (reason === 'room_full') return '房间已满';
+    if (reason === 'mode_mismatch') return '房间模式不匹配：该房间不是当前选择的模式';
+    if (reason === 'protocol_mismatch') return '房间协议过旧，请刷新页面';
+    return '房间不存在';
   }
 
   // --- Heartbeat ---

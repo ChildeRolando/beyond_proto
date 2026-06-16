@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-06-16 - 重开局冷却重置与 P2P 房间模式锁定
+
+- `GameEngine.reset()` 现在清空 `skillCooldowns`，避免对局结束后重新开始继承上一局技能 CD 和 limited-use 剩余次数。
+- P2P signaling 协议升级为 v2：创建房间携带固定 `roomMode`，加入房间携带 `expectedRoomMode`，server 拒绝 quick/draft 不匹配的相同房间码。
+- 网络会话和开始大厅贯通 `p2p_quick` / `p2p_draft` room mode，匹配成功后按房间模式进入对应配置页，模式不匹配时显示明确错误且不进入配置/战斗。
+- 更新 relay 回归测试为 v2 协议，并新增 cooldown reset 与 room mode lock 回归覆盖。
+
 ## 2026-06-16 - P2P 快速模式与征召模式
 
 - 联机对战入口新增子模式选择：`快速模式` 与 `征召模式`。
