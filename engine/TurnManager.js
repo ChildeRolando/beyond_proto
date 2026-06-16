@@ -1165,7 +1165,6 @@ export class TurnManager {
     const actor = this.#registry.get(cmd.actorId);
     if (!actor) return;
 
-    const fromQ = actor.position.q, fromR = actor.position.r;
     let toQ = cmd.targetPos.q, toR = cmd.targetPos.r;
     let power = typeof cmd.payload.power === 'number'
       ? this.#buffManager.getEffectivePower(cmd.actorId, cmd.payload.power)
@@ -1186,22 +1185,26 @@ export class TurnManager {
 
     const effectiveSpeed = cmd.subSpeed ?? cmd.payload.projectileSpeed ?? 1;
     const radius = cmd.payload.radius || 1;
-    const aoeFlag = radius === 1 ? 'AOE_RADIUS_1' : 'AOE_RADIUS_1';
+    const actionId = cmd.actionId || cmd.sequenceId || null;
+    const hexes = hexSpiral(toQ, toR, radius);
 
-    if (this.#projectileCalculator) {
-      const actionId = cmd.actionId || cmd.sequenceId || null;
-      const proj = this.#projectileCalculator.createProjectile(cmd.actorId, fromQ, fromR, toQ, toR, power, effectiveSpeed, [aoeFlag], actionId);
+    for (const [hq, hr] of hexes) {
+      if (!this.#projectileCalculator) continue;
+      const flags = ['STATIONARY', 'AOE_HITBOX', ...(cmd.payload.flags || [])];
+      const proj = this.#projectileCalculator.createProjectile(
+        cmd.actorId, hq, hr, hq, hr, power, effectiveSpeed, flags, actionId
+      );
       if (proj && this.#eventRecorder) {
         this.#eventRecorder.recordProjectileCreated(
           proj.id, cmd.actorId, cmd.skillId, actionId,
-          { q: fromQ, r: fromR }, { q: toQ, r: toR }, power, effectiveSpeed,
+          { q: hq, r: hr }, { q: hq, r: hr }, power, effectiveSpeed,
           { path: proj.path, flags: proj.flags, speed: effectiveSpeed }
         );
       }
     }
 
     // lastHitByActor will be set on body contact via projectile resolution
-    this.#logger?.log(`${actor?.name || cmd.actorId} 💥 目标AOE！威${power} 半径${radius}`, 'rg');
+    this.#logger?.log(`${actor?.name || cmd.actorId} 生成目标范围冲击 威${power} 半径${radius}`, 'rg');
   }
 
   _execAttackAoeSelf(cmd) {
@@ -1424,22 +1427,31 @@ export class TurnManager {
 
     this.#logger?.log('☄ 大荒星陨！降临', 'die');
 
-    // 1-radius AOE damage
-    let hit = false;
-    for (const other of this.#registry.characters()) {
-      if (other.id === cmd.actorId || other.alive === false) continue;
-      if (!this._canAttackAffect(actor, other)) continue;
-      if (hexDistance(targetQ, targetR, other.position.q, other.position.r) <= 1) {
-        const result = this.#damageCalculator.resolve(cmd.actorId, other.id, 700, 'PHYSICAL');
-        if (result.killed || result.finalDamage > 0) hit = true;
+    const basePower = meteor.data.power ?? cmd.payload?.power ?? 700;
+    const power = typeof basePower === 'number'
+      ? this.#buffManager.getEffectivePower(cmd.actorId, basePower)
+      : basePower;
+    const radius = meteor.data.radius ?? cmd.payload?.radius ?? 1;
+    const speed = cmd.subSpeed ?? cmd.speed ?? 2;
+    const actionId = cmd.actionId || cmd.sequenceId || null;
+    const hexes = hexSpiral(targetQ, targetR, radius);
+
+    for (const [hq, hr] of hexes) {
+      if (!this.#projectileCalculator) continue;
+      const flags = ['STATIONARY', 'AOE_HITBOX', 'METEOR_DROP'];
+      const proj = this.#projectileCalculator.createProjectile(
+        cmd.actorId, hq, hr, hq, hr, power, speed, flags, actionId
+      );
+      if (proj && this.#eventRecorder) {
+        this.#eventRecorder.recordProjectileCreated(
+          proj.id, cmd.actorId, cmd.skillId, actionId,
+          { q: hq, r: hr }, { q: hq, r: hr }, power, speed,
+          { path: proj.path, flags: proj.flags, speed }
+        );
       }
     }
 
-    // Remove the buff and mark for hit tracking
     this.#buffManager.removeByType(cmd.actorId, 'METEOR_ASCENDING');
-    this.#lastHitByActor.set(cmd.actorId, hit);
-    const meteorActionId = cmd.actionId || cmd.sequenceId;
-    if (meteorActionId) this.#hitBySequenceId.set(meteorActionId, hit);
   }
 
   _execPass(cmd) {

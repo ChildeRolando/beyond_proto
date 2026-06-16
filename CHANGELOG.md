@@ -3,12 +3,15 @@
 ## 2026-06-17 - AOE hitbox 统一弹体碰撞结算
 
 - `SPAWN_STATIONARY_AOE`、`ATTACK_AOE_SELF`、`ATTACK_AOE_PATH` 统一生成带 `AOE_HITBOX` 的 stationary projectile，不再默认绕过 projectile system 直接伤害角色。
+- `ATTACK_AOE_TARGET` 不再生成单个 `AOE_RADIUS_1` moving projectile，改为在目标点半径内生成 `STATIONARY + AOE_HITBOX`。
+- `METEOR_DROP` 不再直接调用 `damageCalculator.resolve`，角色先移动到坠落点，再生成陨星范围 hitbox，由 projectile collision / 纳刀拦截 / body contact 统一结算。
 - `ProjectileCalculator` 移除 `REACTIVE_ARMOR` 专用 stationary 分支，当前速度层先做 projectile/hitbox power comparison，再做纳刀拦截，最后由存活攻击实体 body contact。
 - 新增移动前同格碰撞，覆盖踏前斩在 AOE hitbox 格生成 melee projectile 的场景，保证横扫千军、狮吼、反应装甲按 power 湮灭/相杀/贯穿。
 - 更新 target policy 与 skill 回归预期，反应装甲按普通 AOE hitbox pipeline 与斩击比较威力。
 
 ### 测试
-- `node tests/aoe_hitbox_collision.spec.js`: 38 passed
+- `node tests/aoe_hitbox_collision.spec.js`: 59 passed
+- `node tests/meteor_drop_pipeline.spec.js`: 32 passed
 - `node tests/selected_task_regression.spec.js`: 16 passed
 - `node tests/target_policy_test.js`: passed
 - `node tests/skill_test.js`: 212 passed

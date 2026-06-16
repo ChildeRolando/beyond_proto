@@ -58,9 +58,16 @@ test('all critical CSS and JS load with 200', async ({ page }) => {
   await page.goto('/');
   const failures = [];
   for (const url of [...CRITICAL_CSS, ...CRITICAL_JS]) {
-    const resp = await page.request.get(`http://127.0.0.1:8000${url}`);
-    if (resp.status() !== 200) {
-      failures.push(`${url} → ${resp.status()}`);
+    const result = await page.evaluate(async (assetUrl) => {
+      try {
+        const resp = await fetch(assetUrl, { cache: 'no-store' });
+        return { status: resp.status };
+      } catch (err) {
+        return { error: err?.message || String(err) };
+      }
+    }, url);
+    if (result.status !== 200) {
+      failures.push(`${url} → ${result.status ?? result.error}`);
     }
   }
   expect(failures).toEqual([]);
