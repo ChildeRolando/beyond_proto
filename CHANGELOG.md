@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-06-18b - L4/L8重做 + DAG选关UI + 多回合检验修复
+
+### L4 威力比较 — 重做为弹体碰撞湮灭
+- L4原设计与L7雷同（法师开盾→战士斩击），现重做为弹体碰撞教学
+- Turn 1: 玩家气功波(100) vs 敌人射击(100) → 等威力相杀(mutual_destroy)
+- Turn 2: 玩家大气功波(300) vs 敌人射击(100) → 高威贯穿(overpowered) → 击杀
+- 核心教学: 弹体碰撞时威力比较决定结果（等威相杀/高威贯穿）
+
+### L8 怒气抵消 — 重做为盛怒挨打
+- L8原设计玩家主动攻击并消耗怒气，现重做为盛怒+站住挨打
+- Turn 1: 玩家盛怒 → 敌人斩击 → 怒气完全吸收(2*50=100) → 玩家存活 → 盛怒被打断
+- Turn 2: 玩家盛怒 → 敌人等待 → 未被击中 → 获得2怒
+- 核心教学: 怒气作为伤害缓冲 + 盛怒"被打不集气"机制
+
+### DAG选关UI
+- 修复 `getNextLevelId()` 使用 `getAvailableModules()` 替代 `getUnlockedModules()`
+- 新增 `#tutorial-module-select` 面板，多模块可选时显示按钮列表
+- 修复 `_markLevelCompleted()` 使用DAG-aware方式判断campaign完成
+- 修复 `renderTutorialHud()` 步数标签动态显示总关卡数
+
+### 多回合检验修复
+- 修复 `onTurnExecuted()`: 每回合优先使用 `_turnScripts[N]` 的winCheck
+- 修复回合间 `_observedEvents` 累积污染（`_advanceToNextTurn` 清除）
+- 修复L4末回合错误检验（expectMutualDestroy → expectOverpowered）
+- 修复L8末回合假阳性通过（跨回合事件累积）
+
+### 测试
+- 新增弹体碰撞测试 (mutual_destroy + overpowered)
+- 新增盛怒被打断测试 (rage absorb + hit cancel + not-hit gain)
+- 总计: 58机制测试 + 212技能测试 + 55角色测试 = 325通过, 0失败
+
 ## 2026-06-18 - 教学系统升级：DAG机制教学 + 6个新关卡 + 机制隔离测试
 
 ### 架构升级
