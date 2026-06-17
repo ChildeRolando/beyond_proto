@@ -123,15 +123,49 @@ export function createBattleRenderCoordinator({
     if (!active) return;
 
     setText('tutorial-title', state.title || '');
-    setText('tutorial-hud-step', state.levelIndex >= 0 ? `教学 ${state.levelIndex + 1}/3` : '');
+    const total = state.totalLevels || 9;
+    setText('tutorial-hud-step', state.levelIndex >= 0 ? `教学 ${state.levelIndex + 1}/${total}` : '');
     setText('tutorial-objective', state.objective || '');
     setText('tutorial-error', state.errorText || '');
     setText('tutorial-level-complete', state.completionText || '');
 
+    // Module selection: show when level is complete and multiple modules are available
+    const moduleSelect = getEl('tutorial-module-select');
+    const moduleList = getEl('tutorial-module-list');
+    const availableModules = state.availableModules || [];
+    const completedModules = state.completedModules || [];
+    const hasMultipleChoices = state.levelComplete && availableModules.length > 1;
+
+    if (moduleSelect && moduleList) {
+      if (hasMultipleChoices) {
+        moduleSelect.style.display = 'flex';
+        moduleList.innerHTML = '';
+        for (const modId of availableModules) {
+          const btn = document.createElement('button');
+          btn.className = 'tutorial-module-btn';
+          if (completedModules.includes(modId)) {
+            btn.className += ' completed';
+            btn.textContent = '✓ 已完成';
+          } else {
+            btn.textContent = getModuleLabel(modId);
+            btn.dataset.moduleId = modId;
+            btn.addEventListener('click', () => {
+              if (typeof window.__startTutorialModule === 'function') {
+                window.__startTutorialModule(modId);
+              }
+            });
+          }
+          moduleList.appendChild(btn);
+        }
+      } else {
+        moduleSelect.style.display = 'none';
+      }
+    }
+
     const nextBtn = getEl('tutorial-next');
     if (nextBtn) {
       nextBtn.textContent = state.nextLabel || '下一关';
-      nextBtn.style.display = 'inline-flex';
+      nextBtn.style.display = hasMultipleChoices ? 'none' : 'inline-flex';
       const canAdvance = Boolean(state.showNext);
       nextBtn.style.opacity = canAdvance ? '1' : '0.45';
       nextBtn.style.pointerEvents = canAdvance ? 'auto' : 'none';
@@ -143,6 +177,21 @@ export function createBattleRenderCoordinator({
     if (skipBtn) {
       skipBtn.style.display = state.showSkip ? 'inline-flex' : 'none';
     }
+  }
+
+  function getModuleLabel(modId) {
+    const labels = {
+      'tutorial_move_execute': '1. 移动执行',
+      'tutorial_attack_target': '2. 攻击目标',
+      'tutorial_speed_priority': '3. 速度优先级',
+      'tutorial_power_comparison': '4. 威力比较',
+      'tutorial_gunfighter_resources': '5. 枪侠资源',
+      'tutorial_charge_shield': '6. 集气护盾',
+      'tutorial_shield_timing': '7. 护盾时序',
+      'tutorial_rage_absorption': '8. 怒气抵消',
+      'tutorial_comprehensive': '9. 综合战斗',
+    };
+    return labels[modId] || modId;
   }
 
   function renderAll() {

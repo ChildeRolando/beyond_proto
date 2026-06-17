@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-06-18 - 教学系统升级：DAG机制教学 + 6个新关卡 + 机制隔离测试
+
+### 架构升级
+- 新增 `tutorial/Mechanics.js`：6个机制ID常量，系统ID常量，机制标签
+- 新增 `tutorial/TutorialModule.js`：TutorialModule 数据架构（teaches/prerequisites/allowedActions/lockedSystems/winCondition/failCondition/forcedEvents）
+- 新增 `tutorial/TutorialDAG.js`：DAG导航替换线性 nextLevelId，模块按完成机制解锁
+- 更新 `tutorial/TutorialSteps.js`：所有9个关卡增加 teaches/prerequisites/unlocks 元数据
+
+### 新关卡（4-9）
+- **Level 4 威力比较**：同一技能攻击不同防御目标 → 不同结果（击杀/存活）
+- **Level 5 枪侠资源**：弹药消耗 → 资源不足 → 必须补充的循环
+- **Level 6 集气护盾**：集气动作与护盾生成的跨回合机制（2回合）
+- **Level 7 护盾时序**：护盾在伤害结算阶段激活，log 顺序验证
+- **Level 8 怒气抵消**：怒气作为反应式伤害缓冲层 → 抵消部分伤害
+- **Level 9 综合战斗**：全部机制融合，多回合完整技能管线展示（3回合）
+
+### 引擎集成
+- `TutorialManager`：多回合支持（_currentTurnInLevel, per-turn scripting, re-priming）
+- `BattleSessionController`：executeLocalTurn/executeP2PTurn 增加 multi-turn re-priming
+- DAG 导航：unlocks[] 替换 nextLevelId，getAvailableModules() 可用模块查询
+- 新增 win condition checkers：power_comparison, resource_loop, charge_shield, shield_timing, rage_absorption, comprehensive
+
+### 设计原则
+- 禁止文本弹窗教学 — 机制必须通过强制系统交互学习
+- 教学不是关卡集合，而是"机制课程 + 受控暴露 + 状态重置沙盒"
+- 回放必须显示完整技能管线（declare → cost → resolve → effects）
+
+### 测试
+- 新增 `tests/tutorial_mechanic_test.js`: 48 测试全部通过
+  - 威力比较（4 tests）
+  - 集气护盾（6 tests）
+  - 护盾激活时序（6 tests）
+  - 怒气抵消（8 tests）
+  - 资源循环（8 tests）
+  - 技能管线完整性（8 tests）
+  - 引擎模型文档化: 一击必杀，防御层 SHIELD → RAGE → BLOCK → FORMATION
+- 所有现有测试不受影响: skill_test (212), role_loadout (55), role_mechanics (38)
+
 ## 2026-06-17 - AOE hitbox 统一弹体碰撞结算
 
 - `SPAWN_STATIONARY_AOE`、`ATTACK_AOE_SELF`、`ATTACK_AOE_PATH` 统一生成带 `AOE_HITBOX` 的 stationary projectile，不再默认绕过 projectile system 直接伤害角色。

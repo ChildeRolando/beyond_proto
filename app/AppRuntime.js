@@ -466,6 +466,7 @@ export function createAppRuntime() {
     },
     returnToStart,
     renderAll: () => battleRender.renderAll(),
+    startTutorialModule: (levelId) => lifecycle.startTutorialLevel(levelId),
   });
 
   // ── Initialize ──

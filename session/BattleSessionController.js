@@ -972,6 +972,11 @@ export class BattleSessionController {
     nm.clearTurn();
     this.tutorialManager?.onTurnExecuted?.(result, this.engine.getState(), this.lastTurnResolution);
 
+    // Multi-turn tutorial: re-prime enemy actions for the next turn
+    if (this._isTutorialActive() && !this.tutorialManager?.levelComplete) {
+      this.tutorialManager?.primeNextTurn?.(this);
+    }
+
     if (result.battleEnded) {
       this.battleEnded = true;
       this.battleActive = false;
@@ -1030,6 +1035,11 @@ export class BattleSessionController {
     }
 
     this.tutorialManager?.onTurnExecuted?.(result, this.engine.getState(), this.lastTurnResolution);
+
+    // Multi-turn tutorial: re-prime enemy actions for the next turn
+    if (this._isTutorialActive() && !this.tutorialManager?.levelComplete) {
+      this.tutorialManager?.primeNextTurn?.(this);
+    }
 
     if (result.battleEnded) {
       this.battleEnded = true;

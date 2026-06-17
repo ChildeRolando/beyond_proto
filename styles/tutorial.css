@@ -237,3 +237,49 @@
   color: var(--bg);
   filter: brightness(1.05);
 }
+
+/* ── Module selection (DAG navigation) ── */
+.tutorial-module-select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tutorial-module-select-title {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.tutorial-module-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tutorial-module-btn {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: rgba(221, 187, 153, 0.08);
+  color: var(--accent);
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
+}
+
+.tutorial-module-btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.tutorial-module-btn.completed {
+  border-color: var(--border);
+  background: rgba(131, 130, 147, 0.06);
+  color: var(--text-dim);
+  cursor: default;
+  pointer-events: none;
+}

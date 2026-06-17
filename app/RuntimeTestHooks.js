@@ -14,6 +14,7 @@ export function installRuntimeTestHooks({
   startP2PConfigForTest,
   returnToStart,
   renderAll,
+  startTutorialModule,
 }) {
   window.__testHooks = window.__testHooks || {};
   window.__testHooks.renderAll = renderAll || null;
@@ -669,4 +670,5 @@ export function installRuntimeTestHooks({
   };
 
   window.returnToStart = returnToStart;
+  window.__startTutorialModule = (levelId) => startTutorialModule?.(levelId);
 }
