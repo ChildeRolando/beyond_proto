@@ -124,8 +124,9 @@ export class TutorialManager {
       this._completedLevelIds.push(this.levelId);
     }
     this.levelComplete = true;
-    const unlocks = getUnlockedModules(this.levelId);
-    this.campaignComplete = unlocks.length === 0;
+    // Campaign complete when no more modules are available (DAG-aware)
+    const available = this.getAvailableModules();
+    this.campaignComplete = available.length === 0;
   }
 
   getErrorText() {
@@ -256,6 +257,10 @@ export class TutorialManager {
    * Called after turn execution. Checks objectives and advances state.
    * For multi-turn levels, checks per-turn objectives and advances to next turn.
    * For single-turn levels, checks final objectives and marks level complete.
+   *
+   * Win check priority for each turn (including turn 1 and final turn):
+   *   1. Per-turn script's winCheck + checkParams (if defined in _turnScripts[N])
+   *   2. Level-level _winCheck + _checkParams (fallback for turns without own script)
    */
   onTurnExecuted(result, engineState, turnResolution) {
     if (!this.level) return;
@@ -265,30 +270,12 @@ export class TutorialManager {
     this._collectObservedEvents(turnResolution);
 
     const isMultiTurn = this.level._multiTurn && this.level._turnScripts;
-    const hasNextTurn = isMultiTurn && this.level._turnScripts[this._currentTurnInLevel + 1];
+    const turnScript = isMultiTurn ? this.level._turnScripts[this._currentTurnInLevel] : null;
+    const hasNextTurn = isMultiTurn && !!this.level._turnScripts[this._currentTurnInLevel + 1];
 
-    if (isMultiTurn && hasNextTurn) {
-      // Intermediate turn — check per-turn objectives
-      const turnScript = this.level._turnScripts[this._currentTurnInLevel];
-      const passed = turnScript?.winCheck
-        ? this._checkByKey(turnScript.winCheck, turnScript.checkParams || {}, result, engineState, turnResolution)
-        : true;
-
-      if (!passed) {
-        this.awaitingExecute = false;
-        this.errorText = this.level.failureText || '目标未达成，请重试。';
-        this.submitted = false;
-        return;
-      }
-
-      // Advance to next turn
-      this._advanceToNextTurn();
-      return;
-    }
-
-    // Final turn (or single-turn level) — check win condition
-    const winCheckKey = this.level._winCheck || this.levelId;
-    const winParams = this.level._checkParams || {};
+    // Prefer per-turn script's win check, fall back to level-level
+    const winCheckKey = turnScript?.winCheck || this.level._winCheck || this.levelId;
+    const winParams = turnScript?.checkParams || this.level._checkParams || {};
     const passed = this._checkByKey(winCheckKey, winParams, result, engineState, turnResolution);
 
     if (!passed) {
@@ -298,6 +285,13 @@ export class TutorialManager {
       return;
     }
 
+    if (isMultiTurn && hasNextTurn) {
+      // Intermediate turn passed — advance to next turn
+      this._advanceToNextTurn();
+      return;
+    }
+
+    // Final turn (or single-turn level) — mark level complete
     this._markLevelCompleted();
     this.awaitingExecute = false;
     this.errorText = '';
@@ -314,6 +308,7 @@ export class TutorialManager {
     this.awaitingExecute = false;
     this.errorText = '';
     this.primeBattleDone = false; // allow re-priming for new turn
+    this._observedEvents = [];    // clear cumulative events between turns
 
     // Set up the step for the next turn
     const nextScript = this.level._turnScripts?.[this._currentTurnInLevel];
