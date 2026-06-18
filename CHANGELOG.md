@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-06-18e — 教学模块3个bug修复
+
+### Bug 1: 教学1蓝色地块呼吸提示
+- L1 `choose_move_target` 添加 `tutorialHints: [{q:1,r:0, color:'blue', kind:'move_target'}]`
+- 新增 `tutorialHints` 管线: TutorialSteps → TutorialManager.getHudState → BattleSessionController.setTutorialHints → getRenderViewState → BattleScene → BattleCanvasRenderer
+- 蓝色半透明填充+蓝色描边，使用 `performance.now()` 呼吸动画（800ms周期）
+- `requestAnimationFrame` 循环在 live mode 保持持续刷新
+- 回放模式不启动 hint RAF
+
+### Bug 2: 教学3红色危险路径提示
+- L3 `select_move` 和 `choose_safe_hex` 添加红色 `tutorialHints` 标记 `(0,-1)` 和 `(0,0)`（敌方射线上）
+- 红色呼吸地块（600ms周期，更快频次传达紧迫感）
+- 纯视觉层，不改变 `allowedTargets` 安全格限制
+
+### Bug 3: 教学5资源逻辑修复
+- **5.1**: 移除 `choose_pickup` 的 `allowedTargets` 限制，允许任意合法翻滚落点
+- **5.1**: `primeBattle()` 执行前捕获 `_playerResourcesBefore` 资源快照
+- **5.1**: `_checkResourceLoop` 资源快照比较优先于事件流检查
+- **5.2**: `ResourceSystem.getReloadAmount()` 只读 helper
+- **5.2**: `RELOAD_AMMO` 改为 `CONSUME_RESOURCE(backpackAmmo)` + `GAIN_RESOURCE(ammo)` 双命令，共享 `reloadKey`
+- **5.2**: `TurnManager` 新增 `#reloadTransferAmounts` Map 处理 `RELOAD_TRANSFER` 配对
+- 上膛通过标准资源命令管线，自然产生 RESOURCE_CHANGED 事件
+
+### 测试
+- 全部现有测试通过 (212 skill + 55 loadout + 38 role + 58 tutorial + 53 compiler + 32 meteor + ... = 0 failures)
+
 ## 2026-06-18d — ProjectileResolutionCompiler 统一弹体生命周期
 
 ### ProjectileResolutionCompiler 新模块
