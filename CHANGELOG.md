@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-06-18c - 语义事件收尾与教学回归对齐
+
+### 语义事件与教学验收
+- 新增 `engine/resolution/CombatEventSemantics.js`，统一 canonical resolution event 的 `semanticLayer`、`semanticOutcome`、`presentationKind` 推断与辅助判断。
+- `ResolutionEventTypes`、`ResolutionActionSummarizer`、`PresentationTimelineCompiler` 接入语义字段，弹体相杀不再回落成 miss，同速动作的时间线起点保持同步。
+- `TutorialManager`、`TutorialSteps`、`TutorialScenarios` 引入语义检查与确定性教学资源配置，修复枪侠资源循环、护盾复读时序和 DAG 选关后的多回合验证。
+- 更新 `tests/tutorial.spec.js`、`tests/timeline_attack_result_truth.spec.js`、`tests/e2e/smoke.spec.js` 以匹配 9 关 DAG 教学与“模块 N 完成”文案。
+
+### 测试
+- `node tests/combat_event_semantics.spec.js`: passed
+- `npx playwright test tests/tutorial.spec.js --reporter=line`: passed
+- `npx playwright test tests/timeline_attack_result_truth.spec.js --reporter=line`: passed
+- `npm test -- --reporter=line`: passed
+
 ## 2026-06-18b - L4/L8重做 + DAG选关UI + 多回合检验修复
 
 ### L4 威力比较 — 重做为弹体碰撞湮灭

@@ -96,5 +96,5 @@ test('tutorial button starts playable tutorial battle', async ({ page }) => {
   await expect(page.locator('#app')).toBeVisible();
   await expect(page.locator('#tutorial-hud')).toBeVisible();
   await expect(page.locator('#tutorial-overlay')).not.toBeVisible();
-  await expect(page.locator('[data-testid="tutorial-title"]')).toContainText('教学 1/3');
+  await expect(page.locator('[data-testid="tutorial-title"]')).toContainText('教学 1/9');
 });

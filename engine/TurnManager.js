@@ -344,6 +344,11 @@ export class TurnManager {
                   projectileId: c.projectileId,
                   targetId: c.otherProjectileId,
                   actionId: c.actionId,
+                  involvedActionIds: [c.actionId, c.otherActionId].filter(Boolean),
+                  involvedProjectileIds: [c.projectileId, c.otherProjectileId].filter(Boolean),
+                  semanticLayer: 'physics',
+                  semanticOutcome: 'projectile_mutual_destruction',
+                  presentationKind: 'projectile_mutual_destruction',
                   metadata: {
                     collisionType: c.type,
                     contactPos: c.q != null ? { q: c.q, r: c.r } : null,
@@ -362,6 +367,15 @@ export class TurnManager {
                   projectileId: c.projectileId,
                   targetId: c.otherProjectileId,
                   actionId: c.actionId,
+                  involvedActionIds: [c.actionId, c.otherActionId].filter(Boolean),
+                  involvedProjectileIds: [c.projectileId, c.otherProjectileId].filter(Boolean),
+                  semanticLayer: 'physics',
+                  semanticOutcome: c.type === 'mutual_destroy'
+                    ? 'projectile_mutual_destruction'
+                    : 'projectile_collided',
+                  presentationKind: c.type === 'mutual_destroy'
+                    ? 'projectile_mutual_destruction'
+                    : 'projectile_collision',
                   metadata: {
                     collisionType: c.type,
                     contactPos: c.q != null ? { q: c.q, r: c.r } : null,
@@ -421,17 +435,19 @@ export class TurnManager {
         // MELEE projectiles that collide with enemy projectiles count as hits
         // (prevents 挥空 and ensures GAIN_RESOURCE ON_HIT fires).
         for (const c of results.collisions || []) {
-          if (!c.flags?.includes('MELEE')) continue;
           if (!c.actionId) continue;
           if (c.ownerId === c.otherOwnerId) continue;
           const entry = resultByAction.get(c.actionId) || {
-            hit: false, targetId: null, targetName: null, killed: false, damage: 0,
+            hit: false, interacted: false, targetId: null, targetName: null, killed: false, damage: 0,
           };
-          entry.hit = true;
+          entry.interacted = true;
           entry.hitProjectile = true;
+          if (c.flags?.includes('MELEE')) {
+            entry.hit = true;
+          }
           resultByAction.set(c.actionId, entry);
-          this.#lastHitByActor.set(c.ownerId, true);
-          if (c.actionId) this.#hitBySequenceId.set(c.actionId, true);
+          this.#lastHitByActor.set(c.ownerId, c.flags?.includes('MELEE') || false);
+          if (c.actionId) this.#hitBySequenceId.set(c.actionId, c.flags?.includes('MELEE') || false);
         }
 
         // Finalize pending attack records from projectile results.
@@ -441,12 +457,12 @@ export class TurnManager {
           if (rec.actionId) {
             const result = resultByAction.get(rec.actionId);
             if (result) {
-              rec.result = result.hit ? 'hit' : 'miss';
+              rec.result = result.hit ? 'hit' : (result.interacted ? 'clash' : 'miss');
               if (result.targetId) { rec.targetId = result.targetId; rec.targetName = result.targetName; }
               if (result.killed) rec.killed = true;
               if (result.damage) rec.damage = result.damage;
-              this.#lastHitByActor.set(rec.actorId, result.hit);
-              this.#hitBySequenceId.set(rec.actionId, result.hit);
+              this.#lastHitByActor.set(rec.actorId, result.hit || false);
+              this.#hitBySequenceId.set(rec.actionId, result.hit || false);
             } else {
               rec.result = 'miss';
               this.#lastHitByActor.set(rec.actorId, false);

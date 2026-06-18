@@ -108,6 +108,13 @@ export class GameEngine {
         this._friendlyHalfForShooter(wildBulletShooter)
       );
     }
+    for (const bullet of normalized.initialWildBullets || []) {
+      this.projectileCalculator.addWildBullet(
+        bullet.q,
+        bullet.r,
+        bullet.count ?? 1
+      );
+    }
 
     // Apply initial role passives for turn 1 (e.g., Jimmy breathing, Yan death wind)
     this.turnManager.initRolePassives();

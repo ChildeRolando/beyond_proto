@@ -80,6 +80,9 @@ export function buildTutorialScenario(levelId) {
       { teamId: 'tutorial_enemies', ownerId: 'tutorial_dummy', control: 'ai', name: '教程单位' },
     ],
     combatants,
+    initialWildBullets: Array.isArray(level.initialWildBullets)
+      ? level.initialWildBullets.map(b => ({ q: b.q, r: b.r, count: b.count ?? 1 }))
+      : [],
     rules: {
       victory: 'tutorial_objective',
       friendlyFire: false,

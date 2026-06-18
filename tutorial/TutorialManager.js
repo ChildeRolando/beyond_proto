@@ -1,5 +1,14 @@
 import { buildTutorialScenario } from './TutorialScenarios.js';
 import { getTutorialLevel, getUnlockedModules, TUTORIAL_LEVELS } from './TutorialSteps.js';
+import {
+  didActionDeclareSkill,
+  didActionGainStatus,
+  didActionPayCost,
+  didCharacterKill,
+  didCollectResource,
+  didDamageAbsorbByLayer,
+  didProjectileMutualDestruction,
+} from './TutorialSemanticChecks.js';
 
 function clonePosition(pos) {
   return pos ? { q: pos.q, r: pos.r } : null;
@@ -456,14 +465,15 @@ export class TutorialManager {
       // Turn 1: equal power → mutual destruction
       if (!this.lastPlayerAction) return false;
       if (this.lastPlayerAction.skillId !== 'mage_blast') return false;
-      return this._hasObservedEvent('collision_mutual_destroy');
+      return didProjectileMutualDestruction(turnResolution);
     }
     if (params.expectOverpowered) {
       // Turn 2: higher power → overpower → enemy killed
       if (!this.lastPlayerAction) return false;
       if (this.lastPlayerAction.skillId !== 'mage_bigblast') return false;
       const enemy = engineState?.characters?.find(c => c.id === 'tutorial_enemy');
-      return this._hasObservedEvent('collision_overpowered') && enemy?.alive === false;
+      return this._hasObservedEvent('collision_overpowered')
+        && (enemy?.alive === false || didCharacterKill(turnResolution, 'tutorial_hero', 'tutorial_enemy'));
     }
     return true;
   }
@@ -478,11 +488,16 @@ export class TutorialManager {
     const expectedSkill = params.expectSkillUsed || 'shooter_attack';
     if (this.lastPlayerAction.skillId !== expectedSkill) return false;
 
-    // Verify resource was consumed (ammo decreased from 1 to 0)
     const hero = engineState?.characters?.find(c => c.id === 'tutorial_hero');
     if (!hero) return false;
-    const expectedResource = params.expectResourceConsumed || 'ammo';
-    if (hero.resources[expectedResource] >= 1) return false; // must have been consumed
+
+    if (params.expectResourceGained) {
+      return didCollectResource(turnResolution, 'tutorial_hero', params.expectResourceGained);
+    }
+
+    if (params.expectResourceConsumed) {
+      return didActionPayCost(turnResolution, 'tutorial_hero', params.expectResourceConsumed);
+    }
 
     return true;
   }
@@ -494,11 +509,13 @@ export class TutorialManager {
   _checkChargeShield(result, engineState, turnResolution, params) {
     // Turn 1: verify shield status applied
     if (params.expectStatusApplied) {
-      return this._hasObservedEvent('status_applied');
+      const statusOk = didActionGainStatus(turnResolution, 'tutorial_hero', params.expectStatusApplied);
+      if (!statusOk) return false;
+      if (!params.expectShieldAbsorb) return true;
     }
     // Turn 2: verify shield absorbed
     if (params.expectShieldAbsorb) {
-      return this._hasObservedEvent('damage_absorbed');
+      return didDamageAbsorbByLayer(turnResolution, 'tutorial_hero', 'SHIELD');
     }
     // General: shield was gained
     const hero = engineState?.characters?.find(c => c.id === 'tutorial_hero');
@@ -516,9 +533,10 @@ export class TutorialManager {
     // Must have used mage_gather (not just any skill)
     if (!this.lastPlayerAction) return false;
     if (this.lastPlayerAction.skillId !== 'mage_gather') return false;
+    if (!didActionDeclareSkill(turnResolution, 'tutorial_hero', 'mage_gather')) return false;
 
     if (params.expectShieldAbsorb) {
-      const hasAbsorb = this._hasObservedEvent('damage_absorbed');
+      const hasAbsorb = didDamageAbsorbByLayer(turnResolution, 'tutorial_hero', 'SHIELD');
       if (!hasAbsorb) return false;
     }
 

@@ -53,7 +53,7 @@ async function clickNext(page) {
 test('tutorial entry starts playable battle', async ({ page }) => {
   await enterTutorial(page);
 
-  await expect(page.locator('[data-testid="tutorial-title"]')).toContainText('教学 1/3');
+  await expect(page.locator('[data-testid="tutorial-title"]')).toContainText('教学 1/9');
   await expect(page.locator('[data-testid="tutorial-objective"]')).toContainText('选择下方技能栏中的移动技能。');
   await expect(page.locator('[data-testid="tutorial-skip"]')).toBeVisible();
 
@@ -89,7 +89,7 @@ test('tutorial level 1 delays movement until execute', async ({ page }) => {
 
   const after = await page.evaluate(() => window.__tutorialTest.getUnit('tutorial_hero'));
   expect(after.position).toEqual({ q: 1, r: 0, dim: 'real' });
-  await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('教程 1 完成');
+  await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('模块 1 完成');
   await expect(page.locator('[data-testid="tutorial-next"]')).toBeEnabled();
 });
 
@@ -101,7 +101,7 @@ test('tutorial level 2 blocks wrong target and resolves attack on execute', asyn
   await page.evaluate(() => window.__tutorialTest.executeTurn());
   await clickNext(page);
 
-  await expect(page.locator('[data-testid="tutorial-title"]')).toContainText('教学 2/3');
+  await expect(page.locator('[data-testid="tutorial-title"]')).toContainText('教学 2/9');
   await expect(page.locator('[data-testid="tutorial-objective"]')).toContainText('选择普通攻击技能。');
 
   await page.evaluate(() => window.__tutorialTest.selectSkill('warrior_slash'));
@@ -123,7 +123,7 @@ test('tutorial level 2 blocks wrong target and resolves attack on execute', asyn
   expect(enemyAfter.alive).toBe(false);
   // No hp resource means one-hit-kill — hp key should not exist
   expect(enemyAfter.resources.hp).toBeUndefined();
-  await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('教程 2 完成');
+  await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('模块 2 完成');
 });
 
 test('tutorial level 3 teaches speed priority with a safe move', async ({ page }) => {
@@ -138,7 +138,7 @@ test('tutorial level 3 teaches speed priority with a safe move', async ({ page }
   await page.evaluate(() => window.__tutorialTest.executeTurn());
   await clickNext(page);
 
-  await expect(page.locator('[data-testid="tutorial-title"]')).toContainText('教学 3/3');
+  await expect(page.locator('[data-testid="tutorial-title"]')).toContainText('教学 3/9');
   await expect(page.locator('[data-testid="tutorial-objective"]')).toContainText('敌人将用速度 1 的行动向你射击。使用速度 3 移动先离开。');
 
   await page.evaluate(() => window.__tutorialTest.selectSkill('warrior_move'));
@@ -181,7 +181,7 @@ test('tutorial level 3 teaches speed priority with a safe move', async ({ page }
   expect(afterExecute.hero.position).toEqual({ q: 1, r: 0, dim: 'real' });
   expect(afterExecute.hero.resources.hp).toBe(beforeExecute.hero.resources.hp);
   expect(afterExecute.state.levelComplete).toBe(true);
-  await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('基础教学完成');
+  await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('模块 3 完成');
 });
 
 test('tutorial skip returns to start and hides tutorial overlay', async ({ page }) => {
@@ -216,7 +216,7 @@ test('tutorial returnToStart programmatic call cleans overlays', async ({ page }
   await expect(page.locator('#disconnect-overlay')).not.toHaveClass(/show/);
 });
 
-test('tutorial final return button cleans the HUD and returns to lobby', async ({ page }) => {
+test('tutorial next after level 3 advances into DAG module selection', async ({ page }) => {
   await enterTutorial(page);
 
   await page.evaluate(() => window.__tutorialTest.selectSkill('warrior_move'));
@@ -234,16 +234,12 @@ test('tutorial final return button cleans the HUD and returns to lobby', async (
   await expect(page.locator('[data-testid="tutorial-objective"]')).toContainText('行动已提交。点击执行回合后才会真正结算。');
   await page.evaluate(() => window.__tutorialTest.executeTurn());
 
-  await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('基础教学完成');
-  await expect(page.locator('[data-testid="tutorial-next"]')).toBeEnabled();
-  await expect(page.locator('[data-testid="tutorial-next"]')).toHaveText('返回大厅');
-
-  await page.locator('[data-testid="tutorial-next"]').click();
-
-  await expect(page.locator('#start-screen')).toBeVisible();
-  await expect(page.locator('#app')).not.toBeVisible();
-  await expect(page.locator('#tutorial-hud')).not.toBeVisible();
-  await expect(page.locator('#tutorial-overlay')).not.toHaveClass(/show/);
+  await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('模块 3 完成');
+  await expect(page.locator('[data-testid="tutorial-module-select"]')).toBeVisible();
+  const moduleList = page.locator('[data-testid="tutorial-module-list"]');
+  await expect(moduleList).toContainText('4. 威力比较');
+  await expect(moduleList).toContainText('5. 枪侠资源');
+  await expect(moduleList).toContainText('6. 集气护盾');
 });
 
 test('tutorial next is disabled until level complete', async ({ page }) => {

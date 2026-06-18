@@ -234,11 +234,11 @@ test('Test 4: defeating training dummy completes tutorial, no gameover panel', a
   expect(logText).not.toMatch(/战斗结束.*胜者|胜者.*玩家/i);
 
   // Tutorial completion
-  await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('教程 2 完成');
+  await expect(page.locator('[data-testid="tutorial-level-complete"]')).toContainText('模块 2 完成');
   await expect(page.locator('[data-testid="tutorial-next"]')).toBeEnabled();
 
   // Advance to level 3
   await page.locator('[data-testid="tutorial-next"]').click();
   await page.waitForFunction(() => window.__tutorialTest?.getState?.()?.levelId === 'tutorial_speed_priority');
-  await expect(page.locator('[data-testid="tutorial-title"]')).toContainText('教学 3/3');
+  await expect(page.locator('[data-testid="tutorial-title"]')).toContainText('教学 3/9');
 });

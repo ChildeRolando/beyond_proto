@@ -325,9 +325,8 @@ export const TUTORIAL_LEVELS = {
   // Teaches: RESOURCE_LOOP — cost → action → gain → constraint cycle
   // Prerequisites: SPEED_PRIORITY
   //
-  // Design: Player controls a shooter with limited ammo. Turn 1: attack
-  // consumes ammo. Turn 2: must reload to restore ammo. Player experiences
-  // the full resource loop: spend → deplete → restore → spend again.
+  // Design: Player controls a shooter starting at 0 ammo. Turn 1 rolls to a
+  // bullet pickup, turn 2 reloads from backpack ammo, turn 3 attacks.
   // ═══════════════════════════════════════════════════════════
   tutorial_gunfighter_resources: {
     levelId: 'tutorial_gunfighter_resources',
@@ -343,11 +342,12 @@ export const TUTORIAL_LEVELS = {
     playerStartPos: { q: 0, r: 0 },
     playerClass: '射手',
     playerRoleId: 'shooter_gunfighter',
-    playerLoadoutSkillIds: ['shooter_attack', 'shooter_reload'],
+    playerLoadoutSkillIds: ['shooter_attack', 'shooter_reload', 'shooter_roll'],
     playerRoleLoadoutSkillIds: [],
-    // Start with 1 ammo — exactly enough for one attack
-    // After firing, ammo depletes to 0; must reload next turn
-    playerResources: { ammo: 1 },
+    playerResources: { ammo: 0, backpackAmmo: 0 },
+    initialWildBullets: [
+      { q: 1, r: 0, count: 1 },
+    ],
     enemy: {
       id: 'tutorial_dummy',
       teamId: 'tutorial_enemies',
@@ -362,34 +362,106 @@ export const TUTORIAL_LEVELS = {
       displayName: '训练稻草人',
       tutorialUnit: true,
     },
-    initialStepId: 'select_attack',
+    initialStepId: 'select_roll',
     steps: {
-      select_attack: {
-        objective: '选择普通攻击。注意：需要消耗1弹药。',
-        allowedSkillIds: ['shooter_attack'],
-        nextStepId: 'choose_target',
+      select_roll: {
+        objective: '弹匣为0，先选择翻滚拾取子弹。',
+        allowedSkillIds: ['shooter_roll'],
+        nextStepId: 'choose_pickup',
       },
-      choose_target: {
-        objective: '选择敌人作为目标。',
-        submitTargetMessage: '选择敌人作为目标。',
+      choose_pickup: {
+        objective: '翻滚到子弹点。',
+        submitTargetMessage: '选择子弹所在格。',
         allowedTargets: [
           { q: 1, r: 0 },
-          { q: 2, r: 0 },
         ],
-        wrongTargetError: '请选择敌人所在的格子。',
-        allowedSkillIds: ['shooter_attack'],
+        wrongTargetError: '请先移动到子弹点。',
+        allowedSkillIds: ['shooter_roll'],
         nextStepId: 'await_execute',
       },
       await_execute: {
-        objective: '行动已提交。点击执行回合。观察弹药消耗。',
-        allowedSkillIds: ['shooter_attack'],
+        objective: '行动已提交。点击执行回合，观察备弹增加。',
+        allowedSkillIds: ['shooter_roll'],
       },
     },
     scriptedEnemyActions: [
       { charId: 'tutorial_dummy', skillId: 'tutorial_dummy_wait', targetPos: null },
     ],
+    _multiTurn: true,
+    _turnScripts: {
+      1: {
+        playerStepId: 'select_roll',
+        playerSteps: {
+          select_roll: {
+            objective: '弹匣为0，先选择翻滚拾取子弹。',
+            allowedSkillIds: ['shooter_roll'],
+            nextStepId: 'choose_pickup',
+          },
+          choose_pickup: {
+            objective: '翻滚到子弹点。',
+            submitTargetMessage: '选择子弹所在格。',
+            allowedTargets: [{ q: 1, r: 0 }],
+            wrongTargetError: '请先移动到子弹点。',
+            allowedSkillIds: ['shooter_roll'],
+            nextStepId: 'await_execute',
+          },
+          await_execute: {
+            objective: '行动已提交。点击执行回合，观察备弹增加。',
+            allowedSkillIds: ['shooter_roll'],
+          },
+        },
+        winCheck: 'resource_loop',
+        checkParams: { expectSkillUsed: 'shooter_roll', expectResourceGained: 'backpackAmmo' },
+      },
+      2: {
+        playerStepId: 'turn2_reload',
+        playerSteps: {
+          turn2_reload: {
+            objective: '已有备弹，选择上膛。',
+            allowedSkillIds: ['shooter_reload'],
+            nextStepId: 'turn2_await_execute',
+          },
+          turn2_await_execute: {
+            objective: '行动已提交。点击执行回合，观察弹匣获得弹药。',
+            allowedSkillIds: ['shooter_reload'],
+          },
+        },
+        enemyActions: [
+          { charId: 'tutorial_dummy', skillId: 'tutorial_dummy_wait', targetPos: null },
+        ],
+        winCheck: 'resource_loop',
+        checkParams: { expectSkillUsed: 'shooter_reload', expectResourceGained: 'ammo' },
+      },
+      3: {
+        playerStepId: 'turn3_attack',
+        playerSteps: {
+          turn3_attack: {
+            objective: '弹匣已有弹药，选择普通攻击。',
+            allowedSkillIds: ['shooter_attack'],
+            nextStepId: 'turn3_choose_target',
+          },
+          turn3_choose_target: {
+            objective: '选择敌人作为目标。',
+            submitTargetMessage: '选择敌人所在格。',
+            allowedTargets: [{ q: 2, r: 0 }],
+            wrongTargetError: '请选择敌人所在的格子。',
+            allowedSkillIds: ['shooter_attack'],
+            nextStepId: 'turn3_await_execute',
+          },
+          turn3_await_execute: {
+            objective: '行动已提交。点击执行回合，观察弹药消耗并完成攻击。',
+            allowedSkillIds: ['shooter_attack'],
+          },
+        },
+        enemyActions: [
+          { charId: 'tutorial_dummy', skillId: 'tutorial_dummy_wait', targetPos: null },
+        ],
+        winCheck: 'resource_loop',
+        checkParams: { expectResourceConsumed: 'ammo', expectSkillUsed: 'shooter_attack' },
+      },
+    },
     _winCheck: 'resource_loop',
-    _checkParams: { expectResourceConsumed: 'ammo', expectSkillUsed: 'shooter_attack' },
+    _checkParams: { expectSkillUsed: 'shooter_roll', expectResourceGained: 'backpackAmmo' },
   },
 
   // ═══════════════════════════════════════════════════════════
@@ -456,15 +528,20 @@ export const TUTORIAL_LEVELS = {
         playerStepId: 'turn2_wait',
         playerSteps: {
           turn2_wait: {
-            objective: '护盾已激活。敌人将攻击你。使用任意行动或直接执行。',
-            allowedSkillIds: null, // any
+            objective: '敌人将攻击你。再次使用集气护盾，观察本回合护盾生效。',
+            allowedSkillIds: ['mage_gather'],
+            nextStepId: 'turn2_await_execute',
+          },
+          turn2_await_execute: {
+            objective: '行动已提交。点击执行回合，观察护盾抵消伤害。',
+            allowedSkillIds: ['mage_gather'],
           },
         },
         enemyActions: [
           { charId: 'tutorial_enemy', skillId: 'warrior_slash', targetPos: { q: 0, r: 0 } },
         ],
         winCheck: 'charge_shield',
-        checkParams: { expectShieldAbsorb: true },
+        checkParams: { expectStatusApplied: 'SHIELD_ACTIVE', expectShieldAbsorb: true },
       },
     },
     _winCheck: 'charge_shield',

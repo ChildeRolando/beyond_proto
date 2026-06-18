@@ -139,6 +139,9 @@ export function legacyDuelToScenario(scenario = {}) {
     ],
     combatants,
     rules: { ...DEFAULT_RULES, ...(scenario.rules || {}) },
+    initialWildBullets: Array.isArray(scenario.initialWildBullets)
+      ? scenario.initialWildBullets.map(b => ({ q: b.q, r: b.r, count: b.count ?? 1 }))
+      : [],
   };
 }
 
@@ -182,6 +185,9 @@ function normalizeRosterScenario(scenario = {}) {
     teams: [...teamMap.values()],
     combatants,
     rules: { ...DEFAULT_RULES, ...(scenario.rules || {}) },
+    initialWildBullets: Array.isArray(scenario.initialWildBullets)
+      ? scenario.initialWildBullets.map(b => ({ q: b.q, r: b.r, count: b.count ?? 1 }))
+      : [],
   };
 }
 

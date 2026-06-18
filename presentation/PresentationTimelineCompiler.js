@@ -168,7 +168,7 @@ function compileProjectileCreated(event, eventIndex, phaseStartMs, opts, nextCli
 
   const pathLength = path.length > 0 ? path.length : 2; // min 2 for from→to
   const durationMs = Math.max(opts.minProjectileDurationMs, pathLength * opts.msPerProjectileStep);
-  const startMs = phaseStartMs + eventIndex * opts.msPerEvent;
+  const startMs = phaseStartMs;
 
   return {
     id: nextClipId(),
@@ -342,7 +342,7 @@ function compileCharacterMoved(event, eventIndex, phaseStartMs, opts, nextClipId
   const path = meta.path || (event.from && event.to ? [event.from, event.to] : []);
   const pathLength = path.length > 0 ? path.length : 2;
   const durationMs = Math.max(opts.movementDurationMs, pathLength * opts.msPerProjectileStep);
-  const startMs = phaseStartMs + eventIndex * opts.msPerEvent;
+  const startMs = phaseStartMs;
 
   return {
     id: nextClipId(),

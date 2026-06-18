@@ -37,6 +37,29 @@ export const ResolutionEventType = Object.freeze({
   BATTLE_ENDED: 'battle_ended',
 });
 
+function inferLegacySemanticFields(event) {
+  const collisionType = event?.metadata?.collisionType || event?.collisionType || null;
+  if (event?.eventType === ResolutionEventType.PROJECTILE_COLLIDED && collisionType === 'mutual_destroy') {
+    return {
+      semanticLayer: 'physics',
+      semanticOutcome: 'projectile_mutual_destruction',
+      presentationKind: 'projectile_mutual_destruction',
+    };
+  }
+  if (event?.eventType === ResolutionEventType.ACTION_FAILED) {
+    return {
+      semanticLayer: 'resolution',
+      semanticOutcome: 'action_no_effect',
+      presentationKind: 'miss',
+    };
+  }
+  return {
+    semanticLayer: event?.semanticLayer || null,
+    semanticOutcome: event?.semanticOutcome || null,
+    presentationKind: event?.presentationKind || null,
+  };
+}
+
 const VALID_TYPES = new Set(Object.values(ResolutionEventType));
 
 /**
@@ -56,7 +79,7 @@ export function normalizeResolutionEvent(raw = {}) {
     ? raw.eventType
     : (isResolutionEventType(raw.type) ? raw.type : null);
 
-  return {
+  const normalized = {
     id:            raw.id            || null,
     // Only use the pre-validated eventType — do NOT fall back to raw.type
     // (legacy coarse types like 'attack' are not valid ResolutionEventTypes)
@@ -100,6 +123,12 @@ export function normalizeResolutionEvent(raw = {}) {
     result:        raw.result        || null,
     reason:        raw.reason        || null,
 
+    semanticLayer: raw.semanticLayer || null,
+    semanticOutcome: raw.semanticOutcome || null,
+    presentationKind: raw.presentationKind || null,
+    involvedActionIds: Array.isArray(raw.involvedActionIds) ? [...raw.involvedActionIds] : null,
+    involvedProjectileIds: Array.isArray(raw.involvedProjectileIds) ? [...raw.involvedProjectileIds] : null,
+
     // Legacy compat: keep old coarse type for code that hasn't migrated yet
     _legacyType:   raw.type          || null,
 
@@ -112,6 +141,10 @@ export function normalizeResolutionEvent(raw = {}) {
     skillName:     raw.skillName     || null,
 
     metadata:      raw.metadata      || null,
+  };
+  return {
+    ...normalized,
+    ...inferLegacySemanticFields(normalized),
   };
 }
 

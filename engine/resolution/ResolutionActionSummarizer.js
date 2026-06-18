@@ -10,6 +10,7 @@ import {
   getSkillName, getResourceName, getDamageLayerName, getStatusName,
   getReasonText,
 } from '../presentation/DisplayNames.js';
+import { isProjectileMutualDestruction } from './CombatEventSemantics.js';
 
 // ─── Helpers ───
 
@@ -138,6 +139,21 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
       effectLines.push('发射弹体');
       effectLineKinds.push('projectile');
       if (result === 'utility') result = 'pending';
+    }
+
+    // ── projectile_collided ──
+    if (et === 'projectile_collided') {
+      const meta = e.metadata || {};
+      const isMelee = meta.isMelee || meta.otherIsMelee;
+      if (isProjectileMutualDestruction(e)) {
+        effectLines.push(isMelee ? '斩击相杀' : '弹体相杀');
+        effectLineKinds.push('projectile');
+        if (result !== 'kill' && result !== 'hit') result = 'clash';
+      } else if (meta.collisionType === 'overpowered') {
+        effectLines.push(isMelee ? '斩击贯穿' : '弹体贯穿');
+        effectLineKinds.push('projectile');
+        if (result === 'utility' || result === 'pending') result = 'clash';
+      }
     }
 
     // ── damage_absorbed ──

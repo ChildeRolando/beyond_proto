@@ -656,6 +656,13 @@ export class ProjectileCalculator {
     return result;
   }
 
+  addWildBullet(q, r, count = 1) {
+    if (!Number.isFinite(q) || !Number.isFinite(r) || count <= 0) return 0;
+    const key = `${q},${r}`;
+    this.#wildBullets.set(key, (this.#wildBullets.get(key) || 0) + count);
+    return count;
+  }
+
   getWildBulletsCollected() { return this.#wildBulletsCollected; }
   clearWildBulletsCollected() { this.#wildBulletsCollected = 0; }
 
