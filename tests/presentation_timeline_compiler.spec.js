@@ -28,6 +28,7 @@ function makeResolution(turnNumber, phases) {
     turnNumber,
     initialSnapshot: null,
     finalSnapshot: null,
+    projectileResolutionFacts: [],
     phases,
   };
 }
@@ -392,6 +393,65 @@ console.log('\n=== Test 5: intercept + expired ===');
   const launchClip5 = tlIntercept.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_LAUNCH);
   assert(interceptClip.startMs >= launchClip5.startMs + launchClip5.durationMs,
     'intercept.startMs >= launch.startMs + launch.durationMs');
+}
+
+// ═══════════════════════════════════════════
+// Test 5.5: canonical projectile facts override intended destination
+// ═══════════════════════════════════════════
+
+console.log('\n=== Test 5.5: projectile facts override intended destination ===');
+
+{
+  const launchEv = makeProjectileCreatedEvent({
+    id: 'ev-launch-55',
+    projectileId: 'proj-stop-early',
+    to: { q: 3, r: 0 },
+    metadata: {
+      path: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }, { q: 3, r: 0 }],
+      flags: [],
+      speed: 3,
+      isMelee: false,
+      projectileType: 'projectile',
+    },
+  });
+  const clashEv = makeProjectileCollidedEvent({
+    id: 'ev-clash-55',
+    projectileId: 'proj-stop-early',
+    targetId: 'proj-other',
+    metadata: {
+      collisionType: 'mutual_destroy',
+      contactPos: { q: 1, r: 0 },
+      power: 100,
+      otherPower: 100,
+      isMelee: false,
+      otherIsMelee: false,
+      ownerId: 'char-a',
+      otherOwnerId: 'char-b',
+    },
+  });
+  const phase = makePhase(3, [launchEv, clashEv]);
+  const resolution = makeResolution(3, [phase]);
+  resolution.projectileResolutionFacts = [{
+    projectileId: 'proj-stop-early',
+    from: { q: 0, r: 0 },
+    actualEnd: { q: 1, r: 0 },
+    endReason: 'mutual_annihilation',
+    collidedWith: 'proj-other',
+    actionId: 'act-1',
+    actorId: 'char-a',
+    status: 'collided',
+  }];
+
+  const timeline = compilePresentationTimeline(resolution);
+  const launchClip = timeline.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_LAUNCH);
+  const clashClip = timeline.clips.find(c => c.clipType === PresentationClipKind.PROJECTILE_CLASH);
+
+  assert(launchClip !== undefined, 'launch clip exists');
+  assertEquals(launchClip.payload.to.q, 1, 'launch clip endpoint uses actualEnd');
+  assertEquals(launchClip.payload.intendedTo.q, 3, 'launch clip still preserves intended destination');
+  assertEquals(launchClip.payload.path.length, 2, 'launch path is truncated to actualEnd');
+  assert(launchClip.durationMs < 320, 'launch duration is shortened by actualEnd');
+  assertEquals(clashClip.payload.contactPos.q, 1, 'clash contact uses actualEnd from facts');
 }
 
 // ═══════════════════════════════════════════

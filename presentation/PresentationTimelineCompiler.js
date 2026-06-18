@@ -55,6 +55,9 @@ export function compilePresentationTimeline(turnResolution, options = {}) {
   const opts = { ...DEFAULTS, ...options };
   const phases = turnResolution.phases || [];
   const turnNumber = turnResolution.turnNumber || 1;
+  const projectileFactsById = new Map(
+    (turnResolution.projectileResolutionFacts || []).map(fact => [fact.projectileId, fact])
+  );
 
   // Local counter — no module-level mutable state
   let clipSeq = 0;
@@ -74,7 +77,7 @@ export function compilePresentationTimeline(turnResolution, options = {}) {
 
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
-      const clip = compileEvent(event, i, phaseStartMs, launchByProjectileId, opts, nextClipId);
+      const clip = compileEvent(event, i, phaseStartMs, launchByProjectileId, projectileFactsById, opts, nextClipId);
       if (clip) {
         allClips.push(clip);
         // Track by entity
@@ -126,19 +129,19 @@ export function compilePresentationTimeline(turnResolution, options = {}) {
  * Compile a single ResolutionEvent into zero or one PresentationClip.
  * Returns null for event types that don't produce clips.
  */
-function compileEvent(event, eventIndex, phaseStartMs, launchByProjectileId, opts, nextClipId) {
+function compileEvent(event, eventIndex, phaseStartMs, launchByProjectileId, projectileFactsById, opts, nextClipId) {
   switch (event.eventType) {
     case 'projectile_created':
-      return compileProjectileCreated(event, eventIndex, phaseStartMs, opts, nextClipId);
+      return compileProjectileCreated(event, eventIndex, phaseStartMs, projectileFactsById, opts, nextClipId);
 
     case 'projectile_collided':
-      return compileProjectileCollided(event, eventIndex, phaseStartMs, launchByProjectileId, opts, nextClipId);
+      return compileProjectileCollided(event, eventIndex, phaseStartMs, launchByProjectileId, projectileFactsById, opts, nextClipId);
 
     case 'projectile_intercepted':
-      return compileProjectileIntercepted(event, eventIndex, phaseStartMs, launchByProjectileId, opts, nextClipId);
+      return compileProjectileIntercepted(event, eventIndex, phaseStartMs, launchByProjectileId, projectileFactsById, opts, nextClipId);
 
     case 'projectile_expired':
-      return compileProjectileExpired(event, eventIndex, phaseStartMs, launchByProjectileId, opts, nextClipId);
+      return compileProjectileExpired(event, eventIndex, phaseStartMs, launchByProjectileId, projectileFactsById, opts, nextClipId);
 
     case 'character_moved':
       return compileCharacterMoved(event, eventIndex, phaseStartMs, opts, nextClipId);
@@ -160,10 +163,30 @@ function compileEvent(event, eventIndex, phaseStartMs, launchByProjectileId, opt
 
 // ── Per-event-type compilers ──
 
-function compileProjectileCreated(event, eventIndex, phaseStartMs, opts, nextClipId) {
+function normalizePoint(point) {
+  if (!point) return null;
+  return { q: point.q, r: point.r };
+}
+
+function samePoint(a, b) {
+  return !!a && !!b && a.q === b.q && a.r === b.r;
+}
+
+function clipPathToActualEnd(path, actualEnd) {
+  if (!Array.isArray(path) || path.length === 0 || !actualEnd) return path;
+  const exactIndex = path.findIndex(point => samePoint(point, actualEnd));
+  if (exactIndex >= 0) return path.slice(0, exactIndex + 1);
+  if (samePoint(path[path.length - 1], actualEnd)) return path;
+  if (path.length === 1) return [...path, normalizePoint(actualEnd)];
+  return [...path.slice(0, path.length - 1), normalizePoint(actualEnd)];
+}
+
+function compileProjectileCreated(event, eventIndex, phaseStartMs, projectileFactsById, opts, nextClipId) {
   const meta = event.metadata || {};
   const projectileType = meta.projectileType || event.projectileType || 'projectile';
-  const path = meta.path || [];
+  const fact = projectileFactsById.get(event.projectileId) || null;
+  const actualEnd = normalizePoint(fact?.actualEnd);
+  const path = clipPathToActualEnd(meta.path || [], actualEnd);
   const clipType = deriveLaunchClipType(projectileType);
 
   const pathLength = path.length > 0 ? path.length : 2; // min 2 for from→to
@@ -187,33 +210,36 @@ function compileProjectileCreated(event, eventIndex, phaseStartMs, opts, nextCli
       isMelee: meta.isMelee || false,
       projectileType,
       from: event.from,
-      to: event.to,
+      to: actualEnd || event.to,
+      actualEnd,
+      intendedTo: event.to,
       basePower: event.basePower ?? null,
     },
   };
 }
 
-function compileProjectileCollided(event, eventIndex, phaseStartMs, launchByProjectileId, opts, nextClipId) {
+function compileProjectileCollided(event, eventIndex, phaseStartMs, launchByProjectileId, projectileFactsById, opts, nextClipId) {
   const meta = event.metadata || {};
 
   // Determine if this is a clash (projectile-vs-projectile) or impact (hit target)
   if (meta.collisionType) {
-    return compileClash(event, eventIndex, phaseStartMs, launchByProjectileId, opts, nextClipId);
+    return compileClash(event, eventIndex, phaseStartMs, launchByProjectileId, projectileFactsById, opts, nextClipId);
   }
   if (meta.hitType) {
-    return compileImpact(event, eventIndex, phaseStartMs, launchByProjectileId, opts, nextClipId);
+    return compileImpact(event, eventIndex, phaseStartMs, launchByProjectileId, projectileFactsById, opts, nextClipId);
   }
 
   // Fallback: treat as impact if there's a targetId
   if (event.targetId) {
-    return compileImpact(event, eventIndex, phaseStartMs, launchByProjectileId, opts, nextClipId);
+    return compileImpact(event, eventIndex, phaseStartMs, launchByProjectileId, projectileFactsById, opts, nextClipId);
   }
 
   return null;
 }
 
-function compileImpact(event, eventIndex, phaseStartMs, launchByProjectileId, opts, nextClipId) {
+function compileImpact(event, eventIndex, phaseStartMs, launchByProjectileId, projectileFactsById, opts, nextClipId) {
   const meta = event.metadata || {};
+  const fact = projectileFactsById.get(event.projectileId) || null;
   const launch = launchByProjectileId.get(event.projectileId);
   const startMs = launch
     ? launch.startMs + launch.durationMs
@@ -231,7 +257,7 @@ function compileImpact(event, eventIndex, phaseStartMs, launchByProjectileId, op
     payload: {
       projectileId: event.projectileId,
       targetId: event.targetId,
-      contactPos: meta.contactPos || event.targetPos || null,
+      contactPos: normalizePoint(fact?.actualEnd) || meta.contactPos || event.targetPos || null,
       hitType: meta.hitType || 'body_contact',
       finalDamage: event.finalDamage ?? null,
       flags: meta.flags || [],
@@ -240,8 +266,9 @@ function compileImpact(event, eventIndex, phaseStartMs, launchByProjectileId, op
   };
 }
 
-function compileClash(event, eventIndex, phaseStartMs, launchByProjectileId, opts, nextClipId) {
+function compileClash(event, eventIndex, phaseStartMs, launchByProjectileId, projectileFactsById, opts, nextClipId) {
   const meta = event.metadata || {};
+  const fact = projectileFactsById.get(event.projectileId) || null;
   const launch = launchByProjectileId.get(event.projectileId);
   const startMs = launch
     ? launch.startMs + launch.durationMs
@@ -263,7 +290,7 @@ function compileClash(event, eventIndex, phaseStartMs, launchByProjectileId, opt
       projectileId: event.projectileId,
       otherProjectileId,
       collisionType: meta.collisionType,
-      contactPos: meta.contactPos || null,
+      contactPos: normalizePoint(fact?.actualEnd) || meta.contactPos || null,
       power: meta.power ?? null,
       otherPower: meta.otherPower ?? null,
       isMelee: meta.isMelee || false,
@@ -272,8 +299,9 @@ function compileClash(event, eventIndex, phaseStartMs, launchByProjectileId, opt
   };
 }
 
-function compileProjectileIntercepted(event, eventIndex, phaseStartMs, launchByProjectileId, opts, nextClipId) {
+function compileProjectileIntercepted(event, eventIndex, phaseStartMs, launchByProjectileId, projectileFactsById, opts, nextClipId) {
   const meta = event.metadata || {};
+  const fact = projectileFactsById.get(event.projectileId) || null;
   const launch = launchByProjectileId.get(event.projectileId);
   const startMs = launch
     ? launch.startMs + launch.durationMs
@@ -294,12 +322,14 @@ function compileProjectileIntercepted(event, eventIndex, phaseStartMs, launchByP
       interceptPower: meta.interceptPower ?? event.basePower ?? null,
       projectilePower: meta.projectilePower ?? null,
       interceptType: meta.interceptType || 'buff_intercept',
+      contactPos: normalizePoint(fact?.actualEnd) || meta.contactPos || null,
     },
   };
 }
 
-function compileProjectileExpired(event, eventIndex, phaseStartMs, launchByProjectileId, opts, nextClipId) {
+function compileProjectileExpired(event, eventIndex, phaseStartMs, launchByProjectileId, projectileFactsById, opts, nextClipId) {
   const meta = event.metadata || {};
+  const fact = projectileFactsById.get(event.projectileId) || null;
   const launch = launchByProjectileId.get(event.projectileId);
   const startMs = launch
     ? launch.startMs + launch.durationMs
@@ -317,7 +347,7 @@ function compileProjectileExpired(event, eventIndex, phaseStartMs, launchByProje
     payload: {
       projectileId: event.projectileId,
       reason: event.reason || 'unknown',
-      lastPos: meta.lastPos || null,
+      lastPos: normalizePoint(fact?.actualEnd) || meta.lastPos || null,
     },
   };
 }

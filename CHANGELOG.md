@@ -616,3 +616,11 @@
 - 为反应装甲 projectile 标记 `REACTIVE_ARMOR`，限定其先纳刀拦截/弹体碰撞再 body contact，避免污染普通 stationary AOE 顺序。
 - 新增 `tests/selected_task_regression.spec.js` 覆盖本次优先修复项，并同步封脉 turn-scoped 相关旧断言。
 - 验证通过：`node tests/selected_task_regression.spec.js`、`node tests/mage_qi_siphon_rework.spec.js`、`node tests/warrior_pressure.spec.js`、`node tests/role_mechanics_test.js`、`npm test`、`npm run test:e2e`。
+
+## 2026-06-18 - Projectile 生命周期事实表
+
+- 在 `ResolutionEventRecorder` 内新增 canonical projectile lifecycle table，统一聚合 created / collided / intercepted / expired 事件。
+- `finalize()` 现在输出 `projectileResolutionFacts`，为回放/动画提供 `actualEnd`、`endReason`、`collidedWith` 等权威事实，避免下游从 `projectile_created.to` 反推终点。
+- `projectile_collided` 不再被 recorder 语义层误判为 `action_failed` / `miss` / `no_effect`；互杀保持为 projectile resolution outcome。
+- `PresentationTimelineCompiler` 优先消费 `projectileResolutionFacts.actualEnd`，在 projectile 提前相撞/被拦截时截短飞行路径并修正终点。
+- 新增测试覆盖 recorder 生命周期事实与 timeline 对 canonical endpoint 的消费。

@@ -21,6 +21,7 @@ export class ResolutionEventRecorder {
   #enabled = false;
   #registry = null;            // optional: for actor name lookups
   #declaredActionIds = new Set(); // dedup: one action_declared per actionId per turn
+  #projectileTable = new Map();
 
   constructor(eventBus, registry = null) {
     this.#eventBus = eventBus;
@@ -36,6 +37,7 @@ export class ResolutionEventRecorder {
     this.#actionContext = null;
     this.#currentPhase = null;
     this.#declaredActionIds = new Set();
+    this.#projectileTable = new Map();
     this._attachListeners();
     this.#enabled = true;
   }
@@ -118,6 +120,23 @@ export class ResolutionEventRecorder {
       : 'projectile';
     // Convert path from [[q,r],...] to [{q,r},...]
     const path = (meta.path || []).map(p => (Array.isArray(p) ? { q: p[0], r: p[1] } : p));
+    this.#projectileTable.set(projectileId, {
+      projectileId,
+      actionId: actionId || null,
+      actorId: actorId || null,
+      from: fromPos || null,
+      intendedTo: toPos || null,
+      status: 'flying',
+      actualEnd: null,
+      endReason: null,
+      collidedWith: null,
+      startTime: {
+        turnNumber: this.#currentTurn,
+        phaseSpeed: this.#currentPhase?.speed ?? null,
+        phaseKind: this.#currentPhase?.phaseKind ?? 'speed',
+      },
+      endTime: null,
+    });
     return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.PROJECTILE_CREATED,
@@ -144,6 +163,7 @@ export class ResolutionEventRecorder {
     if (!this.#currentPhase) return null;
     const targetChar = targetId ? this.#registry?.get?.(targetId) : null;
     const meta = metadata || {};
+    this._updateProjectileLifecycleFromCollision(projectileId, targetId, targetPos, actionId, meta);
     return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.PROJECTILE_COLLIDED,
@@ -169,6 +189,11 @@ export class ResolutionEventRecorder {
   recordProjectileExpired(projectileId, reason, metadata = null) {
     if (!this.#currentPhase) return null;
     const meta = metadata || {};
+    const entry = this._ensureProjectileLifecycle(projectileId);
+    entry.status = 'expired';
+    entry.actualEnd = meta.lastPos || entry.actualEnd || entry.intendedTo || null;
+    entry.endReason = 'expired';
+    entry.endTime = this._makeLifecycleTime();
     return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.PROJECTILE_EXPIRED,
@@ -184,6 +209,12 @@ export class ResolutionEventRecorder {
   recordProjectileIntercepted(projectileId, interceptorId, interceptPower, metadata = null) {
     if (!this.#currentPhase) return null;
     const meta = metadata || {};
+    const entry = this._ensureProjectileLifecycle(projectileId);
+    entry.status = 'intercepted';
+    entry.actualEnd = meta.contactPos || entry.actualEnd || null;
+    entry.endReason = 'intercepted';
+    entry.collidedWith = interceptorId || null;
+    entry.endTime = this._makeLifecycleTime();
     return this.record({
       id: nextEventId(),
       eventType: ResolutionEventType.PROJECTILE_INTERCEPTED,
@@ -231,6 +262,7 @@ export class ResolutionEventRecorder {
       schemaVersion: 2,
       turnNumber: this.#currentTurn,
       phases,
+      projectileResolutionFacts: this.buildProjectileResolutionFacts(),
       initialSnapshot,
       finalSnapshot,
     };
@@ -250,7 +282,24 @@ export class ResolutionEventRecorder {
     this.#currentTurn = 1;
     this.#enabled = false;
     this.#declaredActionIds = new Set();
+    this.#projectileTable = new Map();
     _eventIdCounter = 0;
+  }
+
+  buildProjectileResolutionFacts() {
+    return [...this.#projectileTable.values()].map(entry => ({
+      projectileId: entry.projectileId,
+      from: entry.from || null,
+      intendedTo: entry.intendedTo || null,
+      actualEnd: entry.actualEnd || entry.intendedTo || null,
+      endReason: entry.endReason || null,
+      collidedWith: entry.collidedWith || null,
+      actionId: entry.actionId || null,
+      actorId: entry.actorId || null,
+      status: entry.status || 'flying',
+      startTime: entry.startTime || null,
+      endTime: entry.endTime || null,
+    }));
   }
 
   // ─── EventBus → ResolutionEvent mapping ───
@@ -412,5 +461,73 @@ export class ResolutionEventRecorder {
       this.#eventBus.off(evtType, id);
     }
     this.#listenerIds = [];
+  }
+
+  _ensureProjectileLifecycle(projectileId) {
+    let entry = this.#projectileTable.get(projectileId);
+    if (!entry) {
+      entry = {
+        projectileId,
+        actionId: null,
+        actorId: null,
+        from: null,
+        intendedTo: null,
+        status: 'flying',
+        actualEnd: null,
+        endReason: null,
+        collidedWith: null,
+        startTime: null,
+        endTime: null,
+      };
+      this.#projectileTable.set(projectileId, entry);
+    }
+    return entry;
+  }
+
+  _makeLifecycleTime() {
+    return {
+      turnNumber: this.#currentTurn,
+      phaseSpeed: this.#currentPhase?.speed ?? null,
+      phaseKind: this.#currentPhase?.phaseKind ?? 'speed',
+    };
+  }
+
+  _updateProjectileLifecycleFromCollision(projectileId, targetId, targetPos, actionId, metadata = {}) {
+    const entry = this._ensureProjectileLifecycle(projectileId);
+    if (actionId && !entry.actionId) entry.actionId = actionId;
+    const actualEnd = metadata.contactPos || targetPos || null;
+    const collisionType = metadata.collisionType || null;
+    const hitType = metadata.hitType || null;
+    const otherId = targetId || null;
+
+    if (collisionType === 'mutual_destroy') {
+      entry.status = 'collided';
+      entry.actualEnd = actualEnd || entry.actualEnd || null;
+      entry.endReason = 'mutual_annihilation';
+      entry.collidedWith = otherId;
+      entry.endTime = this._makeLifecycleTime();
+      return;
+    }
+
+    if (collisionType === 'overpowered') {
+      const power = metadata.power;
+      const otherPower = metadata.otherPower;
+      if (typeof power === 'number' && typeof otherPower === 'number' && power < otherPower) {
+        entry.status = 'collided';
+        entry.actualEnd = actualEnd || entry.actualEnd || null;
+        entry.endReason = 'intercepted';
+        entry.collidedWith = otherId;
+        entry.endTime = this._makeLifecycleTime();
+      }
+      return;
+    }
+
+    if (hitType) {
+      entry.status = 'collided';
+      entry.actualEnd = actualEnd || entry.actualEnd || null;
+      entry.endReason = 'hit';
+      entry.collidedWith = otherId;
+      entry.endTime = this._makeLifecycleTime();
+    }
   }
 }

@@ -334,6 +334,116 @@ console.log('\n=== Part 6: ResolutionEventRecorder finalize returns snapshots ==
   assertEquals(r2.finalSnapshot, null, 'no-arg finalSnapshot is null');
 }
 
+// ═══════════════════════════════════════════
+// Part 7: projectile lifecycle facts
+// ═══════════════════════════════════════════
+
+console.log('\n=== Part 7: projectile lifecycle facts ===');
+
+{
+  const mockBus = { on: () => 0, off: () => {} };
+  const recorder = new ResolutionEventRecorder(mockBus, null);
+  recorder.startTurn(1);
+  recorder.startPhase(2, 'speed', 1);
+
+  recorder.recordProjectileCreated(
+    'proj-a', 'actor-a', 'mage_blast', 'act-a',
+    { q: 0, r: 0 }, { q: 3, r: 0 }, 100, 2,
+    { path: [[0, 0], [1, 0], [2, 0], [3, 0]], flags: [], speed: 2 }
+  );
+  recorder.recordProjectileCreated(
+    'proj-b', 'actor-b', 'mage_blast', 'act-b',
+    { q: 3, r: 0 }, { q: 0, r: 0 }, 100, 2,
+    { path: [[3, 0], [2, 0], [1, 0], [0, 0]], flags: [], speed: 2 }
+  );
+  recorder.recordProjectileCreated(
+    'proj-c', 'actor-c', 'mage_blast', 'act-c',
+    { q: 0, r: 1 }, { q: 2, r: 1 }, 80, 2,
+    { path: [[0, 1], [1, 1], [2, 1]], flags: [], speed: 2 }
+  );
+  recorder.recordProjectileCreated(
+    'proj-d', 'actor-d', 'mage_blast', 'act-d',
+    { q: 0, r: 2 }, { q: 1, r: 2 }, 60, 2,
+    { path: [[0, 2], [1, 2]], flags: [], speed: 2 }
+  );
+  recorder.recordProjectileCreated(
+    'proj-e', 'actor-e', 'mage_blast', 'act-e',
+    { q: 0, r: 3 }, { q: 3, r: 3 }, 50, 2,
+    { path: [[0, 3], [1, 3], [2, 3], [3, 3]], flags: [], speed: 2 }
+  );
+
+  recorder.recordProjectileCollided(
+    'proj-a', 'proj-b', null, null, 'act-a',
+    {
+      collisionType: 'mutual_destroy',
+      contactPos: { q: 1, r: 0 },
+      power: 100,
+      otherPower: 100,
+      ownerId: 'actor-a',
+      otherOwnerId: 'actor-b',
+    }
+  );
+  recorder.recordProjectileCollided(
+    'proj-b', 'proj-a', null, null, 'act-b',
+    {
+      collisionType: 'mutual_destroy',
+      contactPos: { q: 1, r: 0 },
+      power: 100,
+      otherPower: 100,
+      ownerId: 'actor-b',
+      otherOwnerId: 'actor-a',
+    }
+  );
+  recorder.recordProjectileCollided(
+    'proj-c', 'target-1', null, 80, 'act-c',
+    {
+      hitType: 'body_contact',
+      contactPos: { q: 1, r: 1 },
+      ownerId: 'actor-c',
+    }
+  );
+  recorder.recordProjectileIntercepted(
+    'proj-d', 'interceptor-1', 90,
+    {
+      projectilePower: 60,
+      contactPos: { q: 1, r: 2 },
+    }
+  );
+  recorder.recordProjectileExpired('proj-e', 'path_end', { lastPos: { q: 2, r: 3 } });
+
+  const resolution = recorder.finalize();
+  const facts = resolution.projectileResolutionFacts || [];
+
+  const factA = facts.find(f => f.projectileId === 'proj-a');
+  const factB = facts.find(f => f.projectileId === 'proj-b');
+  const factC = facts.find(f => f.projectileId === 'proj-c');
+  const factD = facts.find(f => f.projectileId === 'proj-d');
+  const factE = facts.find(f => f.projectileId === 'proj-e');
+
+  assertEquals(facts.length, 5, 'all created projectiles produce resolution facts');
+  assertEquals(factA?.actualEnd?.q, 1, 'mutual annihilation uses collision endpoint');
+  assertEquals(factA?.actualEnd?.r, 0, 'mutual annihilation endpoint preserves r');
+  assertEquals(factA?.endReason, 'mutual_annihilation', 'mutual annihilation end reason');
+  assertEquals(factA?.collidedWith, 'proj-b', 'mutual annihilation keeps collidedWith');
+  assertEquals(factB?.endReason, 'mutual_annihilation', 'other projectile also finalizes');
+
+  assertEquals(factC?.endReason, 'hit', 'body contact finalizes as hit');
+  assertEquals(factC?.actualEnd?.q, 1, 'body contact uses contact position');
+  assertEquals(factC?.actorId, 'actor-c', 'fact preserves actorId');
+  assertEquals(factC?.actionId, 'act-c', 'fact preserves actionId');
+
+  assertEquals(factD?.status, 'intercepted', 'intercepted projectile status recorded');
+  assertEquals(factD?.endReason, 'intercepted', 'intercepted projectile end reason');
+  assertEquals(factD?.actualEnd?.q, 1, 'interception uses contact position when provided');
+
+  assertEquals(factE?.status, 'expired', 'expired projectile status recorded');
+  assertEquals(factE?.endReason, 'expired', 'expired projectile end reason');
+  assertEquals(factE?.actualEnd?.q, 2, 'expired projectile uses lastPos');
+
+  const failedEvents = (resolution.phases[0]?.events || []).filter(e => e.eventType === 'action_failed');
+  assertEquals(failedEvents.length, 0, 'projectile collisions do not synthesize action_failed');
+}
+
 // ─── Summary ───
 
 console.log(`\n${'='.repeat(40)}`);
