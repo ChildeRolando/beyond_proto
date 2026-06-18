@@ -43,6 +43,7 @@ export class BattleSessionController {
     this.selectedSkill = null;
     this.viewingSkill = null;
     this.validTargets = [];
+    this.tutorialHints = [];
     this.hoveredHex = null;
     this.hoverEffectArea = [];
     this.selectedCharacterId = null;
@@ -165,10 +166,15 @@ export class BattleSessionController {
     return {
       hoverEffectArea: this.hoverEffectArea.map(area => ({ ...area })),
       validTargets: this.validTargets.map(target => ({ ...target })),
+      tutorialHints: [...this.tutorialHints],
       hoveredHex: this.hoveredHex ? [...this.hoveredHex] : null,
       localSubmittedCharacterIds: [...this.localSubmittedSet],
       remoteSubmittedCharacterIds: [...this.remoteSubmittedSet],
     };
+  }
+
+  setTutorialHints(hints) {
+    this.tutorialHints = hints && Array.isArray(hints) ? hints.map(h => ({ ...h })) : [];
   }
 
   getBattlePanelsContext(extra = {}) {

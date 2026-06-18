@@ -51,6 +51,7 @@ export class TurnManager {
   #submittedActionSnapshot = new Map(); // frozen copy for querying during execution
   #resourceFailed = new Set();  // sequenceIds whose resource cost check failed at exec time
   #canceledSequences = new Set(); // sequenceIds canceled by interruption/reaction effects
+  #reloadTransferAmounts = new Map(); // reloadKey → amount for RELOAD_TRANSFER pairs
   #projectileAttackers = new Set(); // actorIds that fired projectiles this speed tier
   #deathWindProcessedMissActionIds = new Set(); // per-turn `${yanId}:${actionId}` de-dup
   #pendingAttackRecords = [];        // internal attack records for hit/miss finalization (not in resolution)
@@ -139,6 +140,7 @@ export class TurnManager {
     this.#submittedChars.clear();
     this.#resourceFailed.clear();
     this.#canceledSequences.clear();
+    this.#reloadTransferAmounts.clear();
     this.#projectileAttackers.clear();
     this.#deathWindProcessedMissActionIds.clear();
     this.#usedActionIds.clear();
@@ -911,6 +913,13 @@ export class TurnManager {
       this._gainResource(cmd.actorId, resource, amount);
       return;
     }
+    if (amount === 'RELOAD_TRANSFER') {
+      const reloadKey = cmd.payload.reloadKey;
+      const loaded = this.#reloadTransferAmounts.get(reloadKey) || 0;
+      if (loaded <= 0) return;
+      this._gainResource(cmd.actorId, resource, loaded);
+      return;
+    }
     if (resource === 'backpackAmmo') {
       const gained = this._gainResource(cmd.actorId, resource, amount);
       if (gained > 0) this.#logger?.log(`背包弹药 +${gained}`, 's');
@@ -944,6 +953,19 @@ export class TurnManager {
       }
     }
     // Re-check affordability at execution time (resources may have changed from damage)
+    // RELOAD_TRANSFER: paired with GAIN_RESOURCE, uses getReloadAmount for computed amount
+    if (amount === 'RELOAD_TRANSFER') {
+      const reloadKey = cmd.payload.reloadKey;
+      const loaded = this.#resourceSystem.getReloadAmount(cmd.actorId);
+      this.#reloadTransferAmounts.set(reloadKey, loaded);
+      if (loaded <= 0) {
+        const actor = this.#registry.get(cmd.actorId);
+        this.#logger?.log(`${actor?.name || cmd.actorId} 无备弹可装填`, 's');
+        return;
+      }
+      this.#resourceSystem.subtract(cmd.actorId, 'backpackAmmo', loaded);
+      return;
+    }
     const cost = { [cmd.payload.resource]: amount };
     if (!this.#resourceSystem.canAfford(cmd.actorId, cost)) {
       const actor = this.#registry.get(cmd.actorId);

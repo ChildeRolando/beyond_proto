@@ -77,6 +77,14 @@ export class BattleCanvasRenderer {
     if (!ctx || !hexCenter || !hexCorners || !isOnBoard) return;
     if (!scene) return;
 
+    // Cache scene for hint RAF loop
+    this.#lastScene = scene;
+    // Stop hint RAF if no hints in this scene
+    const hints = scene.interaction?.tutorialHints;
+    if (!Array.isArray(hints) || hints.length === 0) {
+      this.stopHintAnimation();
+    }
+
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     // ── Interaction state ──
@@ -131,6 +139,43 @@ export class BattleCanvasRenderer {
           ctx.lineWidth = 1;
         }
         ctx.stroke();
+      }
+    }
+
+    // ── Draw tutorial hints (independent layer, does NOT affect validTargets rendering) ──
+    const tutorialHints = scene.interaction?.tutorialHints;
+    if (Array.isArray(tutorialHints) && tutorialHints.length > 0) {
+      const nowMs = performance.now(); // wall-clock for breathing — NOT playback time
+      for (const hint of tutorialHints) {
+        const [hcx, hcy] = hexCenter(hint.q, hint.r);
+        const corners = hexCorners(hcx, hcy);
+        if (hint.color === 'blue') {
+          const alpha = 0.25 + 0.18 * Math.sin(nowMs / 800);
+          ctx.beginPath();
+          ctx.moveTo(corners[0][0], corners[0][1]);
+          for (let i = 1; i < 6; i++) ctx.lineTo(corners[i][0], corners[i][1]);
+          ctx.closePath();
+          ctx.fillStyle = `rgba(66, 133, 244, ${alpha})`;
+          ctx.fill();
+          ctx.strokeStyle = `rgba(66, 133, 244, ${0.55 + alpha * 0.6})`;
+          ctx.lineWidth = 2.2;
+          ctx.stroke();
+        } else if (hint.color === 'red') {
+          const alpha = 0.25 + 0.2 * Math.sin(nowMs / 600);
+          ctx.beginPath();
+          ctx.moveTo(corners[0][0], corners[0][1]);
+          for (let i = 1; i < 6; i++) ctx.lineTo(corners[i][0], corners[i][1]);
+          ctx.closePath();
+          ctx.fillStyle = `rgba(220, 60, 60, ${alpha})`;
+          ctx.fill();
+          ctx.strokeStyle = `rgba(220, 60, 60, ${0.55 + alpha * 0.6})`;
+          ctx.lineWidth = 2.2;
+          ctx.stroke();
+        }
+      }
+      // Start RAF for breathing animation in live mode (not playback)
+      if (scene.mode === 'live' && tutorialHints.length > 0) {
+        this.startHintAnimation();
       }
     }
 
@@ -528,6 +573,7 @@ export class BattleCanvasRenderer {
     if (!state || Object.keys(state).length === 0) return; // no-op without data
     const hoverEffectArea = renderView.hoverEffectArea || [];
     const validTargets = renderView.validTargets || [];
+    const tutorialHints = renderView.tutorialHints || [];
     const hoveredHex = renderView.hoveredHex;
     const localSubmittedCharacterIds = new Set(renderView.localSubmittedCharacterIds || []);
     const remoteSubmittedCharacterIds = new Set(renderView.remoteSubmittedCharacterIds || []);
@@ -596,6 +642,38 @@ export class BattleCanvasRenderer {
           ctx.lineWidth = 1;
         }
         ctx.stroke();
+      }
+    }
+
+    // ── Draw tutorial hints (legacy path — uses Date.now() for breathing) ──
+    if (Array.isArray(tutorialHints) && tutorialHints.length > 0) {
+      const hintNowMs = Date.now();
+      for (const hint of tutorialHints) {
+        const [hcx, hcy] = hexCenter(hint.q, hint.r);
+        const corners = hexCorners(hcx, hcy);
+        if (hint.color === 'blue') {
+          const alpha = 0.25 + 0.18 * Math.sin(hintNowMs / 800);
+          ctx.beginPath();
+          ctx.moveTo(corners[0][0], corners[0][1]);
+          for (let i = 1; i < 6; i++) ctx.lineTo(corners[i][0], corners[i][1]);
+          ctx.closePath();
+          ctx.fillStyle = `rgba(66, 133, 244, ${alpha})`;
+          ctx.fill();
+          ctx.strokeStyle = `rgba(66, 133, 244, ${0.55 + alpha * 0.6})`;
+          ctx.lineWidth = 2.2;
+          ctx.stroke();
+        } else if (hint.color === 'red') {
+          const alpha = 0.25 + 0.2 * Math.sin(hintNowMs / 600);
+          ctx.beginPath();
+          ctx.moveTo(corners[0][0], corners[0][1]);
+          for (let i = 1; i < 6; i++) ctx.lineTo(corners[i][0], corners[i][1]);
+          ctx.closePath();
+          ctx.fillStyle = `rgba(220, 60, 60, ${alpha})`;
+          ctx.fill();
+          ctx.strokeStyle = `rgba(220, 60, 60, ${0.55 + alpha * 0.6})`;
+          ctx.lineWidth = 2.2;
+          ctx.stroke();
+        }
       }
     }
 
@@ -804,5 +882,37 @@ export class BattleCanvasRenderer {
         ctx.fillText('✓', cx, cy - 28);
       }
     }
+  }
+
+  // ─── Tutorial hint breathing animation (RAF-based, live mode only) ───
+
+  #hintRafId = null;
+  #lastScene = null;
+
+  /**
+   * Start a requestAnimationFrame loop that keeps re-rendering the board
+   * so tutorial hex hints breathe even when the mouse is idle.
+   * No-op if already running.
+   */
+  startHintAnimation() {
+    if (this.#hintRafId !== null) return; // already running
+    const loop = () => {
+      this.#hintRafId = requestAnimationFrame(loop);
+      if (this.#lastScene) {
+        this.render(this.#lastScene);
+      }
+    };
+    this.#hintRafId = requestAnimationFrame(loop);
+  }
+
+  /**
+   * Stop the hint breathing RAF loop. Safe to call even if not running.
+   */
+  stopHintAnimation() {
+    if (this.#hintRafId !== null) {
+      cancelAnimationFrame(this.#hintRafId);
+      this.#hintRafId = null;
+    }
+    this.#lastScene = null;
   }
 }

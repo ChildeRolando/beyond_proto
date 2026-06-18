@@ -76,6 +76,11 @@ export class TutorialManager {
     return this.level.steps?.[this.stepId]?.objective || '';
   }
 
+  getCurrentTutorialHints() {
+    if (!this.level) return null;
+    return this.level.steps?.[this.stepId]?.tutorialHints || null;
+  }
+
   getTitleText() {
     if (!this.level) return '';
     const turn = this._currentTurnInLevel > 1 ? ` (第${this._currentTurnInLevel}回合)` : '';
@@ -257,6 +262,22 @@ export class TutorialManager {
   primeBattle(battleSession) {
     if (!this.level || this.primeBattleDone) return;
     this.primeBattleDone = true;
+    // Capture player resource snapshot before execution (for resource gain checks)
+    if (!this._playerResourcesBefore) {
+      const engine = battleSession.engine;
+      const playerChars = this.getPlayerCharacterIds();
+      if (playerChars.length > 0 && engine) {
+        const char = engine.registry?.get(playerChars[0]);
+        if (char?.resources) {
+          this._playerResourcesBefore = {
+            ammo: char.resources.ammo || 0,
+            backpackAmmo: char.resources.backpackAmmo || 0,
+            qi: char.resources.qi || 0,
+            rage: char.resources.rage || 0,
+          };
+        }
+      }
+    }
     for (const action of this.getScriptedEnemyActions()) {
       battleSession.submitAction(action.charId, action.skillId, action.targetPos, { bypassTutorial: true, source: 'tutorial-auto' });
     }
@@ -318,6 +339,7 @@ export class TutorialManager {
     this.errorText = '';
     this.primeBattleDone = false; // allow re-priming for new turn
     this._observedEvents = [];    // clear cumulative events between turns
+    this._playerResourcesBefore = null; // clear resource snapshot for next turn
 
     // Set up the step for the next turn
     const nextScript = this.level._turnScripts?.[this._currentTurnInLevel];
@@ -492,6 +514,13 @@ export class TutorialManager {
     if (!hero) return false;
 
     if (params.expectResourceGained) {
+      // Priority 1: resource snapshot comparison (authoritative for reload etc.)
+      if (this._playerResourcesBefore) {
+        const after = hero.resources?.[params.expectResourceGained] || 0;
+        const before = this._playerResourcesBefore[params.expectResourceGained] || 0;
+        if (after > before) return true;
+      }
+      // Priority 2: fallback to event stream check
       return didCollectResource(turnResolution, 'tutorial_hero', params.expectResourceGained);
     }
 
@@ -657,6 +686,7 @@ export class TutorialManager {
       teaches: this.level?.teaches || [],
       availableModules: this.getAvailableModules(),
       completedModules: [...this._completedLevelIds],
+      tutorialHints: this.getCurrentTutorialHints(),
     };
   }
 

@@ -80,6 +80,11 @@ export const TUTORIAL_LEVELS = {
         objective: '选择一个蓝色相邻格作为移动目标。',
         submitTargetMessage: '选择一个蓝色相邻格作为移动目标。',
         allowedSkillIds: ['warrior_move'],
+        allowedTargets: [{ q: 1, r: 0 }],
+        wrongTargetError: '请选择蓝色提示格 (1, 0) 作为移动目标。',
+        tutorialHints: [
+          { q: 1, r: 0, color: 'blue', kind: 'move_target' },
+        ],
         nextStepId: 'await_execute',
       },
       await_execute: {
@@ -193,6 +198,10 @@ export const TUTORIAL_LEVELS = {
         objective: '敌人将用速度 1 的行动向你射击。使用速度 3 移动先离开。',
         allowedSkillIds: ['warrior_move'],
         nextStepId: 'choose_safe_hex',
+        tutorialHints: [
+          { q: 0, r: -1, color: 'red', kind: 'danger_path' },
+          { q: 0, r: 0, color: 'red', kind: 'danger_path' },
+        ],
       },
       choose_safe_hex: {
         objective: '选择一个侧向安全的相邻格。',
@@ -206,6 +215,10 @@ export const TUTORIAL_LEVELS = {
         wrongTargetError: '请选择侧向安全的相邻格，不要留在射线上。',
         allowedSkillIds: ['warrior_move'],
         nextStepId: 'await_execute',
+        tutorialHints: [
+          { q: 0, r: -1, color: 'red', kind: 'danger_path' },
+          { q: 0, r: 0, color: 'red', kind: 'danger_path' },
+        ],
       },
       await_execute: {
         objective: '行动已提交。点击执行回合后才会真正结算。',
@@ -370,12 +383,8 @@ export const TUTORIAL_LEVELS = {
         nextStepId: 'choose_pickup',
       },
       choose_pickup: {
-        objective: '翻滚到子弹点。',
-        submitTargetMessage: '选择子弹所在格。',
-        allowedTargets: [
-          { q: 1, r: 0 },
-        ],
-        wrongTargetError: '请先移动到子弹点。',
+        objective: '任选一个翻滚落点；落点相邻子弹时会拾取，观察备弹增加。',
+        submitTargetMessage: '任选一个翻滚落点。',
         allowedSkillIds: ['shooter_roll'],
         nextStepId: 'await_execute',
       },
@@ -398,10 +407,8 @@ export const TUTORIAL_LEVELS = {
             nextStepId: 'choose_pickup',
           },
           choose_pickup: {
-            objective: '翻滚到子弹点。',
-            submitTargetMessage: '选择子弹所在格。',
-            allowedTargets: [{ q: 1, r: 0 }],
-            wrongTargetError: '请先移动到子弹点。',
+            objective: '任选一个翻滚落点；落点相邻子弹时会拾取，观察备弹增加。',
+            submitTargetMessage: '任选一个翻滚落点。',
             allowedSkillIds: ['shooter_roll'],
             nextStepId: 'await_execute',
           },

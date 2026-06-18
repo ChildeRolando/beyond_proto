@@ -370,9 +370,15 @@ export class SkillResolver {
           targetPos: targetPos ? { q: targetPos.q, r: targetPos.r } : null,
           payload: { power: 'SHIELD_CURRENT', projectileSpeed: 1, flags: [] } };
 
-      case 'RELOAD_AMMO':
-        return { ...base, type: CmdType.GAIN_RESOURCE,
-          payload: { resource: 'ammo', amount: 'RELOAD', condition: null } };
+      case 'RELOAD_AMMO': {
+        const reloadKey = `${base.sequenceId || cmdId()}:reload`;
+        return [
+          { ...base, type: CmdType.CONSUME_RESOURCE,
+            payload: { resource: 'backpackAmmo', amount: 'RELOAD_TRANSFER', reloadKey } },
+          { ...base, type: CmdType.GAIN_RESOURCE,
+            payload: { resource: 'ammo', amount: 'RELOAD_TRANSFER', condition: null, reloadKey } },
+        ];
+      }
 
       case 'COLLECT_CASINGS':
         return { ...base, type: CmdType.PASS,

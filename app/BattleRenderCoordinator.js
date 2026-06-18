@@ -120,7 +120,12 @@ export function createBattleRenderCoordinator({
     const state = battleSession?.getTutorialState?.();
     const active = Boolean(state?.levelId);
     hud.style.display = active ? 'flex' : 'none';
-    if (!active) return;
+    if (!active) {
+      // Clear tutorial hints when leaving tutorial mode
+      battleSession?.setTutorialHints?.(null);
+      getBattleCanvasRenderer()?.stopHintAnimation();
+      return;
+    }
 
     setText('tutorial-title', state.title || '');
     const total = state.totalLevels || 9;
@@ -128,6 +133,9 @@ export function createBattleRenderCoordinator({
     setText('tutorial-objective', state.objective || '');
     setText('tutorial-error', state.errorText || '');
     setText('tutorial-level-complete', state.completionText || '');
+
+    // Wire tutorial hex hints to the canvas renderer
+    battleSession?.setTutorialHints?.(state.tutorialHints || null);
 
     // Module selection: show when level is complete and multiple modules are available
     const moduleSelect = getEl('tutorial-module-select');

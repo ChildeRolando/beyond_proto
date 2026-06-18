@@ -129,6 +129,14 @@ export class ResourceSystem {
   getAmmo(entityId) { return this.get(entityId, 'ammo'); }
   getBackpackAmmo(entityId) { return this.get(entityId, 'backpackAmmo'); }
 
+  /** Read-only: compute how many rounds would be loaded from backpack into magazine. */
+  getReloadAmount(entityId) {
+    const pool = this.#pools.get(entityId);
+    if (!pool) return 0;
+    const space = (pool.ammoMax || 6) - (pool.ammo || 0);
+    return Math.max(0, Math.min(space, pool.backpackAmmo || 0));
+  }
+
   reloadFromBackpack(entityId) {
     const pool = this.#pools.get(entityId);
     if (!pool) return 0;

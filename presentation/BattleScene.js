@@ -58,6 +58,7 @@ export function createBattleScene({
   const mergedInteraction = {
     hoverEffectArea: [],
     validTargets: [],
+    tutorialHints: [],
     hoveredHex: null,
     localSubmittedCharacterIds: [],
     remoteSubmittedCharacterIds: [],
