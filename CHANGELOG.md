@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-06-18d — ProjectileResolutionCompiler 统一弹体生命周期
+
+### ProjectileResolutionCompiler 新模块
+- 新增 `engine/resolution/ProjectileResolutionCompiler.js`
+  - 从原始 ResolutionEvent 构建 canonical `ProjectileResolutionFact[]`
+  - 跨 phase 累积状态，同一弹体在不同 speed tier 的创建/碰撞事件合并为单一事实
+  - **关键约束:** `actualEnd` 绝不回退到 `intendedTo` — 无碰撞/拦截/过期事件的弹体 `actualEnd` 为 null
+  - `endReason`: `hit` | `mutual_annihilation` | `intercepted` | `expired`
+- `TurnResolutionBuilder.finalize()` 自动编译每 phase 的 `projectileFacts`
+- `ResolutionFinalizer` 传递 `projectileFacts` 给 `buildActionSummaries`
+
+### ActionSummarizer 改用 canonical facts
+- `summarizeOne` 接受 `projectileFactsById` Map
+- `projectile_collided` 效果行改用 `fact.endReason === 'mutual_annihilation'` 判断，不再直接读 `e.metadata.collisionType`
+- 移除 `isProjectileMutualDestruction` 导入
+- overpowered 的强弹体（幸存方）仍用 event metadata 显示 "弹体贯穿"
+
+### 测试
+- 新增 `tests/projectile_resolution_compiler.spec.js` (53 tests)
+  - Test A: 碰撞端点覆盖 — actualEnd=(0,2) ≠ intendedTo(0,5)
+  - Test B: 相互湮灭 — endReason=mutual_annihilation，效果行含 "弹体相杀"
+  - Test C: 过期弹体 — actualEnd=lastPos，无 lastPos 时为 null 不回退
+  - Test D: 无 miss 污染 — 弹体碰撞不产生 "挥空"
+  - Test E: 跨系统一致性 — 完整 turn 模拟，phase.projectileFacts 存在且可用
+  - Test F: 高威力贯穿 — 弱弹体 endReason=intercepted，强弹体存活(flying)
+
+### 回归
+- 全部现有测试通过 (416+ total, 0 fail)
+- 动画层 `PresentationTimelineCompiler` 已使用 `projectileResolutionFacts`，无需修改
+
 ## 2026-06-18c - 语义事件收尾与教学回归对齐
 
 ### 语义事件与教学验收
