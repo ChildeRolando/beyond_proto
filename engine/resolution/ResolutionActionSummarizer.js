@@ -10,7 +10,6 @@ import {
   getSkillName, getResourceName, getDamageLayerName, getStatusName,
   getReasonText,
 } from '../presentation/DisplayNames.js';
-import { isProjectileMutualDestruction } from './CombatEventSemantics.js';
 
 // ─── Helpers ───
 
@@ -45,7 +44,7 @@ function targetDisplayName(event, charById) {
  * @param {Map} charById — Map of character id → character for target name resolution
  * @returns {object} canonical ActionSummary (for Timeline)
  */
-export function summarizeOne(actionId, events = [], actor = null, skill = null, charById = new Map(), actionMeta = null) {
+export function summarizeOne(actionId, events = [], actor = null, skill = null, charById = new Map(), actionMeta = null, projectileFactsById = null) {
   const actionDeclared = events.find(e => e.eventType === 'action_declared');
   const meta = actionMeta || null;
 
@@ -145,15 +144,20 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
     if (et === 'projectile_collided') {
       const meta = e.metadata || {};
       const isMelee = meta.isMelee || meta.otherIsMelee;
-      if (isProjectileMutualDestruction(e)) {
+      // Prefer projectile facts for canonical collision outcome
+      const fact = projectileFactsById?.get(e.projectileId) || null;
+      const endReason = fact?.endReason || null;
+      if (endReason === 'mutual_annihilation') {
         effectLines.push(isMelee ? '斩击相杀' : '弹体相杀');
         effectLineKinds.push('projectile');
         if (result !== 'kill' && result !== 'hit') result = 'clash';
       } else if (meta.collisionType === 'overpowered') {
+        // Stronger projectile survives — not in fact.endReason, use event metadata
         effectLines.push(isMelee ? '斩击贯穿' : '弹体贯穿');
         effectLineKinds.push('projectile');
         if (result === 'utility' || result === 'pending') result = 'clash';
       }
+      // body_contact hits produce no effect line here — damage is shown by damage_applied
     }
 
     // ── damage_absorbed ──
@@ -239,6 +243,11 @@ export function summarizeOne(actionId, events = [], actor = null, skill = null, 
 export function buildActionSummaries(phase, viewState, options = {}) {
   const charById = new Map((viewState?.characters || []).map(char => [char.id, char]));
   const actionMetaById = options.actionMetaById || new Map();
+  // Build projectileFactsById Map from phase.projectileFacts (canonical source)
+  const projectileFacts = options.projectileFacts || phase.projectileFacts || null;
+  const projectileFactsById = projectileFacts
+    ? new Map(projectileFacts.map(f => [f.projectileId, f]))
+    : null;
   const actionMap = new Map();
 
   // Group canonical events by actionId. Events without actionId (e.g. projectile
@@ -262,6 +271,6 @@ export function buildActionSummaries(phase, viewState, options = {}) {
   return [...actionMap.values()].map(action => {
     const actor = action.actorId ? charById.get(action.actorId) || null : null;
     const skill = action.skillId ? SKILLS[action.skillId] || null : null;
-    return summarizeOne(action.actionId, action.events, actor, skill, charById, actionMetaById.get(action.actionId) || null);
+    return summarizeOne(action.actionId, action.events, actor, skill, charById, actionMetaById.get(action.actionId) || null, projectileFactsById);
   });
 }

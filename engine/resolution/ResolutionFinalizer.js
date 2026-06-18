@@ -63,7 +63,7 @@ export function finalizeResolutionForDisplay(resolution, finalSnapshot = null) {
       .map(phase => {
         const events = (phase.events || []).map(event => enrichEvent(event, actionMetaById));
         const phaseForSummary = { ...phase, events };
-        const actions = buildActionSummaries(phaseForSummary, finalView, { actionMetaById });
+        const actions = buildActionSummaries(phaseForSummary, finalView, { actionMetaById, projectileFacts: phase.projectileFacts || null });
         const speedLabel = phase.speed != null ? `Speed ${phase.speed}` : 'End of Turn';
         return {
           ...phase,

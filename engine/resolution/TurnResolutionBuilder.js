@@ -1,6 +1,7 @@
 import { GameEngine } from '../GameEngine.js';
 import { buildActionSummaries } from './ResolutionActionSummarizer.js';
 import { finalizeResolutionForDisplay } from './ResolutionFinalizer.js';
+import { ProjectileResolutionCompiler } from './ProjectileResolutionCompiler.js';
 
 /**
  * Extract a { characters } view from a snapshot for buildActionSummaries.
@@ -70,6 +71,12 @@ function createResolutionRecorder({
     finalize({ initialSnapshot, finalSnapshot }) {
       resolution.initialSnapshot = initialSnapshot || null;
       resolution.finalSnapshot = finalSnapshot || null;
+      // Compile canonical projectile facts from all phase events
+      const compiler = new ProjectileResolutionCompiler();
+      for (const phase of resolution.phases) {
+        phase.projectileFacts = compiler.build(phase.events || []);
+      }
+      resolution.projectileResolutionFacts = compiler.getFacts();
       return structuredClone(finalizeResolutionForDisplay(resolution, finalSnapshot));
     },
   };
